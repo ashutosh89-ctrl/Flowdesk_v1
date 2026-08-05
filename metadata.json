@@ -1,0 +1,6 @@
+{
+  "name": "FlowDesk",
+  "description": "FlowDesk - Premium Freelancer Operating System",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
