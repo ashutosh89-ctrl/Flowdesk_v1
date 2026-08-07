@@ -109,13 +109,13 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({ summary, onRefresh }) 
                     <span className="text-sm font-bold text-white font-mono">
                       ${inv.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </span>
-                    <StatusPill status={inv.status} />
+                    <StatusPill status={inv.status || inv.paymentStatus || 'pending'} />
 
                     <Button variant="ghost" size="sm" onClick={() => setViewInvoice(inv)} leftIcon={<Eye className="w-3.5 h-3.5" />}>
                       View
                     </Button>
 
-                    {inv.status !== 'paid' && (
+                    {(inv.status || inv.paymentStatus) !== 'paid' && (
                       <Button
                         variant="secondary"
                         size="sm"
@@ -204,7 +204,7 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({ summary, onRefresh }) 
             <Button variant="ghost" onClick={() => setViewInvoice(null)}>
               Close
             </Button>
-            {viewInvoice?.status !== 'paid' && (
+            {(viewInvoice?.status || viewInvoice?.paymentStatus) !== 'paid' && (
               <Button
                 variant="primary"
                 onClick={() => viewInvoice && handleMarkPaid(viewInvoice)}

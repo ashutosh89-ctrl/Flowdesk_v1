@@ -14,6 +14,7 @@ import {
   ClientPortalDashboardData,
   WorkspaceProgressBreakdown,
   WorkspaceHealthDetails,
+  FinancialDashboardMetrics,
 } from '../types';
 import { FlowDeskStore } from './storage-store';
 
@@ -109,7 +110,7 @@ export const WorkspaceService = {
   },
   updateDeliverableStatus: async (id: string, status: Deliverable['status'], note?: string): Promise<Deliverable | undefined> => {
     if (status === 'approved') return FlowDeskStore.approveDeliverable(id, note);
-    if (status === 'changes_requested') return FlowDeskStore.requestDeliverableRevision(id, note || 'Revision requested');
+    if (status === 'revision_requested') return FlowDeskStore.requestDeliverableRevision(id, note || 'Revision requested');
     return FlowDeskStore.getDeliverables().find((d) => d.id === id);
   },
   togglePortalAccess: async (clientId: string, enabled: boolean): Promise<ClientPortalConfig> => {
@@ -154,11 +155,26 @@ export const DocumentService = {
 };
 
 export const DeliverableService = {
-  getDeliverables: async (clientId?: string): Promise<Deliverable[]> => {
-    return FlowDeskStore.getDeliverables(clientId);
+  getDeliverables: async (clientId?: string, includeArchived?: boolean): Promise<Deliverable[]> => {
+    return FlowDeskStore.getDeliverables(clientId, includeArchived);
+  },
+  getDeliverableById: async (id: string): Promise<Deliverable | undefined> => {
+    return FlowDeskStore.getDeliverableById(id);
   },
   addDeliverable: async (delData: Omit<Deliverable, 'id'>): Promise<Deliverable> => {
     return FlowDeskStore.addDeliverable(delData);
+  },
+  updateDeliverable: async (id: string, updates: Partial<Deliverable>): Promise<Deliverable | undefined> => {
+    return FlowDeskStore.updateDeliverable(id, updates);
+  },
+  duplicateDeliverable: async (id: string): Promise<Deliverable | undefined> => {
+    return FlowDeskStore.duplicateDeliverable(id);
+  },
+  archiveDeliverable: async (id: string): Promise<Deliverable | undefined> => {
+    return FlowDeskStore.archiveDeliverable(id);
+  },
+  deleteDeliverable: async (id: string): Promise<boolean> => {
+    return FlowDeskStore.deleteDeliverable(id);
   },
   uploadNewVersion: async (
     id: string,
@@ -171,6 +187,46 @@ export const DeliverableService = {
     versionData: { version: string; note: string; fileUrl?: string; fileName?: string; fileSize?: string; uploadedBy?: string }
   ): Promise<Deliverable | undefined> => {
     return FlowDeskStore.replaceDeliverableVersion(id, versionData);
+  },
+  restoreDeliverableVersion: async (id: string, versionId: string): Promise<Deliverable | undefined> => {
+    return FlowDeskStore.restoreDeliverableVersion(id, versionId);
+  },
+  addDeliverableFile: async (
+    id: string,
+    fileData: { fileName: string; fileSize: string; fileType: string; fileUrl?: string; folder?: string }
+  ): Promise<Deliverable | undefined> => {
+    return FlowDeskStore.addDeliverableFile(id, fileData);
+  },
+  renameDeliverableFile: async (id: string, fileId: string, newName: string): Promise<Deliverable | undefined> => {
+    return FlowDeskStore.renameDeliverableFile(id, fileId, newName);
+  },
+  deleteDeliverableFile: async (id: string, fileId: string): Promise<Deliverable | undefined> => {
+    return FlowDeskStore.deleteDeliverableFile(id, fileId);
+  },
+  togglePinDeliverableFile: async (id: string, fileId: string): Promise<Deliverable | undefined> => {
+    return FlowDeskStore.togglePinDeliverableFile(id, fileId);
+  },
+  addDeliverableComment: async (
+    id: string,
+    commentData: {
+      author: string;
+      authorRole: 'freelancer' | 'client' | 'team';
+      isInternal: boolean;
+      content: string;
+      attachments?: string[];
+      replyToId?: string;
+    }
+  ): Promise<Deliverable | undefined> => {
+    return FlowDeskStore.addDeliverableComment(id, commentData);
+  },
+  toggleResolveDeliverableComment: async (id: string, commentId: string): Promise<Deliverable | undefined> => {
+    return FlowDeskStore.toggleResolveDeliverableComment(id, commentId);
+  },
+  submitDeliverableClientReview: async (
+    id: string,
+    reviewData: { action: 'approve' | 'reject' | 'revision' | 'viewed'; notes?: string; reviewerName: string }
+  ): Promise<Deliverable | undefined> => {
+    return FlowDeskStore.submitDeliverableClientReview(id, reviewData);
   },
   approveDeliverable: async (id: string, note?: string): Promise<Deliverable | undefined> => {
     return FlowDeskStore.approveDeliverable(id, note);
@@ -186,6 +242,9 @@ export const DeliverableService = {
   },
   updateDeliverableInternalNotes: async (id: string, notes: string): Promise<Deliverable | undefined> => {
     return FlowDeskStore.updateDeliverableInternalNotes(id, notes);
+  },
+  bulkUpdateDeliverables: async (ids: string[], action: 'archive' | 'delete' | 'submit' | 'mark_ready'): Promise<boolean> => {
+    return FlowDeskStore.bulkUpdateDeliverables(ids, action);
   },
 };
 
@@ -332,7 +391,7 @@ export const WorkspaceHealthService = {
       reasons.push(`${missingDocs.length} requested document(s) pending client upload/verification.`);
     }
 
-    const delivsNeedingReview = summary.deliverables.filter((d) => d.status === 'in_review');
+    const delivsNeedingReview = summary.deliverables.filter((d) => d.status === 'ready_for_review' || d.status === 'submitted');
     if (delivsNeedingReview.length > 0) {
       reasons.push(`${delivsNeedingReview.length} deliverable(s) waiting on client review.`);
     }
@@ -351,14 +410,38 @@ export const InvoiceService = {
   getInvoices: async (clientId?: string): Promise<Invoice[]> => {
     return FlowDeskStore.getInvoices(clientId);
   },
-  createInvoice: async (invoice: Omit<Invoice, 'id' | 'invoiceNumber'>): Promise<Invoice> => {
+  getInvoiceById: async (id: string): Promise<Invoice | undefined> => {
+    return FlowDeskStore.getInvoiceById(id);
+  },
+  createInvoice: async (
+    invoice: Partial<Invoice> & { clientId: string; items: any[] }
+  ): Promise<Invoice> => {
     return FlowDeskStore.createInvoice(invoice);
   },
-  markAsPaid: async (id: string): Promise<Invoice | undefined> => {
-    return FlowDeskStore.markInvoicePaid(id);
+  updateInvoice: async (id: string, updates: Partial<Invoice>): Promise<Invoice | undefined> => {
+    return FlowDeskStore.updateInvoice(id, updates);
   },
-  sendReminder: async (id: string): Promise<boolean> => {
-    return FlowDeskStore.sendInvoiceReminder(id);
+  deleteInvoice: async (id: string): Promise<boolean> => {
+    return FlowDeskStore.deleteInvoice(id);
+  },
+  markAsPaid: async (id: string): Promise<Invoice | undefined> => {
+    return FlowDeskStore.markInvoicePaidOffline(id, 'bank_transfer', 'Payment marked paid');
+  },
+  markInvoicePaidOffline: async (
+    id: string,
+    paymentMethod: string = 'bank_transfer',
+    notes?: string
+  ): Promise<Invoice | undefined> => {
+    return FlowDeskStore.markInvoicePaidOffline(id, paymentMethod, notes);
+  },
+  sendReminder: async (id: string, notes?: string): Promise<{ success: boolean; message: string; invoice?: Invoice }> => {
+    return FlowDeskStore.sendInvoiceReminder(id, notes);
+  },
+  recordInvoiceView: async (id: string): Promise<Invoice | undefined> => {
+    return FlowDeskStore.recordInvoiceView(id);
+  },
+  getFinancialMetrics: async (): Promise<FinancialDashboardMetrics> => {
+    return FlowDeskStore.getFinancialMetrics();
   },
 };
 

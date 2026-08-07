@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
+import { CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Check, Sparkles, ArrowRight } from 'lucide-react';
 
@@ -9,8 +9,9 @@ export interface PricingPreviewProps {
   onLaunchApp: () => void;
 }
 
-export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLaunchApp }) => {
+export const PricingPreview: React.FC<PricingPreviewProps> = ({ onLaunchApp }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   const tiers = [
     {
@@ -63,12 +64,15 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
   ];
 
   return (
-    <section id="pricing" className="py-24 px-6 lg:px-12 max-w-7xl mx-auto relative overflow-hidden">
-      {/* Background Soft Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-white/[0.02] rounded-full blur-[140px] pointer-events-none" />
-
-      <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
-        <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+    <section id="pricing" className="py-24 px-6 lg:px-12 max-w-7xl mx-auto relative overflow-hidden z-10">
+      <motion.div
+        initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }}
+        whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        viewport={{ once: false, amount: 0.2 }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        className="text-center max-w-2xl mx-auto mb-16 space-y-4"
+      >
+        <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 bg-white/5 px-3.5 py-1 rounded-full border border-white/10">
           Transparent Tiering
         </span>
         <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
@@ -77,7 +81,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
         <p className="text-sm text-zinc-400 max-w-lg mx-auto leading-relaxed">
           Zero commission cuts on your hard-earned client invoices. Choose a tier that fits your growth.
         </p>
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch relative z-10">
         {tiers.map((tier, idx) => {
@@ -93,6 +97,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
             const cy = rect.height / 2;
             const rotateX = (y - cy) / 20;
             const rotateY = (cx - x) / 20;
+            setMousePos({ x, y });
             card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
           };
 
@@ -103,8 +108,12 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
           };
 
           return (
-            <div
+            <motion.div
               key={idx}
+              initial={{ opacity: 0, y: 28, filter: 'blur(4px)' }}
+              whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              viewport={{ once: false, amount: 0.15 }}
+              transition={{ duration: 0.6, delay: idx * 0.12, ease: [0.16, 1, 0.3, 1] }}
               onMouseEnter={() => setHoveredIdx(idx)}
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseLeave}
@@ -114,16 +123,19 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
               }}
               className={`pricing-card relative flex flex-col justify-between rounded-2xl p-7 ${
                 isHighlighted
-                  ? 'bg-zinc-900/90 border-white/30 shadow-[0_20px_60px_-10px_rgba(255,255,255,0.08),0_0_1px_1px_rgba(255,255,255,0.2)] z-10'
-                  : 'bg-zinc-950/80 border-white/10 hover:border-white/25 shadow-xl'
+                  ? 'bg-zinc-900/90 border-white/35 shadow-[0_20px_60px_-10px_rgba(255,255,255,0.08),0_0_1px_1px_rgba(255,255,255,0.25)] z-10'
+                  : 'bg-zinc-950/80 border-white/10 hover:border-white/30 shadow-xl'
               } border backdrop-blur-2xl overflow-hidden`}
             >
-              {/* Soft Glass Highlight Beam on Hover */}
-              <div
-                className={`absolute inset-0 bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none transition-opacity duration-500 ${
-                  isHovered || isHighlighted ? 'opacity-100' : 'opacity-0'
-                }`}
-              />
+              {/* Glass Cursor Radial Reflection */}
+              {isHovered && (
+                <div
+                  className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+                  style={{
+                    background: `radial-gradient(circle 260px at ${mousePos.x}px ${mousePos.y}px, rgba(255, 255, 255, 0.12), transparent 70%)`,
+                  }}
+                />
+              )}
 
               {/* Top Popular Badge */}
               {isHighlighted && (
@@ -168,11 +180,10 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
                   {tier.cta}
                 </Button>
               </CardFooter>
-            </div>
+            </motion.div>
           );
         })}
       </div>
     </section>
   );
 };
-

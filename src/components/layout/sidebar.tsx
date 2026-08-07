@@ -10,7 +10,7 @@ import {
   Layers,
 } from 'lucide-react';
 
-export type NavItemKey = 'dashboard' | 'clients' | 'projects' | 'invoices' | 'activity' | 'settings';
+export type NavItemKey = 'dashboard' | 'clients' | 'projects' | 'deliverables' | 'invoices' | 'activity' | 'settings';
 
 export interface SidebarProps {
   currentView: NavItemKey | string;
@@ -31,6 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { key: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
     { key: 'clients', label: 'Clients', icon: <Users className="w-4 h-4" /> },
     { key: 'projects', label: 'Projects', icon: <FolderKanban className="w-4 h-4" /> },
+    { key: 'deliverables', label: 'Deliverables', icon: <Layers className="w-4 h-4" /> },
     { key: 'invoices', label: 'Invoices', icon: <Receipt className="w-4 h-4" /> },
     { key: 'activity', label: 'Activity', icon: <Activity className="w-4 h-4" /> },
     { key: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },

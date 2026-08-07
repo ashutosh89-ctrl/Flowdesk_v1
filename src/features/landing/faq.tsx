@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown } from 'lucide-react';
 
 export const FAQSection: React.FC = () => {
@@ -24,19 +25,29 @@ export const FAQSection: React.FC = () => {
   ];
 
   return (
-    <section id="faq" className="py-20 px-6 lg:px-12 max-w-4xl mx-auto">
-      <div className="text-center mb-16 space-y-3">
+    <section id="faq" className="py-24 px-6 lg:px-12 max-w-4xl mx-auto relative z-10">
+      <motion.div
+        initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }}
+        whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        viewport={{ once: false, amount: 0.2 }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        className="text-center mb-16 space-y-3"
+      >
         <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">Questions & Answers</span>
-        <h2 className="text-3xl font-bold text-white">Frequently Asked Questions</h2>
-      </div>
+        <h2 className="text-3xl font-bold text-white tracking-tight">Frequently Asked Questions</h2>
+      </motion.div>
 
       <div className="space-y-4">
         {faqs.map((faq, idx) => {
           const isOpen = openIdx === idx;
           return (
-            <div
+            <motion.div
               key={idx}
-              className="rounded-2xl bg-zinc-900/60 border border-white/10 backdrop-blur-xl overflow-hidden transition-colors"
+              initial={{ opacity: 0, y: 20, filter: 'blur(4px)' }}
+              whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              viewport={{ once: false, amount: 0.15 }}
+              transition={{ duration: 0.5, delay: idx * 0.08 }}
+              className="rounded-2xl bg-zinc-900/60 border border-white/10 backdrop-blur-xl overflow-hidden transition-all duration-300 hover:border-white/25"
             >
               <button
                 onClick={() => setOpenIdx(isOpen ? null : idx)}
@@ -44,17 +55,25 @@ export const FAQSection: React.FC = () => {
               >
                 <span>{faq.q}</span>
                 <ChevronDown
-                  className={`w-5 h-5 text-zinc-400 transition-transform duration-200 ${
+                  className={`w-5 h-5 text-zinc-400 transition-transform duration-300 ${
                     isOpen ? 'rotate-180 text-white' : ''
                   }`}
                 />
               </button>
-              {isOpen && (
-                <div className="px-6 pb-6 text-sm text-zinc-400 border-t border-white/5 pt-4 leading-relaxed">
-                  {faq.a}
-                </div>
-              )}
-            </div>
+              <AnimatePresence>
+                {isOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    className="px-6 pb-6 text-sm text-zinc-300 border-t border-white/5 pt-4 leading-relaxed overflow-hidden"
+                  >
+                    {faq.a}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           );
         })}
       </div>

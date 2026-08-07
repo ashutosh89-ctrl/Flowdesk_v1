@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-// Minimal Simplex Noise — paste as-is
+// Minimal Simplex Noise implementation
 class SimplexNoise {
   p: Uint8Array;
   perm: Uint8Array;
   permMod12: Uint8Array;
   grad3: number[][];
 
-  constructor(seed = Math.random()) {
+  constructor(seed = 0.3872) {
     this.p = new Uint8Array(256);
     this.perm = new Uint8Array(512);
     this.permMod12 = new Uint8Array(512);
@@ -72,80 +72,15 @@ class SimplexNoise {
 
 const simplex = new SimplexNoise();
 
-function map(n: number, start1: number, stop1: number, start2: number, stop2: number) {
-  return ((n - start1) / (stop1 - start1)) * (stop2 - start2) + start2;
+interface LiquidBodyConfig {
+  originRatio: { x: number; y: number };
+  baseRadiusRatio: { rx: number; ry: number };
+  colors: { core: string; mid: string; outer: string };
+  noiseSeed: number;
+  speed: number;
 }
 
-interface Bounds {
-  x: { min: number; max: number };
-  y: { min: number; max: number };
-}
-
-class Orb {
-  fill: string;
-  bounds: Bounds;
-  x: number;
-  y: number;
-  radius: number;
-  scale: number;
-  xOff: number;
-  yOff: number;
-  scaleOff: number;
-  inc: number;
-
-  constructor(fill: string, boundsOrigin: { x: number; y: number }, maxDistFactor: number) {
-    this.fill = fill;
-    this.bounds = this.setBounds(boundsOrigin, maxDistFactor);
-    this.x = map(Math.random(), 0, 1, this.bounds.x.min, this.bounds.x.max);
-    this.y = map(Math.random(), 0, 1, this.bounds.y.min, this.bounds.y.max);
-    this.radius = map(Math.random(), 0, 1, window.innerHeight / 5, window.innerHeight / 2.5);
-    this.scale = 1;
-    this.xOff = Math.random() * 1000;
-    this.yOff = Math.random() * 1000;
-    this.scaleOff = Math.random() * 1000;
-    this.inc = 0.0015; // Noise step speed — controls flow speed
-  }
-
-  setBounds(origin: { x: number; y: number }, factor: number): Bounds {
-    const maxDist = window.innerWidth < 1000 ? window.innerWidth / 2.5 : window.innerWidth / factor;
-    return {
-      x: { min: origin.x - maxDist, max: origin.x + maxDist },
-      y: { min: origin.y - maxDist, max: origin.y + maxDist },
-    };
-  }
-
-  update() {
-    const xNoise = simplex.noise2D(this.xOff, this.xOff);
-    const yNoise = simplex.noise2D(this.yOff, this.yOff);
-    const scaleNoise = simplex.noise2D(this.scaleOff, this.scaleOff);
-
-    this.x = map(xNoise, -1, 1, this.bounds.x.min, this.bounds.x.max);
-    this.y = map(yNoise, -1, 1, this.bounds.y.min, this.bounds.y.max);
-    this.scale = map(scaleNoise, -1, 1, 0.6, 1.3);
-
-    this.xOff += this.inc;
-    this.yOff += this.inc;
-    this.scaleOff += this.inc * 0.7;
-  }
-
-  render(ctx: CanvasRenderingContext2D) {
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.scale(this.scale, this.scale);
-
-    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.radius);
-    gradient.addColorStop(0, this.fill);
-    gradient.addColorStop(1, 'rgba(0,0,0,0)');
-
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-}
-
-export const MonochromeFluidCanvas: React.FC = () => {
+export const MonochromeFluidCanvas: React.FC<{ className?: string }> = ({ className = '' }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [prefersReducedMotion] = useState(() =>
@@ -163,65 +98,278 @@ export const MonochromeFluidCanvas: React.FC = () => {
 
     let animationFrameId: number;
 
-    const configs = [
-      { origin: { x: window.innerWidth * 0.65, y: window.innerHeight * 0.55 }, factor: 3 },
-      { origin: { x: window.innerWidth * 0.25, y: window.innerHeight * 0.45 }, factor: 2.5 },
-      { origin: { x: window.innerWidth * 0.5, y: window.innerHeight * 0.75 }, factor: 2 },
-      { origin: { x: window.innerWidth * 0.4, y: window.innerHeight * 0.3 }, factor: 3.5 },
-      { origin: { x: window.innerWidth * 0.8, y: window.innerHeight * 0.4 }, factor: 2.8 },
+    // Mouse & physics tracking
+    const mouse = {
+      x: -1000,
+      y: -1000,
+      targetX: -1000,
+      targetY: -1000,
+      vx: 0,
+      vy: 0,
+      lastX: -1000,
+      lastY: -1000,
+      active: false,
+    };
+
+    // Scroll physics tracking
+    const scrollState = {
+      y: typeof window !== 'undefined' ? window.scrollY : 0,
+      targetY: typeof window !== 'undefined' ? window.scrollY : 0,
+      velocity: 0,
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.targetX = e.clientX - rect.left;
+      mouse.targetY = e.clientY - rect.top;
+      mouse.active = true;
+    };
+
+    const handleMouseLeave = () => {
+      mouse.active = false;
+    };
+
+    const handleScroll = () => {
+      scrollState.targetY = window.scrollY;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    // Defined Organic Fluid Bodies according to prompt specs:
+    // Left Edge Body (x = -0.2w to 0.35w)
+    // Right Edge Body (x = 0.7w to 1.25w)
+    // Bottom Rising Body (behind dashboard preview)
+    // Central Pearl Swirls
+    const fluidConfigs: LiquidBodyConfig[] = [
+      {
+        originRatio: { x: -0.05, y: 0.35 },
+        baseRadiusRatio: { rx: 0.38, ry: 0.45 },
+        colors: {
+          core: 'rgba(255, 252, 245, 0.22)',
+          mid: 'rgba(245, 238, 224, 0.12)',
+          outer: 'rgba(200, 190, 175, 0.03)',
+        },
+        noiseSeed: 100,
+        speed: 0.0008,
+      },
+      {
+        originRatio: { x: 1.02, y: 0.28 },
+        baseRadiusRatio: { rx: 0.42, ry: 0.48 },
+        colors: {
+          core: 'rgba(255, 248, 238, 0.20)',
+          mid: 'rgba(240, 230, 215, 0.10)',
+          outer: 'rgba(180, 170, 155, 0.025)',
+        },
+        noiseSeed: 250,
+        speed: 0.0007,
+      },
+      {
+        originRatio: { x: 0.5, y: 0.72 },
+        baseRadiusRatio: { rx: 0.45, ry: 0.35 },
+        colors: {
+          core: 'rgba(255, 250, 242, 0.18)',
+          mid: 'rgba(235, 225, 210, 0.08)',
+          outer: 'rgba(160, 150, 140, 0.02)',
+        },
+        noiseSeed: 400,
+        speed: 0.0009,
+      },
+      {
+        originRatio: { x: 0.35, y: 0.22 },
+        baseRadiusRatio: { rx: 0.28, ry: 0.32 },
+        colors: {
+          core: 'rgba(255, 255, 250, 0.16)',
+          mid: 'rgba(245, 238, 226, 0.07)',
+          outer: 'rgba(190, 180, 165, 0.015)',
+        },
+        noiseSeed: 550,
+        speed: 0.0011,
+      },
+      {
+        originRatio: { x: 0.68, y: 0.52 },
+        baseRadiusRatio: { rx: 0.32, ry: 0.38 },
+        colors: {
+          core: 'rgba(250, 242, 230, 0.15)',
+          mid: 'rgba(225, 215, 200, 0.06)',
+          outer: 'rgba(150, 140, 130, 0.01)',
+        },
+        noiseSeed: 700,
+        speed: 0.00085,
+      },
     ];
 
-    const orbs: Orb[] = [
-      new Orb('rgba(255, 248, 240, 0.14)', configs[0].origin, configs[0].factor),
-      new Orb('rgba(245, 235, 220, 0.09)', configs[1].origin, configs[1].factor),
-      new Orb('rgba(200, 190, 175, 0.06)', configs[2].origin, configs[2].factor),
-      new Orb('rgba(255, 250, 245, 0.07)', configs[3].origin, configs[3].factor),
-      new Orb('rgba(180, 170, 155, 0.04)', configs[4].origin, configs[4].factor),
-    ];
+    let time = 0;
 
     const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      orbs.forEach((orb, i) => {
-        const c = [
-          { origin: { x: window.innerWidth * 0.65, y: window.innerHeight * 0.55 }, factor: 3 },
-          { origin: { x: window.innerWidth * 0.25, y: window.innerHeight * 0.45 }, factor: 2.5 },
-          { origin: { x: window.innerWidth * 0.5, y: window.innerHeight * 0.75 }, factor: 2 },
-          { origin: { x: window.innerWidth * 0.4, y: window.innerHeight * 0.3 }, factor: 3.5 },
-          { origin: { x: window.innerWidth * 0.8, y: window.innerHeight * 0.4 }, factor: 2.8 },
-        ];
-        orb.bounds = orb.setBounds(c[i].origin, c[i].factor);
-      });
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
     };
 
     resize();
     window.addEventListener('resize', resize);
 
-    const animate = () => {
-      ctx.fillStyle = '#0A0A0A';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const render = () => {
+      time += 0.015;
 
-      const isMobile = window.innerWidth < 768;
-      ctx.filter = isMobile ? 'blur(60px)' : 'blur(100px)';
+      const width = canvas.width / (Math.min(window.devicePixelRatio || 1, 2));
+      const height = canvas.height / (Math.min(window.devicePixelRatio || 1, 2));
+      const isMobile = width < 768;
 
-      orbs.forEach((orb) => {
-        orb.update();
-        orb.render(ctx);
-      });
+      // Mouse Physics Interpolation with Spring & Velocity
+      if (mouse.active) {
+        mouse.vx = (mouse.targetX - mouse.x) * 0.08;
+        mouse.vy = (mouse.targetY - mouse.y) * 0.08;
+        mouse.x += mouse.vx;
+        mouse.y += mouse.vy;
+      } else {
+        // Ambient drift when mouse inactive
+        const driftX = width * 0.5 + Math.sin(time * 0.4) * (width * 0.15);
+        const driftY = height * 0.4 + Math.cos(time * 0.3) * (height * 0.12);
+        mouse.x += (driftX - mouse.x) * 0.02;
+        mouse.y += (driftY - mouse.y) * 0.02;
+        mouse.vx *= 0.9;
+        mouse.vy *= 0.9;
+      }
+
+      // Scroll Physics Interpolation
+      const scrollDiff = scrollState.targetY - scrollState.y;
+      scrollState.velocity += (scrollDiff - scrollState.velocity) * 0.1;
+      scrollState.y += (scrollState.targetY - scrollState.y) * 0.08;
+
+      const cursorSpeed = Math.sqrt(mouse.vx * mouse.vx + mouse.vy * mouse.vy);
+
+      // Clear Charcoal Base (#070708)
+      ctx.fillStyle = '#070708';
+      ctx.fillRect(0, 0, width, height);
 
       ctx.filter = 'none';
-      animationFrameId = requestAnimationFrame(animate);
+
+      // Render each Deformed Organic Fluid Body
+      fluidConfigs.forEach((config) => {
+        const numPoints = isMobile ? 10 : 16;
+        const centerX = config.originRatio.x * width + Math.sin(time * config.speed * 800 + config.noiseSeed) * (width * 0.04);
+        const centerY = config.originRatio.y * height + Math.cos(time * config.speed * 600 + config.noiseSeed) * (height * 0.04) - scrollState.y * 0.15;
+        const rx = config.baseRadiusRatio.rx * width;
+        const ry = config.baseRadiusRatio.ry * height;
+
+        const points: { x: number; y: number }[] = [];
+
+        for (let i = 0; i < numPoints; i++) {
+          const angle = (i / numPoints) * Math.PI * 2;
+
+          // Multi-frequency Simplex Noise contour deformation
+          const noise1 = simplex.noise2D(
+            Math.cos(angle) * 1.2 + time * config.speed * 800 + config.noiseSeed,
+            Math.sin(angle) * 1.2 + time * config.speed * 800
+          );
+          const noise2 = simplex.noise2D(
+            Math.cos(angle * 2) * 2.5 + config.noiseSeed,
+            Math.sin(angle * 2) * 2.5 + time * config.speed * 400
+          ) * 0.35;
+
+          const deformationFactor = 1 + (noise1 + noise2) * 0.35;
+          let pointRadiusX = rx * deformationFactor;
+          let pointRadiusY = ry * deformationFactor;
+
+          let px = centerX + Math.cos(angle) * pointRadiusX;
+          let py = centerY + Math.sin(angle) * pointRadiusY;
+
+          // Interactive Gravitational Mouse Influence Field
+          const dx = px - mouse.x;
+          const dy = py - mouse.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const influenceRadius = isMobile ? 220 : 380;
+
+          if (dist < influenceRadius) {
+            const force = Math.pow(1 - dist / influenceRadius, 2);
+            // Dynamic displacement scaled by cursor velocity
+            const displacement = force * (35 + Math.min(cursorSpeed * 1.5, 40));
+            px += (dx / (dist || 1)) * displacement;
+            py += (dy / (dist || 1)) * displacement;
+          }
+
+          points.push({ x: px, y: py });
+        }
+
+        // Draw Organic Closed Spline Path with Liquid Radial Gradient
+        ctx.save();
+        ctx.beginPath();
+        const firstPoint = points[0];
+        const lastPoint = points[points.length - 1];
+        ctx.moveTo((firstPoint.x + lastPoint.x) / 2, (firstPoint.y + lastPoint.y) / 2);
+
+        for (let i = 0; i < points.length; i++) {
+          const current = points[i];
+          const next = points[(i + 1) % points.length];
+          const midX = (current.x + next.x) / 2;
+          const midY = (current.y + next.y) / 2;
+          ctx.quadraticCurveTo(current.x, current.y, midX, midY);
+        }
+        ctx.closePath();
+
+        // Create Multi-Color Warm Ivory Radial Fluid Gradient
+        const maxRadius = Math.max(rx, ry) * 1.2;
+        const grad = ctx.createRadialGradient(
+          centerX,
+          centerY,
+          0,
+          centerX,
+          centerY,
+          maxRadius
+        );
+        grad.addColorStop(0, config.colors.core);
+        grad.addColorStop(0.45, config.colors.mid);
+        grad.addColorStop(0.85, config.colors.outer);
+        grad.addColorStop(1, 'rgba(7, 7, 8, 0)');
+
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // Layer 4: Floating Cursor Light Spotlight Field
+      if (mouse.x > -500) {
+        ctx.save();
+        const cursorRadius = isMobile ? 180 : 320;
+        const cursorGrad = ctx.createRadialGradient(
+          mouse.x,
+          mouse.y,
+          0,
+          mouse.x,
+          mouse.y,
+          cursorRadius
+        );
+        cursorGrad.addColorStop(0, 'rgba(255, 252, 245, 0.16)');
+        cursorGrad.addColorStop(0.4, 'rgba(240, 230, 215, 0.06)');
+        cursorGrad.addColorStop(1, 'rgba(7, 7, 8, 0)');
+
+        ctx.fillStyle = cursorGrad;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+      }
+
+      ctx.filter = 'none';
+
+      animationFrameId = requestAnimationFrame(render);
     };
 
     canvas.style.opacity = '0';
-    canvas.style.transition = 'opacity 1.8s ease-out';
+    canvas.style.transition = 'opacity 1.5s cubic-bezier(0.16, 1, 0.3, 1)';
     animationFrameId = requestAnimationFrame(() => {
       canvas.style.opacity = '1';
-      animate();
+      render();
     });
 
     return () => {
       cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+      window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', resize);
     };
   }, [prefersReducedMotion]);
@@ -229,9 +377,9 @@ export const MonochromeFluidCanvas: React.FC = () => {
   if (prefersReducedMotion) {
     return (
       <div
-        className="absolute inset-0 pointer-events-none -z-10"
+        className={`absolute inset-0 pointer-events-none -z-10 ${className}`}
         style={{
-          background: 'linear-gradient(135deg, #0A0A0A 0%, #111111 50%, #0A0A0A 100%)',
+          background: 'linear-gradient(135deg, #070708 0%, #111115 50%, #070708 100%)',
         }}
       />
     );
@@ -240,8 +388,7 @@ export const MonochromeFluidCanvas: React.FC = () => {
   return (
     <canvas
       ref={canvasRef}
-      className="flow-canvas absolute inset-0 w-full h-full pointer-events-none -z-10 block"
+      className={`flow-canvas absolute inset-0 w-full h-full pointer-events-none -z-10 block blur-[40px] md:blur-[70px] ${className}`}
     />
   );
 };
-

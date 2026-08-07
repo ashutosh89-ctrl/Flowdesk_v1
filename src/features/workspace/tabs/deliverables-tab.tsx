@@ -1,22 +1,24 @@
 import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
-import { StatusPill } from '../../../components/ui/status-pill';
+import { StatusBadge } from '../../deliverables/components/status-badge';
+import { ApprovalBadge } from '../../deliverables/components/approval-badge';
+import { DeliverableWorkspaceModal } from '../../deliverables/components/deliverable-workspace-modal';
 import { Modal } from '../../../components/ui/modal';
 import { Input } from '../../../components/ui/input';
 import { DeliverableService } from '../../../services';
-import { WorkspaceSummary, Deliverable, DeliverableVersion } from '../../../types';
+import { WorkspaceSummary, Deliverable } from '../../../types';
 import {
   CheckCircle2,
   AlertCircle,
   Plus,
   History,
   MessageSquare,
-  Download,
-  Eye,
   Layers,
   ChevronDown,
   ChevronUp,
+  ArrowUpRight,
+  FileText,
 } from 'lucide-react';
 import { useToast } from '../../../components/ui/toast';
 
@@ -30,6 +32,7 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
   const { showToast } = useToast();
 
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const [newVersionDeliv, setNewVersionDeliv] = useState<Deliverable | null>(null);
   const [expandedDelivId, setExpandedDelivId] = useState<string | null>(null);
   const [revisionDeliv, setRevisionDeliv] = useState<Deliverable | null>(null);
@@ -54,7 +57,8 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
       projectId: projectId || (projects[0]?.id ?? 'proj-1'),
       title,
       description,
-      status: 'in_review',
+      status: 'submitted',
+      approvalStatus: 'pending',
       dueDate,
       version,
       fileSize,
@@ -91,7 +95,7 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
         showToast('Work Approved', `Deliverable approved and signed off!`, 'success');
         onRefresh();
       });
-    } else if (newStatus === 'changes_requested') {
+    } else if (newStatus === 'revision_requested') {
       DeliverableService.requestDeliverableRevision(id, note || '').then(() => {
         showToast('Revision Requested', `Revisions logged for deliverable.`, 'info');
         setRevisionDeliv(null);
@@ -108,13 +112,13 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 select-none">
       <Card variant="crystal">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>{client.company} Deliverables & Sign-Off Cards</CardTitle>
-              <CardDescription>Formal submission, version tracking & client approval</CardDescription>
+              <CardTitle>{client.company} Deliverables & Approval Packages</CardTitle>
+              <CardDescription>Formal submission, version tracking & client sign-offs</CardDescription>
             </div>
             <Button
               variant="primary"
@@ -133,20 +137,28 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
             ) : (
               deliverables.map((del) => {
                 const isExpanded = expandedDelivId === del.id;
+                const filesCount = del.filesCount || (del.files ? del.files.length : 1);
                 return (
                   <div
                     key={del.id}
-                    className="p-5 rounded-2xl bg-zinc-900/60 border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-4"
+                    onClick={() => setActiveWorkspaceId(del.id)}
+                    className="group p-5 rounded-2xl bg-zinc-950/70 border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-4 cursor-pointer hover:shadow-2xl"
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="text-[10px] font-mono text-zinc-400 uppercase bg-white/5 border border-white/10 px-2 py-0.5 rounded">
+                        <span className="text-[10px] font-mono text-zinc-300 font-bold bg-white/10 border border-white/15 px-2 py-0.5 rounded">
                           {del.version}
                         </span>
-                        <StatusPill status={del.status} />
+                        <div className="flex items-center gap-1.5">
+                          <StatusBadge status={del.status} size="sm" />
+                          <ApprovalBadge status={del.approvalStatus} size="sm" />
+                        </div>
                       </div>
-                      <h4 className="text-base font-bold text-white">{del.title}</h4>
-                      <p className="text-xs text-zinc-400 mt-1">{del.description}</p>
+                      <h4 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors flex items-center justify-between">
+                        <span>{del.title}</span>
+                        <ArrowUpRight className="w-4 h-4 text-zinc-500 group-hover:text-emerald-400" />
+                      </h4>
+                      <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">{del.description}</p>
 
                       {del.revisionNote && (
                         <div className="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs">
@@ -157,41 +169,14 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
 
                       <div className="mt-3 text-[11px] font-mono text-zinc-400 flex items-center justify-between">
                         <span>Due: {del.dueDate}</span>
-                        <span>Size: {del.fileSize || 'N/A'}</span>
+                        <span className="flex items-center gap-1">
+                          <FileText className="w-3 h-3 text-zinc-500" />
+                          {filesCount} Files
+                        </span>
                       </div>
                     </div>
 
-                    {/* Version History Toggle */}
-                    {del.versionHistory && del.versionHistory.length > 0 && (
-                      <div className="pt-2 border-t border-white/5">
-                        <button
-                          onClick={() => setExpandedDelivId(isExpanded ? null : del.id)}
-                          className="w-full flex items-center justify-between text-xs text-zinc-400 hover:text-white py-1 transition-colors font-mono"
-                        >
-                          <span className="flex items-center gap-1.5">
-                            <Layers className="w-3.5 h-3.5 text-zinc-400" /> Version History ({del.versionHistory.length})
-                          </span>
-                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        </button>
-
-                        {isExpanded && (
-                          <div className="mt-2 space-y-2 pl-2 border-l border-white/10">
-                            {del.versionHistory.map((v) => (
-                              <div key={v.id} className="text-xs p-2 rounded-lg bg-black/30 space-y-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-mono text-white font-bold">{v.version}</span>
-                                  <span className="text-[10px] text-zinc-500 font-mono">{v.date}</span>
-                                </div>
-                                <p className="text-[11px] text-zinc-400">{v.note}</p>
-                                <span className="text-[10px] text-zinc-500 font-mono block">By {v.uploadedBy}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
+                    <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -201,36 +186,48 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
                         New Version
                       </Button>
 
-                    <div className="flex items-center gap-2 ml-auto">
-                      {del.status !== 'approved' && (
-                        <>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => setRevisionDeliv(del)}
-                            leftIcon={<MessageSquare className="w-3.5 h-3.5" />}
-                          >
-                            Request Changes
-                          </Button>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => handleUpdateStatus(del.id, 'approved')}
-                            leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
-                          >
-                            Approve Work
-                          </Button>
-                        </>
-                      )}
+                      <div className="flex items-center gap-2 ml-auto">
+                        {del.status !== 'approved' && (
+                          <>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setRevisionDeliv(del)}
+                              leftIcon={<MessageSquare className="w-3.5 h-3.5" />}
+                            >
+                              Request Changes
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleUpdateStatus(del.id, 'approved')}
+                              leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                            >
+                              Approve Work
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Deliverable Workspace Detail Modal */}
+      {activeWorkspaceId && (
+        <DeliverableWorkspaceModal
+          isOpen={!!activeWorkspaceId}
+          onClose={() => setActiveWorkspaceId(null)}
+          deliverableId={activeWorkspaceId}
+          clients={[client]}
+          projects={projects}
+          onRefresh={onRefresh}
+        />
+      )}
 
       {/* Submit Deliverable Modal */}
       <Modal isOpen={isSubmitModalOpen} onClose={() => setIsSubmitModalOpen(false)} title="Submit Deliverable for Client Review">
@@ -353,7 +350,7 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
             </Button>
             <Button
               variant="primary"
-              onClick={() => revisionDeliv && handleUpdateStatus(revisionDeliv.id, 'changes_requested', revisionNote)}
+              onClick={() => revisionDeliv && handleUpdateStatus(revisionDeliv.id, 'revision_requested', revisionNote)}
             >
               Submit Revision Request
             </Button>

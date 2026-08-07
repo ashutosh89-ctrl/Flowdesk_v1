@@ -1,308 +1,518 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { StatusPill } from '../../components/ui/status-pill';
-import { Modal } from '../../components/ui/modal';
-import { Drawer } from '../../components/ui/drawer';
-import { InvoiceService, ClientService } from '../../services';
-import { Invoice, Client, InvoiceItem } from '../../types';
-import { Plus, Search, FileText, CheckCircle2, DollarSign, ExternalLink, Printer } from 'lucide-react';
+import { Invoice, FinancialDashboardMetrics } from '../../types';
+import { InvoiceService } from '../../services';
+import { FlowDeskStore } from '../../services/storage-store';
+import { formatCurrency } from '../../utils/currency';
+import { InvoiceDashboard } from './components/invoice-dashboard';
+import { DueIndicatorBadge, PaymentStatusPill, WorkflowStatusPill } from './components/status-pills';
+import { InvoiceBuilderModal } from './components/invoice-builder-modal';
+import { InvoiceDetailsModal } from './components/invoice-details-modal';
+import { MarkPaidModal } from './components/mark-paid-modal';
+import { ClientInvoicePortalModal } from './components/client-invoice-portal-modal';
+import {
+  Plus,
+  Search,
+  FileText,
+  CheckCircle2,
+  Filter,
+  ArrowUpDown,
+  Download,
+  Trash2,
+  ExternalLink,
+  Bell,
+  BarChart3,
+  ListFilter,
+  DollarSign,
+  ShieldCheck,
+} from 'lucide-react';
 import { useToast } from '../../components/ui/toast';
 
 export const InvoicesListView: React.FC = () => {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const [viewMode, setViewMode] = useState<'dashboard' | 'directory'>('dashboard');
+  const [invoices, setInvoices] = useState<Invoice[]>(() => FlowDeskStore.getInvoices());
+  const [metrics, setMetrics] = useState<FinancialDashboardMetrics>(() => FlowDeskStore.getFinancialMetrics());
+
+  // Filter & Search states
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [workflowFilter, setWorkflowFilter] = useState<string>('all');
+  const [paymentFilter, setPaymentFilter] = useState<string>('all');
+  const [currencyFilter, setCurrencyFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'dueDate' | 'amountHigh'>('newest');
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Modal triggers
+  const [isBuilderOpen, setIsBuilderOpen] = useState(false);
+  const [invoiceToEdit, setInvoiceToEdit] = useState<Invoice | null>(null);
+
+  const [detailsInvoice, setDetailsInvoice] = useState<Invoice | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  const [markPaidInvoice, setMarkPaidInvoice] = useState<Invoice | null>(null);
+  const [isMarkPaidOpen, setIsMarkPaidOpen] = useState(false);
+
+  const [portalInvoice, setPortalInvoice] = useState<Invoice | null>(null);
+  const [isPortalOpen, setIsPortalOpen] = useState(false);
+
   const { showToast } = useToast();
 
-  // Create Invoice State
-  const [clientId, setClientId] = useState('');
-  const [items, setItems] = useState<InvoiceItem[]>([
-    { description: 'Design System Architecture Phase 1', quantity: 1, rate: 12000, amount: 12000 },
-  ]);
+  const refreshData = () => {
+    const updatedInvoices = FlowDeskStore.getInvoices();
+    const updatedMetrics = FlowDeskStore.getFinancialMetrics();
+    setInvoices(updatedInvoices);
+    setMetrics(updatedMetrics);
 
-  const loadData = () => {
-    InvoiceService.getInvoices().then(setInvoices);
-    ClientService.getClients().then((cls) => {
-      setClients(cls);
-      if (cls.length > 0) setClientId(cls[0].id);
+    // Keep active selected invoice up to date
+    if (detailsInvoice) {
+      const refreshedDetails = FlowDeskStore.getInvoiceById(detailsInvoice.id);
+      if (refreshedDetails) setDetailsInvoice(refreshedDetails);
+    }
+  };
+
+  // Modal Handlers
+  const handleOpenCreate = () => {
+    setInvoiceToEdit(null);
+    setIsBuilderOpen(true);
+  };
+
+  const handleOpenEdit = (inv: Invoice, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setInvoiceToEdit(inv);
+    setIsBuilderOpen(true);
+  };
+
+  const handleOpenDetails = (inv: Invoice) => {
+    setDetailsInvoice(inv);
+    setIsDetailsOpen(true);
+  };
+
+  const handleOpenMarkPaid = (inv: Invoice, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setMarkPaidInvoice(inv);
+    setIsMarkPaidOpen(true);
+  };
+
+  const handleOpenPortal = (inv: Invoice, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setPortalInvoice(inv);
+    setIsPortalOpen(true);
+    // Record view in store
+    InvoiceService.recordInvoiceView(inv.id).then(() => refreshData());
+  };
+
+  const handleSaveInvoice = (payload: any) => {
+    if (invoiceToEdit) {
+      InvoiceService.updateInvoice(invoiceToEdit.id, payload).then(() => {
+        showToast('Invoice Updated', `Invoice ${payload.invoiceNumber} saved successfully.`, 'success');
+        refreshData();
+      });
+    } else {
+      InvoiceService.createInvoice(payload).then(() => {
+        showToast('Invoice Created', `Invoice ${payload.invoiceNumber} created and recorded.`, 'success');
+        refreshData();
+      });
+    }
+  };
+
+  const handleConfirmPaidOffline = (id: string, paymentMethod: string, notes?: string) => {
+    InvoiceService.markInvoicePaidOffline(id, paymentMethod, notes).then(() => {
+      showToast('Settlement Recorded', 'Invoice marked as paid and receipt generated.', 'success');
+      refreshData();
     });
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const handleMarkPaid = (id: string) => {
-    InvoiceService.markAsPaid(id).then(() => {
-      showToast('Payment Recorded', 'Invoice marked as paid.', 'success');
-      loadData();
-      if (selectedInvoice && selectedInvoice.id === id) {
-        setSelectedInvoice({ ...selectedInvoice, status: 'paid' });
+  const handleSendReminder = (id: string) => {
+    InvoiceService.sendReminder(id).then((res) => {
+      if (res.success) {
+        showToast('Reminder Dispatched', res.message, 'success');
+      } else {
+        showToast('Reminder Limit', res.message, 'info');
       }
+      refreshData();
     });
   };
 
-  const handleCreateInvoice = (e: React.FormEvent) => {
-    e.preventDefault();
-    const targetClient = clients.find((c) => c.id === clientId);
-    const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
-
-    InvoiceService.createInvoice({
-      clientId,
-      clientName: targetClient ? targetClient.company : 'Client',
-      clientEmail: targetClient ? targetClient.email : 'client@company.com',
-      issueDate: new Date().toISOString().split('T')[0],
-      dueDate: '2026-08-28',
-      status: 'pending',
-      items,
-      subtotal,
-      tax: 0,
-      total: subtotal,
-      currency: 'USD',
-    }).then(() => {
-      showToast('Invoice Created', 'New invoice added to ledger.', 'success');
-      setIsCreateModalOpen(false);
-      loadData();
-    });
+  // Bulk Handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(filteredInvoices.map((i) => i.id));
+    } else {
+      setSelectedIds([]);
+    }
   };
 
+  const handleToggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter((item) => item !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  const handleBulkMarkPaid = () => {
+    selectedIds.forEach((id) => {
+      InvoiceService.markInvoicePaidOffline(id, 'bank_transfer', 'Bulk offline settlement');
+    });
+    showToast('Bulk Action Complete', `${selectedIds.length} invoice(s) marked as paid.`, 'success');
+    setSelectedIds([]);
+    refreshData();
+  };
+
+  const handleBulkDelete = () => {
+    selectedIds.forEach((id) => {
+      InvoiceService.deleteInvoice(id);
+    });
+    showToast('Invoices Deleted', `${selectedIds.length} invoice(s) deleted.`, 'info');
+    setSelectedIds([]);
+    refreshData();
+  };
+
+  // Filter & Sort Logic
   const filteredInvoices = invoices.filter((inv) => {
+    const q = search.toLowerCase();
     const matchesSearch =
-      inv.invoiceNumber.toLowerCase().includes(search.toLowerCase()) ||
-      inv.clientName.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
-    return matchesSearch && matchesStatus;
+      inv.invoiceNumber.toLowerCase().includes(q) ||
+      inv.clientName.toLowerCase().includes(q) ||
+      (inv.projectName && inv.projectName.toLowerCase().includes(q));
+
+    const matchesWorkflow = workflowFilter === 'all' || inv.workflowStatus === workflowFilter;
+    const matchesPayment = paymentFilter === 'all' || inv.paymentStatus === paymentFilter;
+    const matchesCurrency = currencyFilter === 'all' || inv.currency === currencyFilter;
+
+    return matchesSearch && matchesWorkflow && matchesPayment && matchesCurrency;
   });
 
-  const pendingTotal = invoices
-    .filter((i) => i.status === 'pending' || i.status === 'overdue')
-    .reduce((sum, i) => sum + i.total, 0);
+  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
+    if (sortBy === 'newest') return new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime();
+    if (sortBy === 'oldest') return new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();
+    if (sortBy === 'dueDate') return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    if (sortBy === 'amountHigh') return b.total - a.total;
+    return 0;
+  });
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-zinc-200 dark:border-zinc-800">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Invoice Ledger</h1>
-          <p className="text-sm text-zinc-400 mt-1">
-            Generate, send, and track client settlements.
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+            Invoice & Financial Workspace
+          </h1>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            FlowDesk Financial Engine • Lightweight, modern settlements for freelancers
           </p>
         </div>
-        <Button variant="primary" onClick={() => setIsCreateModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>
-          Generate Invoice
-        </Button>
+
+        <div className="flex items-center gap-3 self-stretch sm:self-auto">
+          {/* View Mode Toggle */}
+          <div className="inline-flex items-center p-1 bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/80 rounded-xl text-xs">
+            <button
+              onClick={() => setViewMode('dashboard')}
+              className={`px-3 py-1.5 font-medium rounded-lg flex items-center gap-1.5 transition-all ${
+                viewMode === 'dashboard'
+                  ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
+                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" /> Dashboard
+            </button>
+            <button
+              onClick={() => setViewMode('directory')}
+              className={`px-3 py-1.5 font-medium rounded-lg flex items-center gap-1.5 transition-all ${
+                viewMode === 'directory'
+                  ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs'
+                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+              }`}
+            >
+              <ListFilter className="w-3.5 h-3.5" /> All Invoices ({invoices.length})
+            </button>
+          </div>
+
+          <button
+            onClick={handleOpenCreate}
+            className="px-4 py-2 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all"
+          >
+            <Plus className="w-4 h-4" /> Create Invoice
+          </button>
+        </div>
       </div>
 
-      {/* Outstanding Stats Banner */}
-      <Card variant="crystal" className="p-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <span className="text-xs font-mono uppercase text-zinc-400">Outstanding Balance</span>
-            <p className="text-3xl font-bold text-white mt-1">
-              ${pendingTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-zinc-400 mt-1">Across pending and overdue client accounts</p>
+      {/* Main Content Area */}
+      {viewMode === 'dashboard' ? (
+        <InvoiceDashboard
+          metrics={metrics}
+          onSelectInvoice={handleOpenDetails}
+          onCreateInvoice={handleOpenCreate}
+        />
+      ) : (
+        <div className="space-y-4">
+          {/* Controls Bar: Search, Filters, Sort */}
+          <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80 space-y-3">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
+              {/* Search Bar */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400" />
+                <input
+                  type="text"
+                  placeholder="Search invoice #, client, or project..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                />
+              </div>
+
+              {/* Filter Selectors */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Workflow Status Filter */}
+                <select
+                  value={workflowFilter}
+                  onChange={(e) => setWorkflowFilter(e.target.value)}
+                  className="px-2.5 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                >
+                  <option value="all">Workflow: All</option>
+                  <option value="draft">Draft</option>
+                  <option value="sent">Sent</option>
+                  <option value="viewed">Viewed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+
+                {/* Payment Status Filter */}
+                <select
+                  value={paymentFilter}
+                  onChange={(e) => setPaymentFilter(e.target.value)}
+                  className="px-2.5 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                >
+                  <option value="all">Payment: All</option>
+                  <option value="pending">Pending</option>
+                  <option value="paid">Paid</option>
+                </select>
+
+                {/* Currency Filter */}
+                <select
+                  value={currencyFilter}
+                  onChange={(e) => setCurrencyFilter(e.target.value)}
+                  className="px-2.5 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                >
+                  <option value="all">Currency: All</option>
+                  <option value="USD">USD ($)</option>
+                  <option value="INR">INR (₹)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="GBP">GBP (£)</option>
+                </select>
+
+                {/* Sort selector */}
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-2.5 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                >
+                  <option value="newest">Sort: Newest First</option>
+                  <option value="oldest">Sort: Oldest First</option>
+                  <option value="dueDate">Sort: Due Date Asc</option>
+                  <option value="amountHigh">Sort: Amount High-Low</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Bulk Selection Bar */}
+            {selectedIds.length > 0 && (
+              <div className="p-2.5 rounded-lg bg-zinc-900 text-white dark:bg-zinc-950 flex items-center justify-between text-xs animate-in fade-in">
+                <span className="font-medium font-mono pl-2">
+                  {selectedIds.length} invoice(s) selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleBulkMarkPaid}
+                    className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-medium flex items-center gap-1"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-3 py-1 rounded bg-rose-600 hover:bg-rose-700 text-white font-medium flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-1.5 p-1 bg-zinc-900 border border-white/10 rounded-xl">
-            {['all', 'paid', 'pending', 'draft'].map((st) => (
-              <button
-                key={st}
-                onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg capitalize transition-colors ${
-                  statusFilter === st ? 'bg-white text-zinc-950 shadow' : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                {st}
-              </button>
-            ))}
+
+          {/* Directory Table */}
+          <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden bg-white dark:bg-zinc-900/80 shadow-xs">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-zinc-50 dark:bg-zinc-950/80 border-b border-zinc-200 dark:border-zinc-800 font-semibold text-zinc-500 dark:text-zinc-400">
+                  <th className="p-3.5 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.length === filteredInvoices.length && filteredInvoices.length > 0}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="rounded border-zinc-300 dark:border-zinc-700 text-zinc-900 focus:ring-0"
+                    />
+                  </th>
+                  <th className="p-3.5">Invoice # & Client</th>
+                  <th className="p-3.5">Project</th>
+                  <th className="p-3.5">Issue / Due Date</th>
+                  <th className="p-3.5">Workflow</th>
+                  <th className="p-3.5">Payment</th>
+                  <th className="p-3.5 text-right">Total Amount</th>
+                  <th className="p-3.5 text-center">Quick Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                {sortedInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-12 text-center text-zinc-500">
+                      No invoices found matching current criteria
+                    </td>
+                  </tr>
+                ) : (
+                  sortedInvoices.map((inv) => {
+                    const isSelected = selectedIds.includes(inv.id);
+                    return (
+                      <tr
+                        key={inv.id}
+                        onClick={() => handleOpenDetails(inv)}
+                        className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/40 cursor-pointer transition-colors ${
+                          isSelected ? 'bg-zinc-50/80 dark:bg-zinc-800/30' : ''
+                        }`}
+                      >
+                        <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => handleToggleSelect(inv.id, e as any)}
+                            className="rounded border-zinc-300 dark:border-zinc-700 text-zinc-900 focus:ring-0"
+                          />
+                        </td>
+
+                        <td className="p-3.5">
+                          <div className="font-semibold font-mono text-zinc-900 dark:text-zinc-100">
+                            {inv.invoiceNumber}
+                          </div>
+                          <div className="text-zinc-500 dark:text-zinc-400 font-medium">
+                            {inv.clientName}
+                          </div>
+                        </td>
+
+                        <td className="p-3.5 text-zinc-600 dark:text-zinc-300 max-w-[180px] truncate">
+                          {inv.projectName || <span className="text-zinc-400 italic">No Project</span>}
+                        </td>
+
+                        <td className="p-3.5 space-y-1">
+                          <div className="font-mono text-zinc-600 dark:text-zinc-400">{inv.issueDate}</div>
+                          <DueIndicatorBadge
+                            dueDate={inv.dueDate}
+                            paymentStatus={inv.paymentStatus}
+                            workflowStatus={inv.workflowStatus}
+                          />
+                        </td>
+
+                        <td className="p-3.5">
+                          <WorkflowStatusPill status={inv.workflowStatus} />
+                        </td>
+
+                        <td className="p-3.5">
+                          <PaymentStatusPill status={inv.paymentStatus} />
+                        </td>
+
+                        <td className="p-3.5 text-right font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                          {formatCurrency(inv.total, inv.currency)}
+                        </td>
+
+                        <td className="p-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1.5">
+                            {inv.paymentStatus !== 'paid' && (
+                              <button
+                                onClick={(e) => handleOpenMarkPaid(inv, e)}
+                                title="Mark Paid (Offline)"
+                                className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:hover:bg-emerald-900 dark:text-emerald-300"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {inv.paymentStatus !== 'paid' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSendReminder(inv.id);
+                                }}
+                                title="Send Payment Reminder"
+                                className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:hover:bg-amber-900 dark:text-amber-300"
+                              >
+                                <Bell className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            <button
+                              onClick={(e) => handleOpenPortal(inv, e)}
+                              title="Client Portal View"
+                              className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:hover:bg-blue-900 dark:text-blue-300"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              onClick={(e) => handleOpenEdit(inv, e)}
+                              title="Edit Invoice"
+                              className="p-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-300"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
-      </Card>
-
-      {/* Search Input */}
-      <div className="w-full sm:w-80">
-        <Input
-          type="search"
-          placeholder="Search by invoice # or client..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onClear={() => setSearch('')}
-        />
-      </div>
-
-      {/* Invoices Table */}
-      <div className="space-y-3">
-        {filteredInvoices.map((inv) => (
-          <div
-            key={inv.id}
-            onClick={() => setSelectedInvoice(inv)}
-            className="p-4 rounded-xl bg-zinc-900/60 border border-white/10 hover:border-white/20 hover:bg-zinc-900/80 transition-all cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-white shrink-0 group-hover:scale-105 transition-transform">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-bold text-white">{inv.invoiceNumber}</h4>
-                  <span className="text-xs text-zinc-400">• {inv.clientName}</span>
-                </div>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Issued {inv.issueDate} • Due {inv.dueDate}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 self-end sm:self-auto">
-              <span className="text-base font-bold text-white">
-                ${inv.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-              </span>
-              <StatusPill status={inv.status} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Invoice Detail Drawer */}
-      {selectedInvoice && (
-        <Drawer
-          isOpen={!!selectedInvoice}
-          onClose={() => setSelectedInvoice(null)}
-          title={`Invoice ${selectedInvoice.invoiceNumber}`}
-          size="md"
-        >
-          <div className="space-y-6">
-            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
-              <div className="flex justify-between items-center text-xs text-zinc-400">
-                <span>Client: <strong className="text-white">{selectedInvoice.clientName}</strong></span>
-                <StatusPill status={selectedInvoice.status} />
-              </div>
-              <p className="text-xs text-zinc-400">Recipient: {selectedInvoice.clientEmail}</p>
-            </div>
-
-            {/* Line Items */}
-            <div>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2">Line Items</h4>
-              <div className="space-y-2">
-                {selectedInvoice.items.map((item, idx) => (
-                  <div key={idx} className="p-3 rounded-lg bg-zinc-900 border border-white/5 flex justify-between text-xs">
-                    <div>
-                      <p className="font-semibold text-white">{item.description}</p>
-                      <span className="text-zinc-500">{item.quantity} x ${item.rate.toLocaleString()}</span>
-                    </div>
-                    <span className="font-bold text-white">${item.amount.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Totals */}
-            <div className="pt-4 border-t border-white/10 space-y-2 text-xs text-zinc-300">
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span>${selectedInvoice.subtotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between font-bold text-sm text-white pt-2 border-t border-white/5">
-                <span>Total Amount</span>
-                <span>${selectedInvoice.total.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className="pt-4 space-y-2">
-              {selectedInvoice.status !== 'paid' && (
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={() => handleMarkPaid(selectedInvoice.id)}
-                  leftIcon={<CheckCircle2 className="w-4 h-4" />}
-                >
-                  Mark as Paid
-                </Button>
-              )}
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() => showToast('Print', 'Preparing invoice PDF print view...', 'info')}
-                leftIcon={<Printer className="w-4 h-4" />}
-              >
-                Print / Export PDF
-              </Button>
-            </div>
-          </div>
-        </Drawer>
       )}
 
-      {/* Create Invoice Modal */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Generate New Invoice">
-        <form onSubmit={handleCreateInvoice} className="space-y-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-300">Client Workspace</label>
-            <select
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              className="w-full bg-zinc-900 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-white/30"
-            >
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.company} ({c.name})
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* Builder Modal */}
+      <InvoiceBuilderModal
+        isOpen={isBuilderOpen}
+        onClose={() => setIsBuilderOpen(false)}
+        invoiceToEdit={invoiceToEdit}
+        onSave={handleSaveInvoice}
+      />
 
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-zinc-300">Line Item Description</label>
-            <Input
-              value={items[0].description}
-              onChange={(e) =>
-                setItems([{ ...items[0], description: e.target.value }])
-              }
-              required
-            />
+      {/* Details Modal */}
+      <InvoiceDetailsModal
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        invoice={detailsInvoice}
+        onMarkPaid={(inv) => {
+          setIsDetailsOpen(false);
+          handleOpenMarkPaid(inv);
+        }}
+        onSendReminder={handleSendReminder}
+        onOpenPortalView={(inv) => {
+          setIsDetailsOpen(false);
+          handleOpenPortal(inv);
+        }}
+      />
 
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Quantity / Hours"
-                type="number"
-                value={items[0].quantity}
-                onChange={(e) => {
-                  const q = parseFloat(e.target.value) || 1;
-                  setItems([{ ...items[0], quantity: q, amount: q * items[0].rate }]);
-                }}
-                required
-              />
-              <Input
-                label="Rate ($)"
-                type="number"
-                value={items[0].rate}
-                onChange={(e) => {
-                  const r = parseFloat(e.target.value) || 0;
-                  setItems([{ ...items[0], rate: r, amount: items[0].quantity * r }]);
-                }}
-                required
-              />
-            </div>
-          </div>
+      {/* Mark Paid Modal */}
+      <MarkPaidModal
+        isOpen={isMarkPaidOpen}
+        onClose={() => setIsMarkPaidOpen(false)}
+        invoice={markPaidInvoice}
+        onConfirmPaid={handleConfirmPaidOffline}
+      />
 
-          <div className="pt-2 text-right text-sm font-bold text-white">
-            Total: ${(items[0].quantity * items[0].rate).toLocaleString()}
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-            <Button variant="ghost" type="button" onClick={() => setIsCreateModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              Issue Invoice
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      {/* Client Portal Modal */}
+      <ClientInvoicePortalModal
+        isOpen={isPortalOpen}
+        onClose={() => setIsPortalOpen(false)}
+        invoice={portalInvoice}
+      />
     </div>
   );
 };

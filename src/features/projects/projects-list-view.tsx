@@ -6,6 +6,7 @@ import { StatusPill } from '../../components/ui/status-pill';
 import { Progress } from '../../components/ui/progress';
 import { Modal } from '../../components/ui/modal';
 import { ProjectService, ClientService } from '../../services';
+import { FlowDeskStore } from '../../services/storage-store';
 import { Project, Client, ProjectMilestone } from '../../types';
 import {
   Plus,
@@ -27,8 +28,8 @@ export interface ProjectsListViewProps {
 }
 
 export const ProjectsListView: React.FC<ProjectsListViewProps> = ({ onOpenWorkspace }) => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const [projects, setProjects] = useState<Project[]>(() => FlowDeskStore.getProjects());
+  const [clients, setClients] = useState<Client[]>(() => FlowDeskStore.getClients());
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'dueDate' | 'budget' | 'completionPercentage'>('dueDate');

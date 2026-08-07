@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card';
 import { Users, FolderKanban, FileText, CheckSquare, Receipt, Globe, Activity } from 'lucide-react';
 
 export const FeatureShowcase: React.FC = () => {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
   const features = [
     {
       icon: <Users className="w-5 h-5 text-white" />,
@@ -42,8 +46,14 @@ export const FeatureShowcase: React.FC = () => {
   ];
 
   return (
-    <section id="features" className="py-20 px-6 lg:px-12 max-w-7xl mx-auto">
-      <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
+    <section id="features" className="py-24 px-6 lg:px-12 max-w-7xl mx-auto relative z-10">
+      <motion.div
+        initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }}
+        whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        viewport={{ once: false, amount: 0.2 }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        className="text-center max-w-2xl mx-auto mb-16 space-y-4"
+      >
         <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">Core Architecture</span>
         <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
           Everything your freelance business requires. Nothing more.
@@ -51,21 +61,44 @@ export const FeatureShowcase: React.FC = () => {
         <p className="text-sm text-zinc-400">
           Built with timeless monochrome aesthetics and crystal glass tactile polish.
         </p>
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {features.map((feat, idx) => (
-          <Card key={idx} interactive className="group">
-            <CardHeader>
-              <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                {feat.icon}
-              </div>
-              <CardTitle>{feat.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>{feat.description}</CardDescription>
-            </CardContent>
-          </Card>
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 24, filter: 'blur(4px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: false, amount: 0.15 }}
+            transition={{ duration: 0.5, delay: idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
+            onMouseEnter={() => setHoveredIdx(idx)}
+            onMouseLeave={() => setHoveredIdx(null)}
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+            }}
+            className="relative"
+          >
+            <Card interactive className="group h-full relative overflow-hidden transition-all duration-300 hover:border-white/30">
+              {hoveredIdx === idx && (
+                <div
+                  className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+                  style={{
+                    background: `radial-gradient(circle 220px at ${mousePos.x}px ${mousePos.y}px, rgba(255, 255, 255, 0.08), transparent 70%)`,
+                  }}
+                />
+              )}
+              <CardHeader>
+                <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center mb-2 group-hover:scale-110 group-hover:bg-white group-hover:text-zinc-950 transition-all duration-300">
+                  {feat.icon}
+                </div>
+                <CardTitle>{feat.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>{feat.description}</CardDescription>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
       </div>
     </section>

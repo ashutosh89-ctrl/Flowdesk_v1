@@ -8,6 +8,7 @@ import { DashboardView } from '../src/features/dashboard/dashboard-view';
 import { ClientsListView } from '../src/features/clients/clients-list-view';
 import { ClientWorkspaceShell } from '../src/features/workspace/client-workspace-shell';
 import { ProjectsListView } from '../src/features/projects/projects-list-view';
+import { DeliverablesListView } from '../src/features/deliverables/deliverables-list-view';
 import { InvoicesListView } from '../src/features/invoices/invoices-list-view';
 import { ActivityFeedView } from '../src/features/activity/activity-feed-view';
 import { SettingsView } from '../src/features/settings/settings-view';
@@ -128,6 +129,10 @@ function FlowDeskAppContent() {
           )}
 
           {currentView === 'projects' && <ProjectsListView />}
+
+          {currentView === 'deliverables' && (
+            <DeliverablesListView onOpenClientWorkspace={handleOpenWorkspace} />
+          )}
 
           {currentView === 'invoices' && <InvoicesListView />}
 

@@ -3,12 +3,13 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { SettingsService } from '../../services';
+import { FlowDeskStore } from '../../services/storage-store';
 import { UserProfile } from '../../types';
 import { User, Settings, DollarSign, Bell, Shield, Save } from 'lucide-react';
 import { useToast } from '../../components/ui/toast';
 
 export const SettingsView: React.FC = () => {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(() => FlowDeskStore.getUserProfile());
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
 

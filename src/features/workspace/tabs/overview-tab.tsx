@@ -160,12 +160,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ summary, onRefresh, on
             <div>
               <span className="text-[10px] font-mono uppercase text-zinc-400">RECOMMENDED ACTION</span>
               <h4 className="text-sm font-bold text-white mt-0.5">
-                {deliverables.some((d) => d.status === 'in_review')
+                {deliverables.some((d) => d.status === 'ready_for_review' || d.status === 'submitted')
                   ? 'Follow up on Deliverable Review'
                   : 'Verify Required Client Documents'}
               </h4>
               <p className="text-xs text-zinc-400 mt-0.5">
-                {deliverables.some((d) => d.status === 'in_review')
+                {deliverables.some((d) => d.status === 'ready_for_review' || d.status === 'submitted')
                   ? 'Deliverable is waiting for client feedback or sign-off.'
                   : 'Check documents repository to confirm NDA & tax forms.'}
               </p>
@@ -174,7 +174,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ summary, onRefresh, on
           <Button
             variant="primary"
             size="sm"
-            onClick={() => onTabChange(deliverables.some((d) => d.status === 'in_review') ? 'deliverables' : 'documents')}
+            onClick={() => onTabChange(deliverables.some((d) => d.status === 'ready_for_review' || d.status === 'submitted') ? 'deliverables' : 'documents')}
             rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
           >
             Open Tab

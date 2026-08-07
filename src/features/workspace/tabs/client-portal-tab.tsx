@@ -152,7 +152,7 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-bold text-white">${inv.total.toLocaleString()}</span>
-                  <StatusPill status={inv.status} />
+                  <StatusPill status={inv.status || inv.paymentStatus || 'pending'} />
                 </div>
               </div>
             ))}

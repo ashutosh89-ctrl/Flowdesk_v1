@@ -3,29 +3,34 @@ import { Tabs, TabItem } from '../../components/ui/tabs';
 import { Button } from '../../components/ui/button';
 import { Avatar } from '../../components/ui/avatar';
 import { StatusPill } from '../../components/ui/status-pill';
+import { HealthBadge } from '../../components/ui/health-badge';
 import { WorkspaceService } from '../../services';
+import { FlowDeskStore } from '../../services/storage-store';
 import { WorkspaceSummary } from '../../types';
 import { OverviewTab } from './tabs/overview-tab';
+import { ProjectsTab } from './tabs/projects-tab';
 import { TimelineTab } from './tabs/timeline-tab';
 import { DocumentsTab } from './tabs/documents-tab';
 import { DeliverablesTab } from './tabs/deliverables-tab';
 import { CommentsTab } from './tabs/comments-tab';
 import { InvoicesTab } from './tabs/invoices-tab';
 import { ClientPortalTab } from './tabs/client-portal-tab';
+import { ActivityTab } from './tabs/activity-tab';
+import { WorkspaceSettingsTab } from './tabs/workspace-settings-tab';
 import {
   ArrowLeft,
   LayoutDashboard,
+  FolderKanban,
   Clock,
   FileText,
   CheckCircle2,
   MessageSquare,
   Receipt,
   Globe,
-  ShieldCheck,
   Plus,
-  Upload,
   Copy,
-  ExternalLink,
+  Activity,
+  Settings,
 } from 'lucide-react';
 import { useToast } from '../../components/ui/toast';
 
@@ -38,12 +43,14 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
   clientId,
   onBackToClients,
 }) => {
-  const [summary, setSummary] = useState<WorkspaceSummary | null>(null);
+  const [summary, setSummary] = useState<WorkspaceSummary | null>(() => FlowDeskStore.getWorkspaceSummary(clientId));
   const [activeTab, setActiveTab] = useState<string>('overview');
   const { showToast } = useToast();
 
   const loadSummary = React.useCallback(() => {
-    WorkspaceService.getWorkspaceSummary(clientId).then(setSummary);
+    WorkspaceService.getWorkspaceSummary(clientId).then((res) => {
+      if (res) setSummary(res);
+    });
   }, [clientId]);
 
   useEffect(() => {
@@ -56,12 +63,15 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
 
   const tabItems: TabItem[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'timeline', label: 'Timeline', icon: <Clock className="w-4 h-4" /> },
-    { id: 'documents', label: 'Documents', count: summary.documents.length, icon: <FileText className="w-4 h-4" /> },
-    { id: 'deliverables', label: 'Deliverables', count: summary.deliverables.length, icon: <CheckCircle2 className="w-4 h-4" /> },
-    { id: 'comments', label: 'Comments', count: summary.comments.length, icon: <MessageSquare className="w-4 h-4" /> },
+    { id: 'projects', label: 'Projects', count: summary.projects.length, icon: <FolderKanban className="w-4 h-4" /> },
     { id: 'invoices', label: 'Invoices', count: summary.invoices.length, icon: <Receipt className="w-4 h-4" /> },
+    { id: 'deliverables', label: 'Deliverables', count: summary.deliverables.length, icon: <CheckCircle2 className="w-4 h-4" /> },
+    { id: 'documents', label: 'Documents', count: summary.documents.length, icon: <FileText className="w-4 h-4" /> },
+    { id: 'timeline', label: 'Timeline', icon: <Clock className="w-4 h-4" /> },
+    { id: 'activity', label: 'Audit Activity', icon: <Activity className="w-4 h-4" /> },
+    { id: 'comments', label: 'Messages', count: summary.comments.length, icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'portal', label: 'Client Portal', icon: <Globe className="w-4 h-4" /> },
+    { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
   const handleCopyPortalLink = () => {
@@ -84,20 +94,22 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Avatar name={client.name} src={client.avatarUrl} size="xl" />
-            <div>
-              <div className="flex items-center gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                   {client.company}
                 </h1>
                 <StatusPill status={client.status} />
+                <HealthBadge level={client.healthBadge} score={summary.health.score} showScore />
                 {client.country && (
                   <span className="text-xs font-mono text-zinc-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded">
                     {client.country}
                   </span>
                 )}
               </div>
-              <p className="text-sm text-zinc-400 mt-1">
+              <p className="text-xs text-zinc-400">
                 Contact: <strong className="text-white">{client.name}</strong> ({client.email})
+                {client.phone && <span> • {client.phone}</span>}
               </p>
             </div>
           </div>
@@ -132,12 +144,21 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
       {/* Tab View Contents */}
       <div>
         {activeTab === 'overview' && <OverviewTab summary={summary} onRefresh={loadSummary} onTabChange={setActiveTab} />}
-        {activeTab === 'timeline' && <TimelineTab summary={summary} />}
-        {activeTab === 'documents' && <DocumentsTab summary={summary} onRefresh={loadSummary} />}
-        {activeTab === 'deliverables' && <DeliverablesTab summary={summary} onRefresh={loadSummary} />}
-        {activeTab === 'comments' && <CommentsTab summary={summary} onRefresh={loadSummary} />}
+        {activeTab === 'projects' && <ProjectsTab summary={summary} onRefresh={loadSummary} />}
         {activeTab === 'invoices' && <InvoicesTab summary={summary} onRefresh={loadSummary} />}
+        {activeTab === 'deliverables' && <DeliverablesTab summary={summary} onRefresh={loadSummary} />}
+        {activeTab === 'documents' && <DocumentsTab summary={summary} onRefresh={loadSummary} />}
+        {activeTab === 'timeline' && <TimelineTab summary={summary} />}
+        {activeTab === 'activity' && <ActivityTab summary={summary} />}
+        {activeTab === 'comments' && <CommentsTab summary={summary} onRefresh={loadSummary} />}
         {activeTab === 'portal' && <ClientPortalTab summary={summary} onRefresh={loadSummary} />}
+        {activeTab === 'settings' && (
+          <WorkspaceSettingsTab
+            summary={summary}
+            onRefresh={loadSummary}
+            onCloseWorkspace={onBackToClients}
+          />
+        )}
       </div>
     </div>
   );

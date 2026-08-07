@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/card';
 import { ActivityService } from '../../services';
+import { FlowDeskStore } from '../../services/storage-store';
 import { ActivityLog } from '../../types';
 import { Activity, Clock, CheckCircle2, FileText, Users, DollarSign } from 'lucide-react';
 
 export const ActivityFeedView: React.FC = () => {
-  const [activities, setActivities] = useState<ActivityLog[]>([]);
+  const [activities, setActivities] = useState<ActivityLog[]>(() => FlowDeskStore.getActivities());
   const [filter, setFilter] = useState<string>('all');
 
   useEffect(() => {
