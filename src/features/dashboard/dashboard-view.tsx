@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { FlowDeskStore } from '../../services/storage-store';
+import { useAuth } from '../../context/auth-context';
+import { DashboardService, ActivityService, NotificationService } from '../../services';
 import { TodayFocusCard } from './components/today-focus-card';
 import { BusinessSnapshot } from './components/business-snapshot';
 import { WorkspaceHealthCard } from './components/workspace-health-card';
@@ -40,7 +42,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenClientWorkspace,
   onQuickAction,
 }) => {
-  const [userProfile, setUserProfile] = useState(() => FlowDeskStore.getUserProfile());
+  const { user, profile } = useAuth();
+
   const [metrics, setMetrics] = useState(() => FlowDeskStore.getBusinessMetrics());
   const [todayItems, setTodayItems] = useState(() => FlowDeskStore.getTodayFocusList());
   const [health, setHealth] = useState(() => FlowDeskStore.getWorkspaceHealth());
@@ -56,20 +59,78 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const refreshData = () => {
-    setUserProfile(FlowDeskStore.getUserProfile());
-    setMetrics(FlowDeskStore.getBusinessMetrics());
-    setTodayItems(FlowDeskStore.getTodayFocusList());
-    setHealth(FlowDeskStore.getWorkspaceHealth());
-    setProjectSummaries(FlowDeskStore.getProjectHealthSummaries());
-    setPinnedItems(FlowDeskStore.getPinnedItems());
-    setRecentItems(FlowDeskStore.getRecentWork());
-    setActivities(FlowDeskStore.getActivities());
-    setNotifications(FlowDeskStore.getNotifications());
+  const refreshData = async () => {
+    try {
+      const realMetrics = await DashboardService.getMetrics();
+      const realActs = await ActivityService.getActivities();
+      const realNotifs = await NotificationService.getNotifications();
+
+      setMetrics((prev) => ({
+        ...prev,
+        activeClientsCount: realMetrics.activeClientsCount,
+        activeProjectsCount: realMetrics.activeProjectsCount,
+        pendingDeliverablesCount: realMetrics.upcomingDeliverablesCount,
+        pendingInvoicesAmount: realMetrics.pendingInvoicesAmount,
+        totalRevenue: realMetrics.totalRevenue,
+        monthlyRevenue: realMetrics.monthlyRevenue,
+      }));
+
+      setTodayItems(FlowDeskStore.getTodayFocusList());
+      setHealth(FlowDeskStore.getWorkspaceHealth());
+      setProjectSummaries(FlowDeskStore.getProjectHealthSummaries());
+      setPinnedItems(FlowDeskStore.getPinnedItems());
+      setRecentItems(FlowDeskStore.getRecentWork());
+
+      if (realActs && realActs.length > 0) {
+        setActivities(
+          realActs.map((a, idx) => ({
+            id: a.id || `act-${idx}`,
+            user: a.user,
+            action: a.action,
+            target: a.target,
+            timestamp: a.timestamp,
+            category: a.category,
+          }))
+        );
+      } else {
+        setActivities(FlowDeskStore.getActivities());
+      }
+
+      if (realNotifs && realNotifs.length > 0) {
+        setNotifications(
+          realNotifs.map((n) => ({
+            id: n.id,
+            title: n.title,
+            message: n.message,
+            read: n.read,
+            timestamp: n.timestamp,
+            type: n.type,
+            link: n.link,
+          }))
+        );
+      } else {
+        setNotifications(FlowDeskStore.getNotifications());
+      }
+    } catch {
+      setMetrics(FlowDeskStore.getBusinessMetrics());
+      setTodayItems(FlowDeskStore.getTodayFocusList());
+      setHealth(FlowDeskStore.getWorkspaceHealth());
+      setProjectSummaries(FlowDeskStore.getProjectHealthSummaries());
+      setPinnedItems(FlowDeskStore.getPinnedItems());
+      setRecentItems(FlowDeskStore.getRecentWork());
+      setActivities(FlowDeskStore.getActivities());
+      setNotifications(FlowDeskStore.getNotifications());
+    }
   };
 
   useEffect(() => {
-    refreshData();
+    let isMounted = true;
+    refreshData().then(() => {
+      if (!isMounted) return;
+    });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleActionFromFocus = (item: TodayFocusItem) => {
@@ -102,6 +163,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return 'Good evening';
   };
 
+  const displayName = profile?.name ?? user?.email?.split('@')[0] ?? 'User';
+  const displayCompany = profile?.companyName || 'My Workspace';
+
   return (
     <div className="space-y-8 select-none">
       {/* Top Header Bar & Mission Control Navigation */}
@@ -113,10 +177,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            {getGreeting()}, {userProfile.name}
+            {getGreeting()}, {displayName}
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
-            {userProfile.companyName || 'Rivera Studio'} Workspace • All client hubs operational.
+            {displayCompany} Workspace • All client hubs operational.
           </p>
         </div>
 

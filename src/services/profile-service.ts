@@ -1,146 +1,108 @@
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { SupabaseProfile, UserProfile, OnboardingData } from '../types';
-import { mockUserProfile } from '../mock/mockData';
-
-// Local storage key for persistent demo state when Supabase keys aren't configured
-const LOCAL_PROFILE_KEY = 'flowdesk_user_profile';
-const LOCAL_ONBOARDING_KEY = 'flowdesk_onboarding_status';
+import { supabase } from '../lib/supabase';
+import { UserProfile, OnboardingData } from '../types';
 
 export const ProfileService = {
   /**
-   * Get user profile by Supabase user ID
+   * Get user profile by Supabase user ID with timeout protection
    */
   async getProfile(userId: string): Promise<UserProfile | null> {
-    const getLocalProfile = (): UserProfile => {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem(`${LOCAL_PROFILE_KEY}_${userId}`) : null;
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {
-          // fallback
-        }
-      }
-      return {
-        ...mockUserProfile,
-        id: userId,
-        onboardingCompleted: typeof window !== 'undefined' ? localStorage.getItem(`${LOCAL_ONBOARDING_KEY}_${userId}`) === 'true' : false,
-      };
-    };
-
-    if (!isSupabaseConfigured) {
-      return getLocalProfile();
-    }
-
     try {
-      const { data, error } = await supabase
+      const queryPromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
+
+      const timeoutPromise = new Promise<{ data: null; error: any }>((resolve) =>
+        setTimeout(() => resolve({ data: null, error: { message: 'Timeout' } }), 2000)
+      );
+
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
+
+      if (error && error.code !== 'PGRST116') {
+        console.warn('Notice fetching user profile from Supabase:', error.message);
+      }
 
       if (data) {
         return this.mapSupabaseProfileToUserProfile(data);
       }
 
-      if (error && error.code !== 'PGRST116') {
-        console.warn('Notice fetching user profile from Supabase (using local fallback):', error.message);
-      }
-
-      return getLocalProfile();
+      return null;
     } catch (err: any) {
-      console.warn('Profile fetch exception (using local fallback):', err?.message);
-      return getLocalProfile();
+      console.warn('Profile fetch exception:', err?.message);
+      return null;
     }
   },
 
   /**
-   * Create or upsert user profile
+   * Create or upsert user profile in Supabase
    */
   async upsertProfile(userId: string, profileData: Partial<UserProfile>): Promise<UserProfile> {
-    const updatedProfile: UserProfile = {
+    const name = profileData.name || profileData.email?.split('@')[0] || 'User';
+    const companyName = profileData.companyName || 'My Workspace';
+
+    const supabasePayload = {
       id: userId,
-      name: profileData.name || 'Alex Rivera',
-      title: profileData.profession || profileData.title || 'Independent Specialist',
-      email: profileData.email || 'alex@riveradesign.co',
-      avatarUrl: profileData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-      currency: profileData.currency || 'USD',
-      companyName: profileData.companyName || 'Rivera Studio',
-      hourlyRate: profileData.hourlyRate || 150,
-      taxRate: profileData.taxRate || 10,
-      notificationsEnabled: profileData.notificationsEnabled ?? true,
-      profession: profileData.profession || 'Creative Director',
+      full_name: name,
+      business_name: companyName,
+      company_name: companyName,
+      email: profileData.email || '',
+      avatar_url: profileData.avatarUrl || '',
+      profession: profileData.profession || '',
       country: profileData.country || 'United States',
       timezone: profileData.timezone || 'America/New_York',
       language: profileData.language || 'English',
-      onboardingCompleted: profileData.onboardingCompleted ?? false,
-    };
-
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(`${LOCAL_PROFILE_KEY}_${userId}`, JSON.stringify(updatedProfile));
-        localStorage.setItem(`${LOCAL_ONBOARDING_KEY}_${userId}`, String(updatedProfile.onboardingCompleted));
-      } catch {
-        // ignore quota errors
-      }
-    }
-
-    if (!isSupabaseConfigured) {
-      return updatedProfile;
-    }
-
-    const supabasePayload: Partial<SupabaseProfile> = {
-      id: userId,
-      full_name: updatedProfile.name,
-      avatar_url: updatedProfile.avatarUrl,
-      business_name: updatedProfile.companyName,
-      profession: updatedProfile.profession,
-      country: updatedProfile.country,
-      timezone: updatedProfile.timezone,
-      language: updatedProfile.language,
-      onboarding_completed: updatedProfile.onboardingCompleted,
+      onboarding_completed: profileData.onboardingCompleted ?? false,
       updated_at: new Date().toISOString(),
     };
 
     try {
-      const { error } = await supabase.from('profiles').upsert(supabasePayload);
+      const { error } = await supabase.from('profiles').upsert(supabasePayload, { onConflict: 'id' });
       if (error) {
-        console.warn('Notice upserting profile in Supabase (using local fallback):', error.message);
+        console.warn('Notice upserting profile in Supabase:', error.message);
       }
     } catch (err: any) {
       console.warn('Exception upserting profile in Supabase:', err?.message);
     }
 
-    return updatedProfile;
+    return {
+      id: userId,
+      name,
+      title: profileData.title || profileData.profession || 'Independent Specialist',
+      email: profileData.email || '',
+      avatarUrl: profileData.avatarUrl || '',
+      currency: profileData.currency || 'USD',
+      companyName,
+      hourlyRate: profileData.hourlyRate || 150,
+      taxRate: profileData.taxRate || 10,
+      notificationsEnabled: profileData.notificationsEnabled ?? true,
+      profession: profileData.profession || '',
+      country: profileData.country || 'United States',
+      timezone: profileData.timezone || 'America/New_York',
+      language: profileData.language || 'English',
+      onboardingCompleted: profileData.onboardingCompleted ?? false,
+    };
   },
 
   /**
    * Check if user completed onboarding
    */
   async checkOnboardingCompleted(userId: string): Promise<boolean> {
-    const getLocalStatus = () => (typeof window !== 'undefined' ? localStorage.getItem(`${LOCAL_ONBOARDING_KEY}_${userId}`) === 'true' : false);
-
-    if (!isSupabaseConfigured) {
-      return getLocalStatus();
-    }
-
     try {
       const { data } = await supabase
         .from('profiles')
         .select('onboarding_completed')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (data && typeof data.onboarding_completed === 'boolean') {
-        return data.onboarding_completed;
-      }
-      return getLocalStatus();
+      return Boolean(data?.onboarding_completed);
     } catch {
-      return getLocalStatus();
+      return false;
     }
   },
 
   /**
-   * Complete onboarding and update user profile & settings
+   * Complete onboarding and update user profile & settings in Supabase
    */
   async saveOnboardingData(userId: string, data: OnboardingData): Promise<UserProfile> {
     const updatedProfile: UserProfile = {
@@ -148,7 +110,7 @@ export const ProfileService = {
       name: data.fullName,
       title: data.profession,
       email: '',
-      avatarUrl: data.logoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      avatarUrl: data.logoUrl || '',
       currency: data.currency,
       companyName: data.businessName,
       hourlyRate: 150,
@@ -167,23 +129,23 @@ export const ProfileService = {
   /**
    * Mapper helper
    */
-  mapSupabaseProfileToUserProfile(sp: SupabaseProfile): UserProfile {
+  mapSupabaseProfileToUserProfile(sp: any): UserProfile {
     return {
       id: sp.id,
-      name: sp.full_name || 'FlowDesk Member',
+      name: sp.full_name || sp.email?.split('@')[0] || 'User',
       title: sp.profession || 'Independent Specialist',
-      email: '',
-      avatarUrl: sp.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-      currency: 'USD',
-      companyName: sp.business_name || 'Studio',
-      hourlyRate: 150,
+      email: sp.email || '',
+      avatarUrl: sp.avatar_url || '',
+      currency: sp.currency || 'USD',
+      companyName: sp.business_name || sp.company_name || 'My Workspace',
+      hourlyRate: Number(sp.hourly_rate) || 150,
       taxRate: 10,
       notificationsEnabled: true,
       profession: sp.profession || '',
       country: sp.country || 'United States',
       timezone: sp.timezone || 'America/New_York',
       language: sp.language || 'English',
-      onboardingCompleted: sp.onboarding_completed,
+      onboardingCompleted: Boolean(sp.onboarding_completed),
     };
   },
 };

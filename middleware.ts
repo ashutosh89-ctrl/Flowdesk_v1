@@ -9,11 +9,22 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  const path = request.nextUrl.pathname;
+
+  // Unprotected / public routes
+  const isPublicRoute =
+    path === '/' ||
+    path.startsWith('/login') ||
+    path.startsWith('/signup') ||
+    path.startsWith('/auth') ||
+    path.startsWith('/reset-password') ||
+    path.startsWith('/forgot-password');
+
   const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-  const supabaseUrl = validateAndFormatUrl(rawUrl);
-  const supabaseAnonKey = validateKey(rawKey);
+  const supabaseUrl = validateAndFormatUrl(rawUrl) || rawUrl;
+  const supabaseAnonKey = validateKey(rawKey) || rawKey;
 
   if (supabaseUrl && supabaseAnonKey) {
     try {
@@ -36,11 +47,24 @@ export async function middleware(request: NextRequest) {
         },
       });
 
-      // Refresh authentication token on request
-      await supabase.auth.getUser();
+      // Refresh auth state and get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      // If user is accessing protected route without session -> redirect /login
+      if (!isPublicRoute && !user) {
+        const loginUrl = new URL('/login', request.url);
+        return NextResponse.redirect(loginUrl);
+      }
     } catch (err) {
       console.warn('Middleware error verifying Supabase session:', err);
+      if (!isPublicRoute) {
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
     }
+  } else if (!isPublicRoute) {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return response;
@@ -49,11 +73,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * Match all request paths except static files, images, favicon, etc.
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

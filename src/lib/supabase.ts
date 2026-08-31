@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -69,13 +70,7 @@ export const getSupabase = (): SupabaseClient => {
   if (!supabaseInstance) {
     if (isSupabaseConfigured && validSupabaseUrl && validSupabaseAnonKey) {
       try {
-        supabaseInstance = createSupabaseClient(validSupabaseUrl, validSupabaseAnonKey, {
-          auth: {
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true,
-          },
-        });
+        supabaseInstance = createBrowserClient(validSupabaseUrl, validSupabaseAnonKey) as unknown as SupabaseClient;
       } catch (err) {
         console.warn('Failed to initialize Supabase with configured environment variables, using fallback client:', err);
         supabaseInstance = createSupabaseClient(SAFE_PLACEHOLDER_URL, SAFE_PLACEHOLDER_KEY, {

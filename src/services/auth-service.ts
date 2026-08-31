@@ -118,19 +118,20 @@ export const AuthService = {
    */
   async signInDemo(email: string): Promise<AuthResponse> {
     const mockUserId = `usr-demo`;
+    const displayName = email ? email.split('@')[0] : 'User';
     const { user } = SessionService.setLocalSession({
       id: mockUserId,
-      email: email || 'alex@riveradesign.co',
-      user_metadata: { full_name: 'Alex Rivera', business_name: 'Rivera Studio' },
+      email: email || 'user@flowdesk.co',
+      user_metadata: { full_name: displayName, business_name: 'My Workspace' },
     });
 
     const profile = await ProfileService.getProfile(mockUserId);
     if (!profile) {
       await ProfileService.upsertProfile(mockUserId, {
         id: mockUserId,
-        name: 'Alex Rivera',
-        companyName: 'Rivera Studio',
-        email: email || 'alex@riveradesign.co',
+        name: displayName,
+        companyName: 'My Workspace',
+        email: email || 'user@flowdesk.co',
         onboardingCompleted: true,
       });
     }
@@ -173,22 +174,41 @@ export const AuthService = {
     }
   },
 
-  /**
-   * Demo Mode Google Signin Fallback
-   */
   async signInWithGoogleDemo(): Promise<{ error: string | null }> {
     const mockUserId = `usr-google-${Date.now()}`;
     SessionService.setLocalSession({
       id: mockUserId,
-      email: 'alex.rivera.google@gmail.com',
-      user_metadata: { full_name: 'Alex Rivera (Google)', avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150' },
+      email: 'user.google@example.com',
+      user_metadata: { full_name: 'Google User', avatar_url: '' },
     });
 
     await ProfileService.upsertProfile(mockUserId, {
       id: mockUserId,
-      name: 'Alex Rivera',
-      companyName: 'Rivera Design Studio',
-      email: 'alex.rivera.google@gmail.com',
+      name: 'Google User',
+      companyName: 'My Workspace',
+      email: 'user.google@example.com',
+      onboardingCompleted: false,
+    });
+
+    return { error: null };
+  },
+
+  /**
+   * Demo Mode GitHub Signin Fallback
+   */
+  async signInWithGitHubDemo(): Promise<{ error: string | null }> {
+    const mockUserId = `usr-github-${Date.now()}`;
+    SessionService.setLocalSession({
+      id: mockUserId,
+      email: 'user.github@example.com',
+      user_metadata: { full_name: 'GitHub User', avatar_url: '' },
+    });
+
+    await ProfileService.upsertProfile(mockUserId, {
+      id: mockUserId,
+      name: 'GitHub User',
+      companyName: 'My Workspace',
+      email: 'user.github@example.com',
       onboardingCompleted: false,
     });
 
@@ -199,10 +219,6 @@ export const AuthService = {
    * Google OAuth Login using Supabase
    */
   async signInWithGoogle(): Promise<{ error: string | null }> {
-    if (!isSupabaseConfigured) {
-      return this.signInWithGoogleDemo();
-    }
-
     try {
       const originUrl = typeof window !== 'undefined' ? window.location.origin : '';
       const { error } = await supabase.auth.signInWithOAuth({
@@ -213,18 +229,33 @@ export const AuthService = {
       });
 
       if (error) {
-        if (isNetworkOrConfigError(error)) {
-          console.warn('Google OAuth failed with network error, falling back to demo session:', error.message);
-          return this.signInWithGoogleDemo();
-        }
         return { error: error.message };
       }
       return { error: null };
     } catch (err: any) {
-      if (isNetworkOrConfigError(err)) {
-        return this.signInWithGoogleDemo();
-      }
       return { error: err.message || 'Google OAuth failed to initialize.' };
+    }
+  },
+
+  /**
+   * GitHub OAuth Login using Supabase
+   */
+  async signInWithGitHub(): Promise<{ error: string | null }> {
+    try {
+      const originUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${originUrl}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+      return { error: null };
+    } catch (err: any) {
+      return { error: err.message || 'GitHub OAuth failed to initialize.' };
     }
   },
 

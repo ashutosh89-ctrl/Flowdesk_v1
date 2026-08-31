@@ -8,7 +8,6 @@ import { UserSettingsService } from '../services/user-settings-service';
 import { SessionService } from '../services/session-service';
 import { ClientService } from '../services';
 import { UserProfile, UserSettings, OnboardingData } from '../types';
-import { mockUserProfile } from '../mock/mockData';
 
 interface AuthContextType {
   user: User | null;
@@ -21,6 +20,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string, businessName: string) => Promise<AuthResponse>;
   signIn: (email: string, password: string) => Promise<AuthResponse>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
+  signInWithGitHub: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   forgotPassword: (email: string) => Promise<AuthResponse>;
   resetPassword: (newPassword: string) => Promise<AuthResponse>;
@@ -41,13 +41,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loadProfileAndSettings = useCallback(async (userId: string, currentUser?: User | null) => {
     try {
       let fetchedProfile = await ProfileService.getProfile(userId);
-      if (!fetchedProfile) {
-        // Create initial profile if missing
+      if (!fetchedProfile && currentUser) {
+        // Do not inject fake names. Use real metadata or email.
+        const name = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User';
+        const businessName = currentUser.user_metadata?.business_name || 'My Workspace';
+
         fetchedProfile = await ProfileService.upsertProfile(userId, {
           id: userId,
-          name: currentUser?.user_metadata?.full_name || 'Alex Rivera',
-          companyName: currentUser?.user_metadata?.business_name || 'Rivera Studio',
-          email: currentUser?.email || '',
+          name,
+          companyName: businessName,
+          email: currentUser.email || '',
           onboardingCompleted: false,
         });
       }
@@ -63,6 +66,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Restore session on mount
   useEffect(() => {
     let mounted = true;
+
+    // Safety fallback: guarantee isLoading becomes false within 1.5s max
+    const timer = setTimeout(() => {
+      if (mounted) {
+        setIsLoading(false);
+      }
+    }, 1500);
 
     async function initAuth() {
       try {
@@ -82,6 +92,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.warn('Notice initializing auth:', err?.message);
       } finally {
         if (mounted) {
+          clearTimeout(timer);
           setIsLoading(false);
         }
       }
@@ -107,6 +118,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return () => {
       mounted = false;
+      clearTimeout(timer);
       if (subscription && typeof subscription.unsubscribe === 'function') {
         subscription.unsubscribe();
       }
@@ -155,6 +167,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return res;
   };
 
+  const handleSignInWithGitHub = async () => {
+    setIsLoading(true);
+    const res = await AuthService.signInWithGitHub();
+    if (!res.error) {
+      const { user: currUser } = await SessionService.getSession();
+      if (currUser) {
+        setUser(currUser);
+        await loadProfileAndSettings(currUser.id, currUser);
+      }
+    }
+    setIsLoading(false);
+    return res;
+  };
+
   const handleSignOut = async () => {
     setIsLoading(true);
     await AuthService.signOut();
@@ -183,23 +209,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const handleCompleteOnboarding = async (data: OnboardingData): Promise<boolean> => {
-    const userId = user?.id || `usr-${Date.now()}`;
+    if (!user) return false;
     try {
       setIsLoading(true);
 
-      // 1. Save onboarding profile data
-      const updatedProf = await ProfileService.saveOnboardingData(userId, data);
+      const updatedProf = await ProfileService.saveOnboardingData(user.id, data);
       setProfile(updatedProf);
 
-      // 2. Create default user settings
-      const updatedSettings = await UserSettingsService.saveUserSettings(userId, {
+      const updatedSettings = await UserSettingsService.saveUserSettings(user.id, {
         currency: data.currency,
         tax_name: data.taxName,
         default_tax_rate: data.taxRate,
       });
       setUserSettings(updatedSettings);
 
-      // 3. Create First Client if specified
       if (data.clientName || data.clientCompany) {
         await ClientService.createClient({
           name: data.clientName || 'Lead Executive',
@@ -208,7 +231,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           status: 'active',
           country: data.country || 'United States',
           currency: data.currency || 'USD',
-          notes: 'First client created during OS onboarding wizard.',
+          notes: 'First client created during onboarding.',
           activeProjectsCount: 1,
         });
       }
@@ -230,7 +253,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       value={{
         user,
         session,
-        profile: profile || mockUserProfile,
+        profile,
         userSettings,
         isLoading,
         isAuthenticated,
@@ -238,6 +261,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         signUp: handleSignUp,
         signIn: handleSignIn,
         signInWithGoogle: handleSignInWithGoogle,
+        signInWithGitHub: handleSignInWithGitHub,
         signOut: handleSignOut,
         forgotPassword: handleForgotPassword,
         resetPassword: handleResetPassword,

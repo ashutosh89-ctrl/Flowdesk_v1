@@ -6,7 +6,7 @@ import { UserProfile } from '../../types';
 import { useAuth } from '../../context/auth-context';
 
 export interface UserProfileMenuProps {
-  profile: UserProfile;
+  profile?: UserProfile | null;
   onNavigate: (view: string) => void;
   onSwitchViewMode: (mode: 'app' | 'landing') => void;
 }
@@ -16,7 +16,10 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
   onNavigate,
   onSwitchViewMode,
 }) => {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
+
+  const displayName = profile?.name ?? user?.email?.split('@')[0] ?? 'User';
+  const displayCompany = profile?.companyName || 'My Workspace';
 
   const handleLogout = async () => {
     await signOut();
@@ -26,7 +29,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
   const items: DropdownItem[] = [
     {
       id: 'item-profile',
-      label: profile.name,
+      label: displayName,
       icon: <User className="w-4 h-4" />,
       onClick: () => onNavigate('settings'),
     },
@@ -56,13 +59,13 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
       align="right"
       trigger={
         <button className="flex items-center gap-2 p-1 rounded-xl hover:bg-white/10 transition-colors group">
-          <Avatar name={profile.name} src={profile.avatarUrl} size="sm" />
+          <Avatar name={displayName} src={profile?.avatarUrl} size="sm" />
           <div className="hidden sm:flex flex-col text-left pr-1">
             <span className="text-xs font-semibold text-white group-hover:text-white truncate max-w-[120px]">
-              {profile.name}
+              {displayName}
             </span>
             <span className="text-[10px] text-zinc-400 truncate max-w-[120px]">
-              {profile.companyName}
+              {displayCompany}
             </span>
           </div>
         </button>

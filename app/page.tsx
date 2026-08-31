@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AuthProvider, useAuth } from '../src/context/auth-context';
 import { LandingPage } from '../src/features/landing/landing-page';
 import { AppShell } from '../src/components/layout/app-shell';
@@ -14,11 +15,12 @@ import { ActivityFeedView } from '../src/features/activity/activity-feed-view';
 import { SettingsView } from '../src/features/settings/settings-view';
 import { AuthModal, AuthModalView } from '../src/features/auth/auth-modal';
 import { ToastProvider } from '../src/components/ui/toast';
-import { mockUserProfile } from '../src/mock/mockData';
 import { Loader2, ShieldCheck } from 'lucide-react';
 
 function FlowDeskAppContent() {
+  const router = useRouter();
   const {
+    user,
     profile,
     isLoading,
     isAuthenticated,
@@ -37,30 +39,32 @@ function FlowDeskAppContent() {
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       if (!isOnboarded) {
-        const timer = setTimeout(() => {
-          setAuthInitialView('onboarding');
-          setIsAuthModalOpen(true);
-        }, 0);
-        return () => clearTimeout(timer);
+        router.push('/onboarding');
       } else {
-        const timer = setTimeout(() => {
-          setViewMode('app');
-        }, 0);
+        const timer = setTimeout(() => setViewMode('app'), 0);
         return () => clearTimeout(timer);
       }
     }
-  }, [isLoading, isAuthenticated, isOnboarded]);
+  }, [isLoading, isAuthenticated, isOnboarded, router]);
 
   const handleOpenAuth = (initialView: AuthModalView = 'login') => {
-    setAuthInitialView(initialView);
-    setIsAuthModalOpen(true);
+    if (initialView === 'login') {
+      router.push('/login');
+    } else if (initialView === 'signup') {
+      router.push('/signup');
+    } else if (initialView === 'onboarding') {
+      router.push('/onboarding');
+    } else {
+      setAuthInitialView(initialView);
+      setIsAuthModalOpen(true);
+    }
   };
 
   const handleLaunchApp = () => {
     if (!isAuthenticated) {
-      handleOpenAuth('login');
+      router.push('/login');
     } else if (!isOnboarded) {
-      handleOpenAuth('onboarding');
+      router.push('/onboarding');
     } else {
       setViewMode('app');
     }
@@ -92,6 +96,25 @@ function FlowDeskAppContent() {
     );
   }
 
+  const fallbackName = user?.email?.split('@')[0] || 'User';
+  const activeUserProfile = {
+    id: user?.id || '',
+    name: profile ? profile.name : fallbackName,
+    title: profile ? profile.title : 'Freelance Specialist',
+    email: user?.email || '',
+    avatarUrl: user?.user_metadata?.avatar_url || '',
+    currency: 'USD',
+    companyName: profile ? profile.companyName : 'My Workspace',
+    hourlyRate: 150,
+    taxRate: 10,
+    notificationsEnabled: true,
+    profession: '',
+    country: 'United States',
+    timezone: 'America/New_York',
+    language: 'English',
+    onboardingCompleted: Boolean(isOnboarded),
+  };
+
   return (
     <>
       {viewMode === 'landing' ? (
@@ -104,7 +127,7 @@ function FlowDeskAppContent() {
           currentView={currentView}
           onNavigate={(view) => setCurrentView(view)}
           onSwitchViewMode={(mode) => setViewMode(mode)}
-          userProfile={profile || mockUserProfile}
+          userProfile={activeUserProfile}
           breadcrumbLabel={
             currentView === 'workspace' ? 'Client Workspace' : undefined
           }

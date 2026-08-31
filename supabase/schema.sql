@@ -1,5 +1,5 @@
--- FlowDesk Phase 12 Complete Database Schema Definition (Supabase PostgreSQL)
--- Enforces User Isolation via Row Level Security (RLS) and Foreign Key Cascades
+-- FlowDesk Phase 12 Complete Multi-Tenant Database Schema & RLS Policies
+-- Enforces User & Workspace Isolation via workspace_id foreign keys and RLS rules
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -7,8 +7,9 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT,
-  avatar_url TEXT,
   business_name TEXT,
+  email TEXT,
+  avatar_url TEXT,
   company_name TEXT,
   profession TEXT,
   title TEXT,
@@ -23,7 +24,17 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. USER SETTINGS
+-- 2. WORKSPACES
+CREATE TABLE IF NOT EXISTS public.workspaces (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  logo_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 3. USER SETTINGS
 CREATE TABLE IF NOT EXISTS public.user_settings (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   currency TEXT DEFAULT 'USD',
@@ -40,21 +51,11 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. WORKSPACES
-CREATE TABLE IF NOT EXISTS public.workspaces (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  logo_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
 -- 4. CLIENTS
 CREATE TABLE IF NOT EXISTS public.clients (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   company TEXT NOT NULL,
   email TEXT NOT NULL,
@@ -74,9 +75,9 @@ CREATE TABLE IF NOT EXISTS public.clients (
 -- 5. PROJECTS
 CREATE TABLE IF NOT EXISTS public.projects (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
   client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   client_name TEXT,
   title TEXT NOT NULL,
   description TEXT,
@@ -95,10 +96,10 @@ CREATE TABLE IF NOT EXISTS public.projects (
 -- 6. DELIVERABLES
 CREATE TABLE IF NOT EXISTS public.deliverables (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
-  project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
   client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   client_name TEXT,
   title TEXT NOT NULL,
   description TEXT,
@@ -157,9 +158,9 @@ CREATE TABLE IF NOT EXISTS public.deliverable_comments (
 -- 10. DOCUMENTS
 CREATE TABLE IF NOT EXISTS public.documents (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
   client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   type TEXT NOT NULL,
   status TEXT DEFAULT 'pending',
@@ -178,9 +179,9 @@ CREATE TABLE IF NOT EXISTS public.documents (
 -- 11. INVOICES
 CREATE TABLE IF NOT EXISTS public.invoices (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
   client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   client_name TEXT,
   client_email TEXT,
   project_id UUID REFERENCES public.projects(id) ON DELETE SET NULL,
@@ -224,9 +225,9 @@ CREATE TABLE IF NOT EXISTS public.invoice_payments (
 -- 14. WORKSPACE COMMENTS
 CREATE TABLE IF NOT EXISTS public.workspace_comments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  workspace_id UUID NOT NULL REFERENCES public.workspaces(id) ON DELETE CASCADE,
   client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   text TEXT NOT NULL,
   author TEXT NOT NULL,
   avatar TEXT,
@@ -244,7 +245,8 @@ CREATE TABLE IF NOT EXISTS public.workspace_comments (
 -- 15. NOTIFICATIONS
 CREATE TABLE IF NOT EXISTS public.notifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   message TEXT NOT NULL,
   category TEXT DEFAULT 'info',
@@ -257,7 +259,8 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 -- 16. ACTIVITIES
 CREATE TABLE IF NOT EXISTS public.activities (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   client_id UUID REFERENCES public.clients(id) ON DELETE CASCADE,
   project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
   action TEXT NOT NULL,
@@ -270,37 +273,10 @@ CREATE TABLE IF NOT EXISTS public.activities (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 17. PINNED ITEMS
-CREATE TABLE IF NOT EXISTS public.pinned_items (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  resource_id TEXT NOT NULL,
-  resource_type TEXT NOT NULL,
-  title TEXT NOT NULL,
-  subtitle TEXT,
-  path TEXT NOT NULL,
-  metadata JSONB DEFAULT '{}'::jsonb,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- 18. RECENT WORK
-CREATE TABLE IF NOT EXISTS public.recent_work (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  resource_id TEXT NOT NULL,
-  resource_type TEXT NOT NULL,
-  title TEXT NOT NULL,
-  subtitle TEXT,
-  path TEXT NOT NULL,
-  client_id TEXT,
-  thumbnail_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- ENABLE RLS ON ALL TABLES
+-- ENABLE ROW LEVEL SECURITY
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspaces ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deliverables ENABLE ROW LEVEL SECURITY;
@@ -314,91 +290,76 @@ ALTER TABLE public.invoice_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspace_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.pinned_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.recent_work ENABLE ROW LEVEL SECURITY;
 
--- CREATE RLS POLICIES
--- Profiles
-CREATE POLICY "Users can manage own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
--- User Settings
-CREATE POLICY "Users can manage own settings" ON public.user_settings FOR ALL USING (auth.uid() = id);
--- Workspaces
-CREATE POLICY "Users can manage own workspaces" ON public.workspaces FOR ALL USING (auth.uid() = user_id);
--- Clients
-CREATE POLICY "Users can manage own clients" ON public.clients FOR ALL USING (auth.uid() = user_id);
--- Projects
-CREATE POLICY "Users can manage own projects" ON public.projects FOR ALL USING (auth.uid() = user_id);
--- Deliverables
-CREATE POLICY "Users can manage own deliverables" ON public.deliverables FOR ALL USING (auth.uid() = user_id);
--- Deliverable Sub-Entities (Cascade checks via deliverable_id -> deliverables)
-CREATE POLICY "Users can manage deliverable versions" ON public.deliverable_versions FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.deliverables WHERE id = deliverable_id AND user_id = auth.uid())
-);
-CREATE POLICY "Users can manage deliverable files" ON public.deliverable_files FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.deliverables WHERE id = deliverable_id AND user_id = auth.uid())
-);
-CREATE POLICY "Users can manage deliverable comments" ON public.deliverable_comments FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.deliverables WHERE id = deliverable_id AND user_id = auth.uid())
-);
--- Documents
-CREATE POLICY "Users can manage own documents" ON public.documents FOR ALL USING (auth.uid() = user_id);
--- Invoices
-CREATE POLICY "Users can manage own invoices" ON public.invoices FOR ALL USING (auth.uid() = user_id);
--- Invoice Items & Payments
-CREATE POLICY "Users can manage invoice items" ON public.invoice_items FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.invoices WHERE id = invoice_id AND user_id = auth.uid())
-);
-CREATE POLICY "Users can manage invoice payments" ON public.invoice_payments FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.invoices WHERE id = invoice_id AND user_id = auth.uid())
-);
--- Workspace Comments
-CREATE POLICY "Users can manage workspace comments" ON public.workspace_comments FOR ALL USING (auth.uid() = user_id);
--- Notifications
-CREATE POLICY "Users can manage notifications" ON public.notifications FOR ALL USING (auth.uid() = user_id);
--- Activities
-CREATE POLICY "Users can manage activities" ON public.activities FOR ALL USING (auth.uid() = user_id);
--- Pinned Items
-CREATE POLICY "Users can manage pinned items" ON public.pinned_items FOR ALL USING (auth.uid() = user_id);
--- Recent Work
-CREATE POLICY "Users can manage recent work" ON public.recent_work FOR ALL USING (auth.uid() = user_id);
+-- POLICIES FOR PROFILES
+DROP POLICY IF EXISTS "Users can select own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 
--- TRIGGER FOR AUTOMATIC PROFILE & DEFAULT WORKSPACE CREATION ON SIGNUP
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-DECLARE
-  default_ws_id UUID;
-BEGIN
-  -- 1. Insert Profile
-  INSERT INTO public.profiles (id, full_name, avatar_url, business_name, company_name, onboarding_completed)
-  VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', 'New Member'),
-    COALESCE(NEW.raw_user_meta_data->>'avatar_url', ''),
-    COALESCE(NEW.raw_user_meta_data->>'business_name', 'Rivera Studio'),
-    COALESCE(NEW.raw_user_meta_data->>'business_name', 'Rivera Studio'),
-    FALSE
-  )
-  ON CONFLICT (id) DO NOTHING;
+CREATE POLICY "Users can select own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
-  -- 2. Insert Settings
-  INSERT INTO public.user_settings (id, currency)
-  VALUES (NEW.id, 'USD')
-  ON CONFLICT (id) DO NOTHING;
+-- POLICIES FOR WORKSPACES
+DROP POLICY IF EXISTS "Users have full access to own workspaces" ON public.workspaces;
 
-  -- 3. Create Default Workspace
-  INSERT INTO public.workspaces (user_id, name)
-  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'business_name', 'Main Workspace'))
-  RETURNING id INTO default_ws_id;
+CREATE POLICY "Users have full access to own workspaces" ON public.workspaces FOR ALL USING (auth.uid() = owner_id) WITH CHECK (auth.uid() = owner_id);
 
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- POLICIES FOR CLIENTS
+DROP POLICY IF EXISTS "Workspace isolation for clients" ON public.clients;
 
--- DROP AND RECREATE TRIGGER
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+CREATE POLICY "Workspace isolation for clients" ON public.clients FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()));
+
+-- POLICIES FOR PROJECTS
+DROP POLICY IF EXISTS "Workspace isolation for projects" ON public.projects;
+
+CREATE POLICY "Workspace isolation for projects" ON public.projects FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()));
+
+-- POLICIES FOR DELIVERABLES
+DROP POLICY IF EXISTS "Workspace isolation for deliverables" ON public.deliverables;
+
+CREATE POLICY "Workspace isolation for deliverables" ON public.deliverables FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()));
+
+-- POLICIES FOR DOCUMENTS
+DROP POLICY IF EXISTS "Workspace isolation for documents" ON public.documents;
+
+CREATE POLICY "Workspace isolation for documents" ON public.documents FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()));
+
+-- POLICIES FOR INVOICES
+DROP POLICY IF EXISTS "Workspace isolation for invoices" ON public.invoices;
+
+CREATE POLICY "Workspace isolation for invoices" ON public.invoices FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()));
+
+-- POLICIES FOR WORKSPACE COMMENTS
+DROP POLICY IF EXISTS "Workspace isolation for comments" ON public.workspace_comments;
+
+CREATE POLICY "Workspace isolation for comments" ON public.workspace_comments FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()));
+
+-- POLICIES FOR NOTIFICATIONS
+DROP POLICY IF EXISTS "Workspace isolation for notifications" ON public.notifications;
+
+CREATE POLICY "Workspace isolation for notifications" ON public.notifications FOR ALL
+  USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()))
+  WITH CHECK (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()));
+
+-- POLICIES FOR ACTIVITIES
+DROP POLICY IF EXISTS "Workspace isolation for activities" ON public.activities;
+
+CREATE POLICY "Workspace isolation for activities" ON public.activities FOR ALL
+  USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()))
+  WITH CHECK (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.workspaces WHERE id = workspace_id AND owner_id = auth.uid()));
 
 -- STORAGE BUCKETS SETUP
 INSERT INTO storage.buckets (id, name, public)
@@ -406,17 +367,5 @@ VALUES
   ('avatars', 'avatars', true),
   ('logos', 'logos', true),
   ('documents', 'documents', false),
-  ('deliverables', 'deliverables', false),
-  ('receipts', 'receipts', false)
+  ('deliverables', 'deliverables', false)
 ON CONFLICT (id) DO NOTHING;
-
--- STORAGE POLICIES
-CREATE POLICY "Public Read Avatars" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
-CREATE POLICY "Users Upload Avatars" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.uid() = owner);
-
-CREATE POLICY "Public Read Logos" ON storage.objects FOR SELECT USING (bucket_id = 'logos');
-CREATE POLICY "Users Upload Logos" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'logos' AND auth.uid() = owner);
-
-CREATE POLICY "Authenticated Manage Documents" ON storage.objects FOR ALL USING (bucket_id = 'documents' AND auth.uid() = owner);
-CREATE POLICY "Authenticated Manage Deliverables" ON storage.objects FOR ALL USING (bucket_id = 'deliverables' AND auth.uid() = owner);
-CREATE POLICY "Authenticated Manage Receipts" ON storage.objects FOR ALL USING (bucket_id = 'receipts' AND auth.uid() = owner);
