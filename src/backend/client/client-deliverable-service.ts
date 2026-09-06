@@ -254,7 +254,8 @@ export const ClientDeliverableService = {
             try {
               const { data: profile } = await supabase.from('profiles').select('email, full_name').eq('id', workspace.owner_id).single();
               if (profile?.email) {
-                const { EmailService, getAppBaseUrl } = await import('@/backend/email');
+                const { EmailService } = await import('@/backend/email/email-service');
+                const { getAppBaseUrl } = await import('@/shared/utils/url');
                 await EmailService.sendDeliverableApproved(profile.email, {
                   freelancerName: profile.full_name || 'Freelancer',
                   clientName: clientName,
@@ -435,7 +436,8 @@ export const ClientDeliverableService = {
             try {
               const { data: profile } = await supabase.from('profiles').select('email, full_name').eq('id', workspace.owner_id).single();
               if (profile?.email) {
-                const { EmailService, getAppBaseUrl } = await import('@/backend/email');
+                const { EmailService } = await import('@/backend/email/email-service');
+                const { getAppBaseUrl } = await import('@/shared/utils/url');
                 await EmailService.sendRevisionRequested(profile.email, {
                   freelancerName: profile.full_name || 'Freelancer',
                   clientName: clientName,

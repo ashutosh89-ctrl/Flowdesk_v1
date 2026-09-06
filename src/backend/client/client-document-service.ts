@@ -347,7 +347,8 @@ export const ClientDocumentService = {
         if (ws?.owner_id) {
           const { data: profile } = await supabase.from('profiles').select('email, full_name').eq('id', ws.owner_id).single();
           if (profile?.email) {
-            const { EmailService, getAppBaseUrl } = await import('@/backend/email');
+            const { EmailService } = await import('@/backend/email/email-service');
+            const { getAppBaseUrl } = await import('@/shared/utils/url');
             await EmailService.sendDocumentUploaded(profile.email, {
               recipientName: profile.full_name || 'Freelancer',
               uploaderName: clientRec.name || 'Client',

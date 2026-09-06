@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: false,
   },
   outputFileTracingRoot: path.resolve(__dirname),
+  serverExternalPackages: ['resend', 'razorpay'],
   turbopack: {},
   images: {
     remotePatterns: [
@@ -38,7 +39,17 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  webpack: (config, { dev }) => {
+  webpack: (config, { isServer, dev }) => {
+    if (!isServer) {
+      config.resolve = config.resolve || {};
+      config.resolve.fallback = {
+        ...(config.resolve.fallback || {}),
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+      };
+    }
     if (dev && process.env.DISABLE_HMR === 'true') {
       config.watchOptions = {
         ignored: /.*/,

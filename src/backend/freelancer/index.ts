@@ -977,7 +977,8 @@ export const FreelancerDeliverableService = {
 
           const { data: client } = await supabase.from('clients').select('name, email, portal_token').eq('id', delInfo.client_id).single();
           if (client?.email) {
-            const { EmailService, getAppBaseUrl } = await import('@/backend/email');
+            const { EmailService } = await import('@/backend/email/email-service');
+            const { getAppBaseUrl } = await import('@/shared/utils/url');
             const { data: ws } = await supabase.from('workspaces').select('name, owner_id').eq('id', wsId).single();
             let studioName = ws?.name || 'FlowDesk Studio';
             if (ws?.owner_id) {
@@ -1648,7 +1649,8 @@ export const FreelancerInvoiceService = {
       // Dispatch Payment Received / Receipt email to client (non-blocking; never rolls back the settlement)
       try {
         if (inv?.clientEmail) {
-          const { EmailService, getAppBaseUrl } = await import('@/backend/email');
+          const { EmailService } = await import('@/backend/email/email-service');
+          const { getAppBaseUrl } = await import('@/shared/utils/url');
           const { data: ws } = await supabase.from('workspaces').select('name, owner_id').eq('id', wsId).single();
           let studioName = ws?.name || 'FlowDesk Studio';
           if (ws?.owner_id) {
@@ -1705,7 +1707,8 @@ export const FreelancerInvoiceService = {
       // Dispatch Invoice Due / Reminder email
       try {
         if (inv.clientEmail) {
-          const { EmailService, getAppBaseUrl } = await import('@/backend/email');
+          const { EmailService } = await import('@/backend/email/email-service');
+          const { getAppBaseUrl } = await import('@/shared/utils/url');
           const { data: ws } = await supabase.from('workspaces').select('name, owner_id').eq('id', wsId).single();
           let studioName = ws?.name || 'FlowDesk Studio';
           if (ws?.owner_id) {

@@ -669,7 +669,8 @@ export const PaymentService = {
     paymentMethod: string;
   }) => {
     try {
-      const { EmailService, getAppBaseUrl } = await import('@/backend/email');
+      const { EmailService } = await import('@/backend/email/email-service');
+      const { getAppBaseUrl } = await import('@/shared/utils/url');
       const db = supabaseAdmin || supabase;
 
       let studioName = 'FlowDesk Studio';

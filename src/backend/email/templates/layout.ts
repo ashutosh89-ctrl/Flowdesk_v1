@@ -1,4 +1,4 @@
-import { getAppBaseUrl } from '../resend-client';
+import { getAppBaseUrl } from '@/shared/utils/url';
 
 export interface EmailLayoutProps {
   title: string;

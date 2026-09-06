@@ -360,7 +360,8 @@ export const AccountDeletionService = {
       try {
         const { data: profile } = await supabase.from('profiles').select('email, full_name').eq('id', userId).single();
         if (profile?.email) {
-          const { EmailService, getAppBaseUrl } = await import('@/backend/email');
+          const { EmailService } = await import('@/backend/email/email-service');
+          const { getAppBaseUrl } = await import('@/shared/utils/url');
           await EmailService.sendAccountDeleted(profile.email, {
             name: profile.full_name || 'User',
             action: 'scheduled_deletion',
@@ -443,7 +444,7 @@ export const AccountDeletionService = {
       try {
         const { data: profile } = await supabase.from('profiles').select('email, full_name').eq('id', userId).single();
         if (profile?.email) {
-          const { EmailService } = await import('@/backend/email');
+          const { EmailService } = await import('@/backend/email/email-service');
           await EmailService.sendAccountRestored(profile.email, {
             name: profile.full_name || 'User',
             action: 'restored',

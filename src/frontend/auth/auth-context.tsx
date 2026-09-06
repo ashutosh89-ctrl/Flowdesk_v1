@@ -6,7 +6,7 @@ import { AuthService, AuthResponse } from '@/backend/auth/auth-service';
 import { ProfileService } from '@/backend/auth/profile-service';
 import { UserSettingsService } from '@/backend/auth/user-settings-service';
 import { SessionService } from '@/backend/auth/session-service';
-import { FreelancerClientManagementService as ClientService } from '@/backend/freelancer';
+import { FreelancerClientManagementService as ClientService } from '@/backend/freelancer/client-management-service';
 import { isDemoModeActive } from '@/backend/utilities/supabase';
 import { UserProfile, UserSettings, OnboardingData } from '@/shared/types';
 

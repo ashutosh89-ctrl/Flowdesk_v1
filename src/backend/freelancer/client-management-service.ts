@@ -78,7 +78,8 @@ export const FreelancerClientManagementService = {
       }
       // Canonical portal route is /portal/{clientId}; the portal token is
       // resolved server-side during auth, never used as the route identity.
-      const { getAppBaseUrl, EmailService } = await import('@/backend/email');
+      const { EmailService } = await import('@/backend/email/email-service');
+      const { getAppBaseUrl } = await import('@/shared/utils/url');
       const portalUrl = `${getAppBaseUrl()}/portal/${client.id}`;
       const res = await EmailService.sendClientInvitation(client.email, {
         clientName: client.name || client.company || 'Client',

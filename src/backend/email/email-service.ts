@@ -1,4 +1,4 @@
-import { resend, isResendConfigured, defaultSender, getAppBaseUrl } from './resend-client';
+import { getAppBaseUrl } from '@/shared/utils/url';
 import { supabase, supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
 import {
   renderClientInvitationEmail,
@@ -44,7 +44,11 @@ export const EmailService = {
   /**
    * Check if Resend API is ready for server-side dispatch
    */
-  isConfigured: (): boolean => isResendConfigured,
+  isConfigured: (): boolean => {
+    if (typeof window !== 'undefined') return false;
+    const key = process.env.RESEND_API_KEY || '';
+    return Boolean(key && key.startsWith('re_'));
+  },
 
   /**
    * Core server-side dispatch with atomic outbox claiming, idempotency, and retry capability
@@ -215,12 +219,15 @@ export const EmailService = {
       }
     }
 
-    const resendClient = typeof window === 'undefined' ? (resend || (await import('./resend-client')).getResendClient()) : null;
+    const resendModule = typeof window === 'undefined' ? (await import('./resend-client')) : null;
+    const resendClient = resendModule?.getResendClient() || null;
+    const isConfigured = resendModule?.isResendConfigured || false;
+    const fromAddress = resendModule?.defaultSender || process.env.EMAIL_FROM || 'FlowDesk <onboarding@resend.dev>';
 
     // 2. Simulated delivery ONLY in explicitly configured demo environments.
     //    Production NEVER fabricates a successful send when Resend is not
     //    configured — that would claim delivery that never happened.
-    if (!resendClient || !isResendConfigured) {
+    if (!resendClient || !isConfigured) {
       if (isDemoModeActive()) {
         console.info(`[EmailService - Demo Mode] Simulated email to ${recipientNorm}: "${subject}"`);
         const mockMsgId = `mock_${Date.now()}`;
@@ -270,7 +277,7 @@ export const EmailService = {
     // 3. Send via Official Resend SDK
     try {
       const { data, error } = await resendClient.emails.send({
-        from: defaultSender,
+        from: fromAddress,
         to: [recipientNorm],
         subject,
         html,

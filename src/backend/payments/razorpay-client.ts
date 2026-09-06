@@ -1,12 +1,10 @@
-import Razorpay from 'razorpay';
-
-let razorpayInstance: Razorpay | null = null;
+let razorpayInstance: any = null;
 
 /**
  * Returns the server-side Razorpay SDK instance.
  * Throws an error if called from the browser or if credentials are not configured.
  */
-export function getRazorpayClient(): Razorpay {
+export function getRazorpayClient(): any {
   if (typeof window !== 'undefined') {
     throw new Error('Razorpay SDK client cannot be initialized in browser context.');
   }
@@ -21,6 +19,7 @@ export function getRazorpayClient(): Razorpay {
   }
 
   if (!razorpayInstance) {
+    const Razorpay = require('razorpay');
     razorpayInstance = new Razorpay({
       key_id,
       key_secret,
@@ -42,3 +41,4 @@ export function getRazorpayKeyId(): string {
   const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || '';
   return keyId;
 }
+
