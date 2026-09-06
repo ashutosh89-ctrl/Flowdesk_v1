@@ -25,7 +25,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState<'freelancer' | 'client' | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('error') || params.get('error_description') || null;
+    }
+    return null;
+  });
 
   const { signIn, signInDemo } = useAuth();
   const { showToast } = useToast();
@@ -35,7 +41,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       const params = new URLSearchParams(window.location.search);
       const urlError = params.get('error') || params.get('error_description');
       if (urlError) {
-        setErrorMessage(urlError);
         showToast('Authentication Error', urlError, 'error');
       }
     }

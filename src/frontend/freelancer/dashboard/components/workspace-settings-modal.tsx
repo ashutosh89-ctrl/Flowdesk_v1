@@ -59,7 +59,7 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
       };
       loadData();
     }
-  }, [isOpen, loaded, user?.id]);
+  }, [isOpen, loaded, user?.id, showToast]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
