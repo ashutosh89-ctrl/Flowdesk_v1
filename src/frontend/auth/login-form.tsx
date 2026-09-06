@@ -30,6 +30,17 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const { signIn, signInDemo } = useAuth();
   const { showToast } = useToast();
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlError = params.get('error') || params.get('error_description');
+      if (urlError) {
+        setErrorMessage(urlError);
+        showToast('Authentication Error', urlError, 'error');
+      }
+    }
+  }, [showToast]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);

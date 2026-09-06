@@ -7,8 +7,16 @@ export const ProfileService = {
    * Get user profile by Supabase user ID
    */
   async getProfile(userId: string): Promise<UserProfile | null> {
-    // Demo mode: return mock profile
+    // Demo mode: check local profile store first, fallback to mock profile
     if (isDemoModeActive()) {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(`flowdesk_profile_${userId}`);
+        if (stored) {
+          try {
+            return JSON.parse(stored) as UserProfile;
+          } catch {}
+        }
+      }
       return { ...mockUserProfile, id: userId, onboardingCompleted: true };
     }
     try {
@@ -43,7 +51,7 @@ export const ProfileService = {
 
     // Demo mode: return local profile without Supabase persistence
     if (isDemoModeActive()) {
-      return {
+      const demoProfile: UserProfile = {
         id: userId,
         name,
         title: profileData.title || profileData.profession || 'Independent Specialist',
@@ -58,6 +66,11 @@ export const ProfileService = {
         language: profileData.language || 'English',
         onboardingCompleted: profileData.onboardingCompleted ?? true,
       };
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`flowdesk_profile_${userId}`, JSON.stringify(demoProfile));
+      }
+      return demoProfile;
     }
 
     const localProfile: UserProfile = {

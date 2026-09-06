@@ -247,6 +247,7 @@ export interface DocumentItem {
   title: string;
   description?: string;
   type: 'contract' | 'proposal' | 'brief' | 'nda' | 'tax' | 'invoice' | 'asset' | 'deliverable' | 'other';
+  category?: string;
   status: 'pending' | 'uploaded' | 'verified' | 'rejected' | 'missing' | 'draft' | 'sent' | 'signed' | 'expired';
   folder?: string;
   isPinned?: boolean;
@@ -383,6 +384,7 @@ export interface Invoice {
   total: number;
   paidAmount?: number;
   remainingBalance?: number;
+  remainingAmount?: number;
   currency: string;
   notes?: string;
   paymentInstructions?: string;

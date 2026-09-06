@@ -209,7 +209,7 @@ export const FreelancerDashboardService = {
 
 export const FreelancerProjectService = {
   getProjects: async (): Promise<Project[]> => {
-    if (DemoDataProvider.isDemo()) return DemoDataProvider.getProjects();
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getProjects();
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return [];
 
@@ -242,14 +242,19 @@ export const FreelancerProjectService = {
     }
   },
   getProjectsByClientId: async (clientId: string): Promise<Project[]> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getProjectsByClientId(clientId);
     const projs = await FreelancerProjectService.getProjects();
     return projs.filter((p) => p.clientId === clientId);
   },
   getProjectById: async (id: string): Promise<Project | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getProjectById(id);
     const projs = await FreelancerProjectService.getProjects();
     return projs.find((p) => p.id === id);
   },
   createProject: async (project: Omit<Project, 'id' | 'completionPercentage' | 'spent'>): Promise<Project> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      return FlowDeskStore.createProject(project as any);
+    }
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) throw new Error('No active workspace');
 
@@ -300,7 +305,11 @@ export const FreelancerProjectService = {
       throw err;
     }
   },
+  addProject: async (project: Omit<Project, 'id' | 'completionPercentage' | 'spent'>): Promise<Project> => {
+    return FreelancerProjectService.createProject(project);
+  },
   updateProject: async (id: string, updates: Partial<Project>): Promise<Project | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.updateProject(id, updates);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {
@@ -319,6 +328,7 @@ export const FreelancerProjectService = {
     } catch { return undefined; }
   },
   toggleMilestone: async (projectId: string, milestoneId: string): Promise<Project | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.toggleMilestone(projectId, milestoneId);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {
@@ -333,6 +343,7 @@ export const FreelancerProjectService = {
     } catch { return undefined; }
   },
   addMilestone: async (projectId: string, title: string, dueDate: string): Promise<Project | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.addMilestone(projectId, title, dueDate);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {
@@ -348,6 +359,7 @@ export const FreelancerProjectService = {
     } catch { return undefined; }
   },
   markProjectComplete: async (id: string): Promise<Project | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.markProjectComplete(id);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {
@@ -361,7 +373,7 @@ export const FreelancerProjectService = {
 
 export const FreelancerDocumentService = {
   getDocuments: async (clientId?: string): Promise<DocumentItem[]> => {
-    if (DemoDataProvider.isDemo()) return DemoDataProvider.getDocuments(clientId);
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getDocuments(clientId);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return [];
 
@@ -394,6 +406,9 @@ export const FreelancerDocumentService = {
     clientId: string,
     data: { title: string; type: DocumentItem['type']; isRequired?: boolean; dueDate?: string; description?: string }
   ): Promise<DocumentItem> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      return FlowDeskStore.requestDocument(clientId, data);
+    }
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) throw new Error('No active workspace');
 
@@ -436,7 +451,20 @@ export const FreelancerDocumentService = {
       throw err;
     }
   },
+  createDocument: async (docData: any): Promise<DocumentItem> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      return FlowDeskStore.uploadDirectDocument(docData.clientId, docData);
+    }
+    return FreelancerDocumentService.requestDocument(docData.clientId, docData);
+  },
+  uploadDocument: async (docData: any): Promise<DocumentItem> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      return FlowDeskStore.uploadDirectDocument(docData.clientId, docData);
+    }
+    return FreelancerDocumentService.requestDocument(docData.clientId, docData);
+  },
   reorderDocuments: async (clientId: string, docIds: string[]): Promise<DocumentItem[]> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.reorderDocuments(clientId, docIds);
     // Reorder is not supported via Supabase; return current order
     return FreelancerDocumentService.getDocuments(clientId);
   },
@@ -444,6 +472,7 @@ export const FreelancerDocumentService = {
     docId: string,
     fileData: { fileName?: string; size?: string; downloadUrl?: string; file?: File }
   ): Promise<DocumentItem | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.uploadDocumentFile(docId, fileData);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {
@@ -465,6 +494,7 @@ export const FreelancerDocumentService = {
     } catch { return undefined; }
   },
   verifyDocument: async (docId: string, notes?: string): Promise<DocumentItem | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.verifyDocument(docId, notes);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {
@@ -480,6 +510,7 @@ export const FreelancerDocumentService = {
     } catch { return undefined; }
   },
   rejectDocument: async (docId: string, reason: string): Promise<DocumentItem | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.rejectDocument(docId, reason);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {
@@ -505,6 +536,7 @@ export const FreelancerDocumentService = {
     } catch { return undefined; }
   },
   deleteDocument: async (docId: string): Promise<boolean> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.deleteDocument(docId);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return false;
     try {
@@ -516,7 +548,7 @@ export const FreelancerDocumentService = {
 
 export const FreelancerDeliverableService = {
   getDeliverables: async (clientId?: string, includeArchived?: boolean): Promise<Deliverable[]> => {
-    if (DemoDataProvider.isDemo()) return DemoDataProvider.getDeliverables(clientId, includeArchived);
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getDeliverables(clientId, includeArchived);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return [];
 
@@ -555,6 +587,7 @@ export const FreelancerDeliverableService = {
     }
   },
   getDeliverableById: async (id: string): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getDeliverableById(id);
     try {
       const { data, error } = await supabase.from('deliverables').select('*').eq('id', id).single();
       if (error || !data) return undefined;
@@ -637,7 +670,13 @@ export const FreelancerDeliverableService = {
       return undefined;
     }
   },
+  createDeliverable: async (delData: any): Promise<Deliverable> => {
+    return FreelancerDeliverableService.addDeliverable(delData);
+  },
   addDeliverable: async (delData: Omit<Deliverable, 'id'> & { file?: File; fileUrl?: string; fileName?: string; fileSize?: string }): Promise<Deliverable> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      return FlowDeskStore.addDeliverable(delData as any);
+    }
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) throw new Error('No active workspace');
 
@@ -757,6 +796,7 @@ export const FreelancerDeliverableService = {
     }
   },
   updateDeliverable: async (id: string, updates: Partial<Deliverable>): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.updateDeliverable(id, updates);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {
@@ -768,6 +808,8 @@ export const FreelancerDeliverableService = {
       if (updates.version !== undefined) payload.current_version = updates.version;
       if (updates.internalNotes !== undefined) payload.internal_notes = updates.internalNotes;
       if (updates.revisionNote !== undefined) payload.rejection_reason = updates.revisionNote;
+      if ((updates as any).revisionNotes !== undefined) payload.rejection_reason = (updates as any).revisionNotes;
+      if (updates.approvalStatus !== undefined) payload.approval_status = updates.approvalStatus;
       const { error } = await supabase.from('deliverables').update(payload).eq('id', id).eq('workspace_id', wsId);
       if (error) { console.warn('Supabase deliverable update error:', error.message); return undefined; }
       const { data } = await supabase.from('deliverables').select('*').eq('id', id).single();
@@ -784,6 +826,7 @@ export const FreelancerDeliverableService = {
     return FreelancerDeliverableService.updateDeliverable(id, { status: 'archived' as any });
   },
   deleteDeliverable: async (id: string): Promise<boolean> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.deleteDeliverableDraft(id);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return false;
     try {
@@ -1008,6 +1051,7 @@ export const FreelancerDeliverableService = {
     }
   },
   approveDeliverable: async (id: string, note?: string): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.approveDeliverable(id, note);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {
@@ -1037,6 +1081,7 @@ export const FreelancerDeliverableService = {
     }
   },
   requestDeliverableRevision: async (id: string, revisionComment: string): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.requestDeliverableRevision(id, revisionComment);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {
@@ -1607,12 +1652,24 @@ export const FreelancerInvoiceService = {
    */
   markInvoicePaidOffline: async (
     id: string,
-    paymentMethod: string = 'bank_transfer',
-    notes?: string,
-    amount?: number
+    paymentMethodOrOptions: string | { amountSettled?: number; amount?: number; paymentMethod?: string; notes?: string } = 'bank_transfer',
+    notesParam?: string,
+    amountParam?: number
   ): Promise<Invoice | undefined> => {
+    let paymentMethod = 'bank_transfer';
+    let notes = notesParam;
+    let amount = amountParam;
+
+    if (typeof paymentMethodOrOptions === 'object' && paymentMethodOrOptions !== null) {
+      paymentMethod = paymentMethodOrOptions.paymentMethod || 'bank_transfer';
+      notes = paymentMethodOrOptions.notes || notes;
+      amount = paymentMethodOrOptions.amountSettled ?? paymentMethodOrOptions.amount ?? amount;
+    } else if (typeof paymentMethodOrOptions === 'string') {
+      paymentMethod = paymentMethodOrOptions;
+    }
+
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
-      return FlowDeskStore.markInvoicePaidOffline(id, paymentMethod, notes);
+      return FlowDeskStore.markInvoicePaidOffline(id, paymentMethod, notes, amount);
     }
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) {
@@ -2080,6 +2137,8 @@ export const NotificationService = {
     } catch { return false; }
   },
 };
+
+export const FreelancerNotificationService = NotificationService;
 
 export const WorkspaceProgressService = {
   getWorkspaceProgressBreakdown: async (clientId: string): Promise<WorkspaceProgressBreakdown> => {

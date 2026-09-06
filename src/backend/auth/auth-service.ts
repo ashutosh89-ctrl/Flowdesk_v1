@@ -29,18 +29,21 @@ export const AuthService = {
    * Demo Mode Signup Fallback
    */
   async signUpDemo(email: string, fullName: string, businessName: string): Promise<AuthResponse> {
+    if (!email?.trim() || !fullName?.trim() || !businessName?.trim()) {
+      return { user: null, error: 'All fields (full name, business name, email) are required.' };
+    }
     const mockUserId = `usr-${Date.now()}`;
     const { user } = SessionService.setLocalSession({
       id: mockUserId,
-      email,
-      user_metadata: { full_name: fullName, business_name: businessName },
+      email: email.trim(),
+      user_metadata: { full_name: fullName.trim(), business_name: businessName.trim() },
     });
 
     await ProfileService.upsertProfile(mockUserId, {
       id: mockUserId,
-      name: fullName,
-      companyName: businessName,
-      email,
+      name: fullName.trim(),
+      companyName: businessName.trim(),
+      email: email.trim(),
       onboardingCompleted: false,
     });
 
@@ -51,6 +54,10 @@ export const AuthService = {
    * Email Sign Up
    */
   async signUp(email: string, password: string, fullName: string, businessName: string): Promise<AuthResponse> {
+    if (!email?.trim() || !password || !fullName?.trim() || !businessName?.trim()) {
+      return { user: null, error: 'All fields (full name, business name, email, password) are required.' };
+    }
+
     // Explicit auth mode: only use demo if explicitly in demo mode
     if (isDemoModeActive()) {
       return this.signUpDemo(email, fullName, businessName);
@@ -163,6 +170,10 @@ export const AuthService = {
    * Email Sign In
    */
   async signIn(email: string, password: string): Promise<AuthResponse> {
+    if (!email?.trim() || !password) {
+      return { user: null, error: 'Email and password are required.' };
+    }
+
     // Explicit auth mode: only use demo if explicitly in demo mode
     if (isDemoModeActive()) {
       return this.signInDemo(email);
@@ -175,7 +186,7 @@ export const AuthService = {
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       });
 
@@ -290,6 +301,10 @@ export const AuthService = {
    * Request Password Reset Email
    */
   async forgotPassword(email: string): Promise<AuthResponse> {
+    if (!email?.trim()) {
+      return { user: null, error: 'Email address is required.' };
+    }
+
     if (isDemoModeActive()) {
       return { user: null, error: null, message: 'Reset password code dispatched to your email.' };
     }
@@ -300,7 +315,7 @@ export const AuthService = {
 
     try {
       const originUrl = typeof window !== 'undefined' ? window.location.origin : '';
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${originUrl}/auth/reset-password`,
       });
 
@@ -318,6 +333,10 @@ export const AuthService = {
    * Reset Password
    */
   async resetPassword(newPassword: string): Promise<AuthResponse> {
+    if (!newPassword?.trim()) {
+      return { user: null, error: 'New password is required.' };
+    }
+
     if (isDemoModeActive()) {
       return { user: null, error: null, message: 'Password successfully updated.' };
     }
@@ -345,13 +364,22 @@ export const AuthService = {
    * Verify Email OTP
    */
   async verifyOtp(email: string, token: string): Promise<AuthResponse> {
+    if (!email?.trim() || !token?.trim()) {
+      return { user: null, error: 'Email and verification code are required.' };
+    }
+
     const { user: currentLocalUser } = await SessionService.getSession();
 
     if (isDemoModeActive()) {
-      const activeUser = currentLocalUser || {
-        id: `usr-${Date.now()}`,
-        email: email || 'user@example.com',
-        user_metadata: { full_name: 'User', business_name: 'My Workspace' },
+      const isAlex = email.toLowerCase().includes('alex') || email.toLowerCase().includes('rivera');
+      const isMatch = Boolean(currentLocalUser && currentLocalUser.email?.toLowerCase() === email.trim().toLowerCase());
+      const activeUser = (isMatch && currentLocalUser) ? currentLocalUser : {
+        id: isAlex ? 'usr-demo-alex' : `usr-${Date.now()}`,
+        email: email.trim(),
+        user_metadata: {
+          full_name: isAlex ? 'Alex Rivera' : (email.split('@')[0] || 'Demo User'),
+          business_name: isAlex ? 'Rivera Design Studio' : 'FlowDesk Studio',
+        },
       };
       const { user } = SessionService.setLocalSession(activeUser);
       return { user, error: null, message: 'Email address verified.' };

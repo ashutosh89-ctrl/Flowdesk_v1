@@ -1,8 +1,9 @@
 import { ClientRepository } from '@/backend/repositories/clients/client-service';
-import { supabase } from '@/backend/utilities/supabase';
+import { supabase, isDemoModeActive } from '@/backend/utilities/supabase';
 import { Client, ClientPortalConfig, AccountDeletionRecord } from '@/shared/types';
 import { DemoDataProvider } from '@/backend/utilities/demo-data-provider';
 import { AccountDeletionService } from '@/backend/auth/account-deletion-service';
+import { FlowDeskStore } from '@/backend/store/storage-store';
 
 /**
  * Freelancer-side Client Relationship & Management Service.
@@ -11,14 +12,17 @@ import { AccountDeletionService } from '@/backend/auth/account-deletion-service'
  */
 export const FreelancerClientManagementService = {
   getClients: async (): Promise<Client[]> => {
-    if (DemoDataProvider.isDemo()) return DemoDataProvider.getClients();
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getClients();
     return ClientRepository.getClients();
   },
   getClientById: async (id: string): Promise<Client | undefined> => {
-    if (DemoDataProvider.isDemo()) return DemoDataProvider.getClientById(id);
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getClientById(id);
     return ClientRepository.getClientById(id);
   },
   createClient: async (clientData: Omit<Client, 'id' | 'totalBilled' | 'createdAt'>): Promise<Client> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      return FlowDeskStore.createClient(clientData);
+    }
     const client = await ClientRepository.createClient(clientData);
     // Log activity (non-critical)
     try {
@@ -31,12 +35,15 @@ export const FreelancerClientManagementService = {
     return client;
   },
   updateClient: async (id: string, updates: Partial<Client>): Promise<Client | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.updateClient(id, updates);
     return ClientRepository.updateClient(id, updates);
   },
   archiveClient: async (id: string): Promise<Client | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.archiveClient(id);
     return ClientRepository.updateClient(id, { status: 'archived' });
   },
   restoreClient: async (id: string): Promise<Client | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.restoreClient(id);
     const res = await AccountDeletionService.restoreClientAccount(id);
     if (res.success && res.client) {
       return res.client;
@@ -47,6 +54,7 @@ export const FreelancerClientManagementService = {
     return AccountDeletionService.getDeletedClients(workspaceId);
   },
   deleteClient: async (id: string): Promise<boolean> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.deleteClient(id);
     return ClientRepository.deleteClient(id);
   },
   togglePortalAccess: async (clientId: string, enabled: boolean): Promise<ClientPortalConfig> => {

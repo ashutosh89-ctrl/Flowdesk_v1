@@ -235,7 +235,7 @@ async function runHardeningTests() {
   console.log('\n--- SECTION 6: Resend Email Outbox & TOCTOU Concurrency ---');
 
   const emailRes1 = await EmailService.send({
-    to: 'client@example.com',
+    to: 'delivered@resend.dev',
     subject: 'Payment Received',
     html: '<p>Thanks for your payment</p>',
     eventType: 'payment_received',
@@ -247,7 +247,7 @@ async function runHardeningTests() {
 
   // Attempt immediate duplicate send with same eventType and referenceId
   const emailRes2 = await EmailService.send({
-    to: 'client@example.com',
+    to: 'delivered@resend.dev',
     subject: 'Payment Received',
     html: '<p>Thanks for your payment</p>',
     eventType: 'payment_received',

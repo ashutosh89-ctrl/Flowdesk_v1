@@ -1213,6 +1213,7 @@ export const FlowDeskStore = {
     data: {
       title: string;
       type?: DocumentItem['type'];
+      category?: string;
       description?: string;
       fileName?: string;
       size?: string;
@@ -1220,12 +1221,14 @@ export const FlowDeskStore = {
       projectId?: string;
     }
   ): DocumentItem => {
-    const newDoc: DocumentItem = {
-      id: `doc-${Date.now()}`,
+    const docType = (data.type || data.category || 'other') as DocumentItem['type'];
+    const newDoc: DocumentItem & { category?: string } = {
+      id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       clientId,
       title: data.title,
       description: data.description || '',
-      type: data.type || 'other',
+      type: docType,
+      category: data.category || docType,
       status: 'uploaded',
       isRequired: false,
       fileName: data.fileName || `${data.title.toLowerCase().replace(/\s+/g, '-')}.pdf`,
@@ -1235,7 +1238,7 @@ export const FlowDeskStore = {
       updatedAt: new Date().toISOString().split('T')[0],
     };
 
-    documents.unshift(newDoc);
+    documents = [newDoc as DocumentItem, ...documents];
     saveStore(STORAGE_KEYS.DOCUMENTS, documents);
 
     FlowDeskStore.logActivity({
@@ -1944,10 +1947,18 @@ export const FlowDeskStore = {
   markInvoicePaidOffline: (
     id: string,
     paymentMethod: string = 'bank_transfer',
-    notes?: string
+    notes?: string,
+    amount?: number
   ): Invoice | undefined => {
     const inv = invoices.find((i) => i.id === id);
     if (!inv) return undefined;
+
+    const currentPaid = Number(inv.paidAmount) || 0;
+    const remaining = Math.max(0, (Number(inv.total) || 0) - currentPaid);
+    const settleAmt = (amount !== undefined && amount > 0 && amount <= remaining) ? amount : remaining;
+    const newPaid = currentPaid + settleAmt;
+    const newRemaining = Math.max(0, (Number(inv.total) || 0) - newPaid);
+    const isFull = newRemaining === 0;
 
     const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
     const receiptNum = `RCP-${new Date().getFullYear()}-${( (inv.receipts?.length || 0) + 1 ).toString().padStart(3, '0')}`;
@@ -1957,18 +1968,21 @@ export const FlowDeskStore = {
       receiptNumber: receiptNum,
       invoiceId: inv.id,
       invoiceNumber: inv.invoiceNumber,
-      amount: inv.total,
+      amount: settleAmt,
       currency: inv.currency,
       paymentMethod,
       paymentDate: new Date().toISOString().split('T')[0],
       razorpayOrderId: `order_mock_${Math.random().toString(36).substring(2, 8)}`,
       razorpayPaymentId: `pay_mock_${Math.random().toString(36).substring(2, 8)}`,
-      notes: notes || 'Offline settlement recorded and verified.',
+      notes: notes || (isFull ? 'Offline settlement recorded and verified.' : 'Partial offline settlement recorded.'),
     };
 
-    inv.paymentStatus = 'paid';
-    inv.workflowStatus = 'viewed';
-    inv.status = 'paid';
+    inv.paidAmount = newPaid;
+    inv.remainingAmount = newRemaining;
+    inv.remainingBalance = newRemaining;
+    inv.paymentStatus = isFull ? 'paid' : 'partially_paid';
+    inv.workflowStatus = isFull ? 'viewed' : inv.workflowStatus;
+    inv.status = isFull ? 'paid' : 'partially_paid';
     inv.receipts = [...(inv.receipts || []), newReceipt];
 
     inv.timeline = [
@@ -1977,16 +1991,16 @@ export const FlowDeskStore = {
         id: `tl-${Date.now()}`,
         invoiceId: inv.id,
         type: 'marked_paid_offline',
-        title: `Payment Marked Paid (${paymentMethod.replace('_', ' ').toUpperCase()})`,
+        title: `Payment Marked Paid (${String(paymentMethod).replace('_', ' ').toUpperCase()})`,
         timestamp: now,
         actor: 'Alex Rivera',
-        metadata: `Receipt #${receiptNum} Issued`,
+        metadata: `Receipt #${receiptNum} Issued ($${settleAmt.toLocaleString()})`,
       },
       {
         id: `tl-${Date.now() + 1}`,
         invoiceId: inv.id,
         type: 'payment_received',
-        title: `Payment Received (${inv.currency} ${inv.total.toLocaleString()})`,
+        title: `Payment Received (${inv.currency} ${settleAmt.toLocaleString()})`,
         timestamp: now,
         actor: 'System',
       },
@@ -2000,7 +2014,7 @@ export const FlowDeskStore = {
         timestamp: now,
         user: 'Alex Rivera',
         action: 'Recorded Offline Payment',
-        details: `Settled ${inv.currency} ${inv.total.toLocaleString()} via ${paymentMethod}`,
+        details: `Settled ${inv.currency} ${settleAmt.toLocaleString()} via ${paymentMethod}`,
       },
     ];
 
@@ -2010,8 +2024,8 @@ export const FlowDeskStore = {
         id: `hist-${Date.now()}`,
         invoiceId: inv.id,
         fieldChanged: 'paymentStatus',
-        oldValue: 'pending',
-        newValue: 'paid',
+        oldValue: inv.paymentStatus,
+        newValue: isFull ? 'paid' : 'partially_paid',
         time: now,
         user: 'Alex Rivera',
       },
@@ -2022,9 +2036,9 @@ export const FlowDeskStore = {
     // Update client total billed
     const client = clients.find((c) => c.id === inv.clientId);
     if (client) {
-      client.totalBilled = (client.totalBilled || 0) + inv.total;
+      client.totalBilled = (client.totalBilled || 0) + settleAmt;
       if (client.outstandingBalance) {
-        client.outstandingBalance = Math.max(0, client.outstandingBalance - inv.total);
+        client.outstandingBalance = Math.max(0, client.outstandingBalance - settleAmt);
       }
       saveStore(STORAGE_KEYS.CLIENTS, clients);
     }
@@ -2032,7 +2046,7 @@ export const FlowDeskStore = {
     FlowDeskStore.logActivity({
       user: 'Alex Rivera',
       action: 'marked invoice paid',
-      target: `${inv.invoiceNumber} (${inv.currency} ${inv.total.toLocaleString()})`,
+      target: `${inv.invoiceNumber} (${inv.currency} ${settleAmt.toLocaleString()})`,
       category: 'invoice',
     });
 
