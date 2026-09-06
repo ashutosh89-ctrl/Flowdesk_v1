@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/src/lib/supabase';
-import { ProfileService } from '@/src/services/profile-service';
-import { Button } from '@/src/components/ui/button';
-import { Input } from '@/src/components/ui/input';
-import { ToastProvider, useToast } from '@/src/components/ui/toast';
-import { AuthProvider, useAuth } from '@/src/context/auth-context';
+import { supabase } from '@/backend/utilities/supabase';
+import { ProfileService } from '@/backend/auth/profile-service';
+import { Button } from '@/frontend/shared/ui/button';
+import { Input } from '@/frontend/shared/ui/input';
+import { ToastProvider, useToast } from '@/frontend/shared/ui/toast';
+import { AuthProvider, useAuth } from '@/frontend/auth/auth-context';
 import { User, Building, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 
 function OnboardingContent() {

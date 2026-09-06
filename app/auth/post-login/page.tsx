@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/src/lib/supabase';
+import { isDemoModeActive } from '@/backend/utilities/supabase';
+import { SessionService } from '@/backend/auth/session-service';
+import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 import { Loader2, ShieldCheck } from 'lucide-react';
 
 export default function PostLoginGate() {
@@ -14,8 +16,31 @@ export default function PostLoginGate() {
 
     async function checkUserAndProfile() {
       try {
-        // 1. Check authenticated user
         let user = null;
+
+        // In demo mode, use localStorage session instead of Supabase
+        if (isDemoModeActive()) {
+          const localSession = await SessionService.getSession();
+          user = localSession?.user || null;
+
+          if (!user) {
+            console.warn('Post-login gate: No local session found, redirecting to /login');
+            router.replace('/login');
+            return;
+          }
+
+          if (!isMounted) return;
+          setStatusText('Demo mode active — routing to workspace...');
+
+          // In demo mode, skip Supabase profile check — always go to dashboard
+          router.replace('/dashboard');
+          return;
+        }
+
+        // Production mode: Use Supabase auth
+        const { supabase } = await import('@/backend/utilities/supabase');
+
+        // 1. Check authenticated user
         const { data: userData, error: userError } = await supabase.auth.getUser();
         user = userData?.user;
 
@@ -39,9 +64,15 @@ export default function PostLoginGate() {
           return;
         }
 
-        setStatusText('Checking onboarding & workspace status...');
+        // 2. Check if account is in pending deletion
+        const { AccountDeletionService } = await import('@/backend/auth/account-deletion-service');
+        const deletionStatus = await AccountDeletionService.getFreelancerDeletionStatus(user.id);
+        if (deletionStatus.isPendingDeletion) {
+          router.replace('/recover');
+          return;
+        }
 
-        // 2. Query profiles table for onboarding status
+        // 3. Query profiles table for onboarding status
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('id, onboarding_completed')
@@ -54,9 +85,7 @@ export default function PostLoginGate() {
 
         if (!isMounted) return;
 
-        // 3. Routing decision:
-        // - If profile does NOT exist or onboarding is NOT completed -> Redirect to /onboarding
-        // - If profile exists AND onboarding is completed -> Redirect to /dashboard
+        // 4. Routing decision:
         if (!profile || !profile.onboarding_completed) {
           router.replace('/onboarding');
         } else {
@@ -84,12 +113,12 @@ export default function PostLoginGate() {
           <Loader2 className="w-6 h-6 animate-spin text-white" />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-white tracking-tight">FlowDesk OS</h3>
-          <p className="text-xs text-zinc-400 mt-1">{statusText}</p>
+          <FlowDeskLogo variant="full" size="sm" className="mx-auto mb-2" priority />
+          <p className="text-xs text-zinc-400">{statusText}</p>
         </div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-mono text-zinc-400">
           <ShieldCheck className="w-3 h-3 text-emerald-400" />
-          <span>Authentication Gate Active</span>
+          <span>{isDemoModeActive() ? 'Demo Mode Active' : 'Authentication Gate Active'}</span>
         </div>
       </div>
     </div>

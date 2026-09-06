@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { AuthProvider } from '@/src/context/auth-context';
-import { ToastProvider } from '@/src/components/ui/toast';
-import { SignUpForm } from '@/src/features/auth/signup-form';
+import { AuthProvider } from '@/frontend/auth/auth-context';
+import { ToastProvider } from '@/frontend/shared/ui/toast';
+import { SignUpForm } from '@/frontend/auth/signup-form';
 import { ArrowLeft } from 'lucide-react';
 
 function SignupContent() {

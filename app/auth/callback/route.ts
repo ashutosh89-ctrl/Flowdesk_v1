@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { validateAndFormatUrl, validateKey } from '@/src/lib/supabase';
+import { validateAndFormatUrl, validateKey } from '@/backend/utilities/supabase';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const next = requestUrl.searchParams.get('next') || '/auth/post-login';
+  const type = requestUrl.searchParams.get('type');
+  let next = requestUrl.searchParams.get('next') || '/auth/post-login';
+
+  if (type === 'recovery' && next === '/auth/post-login') {
+    next = '/reset-password';
+  }
 
   if (code) {
     const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -43,6 +48,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Fallback redirect to post-login gate
-  return NextResponse.redirect(new URL('/auth/post-login', request.url));
+  // Fallback redirect to next or post-login gate
+  return NextResponse.redirect(new URL(next, request.url));
 }

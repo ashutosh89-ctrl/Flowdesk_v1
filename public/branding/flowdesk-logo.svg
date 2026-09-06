@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 120" width="100%" height="100%" fill="none">
+  <!-- FlowDesk Symbol Mark (Left) -->
+  <g transform="translate(10, 10) scale(0.62)">
+    <path
+      d="M 52 14 C 76 14, 126 14, 134 14 C 141 14, 145 22, 137 32 C 122 50, 96 68, 62 68 C 42 68, 32 58, 32 40 C 32 24, 40 14, 52 14 Z"
+      fill="#FFFFFF"
+    />
+    <path
+      d="M 28 80 C 44 64, 76 64, 116 64 C 125 64, 128 72, 121 82 C 108 97, 85 110, 52 110 C 36 110, 24 100, 28 80 Z"
+      fill="#F4F4F5"
+    />
+    <path
+      d="M 32 44 C 32 68, 31 92, 14 116 C 5 129, 6 138, 17 142 C 28 146, 38 138, 45 125 C 56 104, 58 78, 58 48 C 58 38, 52 38, 42 40 Z"
+      fill="#E4E4E7"
+    />
+  </g>
+
+  <!-- FlowDesk Wordmark Typography (Right) -->
+  <text
+    x="125"
+    y="78"
+    font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+    font-size="64"
+    font-weight="800"
+    letter-spacing="-1.5px"
+    fill="#FFFFFF"
+  >FlowDesk</text>
+</svg>

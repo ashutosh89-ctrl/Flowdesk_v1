@@ -112,3 +112,132 @@
   background: rgba(255, 255, 255, 0.25);
 }
 
+/* ============================================================
+   PRINT STYLES — Invoice & Document Print Layout
+   ============================================================ */
+@media print {
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the print target */
+  .print-invoice,
+  .print-invoice * {
+    visibility: visible !important;
+  }
+
+  /* Position the print area */
+  .print-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 40px !important;
+    background: white !important;
+    color: #111 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Force light theme for print */
+  .print-invoice .bg-zinc-950,
+  .print-invoice .bg-zinc-900,
+  .print-invoice .bg-zinc-800,
+  .print-invoice .bg-zinc-700,
+  .print-invoice .bg-black,
+  .print-invoice [class*="bg-zinc-9"] {
+    background: #fff !important;
+  }
+
+  /* Print content area - remove scroll限制 */
+  .print-invoice-content {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .print-invoice .text-white,
+  .print-invoice .text-zinc-100,
+  .print-invoice .text-zinc-200,
+  .print-invoice .text-zinc-300 {
+    color: #111 !important;
+  }
+
+  .print-invoice .text-zinc-400,
+  .print-invoice .text-zinc-500,
+  .print-invoice .text-zinc-600 {
+    color: #555 !important;
+  }
+
+  .print-invoice .border-white\/10,
+  .print-invoice .border-white\/15,
+  .print-invoice .border-zinc-700,
+  .print-invoice .border-zinc-800 {
+    border-color: #ddd !important;
+  }
+
+  /* Hide print-irrelevant elements */
+  .print-no-display {
+    display: none !important;
+  }
+
+  /* Tables */
+  .print-invoice table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  .print-invoice th,
+  .print-invoice td {
+    padding: 8px 12px !important;
+    border-bottom: 1px solid #eee !important;
+  }
+
+  /* Page-break handling */
+  .print-invoice-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-invoice-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-invoice-totals {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Hide any overflow */
+  .print-invoice {
+    overflow: visible !important;
+  }
+
+  /* Ensure dark-themed elements print correctly */
+  .print-invoice .bg-emerald-950,
+  .print-invoice .bg-emerald-900,
+  .print-invoice .bg-amber-950,
+  .print-invoice .bg-amber-900 {
+    background: #fff !important;
+  }
+
+  .print-invoice .text-emerald-400,
+  .print-invoice .text-emerald-300,
+  .print-invoice .text-amber-400,
+  .print-invoice .text-amber-300 {
+    color: #555 !important;
+  }
+
+  /* Page settings */
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+}
+

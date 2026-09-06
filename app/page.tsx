@@ -2,19 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AuthProvider, useAuth } from '../src/context/auth-context';
-import { LandingPage } from '../src/features/landing/landing-page';
-import { AppShell } from '../src/components/layout/app-shell';
-import { DashboardView } from '../src/features/dashboard/dashboard-view';
-import { ClientsListView } from '../src/features/clients/clients-list-view';
-import { ClientWorkspaceShell } from '../src/features/workspace/client-workspace-shell';
-import { ProjectsListView } from '../src/features/projects/projects-list-view';
-import { DeliverablesListView } from '../src/features/deliverables/deliverables-list-view';
-import { InvoicesListView } from '../src/features/invoices/invoices-list-view';
-import { ActivityFeedView } from '../src/features/activity/activity-feed-view';
-import { SettingsView } from '../src/features/settings/settings-view';
-import { AuthModal, AuthModalView } from '../src/features/auth/auth-modal';
-import { ToastProvider } from '../src/components/ui/toast';
+import { AuthProvider, useAuth } from '@/frontend/auth/auth-context';
+import { LandingPage } from '@/frontend/landing/landing-page';
+import { AppShell } from '@/frontend/shared/layout/app-shell';
+import { DashboardView } from '@/frontend/freelancer/dashboard/dashboard-view';
+import { ClientsListView } from '@/frontend/freelancer/clients/clients-list-view';
+import { ClientWorkspaceShell } from '@/frontend/freelancer/workspace/client-workspace-shell';
+import { ProjectsListView } from '@/frontend/freelancer/projects/projects-list-view';
+import { DeliverablesListView } from '@/frontend/freelancer/deliverables/deliverables-list-view';
+import { InvoicesListView } from '@/frontend/freelancer/invoices/invoices-list-view';
+import { DocumentsListView } from '@/frontend/freelancer/documents/documents-list-view';
+import { ActivityFeedView } from '@/frontend/freelancer/activity/activity-feed-view';
+import { SettingsView } from '@/frontend/freelancer/settings/settings-view';
+import { QuickActionsModal } from '@/frontend/freelancer/dashboard/components/quick-actions-modal';
+import { AuthModal, AuthModalView } from '@/frontend/auth/auth-modal';
+import { ToastProvider } from '@/frontend/shared/ui/toast';
 import { Loader2, ShieldCheck } from 'lucide-react';
 
 function FlowDeskAppContent() {
@@ -34,6 +36,9 @@ function FlowDeskAppContent() {
   // Auth Modal State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authInitialView, setAuthInitialView] = useState<AuthModalView>('login');
+
+  // Quick Actions Modal State (shared between TopNav 'New' and Dashboard 'Create')
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
 
   // Auto-switch to app when authenticated
   useEffect(() => {
@@ -75,8 +80,8 @@ function FlowDeskAppContent() {
     setCurrentView('workspace');
   };
 
-  // Full Screen Loading Skeleton State
-  if (isLoading) {
+  // When switching to 'app' or explicitly loading authenticated view, show loading skeleton
+  if (isLoading && viewMode === 'app') {
     return (
       <div className="min-h-screen bg-[#09090b] text-white flex flex-col items-center justify-center p-4">
         <div className="p-8 rounded-3xl bg-zinc-900/60 border border-white/10 flex flex-col items-center max-w-sm w-full text-center space-y-4 shadow-2xl">
@@ -136,7 +141,7 @@ function FlowDeskAppContent() {
             <DashboardView
               onNavigate={(v) => setCurrentView(v)}
               onOpenClientWorkspace={handleOpenWorkspace}
-              onQuickAction={() => setCurrentView('clients')}
+              onQuickAction={() => setIsQuickActionsOpen(true)}
             />
           )}
 
@@ -159,11 +164,21 @@ function FlowDeskAppContent() {
 
           {currentView === 'invoices' && <InvoicesListView />}
 
+          {currentView === 'documents' && <DocumentsListView />}
+
           {currentView === 'activity' && <ActivityFeedView />}
 
           {currentView === 'settings' && <SettingsView />}
         </AppShell>
       )}
+
+      {/* Global Quick Actions Modal (shared between TopNav 'New' and Dashboard) */}
+      <QuickActionsModal
+        isOpen={isQuickActionsOpen}
+        onClose={() => setIsQuickActionsOpen(false)}
+        onNavigate={(view) => setCurrentView(view)}
+        onRefresh={() => {}}
+      />
 
       {/* Global Auth Modal */}
       <AuthModal

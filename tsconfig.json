@@ -24,9 +24,20 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/frontend/*": ["./src/frontend/*"],
+      "@/backend/*": ["./src/backend/*"],
+      "@/database/*": ["./database/*"],
+      "@/shared/*": ["./src/shared/*"],
+      "@/features/*": ["./src/frontend/*"],
+      "@/components/*": ["./src/frontend/shared/*"],
+      "@/services/*": ["./src/backend/*"],
+      "@/repositories/*": ["./src/backend/repositories/*"],
+      "@/utils/*": ["./src/shared/utils/*"],
+      "@/types": ["./src/shared/types/index.ts"],
+      "@/types/*": ["./src/shared/types/*"],
+      "@/mock/*": ["./src/backend/store/*"],
+      "@/hooks/*": ["./src/frontend/shared/hooks/*"],
+      "@/*": ["./*"]
     }
   },
   "include": [
@@ -37,6 +48,7 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "scripts"
   ]
 }

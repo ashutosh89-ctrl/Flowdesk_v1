@@ -2,18 +2,20 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/src/lib/supabase';
-import { AuthProvider, useAuth } from '@/src/context/auth-context';
-import { ToastProvider } from '@/src/components/ui/toast';
-import { AppShell } from '@/src/components/layout/app-shell';
-import { DashboardView } from '@/src/features/dashboard/dashboard-view';
-import { ClientsListView } from '@/src/features/clients/clients-list-view';
-import { ClientWorkspaceShell } from '@/src/features/workspace/client-workspace-shell';
-import { ProjectsListView } from '@/src/features/projects/projects-list-view';
-import { DeliverablesListView } from '@/src/features/deliverables/deliverables-list-view';
-import { InvoicesListView } from '@/src/features/invoices/invoices-list-view';
-import { ActivityFeedView } from '@/src/features/activity/activity-feed-view';
-import { SettingsView } from '@/src/features/settings/settings-view';
+import { isDemoMode, isSupabaseConfigured } from '@/backend/utilities/supabase';
+import { AuthProvider, useAuth } from '@/frontend/auth/auth-context';
+import { ToastProvider } from '@/frontend/shared/ui/toast';
+import { AppShell } from '@/frontend/shared/layout/app-shell';
+import { DashboardView } from '@/frontend/freelancer/dashboard/dashboard-view';
+import { ClientsListView } from '@/frontend/freelancer/clients/clients-list-view';
+import { ClientWorkspaceShell } from '@/frontend/freelancer/workspace/client-workspace-shell';
+import { ProjectsListView } from '@/frontend/freelancer/projects/projects-list-view';
+import { DeliverablesListView } from '@/frontend/freelancer/deliverables/deliverables-list-view';
+import { InvoicesListView } from '@/frontend/freelancer/invoices/invoices-list-view';
+import { DocumentsListView } from '@/frontend/freelancer/documents/documents-list-view';
+import { ActivityFeedView } from '@/frontend/freelancer/activity/activity-feed-view';
+import { SettingsView } from '@/frontend/freelancer/settings/settings-view';
+import { QuickActionsModal } from '@/frontend/freelancer/dashboard/components/quick-actions-modal';
 import { Loader2 } from 'lucide-react';
 
 function DashboardContent() {
@@ -22,6 +24,7 @@ function DashboardContent() {
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [selectedClientId, setSelectedClientId] = useState<string>('cli-1');
   const [workspaceChecked, setWorkspaceChecked] = useState(false);
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -36,12 +39,30 @@ function DashboardContent() {
     async function verifyProfileAndWorkspace() {
       if (isLoading) return;
 
+      // In demo mode, skip Supabase profile check — go straight to dashboard
+      const DEMO_KEY = 'flowdesk_demo_active';
+      const demoActive =
+        isDemoMode ||
+        !isSupabaseConfigured ||
+        (typeof window !== 'undefined' && Boolean(localStorage.getItem(DEMO_KEY))) ||
+        (typeof document !== 'undefined' && document.cookie.includes('flowdesk_demo_active=true'));
+
+      if (demoActive) {
+        if (mounted) {
+          setWorkspaceChecked(true);
+          clearTimeout(timer);
+        }
+        return;
+      }
+
       if (!isAuthenticated || !user) {
         router.replace('/login');
         return;
       }
 
       try {
+        const { supabase } = await import('@/backend/utilities/supabase');
+
         const { data: prof, error: profErr } = await supabase
           .from('profiles')
           .select('*')
@@ -82,21 +103,27 @@ function DashboardContent() {
     );
   }
 
-  const fallbackName = user?.email?.split('@')[0] || 'User';
+  const isDemo =
+    isDemoMode ||
+    !isSupabaseConfigured ||
+    (typeof window !== 'undefined' && Boolean(localStorage.getItem('flowdesk_demo_active'))) ||
+    (typeof document !== 'undefined' && document.cookie.includes('flowdesk_demo_active=true'));
+
+  const fallbackName = user?.email?.split('@')[0] || (isDemo ? 'Alex Rivera' : 'User');
   const userProfile = {
-    id: user?.id || '',
-    name: profile ? profile.name : fallbackName,
-    title: profile ? profile.title : 'Freelance Specialist',
-    email: user?.email || '',
-    avatarUrl: user?.user_metadata?.avatar_url || '',
-    currency: 'USD',
-    companyName: profile ? profile.companyName : 'My Workspace',
-    hourlyRate: 150,
+    id: user?.id || (isDemo ? 'usr-demo-alex' : ''),
+    name: profile?.name || (isDemo ? 'Alex Rivera' : fallbackName),
+    title: profile?.title || (isDemo ? 'Principal Product Designer & Strategist' : 'Freelance Specialist'),
+    email: user?.email || (isDemo ? 'alex@riveradesign.co' : ''),
+    avatarUrl: user?.user_metadata?.avatar_url || profile?.avatarUrl || '',
+    currency: profile?.currency || 'USD',
+    companyName: profile?.companyName || (isDemo ? 'Rivera Studio' : 'My Workspace'),
+    hourlyRate: profile?.hourlyRate || 150,
     taxRate: 10,
     notificationsEnabled: true,
-    profession: '',
-    country: 'United States',
-    timezone: 'America/New_York',
+    profession: profile?.profession || 'Product & Brand Design',
+    country: profile?.country || 'United States',
+    timezone: profile?.timezone || 'America/New_York',
     language: 'English',
     onboardingCompleted: true,
   };
@@ -107,18 +134,20 @@ function DashboardContent() {
   };
 
   return (
+    <>
     <AppShell
       currentView={currentView}
       onNavigate={(view) => setCurrentView(view)}
       onSwitchViewMode={() => router.push('/')}
       userProfile={userProfile}
       breadcrumbLabel={currentView === 'workspace' ? 'Client Workspace' : undefined}
+      onQuickAction={() => setIsQuickActionsOpen(true)}
     >
       {currentView === 'dashboard' && (
         <DashboardView
           onNavigate={(v) => setCurrentView(v)}
           onOpenClientWorkspace={handleOpenWorkspace}
-          onQuickAction={() => setCurrentView('clients')}
+          onQuickAction={() => setIsQuickActionsOpen(true)}
         />
       )}
       {currentView === 'clients' && <ClientsListView onOpenWorkspace={handleOpenWorkspace} />}
@@ -133,9 +162,18 @@ function DashboardContent() {
         <DeliverablesListView onOpenClientWorkspace={handleOpenWorkspace} />
       )}
       {currentView === 'invoices' && <InvoicesListView />}
+      {currentView === 'documents' && <DocumentsListView />}
       {currentView === 'activity' && <ActivityFeedView />}
       {currentView === 'settings' && <SettingsView />}
     </AppShell>
+
+    <QuickActionsModal
+      isOpen={isQuickActionsOpen}
+      onClose={() => setIsQuickActionsOpen(false)}
+      onNavigate={(view) => setCurrentView(view)}
+      onRefresh={() => {}}
+    />
+    </>
   );
 }
 

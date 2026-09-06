@@ -1,0 +1,29 @@
+# FlowDesk
+
+FlowDesk is a Freelancer Operating System designed to help independent professionals, designers, developers, and consultants manage client work from project kickoff to payment.
+
+## Product Overview
+- **Product Name**: FlowDesk
+- **Category**: Freelancer Operating System / Vertical SaaS
+- **Target Audience**: Freelancers, independent contractors, and solo creative professionals
+- **Primary Goal**: Centralizing client management, deliverables, client approvals, documents, invoices, and payment tracking in one unified workspace.
+
+## Core Workflow
+FlowDesk organizes client work through a structured 7-stage workflow:
+1. **Client**: Workspace onboarding and client directory management.
+2. **Project**: Clear project scope, timeline, milestones, and deliverables definition.
+3. **Documents**: Contracts, briefs, specifications, and client assets.
+4. **Deliverables**: Work submissions with structured version history.
+5. **Approval / Revision**: Client feedback loop with formal approvals and actionable revision requests.
+6. **Invoice**: Itemized professional invoice generation with configurable taxes, currencies, and terms.
+7. **Payment & Completion**: Payment recording, outstanding balance tracking, and project completion records.
+
+## Public Web Resources
+- **Homepage**: /
+- **Workflow Overview**: /#workflow
+- **Features Overview**: /#features
+- **Frequently Asked Questions**: /#faq
+- **Pricing & Workspaces**: /#pricing
+
+## Security & Privacy Notice
+FlowDesk operates strict workspace isolation and client portal authorization. Private workspace information, client data, contracts, deliverables, and invoices are strictly protected and never accessible to public search engines or AI training scrapers.
