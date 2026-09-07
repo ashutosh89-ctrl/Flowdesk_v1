@@ -38,6 +38,10 @@ import { SUPPORTED_CURRENCIES } from '@/shared/utils/currency';
 import { formatInvoiceNumber, sanitizeInvoicePrefix } from '@/shared/utils/invoice-calculations';
 import { InvoiceNumberFormatPreset } from '@/shared/types';
 
+import { CountrySelect } from '@/frontend/shared/ui/country-select';
+import { PhoneInput } from '@/frontend/shared/ui/phone-input';
+import { switchCountryPrefix } from '@/shared/utils/countries';
+
 type SettingsTab = 'profile' | 'billing' | 'notifications' | 'security';
 
 export const SettingsView: React.FC = () => {
@@ -55,8 +59,8 @@ export const SettingsView: React.FC = () => {
     companyName: '',
     hourlyRate: 120,
     profession: '',
-    country: 'United States',
-    timezone: 'America/New_York',
+    country: 'India',
+    timezone: 'Asia/Kolkata',
     language: 'English',
     onboardingCompleted: false,
   });
@@ -513,17 +517,24 @@ export const SettingsView: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
+                  <PhoneInput
                     label="Phone Number"
                     value={profile.phone || ''}
-                    onChange={(e) => handleProfileChange('phone', e.target.value)}
-                    placeholder="+1 (555) 000-0000"
+                    country={profile.country || 'India'}
+                    onChange={(newPhone) => handleProfileChange('phone', newPhone)}
                   />
-                  <Input
+                  <CountrySelect
                     label="Country / Region"
-                    value={profile.country || ''}
-                    onChange={(e) => handleProfileChange('country', e.target.value)}
-                    placeholder="United States"
+                    value={profile.country || 'India'}
+                    onChange={(newCountry) => {
+                      const updatedPhone = switchCountryPrefix(profile.phone || '', profile.country || 'India', newCountry);
+                      setProfile((prev) => ({
+                        ...prev,
+                        country: newCountry,
+                        phone: updatedPhone,
+                      }));
+                      setDirty(true);
+                    }}
                   />
                 </div>
               </CardContent>

@@ -42,7 +42,7 @@ export function ClientInvoicePortalModal({
 
   const studioName = profile?.companyName || profile?.name || 'FlowDesk Freelance Studio';
   const studioEmail = profile?.email || 'billing@flowdesk.app';
-  const studioPhone = profile?.phone || '+1 (555) 019-2831';
+  const studioPhone = profile?.phone || '+91 98765 43210';
   const studioAddress = profile?.address || '';
 
   return (

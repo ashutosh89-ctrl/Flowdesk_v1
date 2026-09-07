@@ -14,6 +14,7 @@ import {
   MoreVertical,
   Edit,
   Copy,
+  Link,
   Archive,
   RotateCcw,
   Trash2,
@@ -29,6 +30,7 @@ export interface ClientCardProps {
   onDuplicate: (client: Client, e: React.MouseEvent) => void;
   onArchive: (client: Client, e: React.MouseEvent) => void;
   onDelete: (client: Client, e: React.MouseEvent) => void;
+  onCopyConnectionLink?: (client: Client, e: React.MouseEvent) => void;
 }
 
 export const ClientCard: React.FC<ClientCardProps> = ({
@@ -38,6 +40,7 @@ export const ClientCard: React.FC<ClientCardProps> = ({
   onDuplicate,
   onArchive,
   onDelete,
+  onCopyConnectionLink,
 }) => {
   const [showMenu, setShowMenu] = React.useState(false);
 
@@ -81,6 +84,15 @@ export const ClientCard: React.FC<ClientCardProps> = ({
                     className="w-full text-left px-3.5 py-2 text-zinc-200 hover:text-white hover:bg-white/10 flex items-center gap-2 font-medium"
                   >
                     <ArrowUpRight className="w-3.5 h-3.5" /> Open Workspace
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      setShowMenu(false);
+                      onCopyConnectionLink?.(client, e);
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 flex items-center gap-2 font-medium"
+                  >
+                    <Link className="w-3.5 h-3.5" /> Copy Connection Link
                   </button>
                   <button
                     onClick={(e) => {

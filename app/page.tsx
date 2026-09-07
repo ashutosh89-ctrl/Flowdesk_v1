@@ -114,8 +114,8 @@ function FlowDeskAppContent() {
     taxRate: 10,
     notificationsEnabled: true,
     profession: '',
-    country: 'United States',
-    timezone: 'America/New_York',
+    country: 'India',
+    timezone: 'Asia/Kolkata',
     language: 'English',
     onboardingCompleted: Boolean(isOnboarded),
   };

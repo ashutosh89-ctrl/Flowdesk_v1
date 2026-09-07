@@ -278,7 +278,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           company: data.clientCompany || data.clientName || 'Apex Digital Labs',
           email: data.clientEmail || 'contact@apexdigital.com',
           status: 'active',
-          country: data.country || 'United States',
+          country: data.country || 'India',
           currency: data.currency || 'USD',
           notes: 'First client created during onboarding.',
           activeProjectsCount: 1,

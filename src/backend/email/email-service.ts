@@ -54,12 +54,12 @@ function cleanOldIdempotencyCache() {
 
 export const EmailService = {
   /**
-   * Check if Resend API is ready for server-side dispatch
+   * Check if Brevo API is ready for server-side dispatch
    */
   isConfigured: (): boolean => {
     if (typeof window !== 'undefined') return false;
-    const key = (process.env.RESEND_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
-    return Boolean(key && key.startsWith('re_'));
+    const key = (process.env.BREVO_API_KEY || process.env.SIB_API_V3_KEY || '').trim().replace(/^['"]|['"]$/g, '');
+    return Boolean(key && (key.startsWith('xkeysib-') || key.length > 20));
   },
 
   /**
@@ -269,25 +269,24 @@ export const EmailService = {
       }
     }
 
-    const resendModule = typeof window === 'undefined' ? (await import('./resend-client')) : null;
-    const resendClient = resendModule?.getResendClient() || null;
-    const isConfigured = resendModule?.checkIsResendConfigured ? resendModule.checkIsResendConfigured() : Boolean(resendModule?.isResendConfigured);
-    const fromAddress = resendModule?.getDefaultSender ? resendModule.getDefaultSender() : (process.env.EMAIL_FROM || 'FlowDesk <onboarding@resend.dev>');
+    const brevoModule = typeof window === 'undefined' ? (await import('./brevo-client')) : null;
+    const isConfigured = brevoModule?.checkIsBrevoConfigured ? brevoModule.checkIsBrevoConfigured() : false;
+    const fromAddress = brevoModule?.getDefaultSender ? brevoModule.getDefaultSender() : (process.env.EMAIL_FROM || 'Flowdesk <mysreio26@gmail.com>');
 
     // 2. Simulated delivery ONLY in explicitly configured demo environments.
-    //    Production NEVER fabricates a successful send when Resend is not
+    //    Production NEVER fabricates a successful send when Brevo is not
     //    configured — that would claim delivery that never happened.
-    if (!resendClient || !isConfigured) {
+    if (!isConfigured) {
       if (isDemoModeActive()) {
         console.info(`[EmailService - Demo Mode] Simulated email to ${recipientNorm}: "${subject}"`);
-        const mockMsgId = `mock_${Date.now()}`;
+        const mockMsgId = `mock_brevo_${Date.now()}`;
         if (idempotencyKey) {
           inMemoryIdempotencyCache.set(idempotencyKey, { status: 'sent', messageId: mockMsgId, timestamp: Date.now() });
         }
         if (eventRecordId) {
           try {
             await db.from('email_events').update({
-              provider: 'resend_mock',
+              provider: 'brevo_mock',
               provider_message_id: mockMsgId,
               status: 'sent',
               sent_at: new Date().toISOString(),
@@ -302,7 +301,7 @@ export const EmailService = {
               event_type: eventType,
               reference_type: referenceType || null,
               reference_id: referenceId || null,
-              provider: 'resend_mock',
+              provider: 'brevo_mock',
               provider_message_id: mockMsgId,
               status: 'sent',
               sent_at: new Date().toISOString(),
@@ -313,8 +312,8 @@ export const EmailService = {
       }
 
       // Production: fail closed — do NOT claim delivery. Record a configuration
-      // failure on the outbox record so it can be retried once Resend is configured.
-      console.error(`[EmailService] Resend is not configured; email NOT sent to ${recipientNorm} (${eventType}).`);
+      // failure on the outbox record so it can be retried once Brevo is configured.
+      console.error(`[EmailService] Brevo is not configured; email NOT sent to ${recipientNorm} (${eventType}).`);
       if (idempotencyKey) {
         inMemoryIdempotencyCache.delete(idempotencyKey);
       }
@@ -322,7 +321,7 @@ export const EmailService = {
         try {
           await db.from('email_events').update({
             status: 'failed',
-            last_error: 'Resend is not configured on the server (missing or invalid RESEND_API_KEY).',
+            last_error: 'Brevo is not configured on the server (missing or invalid BREVO_API_KEY).',
             next_attempt_at: new Date(Date.now() + 60 * 1000).toISOString(),
           }).eq('id', eventRecordId);
         } catch {}
@@ -330,22 +329,22 @@ export const EmailService = {
       return { success: false, error: 'Email provider is not configured. Delivery was not attempted.' };
     }
 
-    // 3. Send via Official Resend SDK
+    // 3. Send via Brevo v3 Transactional API
     try {
-      const { data, error } = await resendClient.emails.send({
-        from: fromAddress,
-        to: [recipientNorm],
-        subject,
-        html,
-        text,
-      });
+      const brevoSender = brevoModule?.parseSender ? brevoModule.parseSender(fromAddress) : undefined;
+      const sendResult = brevoModule?.sendBrevoEmail
+        ? await brevoModule.sendBrevoEmail({
+            to: recipientNorm,
+            subject,
+            html,
+            text,
+            sender: brevoSender,
+          })
+        : { success: false, error: 'Brevo client module not loaded.' };
 
-      if (error) {
-        console.warn(`[EmailService] Resend delivery error for ${eventType}:`, error.message);
-        let actionableError = error.message;
-        if (error.message.includes('can only send testing emails') || error.message.includes('not verified')) {
-          actionableError = `Resend delivery notice: ${error.message}. (Sender: ${fromAddress}, Recipient: ${recipientNorm})`;
-        }
+      if (!sendResult.success) {
+        console.warn(`[EmailService] Brevo delivery error for ${eventType}:`, sendResult.error);
+        const actionableError = sendResult.error || 'Brevo delivery failed';
 
         const retryDelaySec = 60; // 1 minute backoff for retry
         const nextAttempt = new Date(Date.now() + retryDelaySec * 1000).toISOString();
@@ -366,7 +365,7 @@ export const EmailService = {
         return { success: false, error: actionableError };
       }
 
-      const messageId = data?.id || `resend_${Date.now()}`;
+      const messageId = sendResult.messageId || `<brevo_${Date.now()}>`;
 
       if (idempotencyKey) {
         inMemoryIdempotencyCache.set(idempotencyKey, { status: 'sent', messageId, timestamp: Date.now() });
@@ -376,7 +375,7 @@ export const EmailService = {
       if (eventRecordId) {
         try {
           await db.from('email_events').update({
-            provider: 'resend',
+            provider: 'brevo',
             provider_message_id: messageId,
             status: 'sent',
             sent_at: new Date().toISOString(),
@@ -391,7 +390,7 @@ export const EmailService = {
             event_type: eventType,
             reference_type: referenceType || null,
             reference_id: referenceId || null,
-            provider: 'resend',
+            provider: 'brevo',
             provider_message_id: messageId,
             status: 'sent',
             sent_at: new Date().toISOString(),

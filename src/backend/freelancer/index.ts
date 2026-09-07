@@ -131,23 +131,13 @@ export const FreelancerWorkspaceService = {
     return FreelancerDeliverableService.updateDeliverable(id, { status });
   },
   togglePortalAccess: async (clientId: string, enabled: boolean): Promise<ClientPortalConfig> => {
-    try {
-      const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-      if (!wsId) throw new Error('No workspace');
-      const { data, error } = await supabase.from('clients').update({ portal_access_enabled: enabled }).eq('id', clientId).eq('workspace_id', wsId).select().single();
-      if (error || !data) throw error || new Error('Failed to toggle portal');
-      return { clientId, enabled, magicKey: data.portal_token || '', portalUrl: `/portal/${data.id}` };
-    } catch { throw new Error('Failed to toggle portal access'); }
+    return FreelancerClientManagementService.togglePortalAccess(clientId, enabled);
+  },
+  getOrCreateConnectionLink: async (clientId: string): Promise<{ success: boolean; url: string; rawToken?: string; error?: string }> => {
+    return FreelancerClientManagementService.getOrCreateConnectionLink(clientId);
   },
   regeneratePortalLink: async (clientId: string): Promise<ClientPortalConfig> => {
-    try {
-      const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-      if (!wsId) throw new Error('No workspace');
-      const token = `pt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-      const { data, error } = await supabase.from('clients').update({ portal_token: token }).eq('id', clientId).eq('workspace_id', wsId).select().single();
-      if (error || !data) throw error || new Error('Failed to regenerate link');
-      return { clientId, enabled: true, magicKey: token, portalUrl: `/portal/${data.id}` };
-    } catch { throw new Error('Failed to regenerate portal link'); }
+    return FreelancerClientManagementService.regeneratePortalLink(clientId);
   },
 };
 

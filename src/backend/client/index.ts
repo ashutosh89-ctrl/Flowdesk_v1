@@ -137,7 +137,7 @@ export const ClientPortalService = {
             healthBadge: data.health_badge || 'healthy',
             totalBilled: Number(data.total_billed) || 0,
             activeProjectsCount: data.active_projects_count || 0,
-            country: data.country || 'United States',
+            country: data.country || 'India',
             currency: data.currency || 'USD',
             createdAt: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
           };
@@ -288,9 +288,9 @@ export const ClientPortalService = {
       company: client.company,
       contactPerson: client.name,
       email: client.email,
-      phone: client.phone || '+1 (555) 234-5678',
-      timezone: client.timezone || 'America/New_York (UTC-4)',
-      portalLanguage: 'English (US)',
+      phone: client.phone || '+91 98765 43210',
+      timezone: client.timezone || 'Asia/Kolkata (IST +5:30)',
+      portalLanguage: 'English',
       recentAccess: 'Active Session',
     };
 

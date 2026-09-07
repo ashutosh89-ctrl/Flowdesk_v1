@@ -39,14 +39,40 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [connectionUrl, setConnectionUrl] = useState<string>('');
 
-  const portalUrl = typeof window !== 'undefined'
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await FreelancerClientManagementService.getOrCreateConnectionLink(client.id);
+        if (mounted && res.success && res.url) {
+          setConnectionUrl(res.url);
+        }
+      } catch {}
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [client.id]);
+
+  const displayedUrl = connectionUrl || (typeof window !== 'undefined'
     ? `${window.location.origin}/portal/${client.id}`
-    : `https://flowdesk.app/portal/${client.id}`;
+    : `https://flowdesk-v1.vercel.app/portal/${client.id}`);
 
-  const handleCopyLink = () => {
-    navigator.clipboard?.writeText(portalUrl);
-    showToast('Link Copied', 'Magic portal URL copied to clipboard.', 'success');
+  const handleCopyLink = async () => {
+    try {
+      const res = await FreelancerClientManagementService.getOrCreateConnectionLink(client.id);
+      if (res.success && res.url) {
+        setConnectionUrl(res.url);
+        await navigator.clipboard?.writeText(res.url);
+        showToast('Connection Link Copied', 'One-time client connection link copied to clipboard.', 'success');
+      } else {
+        showToast('Error', res.error || 'Failed to copy connection link', 'error');
+      }
+    } catch (err: any) {
+      showToast('Error', err.message || 'Failed to copy connection link', 'error');
+    }
   };
 
   const handleTogglePortal = () => {
@@ -60,11 +86,15 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
     });
   };
 
-  const handleRegenerateLink = () => {
-    WorkspaceService.regeneratePortalLink(client.id).then(() => {
-      showToast('Magic Key Regenerated', 'Old magic link revoked and new key issued.', 'info');
+  const handleRegenerateLink = async () => {
+    try {
+      const res = await FreelancerClientManagementService.regeneratePortalLink(client.id);
+      if (res.portalUrl) setConnectionUrl(res.portalUrl);
+      showToast('Connection Link Regenerated', 'Old pending link revoked and new one-time link issued.', 'info');
       onRefresh();
-    });
+    } catch (err: any) {
+      showToast('Error', err.message || 'Failed to regenerate link', 'error');
+    }
   };
 
   const handleSendInvite = async () => {
@@ -72,7 +102,8 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
     try {
       const res = await FreelancerClientManagementService.sendClientInvitationEmail(client.id);
       if (res.success) {
-        showToast('Invitation Dispatched', res.message || `Invitation email sent to ${client.email}`, 'success');
+        if (res.inviteUrl) setConnectionUrl(res.inviteUrl);
+        showToast('Invitation Dispatched', res.message || `Invitation email sent via Brevo to ${client.email}`, 'success');
       } else {
         showToast('Delivery Notice', res.error || 'Failed to dispatch email', 'error');
       }
@@ -90,7 +121,7 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="space-y-3 max-w-xl">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono uppercase text-zinc-400">Zero-Login Share Portal</span>
+              <span className="text-xs font-mono uppercase text-zinc-400">One-Time Client Connection</span>
               <span
                 className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
                   portalConfig.enabled
@@ -98,29 +129,34 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
                     : 'bg-red-500/10 text-red-400 border-red-500/20'
                 }`}
               >
-                {portalConfig.enabled ? 'Active - Passwordless Link' : 'Disabled'}
+                {portalConfig.enabled ? 'One-Time Connection Active' : 'Disabled'}
               </span>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">Client Magic Portal Link & QR Code</h3>
+              <h3 className="text-lg font-bold text-white tracking-tight">Client Connection Link & Email</h3>
               <p className="text-xs text-zinc-400 mt-0.5">
-                Share this direct access link, send an email invite, or present the QR code to {client.name}.
+                Invite {client.name} via Brevo email or copy the cryptographically secure one-time connection link to send over WhatsApp, Telegram, or SMS.
               </p>
             </div>
             <p className="text-xs text-zinc-300 font-mono select-all bg-zinc-900/90 p-2.5 rounded-xl border border-white/10 break-all">
-              {portalUrl}
+              {displayedUrl}
             </p>
 
             <div className="flex items-center gap-2 flex-wrap pt-1">
-              <Button variant="secondary" size="sm" onClick={handleCopyLink} leftIcon={<Copy className="w-3.5 h-3.5" />}>
-                Copy Link
-              </Button>
               <Button
                 variant="secondary"
                 size="sm"
+                onClick={handleCopyLink}
+                leftIcon={<Copy className="w-3.5 h-3.5 text-emerald-400" />}
+              >
+                Copy Connection Link
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={handleSendInvite}
                 isLoading={isSendingInvite}
-                leftIcon={<Mail className="w-3.5 h-3.5 text-emerald-400" />}
+                leftIcon={<Mail className="w-3.5 h-3.5 text-white" />}
               >
                 Send Email Invite
               </Button>
@@ -155,7 +191,7 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
           {/* QR Code Presentation */}
           <div className="p-4 rounded-2xl bg-zinc-900/90 border border-white/10 flex flex-col items-center gap-2.5 shrink-0 self-center sm:self-auto">
             <div className="p-2.5 rounded-xl bg-white shadow-md">
-              <QRCode value={portalUrl} size={110} darkColor="#09090b" lightColor="#ffffff" />
+              <QRCode value={displayedUrl} size={110} darkColor="#09090b" lightColor="#ffffff" />
             </div>
             <div className="text-center">
               <span className="text-[10px] font-mono font-semibold text-zinc-300 block">SCAN PORTAL QR</span>

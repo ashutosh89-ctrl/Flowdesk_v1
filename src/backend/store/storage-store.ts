@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import {
   Client,
   Project,
@@ -28,6 +29,9 @@ import {
   WorkspaceHealthDetails,
   WorkspaceHealthStatus,
   ProjectMilestone,
+  ClientInvitation,
+  PublicInvitationDetails,
+  ClaimInvitationResult,
 } from '@/shared/types';
 import {
   mockClients,
@@ -56,6 +60,7 @@ const STORAGE_KEYS = {
   PINNED_ITEMS: 'flowdesk_pinned_items',
   RECENT_ITEMS: 'flowdesk_recent_items',
   WIDGET_CONFIG: 'flowdesk_widget_config',
+  CLIENT_INVITATIONS: 'flowdesk_client_invitations',
 };
 
 // Initial Mock Milestones for projects
@@ -153,6 +158,7 @@ let portals: Record<string, ClientPortalConfig> = loadStore(STORAGE_KEYS.PORTALS
   'cli-3': { clientId: 'cli-3', enabled: true, magicKey: 'magic-key-cli-3', lastAccessed: '3 days ago' },
   'cli-4': { clientId: 'cli-4', enabled: false, magicKey: 'magic-key-cli-4' },
 });
+let clientInvitations: Record<string, ClientInvitation> = loadStore(STORAGE_KEYS.CLIENT_INVITATIONS, {});
 let recentSearches: string[] = loadStore(STORAGE_KEYS.RECENT_SEARCHES, ['Apex Digital', 'Design System', 'INV-2026-001']);
 let userProfile: UserProfile = loadStore(STORAGE_KEYS.USER_PROFILE, mockUserProfile);
 let notifications: NotificationItem[] = loadStore(STORAGE_KEYS.NOTIFICATIONS, mockNotifications);
@@ -272,7 +278,7 @@ export const FlowDeskStore = {
   createClient: (clientData: Omit<Client, 'id' | 'totalBilled' | 'createdAt'>): Client => {
     const newClient: Client = {
       ...clientData,
-      id: `cli-${Date.now().toString().slice(-4)}`,
+      id: (clientData as any).id || `cli-${Date.now().toString().slice(-4)}`,
       status: clientData.status || 'active',
       healthBadge: 'healthy',
       totalBilled: 0,
@@ -1540,6 +1546,205 @@ export const FlowDeskStore = {
     });
 
     return cfg;
+  },
+
+  // --- SECURE ONE-TIME CONNECTION INVITATIONS ---
+  createOrGetInvitation: (clientId: string, recipientEmail?: string): { rawToken: string; url: string; invitation: ClientInvitation } => {
+    const client = clients.find((c) => c.id === clientId);
+    const targetEmail = recipientEmail || client?.email || 'client@example.com';
+    const nowIso = new Date().toISOString();
+
+    // Revoke any existing pending invitations for this client
+    Object.values(clientInvitations).forEach((inv) => {
+      if (inv.clientId === clientId && inv.status === 'pending') {
+        inv.status = 'revoked';
+        inv.revokedAt = nowIso;
+      }
+    });
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const invitation: ClientInvitation = {
+      id: `inv-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      workspaceId: 'ws-demo-workspace',
+      clientId,
+      freelancerId: 'usr-demo-freelancer',
+      tokenHash,
+      status: 'pending',
+      recipientEmail: targetEmail,
+      createdAt: nowIso,
+      expiresAt,
+    };
+
+    clientInvitations[tokenHash] = invitation;
+    saveStore(STORAGE_KEYS.CLIENT_INVITATIONS, clientInvitations);
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const url = `${origin}/connect/${rawToken}`;
+
+    return { rawToken, url, invitation };
+  },
+
+  getPublicInvitationDetails: (tokenHash: string): PublicInvitationDetails => {
+    const inv = clientInvitations[tokenHash];
+    if (!inv) {
+      return {
+        isValid: false,
+        status: 'invalid',
+        error: 'This connection link is invalid or does not exist.',
+      };
+    }
+
+    const now = new Date();
+    if (inv.status === 'pending' && new Date(inv.expiresAt) < now) {
+      inv.status = 'expired';
+      saveStore(STORAGE_KEYS.CLIENT_INVITATIONS, clientInvitations);
+      return {
+        isValid: false,
+        status: 'expired',
+        error: 'This connection link has expired.',
+      };
+    }
+
+    if (inv.status === 'claimed') {
+      return {
+        isValid: false,
+        status: 'claimed',
+        error: 'This connection link has already been used.',
+      };
+    }
+
+    if (inv.status === 'revoked') {
+      return {
+        isValid: false,
+        status: 'revoked',
+        error: 'This connection link has been revoked by the sender.',
+      };
+    }
+
+    const client = clients.find((c) => c.id === inv.clientId);
+
+    return {
+      isValid: true,
+      status: 'pending',
+      freelancerName: 'Apex Digital Labs',
+      clientName: client?.name || 'Client',
+      companyName: client?.company || '',
+      maskedEmail: inv.recipientEmail ? `${inv.recipientEmail.charAt(0)}***@${inv.recipientEmail.split('@')[1] || 'example.com'}` : undefined,
+      expiresAt: inv.expiresAt,
+    };
+  },
+
+  claimInvitation: (tokenHash: string, userId: string, userEmail?: string): ClaimInvitationResult => {
+    const inv = clientInvitations[tokenHash];
+    if (!inv) {
+      return {
+        success: false,
+        errorCode: 'INVALID_TOKEN',
+        error: 'This connection link is invalid or does not exist.',
+      };
+    }
+
+    if (inv.status === 'claimed') {
+      return {
+        success: false,
+        errorCode: 'ALREADY_CLAIMED',
+        error: 'This connection link has already been used.',
+      };
+    }
+
+    if (inv.status === 'revoked') {
+      return {
+        success: false,
+        errorCode: 'REVOKED',
+        error: 'This connection link has been revoked by the sender.',
+      };
+    }
+
+    const now = new Date();
+    if (inv.status === 'expired' || new Date(inv.expiresAt) < now) {
+      inv.status = 'expired';
+      saveStore(STORAGE_KEYS.CLIENT_INVITATIONS, clientInvitations);
+      return {
+        success: false,
+        errorCode: 'EXPIRED',
+        error: 'This connection link has expired.',
+      };
+    }
+
+    const client = clients.find((c) => c.id === inv.clientId);
+    if (!client) {
+      return {
+        success: false,
+        errorCode: 'CLIENT_NOT_FOUND',
+        error: 'Associated client record not found.',
+      };
+    }
+
+    if (client.userId && client.userId !== userId) {
+      return {
+        success: false,
+        errorCode: 'CLIENT_ALREADY_CONNECTED',
+        error: 'This client connection has already been completed by another user.',
+      };
+    }
+
+    // Bind client
+    client.userId = userId;
+    saveStore(STORAGE_KEYS.CLIENTS, clients);
+
+    // Consume invitation
+    inv.status = 'claimed';
+    inv.claimedAt = now.toISOString();
+    inv.claimedByUserId = userId;
+
+    // Revoke any other pending invitations for this client
+    Object.values(clientInvitations).forEach((otherInv) => {
+      if (otherInv.clientId === inv.clientId && otherInv.id !== inv.id && otherInv.status === 'pending') {
+        otherInv.status = 'revoked';
+        otherInv.revokedAt = now.toISOString();
+      }
+    });
+    saveStore(STORAGE_KEYS.CLIENT_INVITATIONS, clientInvitations);
+
+    // Log Activity & Notification
+    FlowDeskStore.logActivity({
+      user: userEmail || client.name,
+      action: 'connected client portal account',
+      target: client.company,
+      category: 'portal',
+    });
+
+    FlowDeskStore.addNotification({
+      title: 'Client Connected',
+      message: `${client.name} (${client.company}) connected their portal account.`,
+      type: 'success',
+      clientId: client.id,
+      category: 'portal',
+    });
+
+    return {
+      success: true,
+      clientId: client.id,
+      workspaceId: inv.workspaceId,
+      clientName: client.name,
+      company: client.company,
+      message: 'Client account successfully connected.',
+    };
+  },
+
+  revokeInvitation: (clientId: string): { success: boolean; error?: string } => {
+    const nowIso = new Date().toISOString();
+    Object.values(clientInvitations).forEach((inv) => {
+      if (inv.clientId === clientId && inv.status === 'pending') {
+        inv.status = 'revoked';
+        inv.revokedAt = nowIso;
+      }
+    });
+    saveStore(STORAGE_KEYS.CLIENT_INVITATIONS, clientInvitations);
+    return { success: true };
   },
 
   getClientPortalDashboardData: (clientId: string): ClientPortalDashboardData | null => {

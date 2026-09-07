@@ -180,23 +180,23 @@ async function runAllEmailOperationsTests() {
     assert(tpl.html.includes('Password Changed'));
   });
 
-  console.log('\n--- SECTION 2: Live Resend Dispatch of Client Invitation ---');
+  console.log('\n--- SECTION 2: Live Brevo Dispatch of Client Invitation ---');
 
-  await test('10. Live dispatch of Client Invitation Email to delivered@resend.dev', async () => {
-    const res = await EmailService.sendClientInvitation('delivered@resend.dev', {
+  await test('10. Live dispatch of Client Invitation Email via Brevo to mysreio26@gmail.com', async () => {
+    const res = await EmailService.sendClientInvitation('mysreio26@gmail.com', {
       clientName: 'Acme Global Client',
       freelancerName: 'FlowDesk Studio',
       portalUrl: 'https://flowdesk-v1.vercel.app/portal/cli-demo-test',
     });
     assert(res.success === true, `Client invitation dispatch failed: ${res.error}`);
     assert(typeof res.messageId === 'string' && res.messageId.length > 0);
-    console.log(`    📨 Invitation Message ID: ${res.messageId}`);
+    console.log(`    📨 Invitation Brevo Message ID: ${res.messageId}`);
   });
 
-  console.log('\n--- SECTION 3: Live Resend Dispatch of Invoice Issued ---');
+  console.log('\n--- SECTION 3: Live Brevo Dispatch of Invoice Issued ---');
 
-  await test('11. Live dispatch of Invoice Issued Email to delivered@resend.dev', async () => {
-    const res = await EmailService.sendInvoiceIssued('delivered@resend.dev', {
+  await test('11. Live dispatch of Invoice Issued Email via Brevo to mysreio26@gmail.com', async () => {
+    const res = await EmailService.sendInvoiceIssued('mysreio26@gmail.com', {
       clientName: 'Acme Global Client',
       freelancerName: 'FlowDesk Studio',
       invoiceNumber: 'INV-AUDIT-999',
@@ -206,7 +206,7 @@ async function runAllEmailOperationsTests() {
     });
     assert(res.success === true, `Invoice email dispatch failed: ${res.error}`);
     assert(typeof res.messageId === 'string' && res.messageId.length > 0);
-    console.log(`    📨 Invoice Message ID: ${res.messageId}`);
+    console.log(`    📨 Invoice Brevo Message ID: ${res.messageId}`);
   });
 
   console.log('\n================================================================');

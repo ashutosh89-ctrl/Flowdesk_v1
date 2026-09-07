@@ -137,7 +137,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
         healthBadge: 'healthy',
         activeProjectsCount: 0,
         currency: 'USD',
-        country: 'United States',
+        country: 'India',
       });
 
       showToast('Client Created', `"${clientCompany.trim()}" has been added to your workspace.`, 'success');

@@ -112,8 +112,8 @@ function DashboardContent() {
     taxRate: 10,
     notificationsEnabled: true,
     profession: profile?.profession || 'Product & Brand Design',
-    country: profile?.country || 'United States',
-    timezone: profile?.timezone || 'America/New_York',
+    country: profile?.country || 'India',
+    timezone: profile?.timezone || 'Asia/Kolkata',
     language: 'English',
     onboardingCompleted: true,
   };

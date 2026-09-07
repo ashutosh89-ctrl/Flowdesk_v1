@@ -928,3 +928,40 @@ export interface TodayFocusItem {
   createdAt: string;
 }
 
+export interface ClientInvitation {
+  id: string;
+  workspaceId: string;
+  clientId: string;
+  freelancerId: string;
+  tokenHash: string;
+  status: 'pending' | 'claimed' | 'expired' | 'revoked';
+  recipientEmail?: string;
+  createdAt: string;
+  expiresAt: string;
+  claimedAt?: string;
+  claimedByUserId?: string;
+  revokedAt?: string;
+}
+
+export interface PublicInvitationDetails {
+  isValid: boolean;
+  status: 'pending' | 'claimed' | 'expired' | 'revoked' | 'invalid';
+  freelancerName?: string;
+  companyName?: string;
+  clientName?: string;
+  maskedEmail?: string;
+  expiresAt?: string;
+  error?: string;
+}
+
+export interface ClaimInvitationResult {
+  success: boolean;
+  clientId?: string;
+  workspaceId?: string;
+  clientName?: string;
+  company?: string;
+  errorCode?: 'INVALID_TOKEN' | 'ALREADY_CLAIMED' | 'EXPIRED' | 'REVOKED' | 'CLIENT_ALREADY_CONNECTED' | 'UNAUTHORIZED' | 'CLIENT_NOT_FOUND' | 'SERVER_ERROR';
+  error?: string;
+  message?: string;
+}
+

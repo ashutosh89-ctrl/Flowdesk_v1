@@ -11,6 +11,7 @@ import {
   Phone,
   Edit,
   Copy,
+  Link,
   Archive,
   RotateCcw,
   Trash2,
@@ -31,6 +32,7 @@ export interface ClientTableProps {
   onDuplicate: (client: Client, e: React.MouseEvent) => void;
   onArchive: (client: Client, e: React.MouseEvent) => void;
   onDelete: (client: Client, e: React.MouseEvent) => void;
+  onCopyConnectionLink?: (client: Client, e: React.MouseEvent) => void;
 }
 
 export const ClientTable: React.FC<ClientTableProps> = ({
@@ -44,6 +46,7 @@ export const ClientTable: React.FC<ClientTableProps> = ({
   onDuplicate,
   onArchive,
   onDelete,
+  onCopyConnectionLink,
 }) => {
   return (
     <Card variant="crystal" className="p-0 overflow-hidden border-white/10">
@@ -149,6 +152,17 @@ export const ClientTable: React.FC<ClientTableProps> = ({
                         className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
                       >
                         <Edit className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCopyConnectionLink?.(client, e);
+                        }}
+                        title="Copy One-Time Connection Link"
+                        className="p-1.5 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+                      >
+                        <Link className="w-4 h-4" />
                       </button>
 
                       <button

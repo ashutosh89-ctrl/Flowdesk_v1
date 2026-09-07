@@ -11,6 +11,9 @@ import { SearchBar } from './components/search-bar';
 import { FilterBar } from './components/filter-bar';
 import { ClientCard } from './components/client-card';
 import { ClientTable } from './components/client-table';
+import { CountrySelect } from '@/frontend/shared/ui/country-select';
+import { PhoneInput } from '@/frontend/shared/ui/phone-input';
+import { switchCountryPrefix } from '@/shared/utils/countries';
 
 export interface ClientsListViewProps {
   onOpenWorkspace: (clientId: string) => void;
@@ -41,7 +44,7 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [industry, setIndustry] = useState('');
-  const [country, setCountry] = useState('United States');
+  const [country, setCountry] = useState('India');
   const [currency, setCurrency] = useState('USD');
   const [notes, setNotes] = useState('');
   const [tagsStr, setTagsStr] = useState('');
@@ -223,13 +226,28 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
     loadClients();
   };
 
+  const handleCopyConnectionLink = async (client: Client, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await ClientService.getOrCreateConnectionLink(client.id);
+      if (res.success && res.url) {
+        await navigator.clipboard.writeText(res.url);
+        showToast('Connection Link Copied', 'One-time client connection link copied to clipboard.', 'success');
+      } else {
+        showToast('Error', res.error || 'Failed to get connection link', 'error');
+      }
+    } catch (err: any) {
+      showToast('Error', err.message || 'Failed to copy connection link', 'error');
+    }
+  };
+
   const resetForm = () => {
     setName('');
     setCompany('');
     setEmail('');
     setPhone('');
     setIndustry('');
-    setCountry('United States');
+    setCountry('India');
     setCurrency('USD');
     setNotes('');
     setTagsStr('');
@@ -314,6 +332,7 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
                   onDuplicate={handleDuplicateClient}
                   onArchive={handleArchiveClient}
                   onDelete={handleDeleteClient}
+                  onCopyConnectionLink={handleCopyConnectionLink}
                 />
               ))}
             </div>
@@ -361,6 +380,7 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
           onDuplicate={handleDuplicateClient}
           onArchive={handleArchiveClient}
           onDelete={handleDeleteClient}
+          onCopyConnectionLink={handleCopyConnectionLink}
         />
       )}
 
@@ -393,12 +413,25 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
           />
 
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000" />
+            <PhoneInput
+              label="Phone"
+              value={phone}
+              country={country}
+              onChange={(newPhone) => setPhone(newPhone)}
+            />
             <Input label="Industry" value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Fintech" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Country" value={country} onChange={(e) => setCountry(e.target.value)} />
+            <CountrySelect
+              label="Country"
+              value={country}
+              onChange={(newCountry) => {
+                const updatedPhone = switchCountryPrefix(phone, country, newCountry);
+                setCountry(newCountry);
+                setPhone(updatedPhone);
+              }}
+            />
             <Input label="Currency" value={currency} onChange={(e) => setCurrency(e.target.value)} />
           </div>
 
@@ -439,12 +472,25 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
           <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
 
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <PhoneInput
+              label="Phone"
+              value={phone}
+              country={country}
+              onChange={(newPhone) => setPhone(newPhone)}
+            />
             <Input label="Industry" value={industry} onChange={(e) => setIndustry(e.target.value)} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Country" value={country} onChange={(e) => setCountry(e.target.value)} />
+            <CountrySelect
+              label="Country"
+              value={country}
+              onChange={(newCountry) => {
+                const updatedPhone = switchCountryPrefix(phone, country, newCountry);
+                setCountry(newCountry);
+                setPhone(updatedPhone);
+              }}
+            />
             <Input label="Currency" value={currency} onChange={(e) => setCurrency(e.target.value)} />
           </div>
 

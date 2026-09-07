@@ -21,6 +21,9 @@ import {
   Save,
   Tag,
 } from 'lucide-react';
+import { CountrySelect } from '@/frontend/shared/ui/country-select';
+import { PhoneInput } from '@/frontend/shared/ui/phone-input';
+import { switchCountryPrefix } from '@/shared/utils/countries';
 
 export interface WorkspaceSettingsTabProps {
   summary: WorkspaceSummary;
@@ -41,7 +44,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
   const [email, setEmail] = useState(client.email);
   const [phone, setPhone] = useState(client.phone || '');
   const [industry, setIndustry] = useState(client.industry || '');
-  const [country, setCountry] = useState(client.country || 'United States');
+  const [country, setCountry] = useState(client.country || 'India');
   const [currency, setCurrency] = useState(client.currency || 'USD');
   const [notes, setNotes] = useState(client.notes || '');
 
@@ -132,9 +135,22 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
             <Input label="Primary Contact Person" value={name} onChange={(e) => setName(e.target.value)} required />
             <Input label="Company / Business Name" value={company} onChange={(e) => setCompany(e.target.value)} required />
             <Input label="Email Address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            <Input label="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000" />
+            <PhoneInput
+              label="Phone Number"
+              value={phone}
+              country={country}
+              onChange={(newPhone) => setPhone(newPhone)}
+            />
             <Input label="Industry / Sector" value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Fintech" />
-            <Input label="Country / Region" value={country} onChange={(e) => setCountry(e.target.value)} />
+            <CountrySelect
+              label="Country / Region"
+              value={country}
+              onChange={(newCountry) => {
+                const updatedPhone = switchCountryPrefix(phone, country, newCountry);
+                setCountry(newCountry);
+                setPhone(updatedPhone);
+              }}
+            />
           </div>
 
           <div className="flex flex-col gap-1.5 pt-2">

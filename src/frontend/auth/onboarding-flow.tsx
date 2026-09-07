@@ -20,6 +20,7 @@ import {
 import { useToast } from '@/frontend/shared/ui/toast';
 import { useAuth } from '@/frontend/auth/auth-context';
 import { OnboardingData } from '@/shared/types';
+import { CountrySelect } from '@/frontend/shared/ui/country-select';
 
 export interface OnboardingFlowProps {
   onComplete: () => void;
@@ -35,8 +36,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
   // Step 1: Personal Information
   const [fullName, setFullName] = useState<string>(profile?.name || user?.user_metadata?.full_name || '');
   const [profession, setProfession] = useState<string>(profile?.profession || 'Lead Product Designer');
-  const [country, setCountry] = useState<string>(profile?.country || 'United States');
-  const [timezone, setTimezone] = useState<string>(profile?.timezone || 'America/New_York');
+  const [country, setCountry] = useState<string>(profile?.country || 'India');
+  const [timezone, setTimezone] = useState<string>(profile?.timezone || 'Asia/Kolkata');
   const [language, setLanguage] = useState<string>(profile?.language || 'English');
 
   // Step 2: Business Information
@@ -153,26 +154,11 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
           />
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5">Country</label>
-              <div className="relative">
-                <Globe className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <select
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-white/30"
-                >
-                  <option value="United States">United States</option>
-                  <option value="United Kingdom">United Kingdom</option>
-                  <option value="Canada">Canada</option>
-                  <option value="Germany">Germany</option>
-                  <option value="France">France</option>
-                  <option value="Australia">Australia</option>
-                  <option value="India">India</option>
-                  <option value="Japan">Japan</option>
-                </select>
-              </div>
-            </div>
+            <CountrySelect
+              label="Country"
+              value={country}
+              onChange={(newCountry) => setCountry(newCountry)}
+            />
 
             <div>
               <label className="block text-xs font-medium text-zinc-400 mb-1.5">Time Zone</label>
@@ -183,10 +169,13 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
                   onChange={(e) => setTimezone(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-white/30"
                 >
+                  <option value="Asia/Kolkata">Asia/Kolkata (IST +5:30)</option>
                   <option value="America/New_York">America/New_York (EST)</option>
                   <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
                   <option value="Europe/London">Europe/London (GMT/BST)</option>
                   <option value="Europe/Paris">Europe/Paris (CET)</option>
+                  <option value="Asia/Dubai">Asia/Dubai (GST +4:00)</option>
+                  <option value="Asia/Singapore">Asia/Singapore (SGT +8:00)</option>
                   <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
                   <option value="UTC">UTC</option>
                 </select>

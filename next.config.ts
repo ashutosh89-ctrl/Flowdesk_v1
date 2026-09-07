@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: false,
   },
   outputFileTracingRoot: path.resolve(__dirname),
-  serverExternalPackages: ['resend', 'razorpay'],
+  serverExternalPackages: ['razorpay'],
   turbopack: {},
   images: {
     remotePatterns: [
