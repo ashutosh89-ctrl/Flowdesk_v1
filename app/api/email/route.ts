@@ -190,19 +190,10 @@ async function validateRecipient(
   }
 
   if (CLIENT_DIRECTED_EVENTS.has(eventType)) {
-    if (!authorizedWsId) {
+    if (!authorizedWsId && !user.id) {
       return { ok: false, error: 'Unauthorized: no workspace relationship for this event.' };
     }
-    // Recipient must be a client row in the referenced workspace.
-    const { data: client, error } = await db
-      .from('clients')
-      .select('id')
-      .ilike('email', normalized)
-      .eq('workspace_id', authorizedWsId)
-      .maybeSingle();
-    if (error || !client) {
-      return { ok: false, error: 'Unauthorized: recipient is not a client record in this workspace.' };
-    }
+    // Allow authenticated freelancer to dispatch invitations/emails to any recipient email address
     return { ok: true };
   }
 

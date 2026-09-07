@@ -79,15 +79,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  // Restore session on mount — DETERMINISTIC: isLoading resolves only after
-  // auth state is actually known (or the resolution attempt definitively failed).
-  // SECURITY: no arbitrary timer may terminate initialization — a slow session
-  // request must never cause an authenticated user to be rendered as logged out.
+  // Restore session on mount — Tab-scoped lifecycle:
+  // If the user closed their tab and reopens, sessionStorage is empty, so they are logged out.
+  // When they log in in a tab, sessionStorage.flowdesk_tab_active is set and they stay logged in within that tab.
   useEffect(() => {
     let mounted = true;
 
     async function initAuth() {
       try {
+        // Tab-scoped session guard:
+        if (typeof window !== 'undefined' && !sessionStorage.getItem('flowdesk_tab_active')) {
+          // Allow OAuth redirects / connect / onboarding links to preserve or establish session
+          const isAuthRedirect =
+            window.location.hash.includes('access_token') ||
+            window.location.search.includes('code=') ||
+            window.location.pathname.startsWith('/onboarding') ||
+            window.location.pathname.startsWith('/connect');
+
+          if (isAuthRedirect) {
+            sessionStorage.setItem('flowdesk_tab_active', 'true');
+          } else {
+            // Fresh tab without active tab session: clear lingering Supabase/local session
+            try {
+              const { supabase: sb } = await import('@/backend/utilities/supabase');
+              await sb.auth.signOut();
+            } catch {}
+            SessionService.clearLocalSession();
+            if (mounted) {
+              setSession(null);
+              setUser(null);
+              setProfile(null);
+              setUserSettings(null);
+              setIsLoading(false);
+            }
+            return;
+          }
+        }
+
         // 1. Server-verified identity (Supabase /user endpoint). Fails closed:
         //    returns null on missing config or any error — never a fake user.
         const verifiedUser = await SessionService.getVerifiedUser();
@@ -95,6 +123,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!mounted) return;
 
         if (verifiedUser) {
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('flowdesk_tab_active', 'true');
+          }
           // Keep local session state in sync with the verified identity.
           const { session: verifiedSession } = await SessionService.getSession();
           setSession(verifiedSession);
@@ -137,6 +168,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(newUser);
 
       if (newUser) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('flowdesk_tab_active', 'true');
+        }
         await loadProfileAndSettings(newUser.id, newUser);
       } else {
         setProfile(null);
@@ -163,6 +197,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     const response = await AuthService.signUp(email, password, fullName, businessName);
     if (response.user) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('flowdesk_tab_active', 'true');
+      }
       setUser(response.user);
       await loadProfileAndSettings(response.user.id, response.user);
     }
@@ -174,6 +211,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     const response = await AuthService.signIn(email, password);
     if (response.user) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('flowdesk_tab_active', 'true');
+      }
       setUser(response.user);
       await loadProfileAndSettings(response.user.id, response.user);
     }
@@ -185,6 +225,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     const response = await AuthService.signInDemo(email);
     if (response.user) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('flowdesk_tab_active', 'true');
+      }
       setUser(response.user);
       await loadProfileAndSettings(response.user.id, response.user);
     }
@@ -194,6 +237,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const handleSignInWithGoogle = async () => {
     setIsLoading(true);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('flowdesk_tab_active', 'true');
+    }
     const res = await AuthService.signInWithGoogle();
     if (!res.error) {
       const { user: currUser } = await SessionService.getSession();
@@ -208,6 +254,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const handleSignInWithGitHub = async () => {
     setIsLoading(true);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('flowdesk_tab_active', 'true');
+    }
     const res = await AuthService.signInWithGitHub();
     if (!res.error) {
       const { user: currUser } = await SessionService.getSession();
@@ -223,6 +272,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const handleSignOut = async () => {
     setIsLoading(true);
     if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('flowdesk_tab_active');
       localStorage.removeItem('flowdesk_demo_active');
     }
     if (typeof document !== 'undefined') {

@@ -425,6 +425,7 @@ export const EmailService = {
     meta?: { workspaceId?: string; clientId?: string }
   ): Promise<EmailSendResult> => {
     const template = renderClientInvitationEmail(params);
+    const dispatchRef = meta?.clientId ? `${meta.clientId}_${Date.now()}` : `inv_${Date.now()}`;
     return EmailService.send({
       to: recipientEmail,
       subject: template.subject,
@@ -432,7 +433,7 @@ export const EmailService = {
       text: template.text,
       eventType: 'client_invitation',
       referenceType: 'client',
-      referenceId: meta?.clientId,
+      referenceId: dispatchRef,
       workspaceId: meta?.workspaceId,
     });
   },

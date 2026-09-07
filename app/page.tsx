@@ -136,6 +136,7 @@ function FlowDeskAppContent() {
           breadcrumbLabel={
             currentView === 'workspace' ? 'Client Workspace' : undefined
           }
+          onQuickAction={() => setIsQuickActionsOpen(true)}
         >
           {currentView === 'dashboard' && (
             <DashboardView

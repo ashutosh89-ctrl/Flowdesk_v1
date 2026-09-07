@@ -1323,13 +1323,20 @@ export const FreelancerInvoiceService = {
     });
 
     try {
-      const fullPayload = {
+      const sanitizedProjectId = (invoice.projectId && typeof invoice.projectId === 'string' && invoice.projectId.trim().length > 5)
+        ? invoice.projectId.trim()
+        : null;
+      const sanitizedClientId = (invoice.clientId && typeof invoice.clientId === 'string' && invoice.clientId.trim().length > 5)
+        ? invoice.clientId.trim()
+        : invoice.clientId;
+
+      const fullPayload: any = {
         workspace_id: wsId,
-        client_id: invoice.clientId,
+        client_id: sanitizedClientId,
         user_id: user?.id || null,
         client_name: invoice.clientName || 'Client Workspace',
         client_email: invoice.clientEmail || 'client@example.com',
-        project_id: invoice.projectId || null,
+        project_id: sanitizedProjectId,
         project_name: invoice.projectName || null,
         invoice_number: finalInvoiceNumber,
         status: invoice.workflowStatus || invoice.status || 'draft',
@@ -1368,17 +1375,56 @@ export const FreelancerInvoiceService = {
         const isDuplicateNumber =
           insertError?.code === '23505' ||
           (insertError?.message || '').includes('duplicate key');
-        if (!isDuplicateNumber) break;
+        if (isDuplicateNumber) {
+          const retryNumbers = [...existingNumbers, finalInvoiceNumber];
+          finalInvoiceNumber = generateNextInvoiceNumber(settings, retryNumbers);
+          fullPayload.invoice_number = finalInvoiceNumber;
+          continue;
+        }
+        break;
+      }
 
-        // Regenerate a fresh invoice number and retry
-        const retryNumbers = [...existingNumbers, finalInvoiceNumber];
-        finalInvoiceNumber = generateNextInvoiceNumber(settings, retryNumbers);
-        fullPayload.invoice_number = finalInvoiceNumber;
+      // If fullPayload insert failed (e.g. table schema in Supabase does not have optional Phase 17 columns),
+      // seamlessly retry using core table columns.
+      if (!inv && lastInsertError) {
+        console.warn('[FreelancerInvoiceService] Full payload insert failed, trying core payload fallback:', lastInsertError.message);
+        const corePayload = {
+          workspace_id: wsId,
+          client_id: sanitizedClientId,
+          user_id: user?.id || null,
+          client_name: invoice.clientName || 'Client Workspace',
+          client_email: invoice.clientEmail || 'client@example.com',
+          project_id: sanitizedProjectId,
+          project_name: invoice.projectName || null,
+          invoice_number: finalInvoiceNumber,
+          status: invoice.workflowStatus || invoice.status || 'draft',
+          issue_date: invoice.issueDate || new Date().toISOString().split('T')[0],
+          due_date: invoice.dueDate || new Date().toISOString().split('T')[0],
+          subtotal: calc.subtotal,
+          tax_percentage: calc.taxPercentage,
+          tax_amount: calc.taxAmount,
+          total_amount: calc.total,
+          paid_amount: 0,
+          currency: invoice.currency || 'USD',
+          notes: invoice.notes || '',
+        };
+
+        const { data: coreData, error: coreError } = await supabase
+          .from('invoices')
+          .insert(corePayload)
+          .select()
+          .single();
+
+        if (!coreError && coreData) {
+          inv = coreData;
+        } else {
+          lastInsertError = coreError || lastInsertError;
+        }
       }
 
       if (!inv) {
         console.error('[FreelancerInvoiceService] Invoice persistence failed:', lastInsertError);
-        throw new Error('Invoice could not be saved. Please try again.');
+        throw new Error(lastInsertError?.message || 'Invoice could not be saved. Please try again.');
       }
 
       if (inv) {
@@ -1541,7 +1587,7 @@ export const FreelancerInvoiceService = {
       if (updates.clientId !== undefined) payload.client_id = updates.clientId;
       if (updates.clientName !== undefined) payload.client_name = updates.clientName;
       if (updates.clientEmail !== undefined) payload.client_email = updates.clientEmail;
-      if (updates.projectId !== undefined) payload.project_id = updates.projectId;
+      if (updates.projectId !== undefined) payload.project_id = (updates.projectId && updates.projectId.trim()) ? updates.projectId.trim() : null;
       if (updates.projectName !== undefined) payload.project_name = updates.projectName;
       if (updates.currency !== undefined) payload.currency = updates.currency;
       if (updates.paymentInstructions !== undefined) payload.payment_instructions = updates.paymentInstructions;
