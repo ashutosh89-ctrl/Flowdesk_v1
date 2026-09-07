@@ -10,8 +10,13 @@ export interface VerifyEmailFormProps {
   onSuccess: () => void;
 }
 
-export const VerifyEmailForm: React.FC<VerifyEmailFormProps> = ({ email, onSuccess }) => {
-  const [code, setCode] = useState('740192');
+export const VerifyEmailForm: React.FC<VerifyEmailFormProps> = ({ email: initialEmail, onSuccess }) => {
+  // The email is editable: after signup the user may be routed here with a
+  // stale/empty address — the address they can actually check must win.
+  const [email, setEmail] = useState(initialEmail || '');
+  // SECURITY: no hardcoded/default OTP. The real code arrives by email —
+  // prefilled values here would be a production authentication bypass.
+  const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -56,10 +61,20 @@ export const VerifyEmailForm: React.FC<VerifyEmailFormProps> = ({ email, onSucce
       )}
 
       <Input
+        label="Email Address"
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        leftIcon={<Mail className="w-4 h-4" />}
+        required
+      />
+
+      <Input
         label="Verification Code"
         type="text"
         value={code}
-        onChange={(e) => setCode(e.target.value)}
+        onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))}
+        placeholder="000000"
         className="text-center font-mono text-lg tracking-widest"
         maxLength={6}
         required

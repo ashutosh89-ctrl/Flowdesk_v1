@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { isDemoMode, isSupabaseConfigured } from '@/backend/utilities/supabase';
+import { isDemoMode } from '@/backend/utilities/supabase';
 import { AuthProvider, useAuth } from '@/frontend/auth/auth-context';
 import { ToastProvider } from '@/frontend/shared/ui/toast';
 import { AppShell } from '@/frontend/shared/layout/app-shell';
@@ -39,15 +39,9 @@ function DashboardContent() {
     async function verifyProfileAndWorkspace() {
       if (isLoading) return;
 
-      // In demo mode, skip Supabase profile check — go straight to dashboard
-      const DEMO_KEY = 'flowdesk_demo_active';
-      const demoActive =
-        isDemoMode ||
-        !isSupabaseConfigured ||
-        (typeof window !== 'undefined' && Boolean(localStorage.getItem(DEMO_KEY))) ||
-        (typeof document !== 'undefined' && document.cookie.includes('flowdesk_demo_active=true'));
-
-      if (demoActive) {
+      // SECURITY: demo behavior is decided ONLY by the deployment's explicit
+      // auth mode. localStorage flags and cookies can never activate it in production.
+      if (isDemoMode) {
         if (mounted) {
           setWorkspaceChecked(true);
           clearTimeout(timer);
@@ -103,11 +97,7 @@ function DashboardContent() {
     );
   }
 
-  const isDemo =
-    isDemoMode ||
-    !isSupabaseConfigured ||
-    (typeof window !== 'undefined' && Boolean(localStorage.getItem('flowdesk_demo_active'))) ||
-    (typeof document !== 'undefined' && document.cookie.includes('flowdesk_demo_active=true'));
+  const isDemo = isDemoMode;
 
   const fallbackName = user?.email?.split('@')[0] || (isDemo ? 'Alex Rivera' : 'User');
   const userProfile = {

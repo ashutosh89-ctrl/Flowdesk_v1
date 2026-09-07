@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { EmailService } from '@/backend/email';
-import { supabase } from '@/backend/utilities/supabase';
+import {
+  supabase,
+  supabaseAdmin,
+  validSupabaseUrl,
+  validSupabaseAnonKey,
+  isDemoModeActive,
+} from '@/backend/utilities/supabase';
 
 /**
  * Transactional email events. Recipients are NEVER trusted from the browser —
@@ -30,6 +37,60 @@ const SELF_DIRECTED_EVENTS = new Set([
 ]);
 
 /**
+ * Helper to resolve the authenticated Supabase user from the NextRequest
+ */
+async function getAuthenticatedUser(request: NextRequest): Promise<{ id: string; email?: string } | null> {
+  // 1. Check Bearer Authorization header
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.substring(7).trim();
+    if (token) {
+      try {
+        const { data: { user }, error } = await (supabaseAdmin || supabase).auth.getUser(token);
+        if (!error && user) {
+          return { id: user.id, email: user.email || undefined };
+        }
+      } catch (err) {
+        console.warn('[API /api/email] Bearer auth check notice:', err);
+      }
+    }
+  }
+
+  // 2. Check Cookie session via @supabase/ssr createServerClient
+  if (validSupabaseUrl && validSupabaseAnonKey) {
+    try {
+      const serverClient = createServerClient(validSupabaseUrl, validSupabaseAnonKey, {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll() {
+            // Read-only in route handler
+          },
+        },
+      });
+
+      const { data: { user }, error } = await serverClient.auth.getUser();
+      if (!error && user) {
+        return { id: user.id, email: user.email || undefined };
+      }
+    } catch (err) {
+      console.warn('[API /api/email] Cookie auth check notice:', err);
+    }
+  }
+
+  // 3. Fallback to default supabase client
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      return { id: user.id, email: user.email || undefined };
+    }
+  } catch {}
+
+  return null;
+}
+
+/**
  * Resolves the workspace referenced by the event and verifies the caller has a
  * legitimate relationship to it:
  *  - freelancer caller: owns the workspace (owner_id = caller)
@@ -40,24 +101,44 @@ async function resolveAuthorizedWorkspace(
   workspaceId: string | undefined,
   userId: string
 ): Promise<string | null> {
-  if (!workspaceId) return null;
+  const db = supabaseAdmin || supabase;
 
-  const { data: ws } = await supabase
+  if (workspaceId) {
+    const { data: ws } = await db
+      .from('workspaces')
+      .select('id, owner_id')
+      .eq('id', workspaceId)
+      .maybeSingle();
+    if (ws) {
+      if (ws.owner_id === userId) return ws.id;
+
+      const { data: clientLink } = await db
+        .from('clients')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('workspace_id', ws.id)
+        .maybeSingle();
+      if (clientLink) return ws.id;
+    }
+  }
+
+  // Fallback: Resolve workspace owned by caller
+  const { data: ownedWs } = await db
     .from('workspaces')
-    .select('id, owner_id')
-    .eq('id', workspaceId)
-    .maybeSingle();
-  if (!ws) return null;
-
-  if (ws.owner_id === userId) return ws.id;
-
-  const { data: clientLink } = await supabase
-    .from('clients')
     .select('id')
-    .eq('user_id', userId)
-    .eq('workspace_id', ws.id)
+    .eq('owner_id', userId)
+    .limit(1)
     .maybeSingle();
-  if (clientLink) return ws.id;
+  if (ownedWs) return ownedWs.id;
+
+  // Fallback: Resolve workspace where caller is a registered client
+  const { data: clientWs } = await db
+    .from('clients')
+    .select('workspace_id')
+    .eq('user_id', userId)
+    .limit(1)
+    .maybeSingle();
+  if (clientWs?.workspace_id) return clientWs.workspace_id;
 
   return null;
 }
@@ -68,7 +149,7 @@ async function resolveAuthorizedWorkspace(
 async function validateRecipient(
   recipientEmail: string | undefined,
   eventType: string,
-  userId: string,
+  user: { id: string; email?: string },
   workspaceId: string | undefined
 ): Promise<{ ok: boolean; error?: string }> {
   if (!recipientEmail || !recipientEmail.includes('@')) {
@@ -78,31 +159,32 @@ async function validateRecipient(
   const normalized = recipientEmail.toLowerCase().trim();
 
   if (SELF_DIRECTED_EVENTS.has(eventType)) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email?.toLowerCase() === normalized) return { ok: true };
+    if (user.email?.toLowerCase() === normalized) return { ok: true };
     return { ok: false, error: 'Unauthorized: recipient is not the account owner.' };
   }
 
+  const db = supabaseAdmin || supabase;
+
   // Workspace relationship check — the caller must be bound to the referenced
   // workspace either as owner (freelancer) or as a linked client.
-  const authorizedWsId = await resolveAuthorizedWorkspace(workspaceId, userId);
+  const authorizedWsId = await resolveAuthorizedWorkspace(workspaceId, user.id);
 
   if (OWNER_DIRECTED_EVENTS.has(eventType)) {
     if (!authorizedWsId) {
       return { ok: false, error: 'Unauthorized: no workspace relationship for this event.' };
     }
     // Recipient must be the workspace owner's profile email.
-    const { data: ws } = await supabase
+    const { data: ws } = await db
       .from('workspaces')
       .select('owner_id')
       .eq('id', authorizedWsId)
-      .single();
+      .maybeSingle();
     if (!ws?.owner_id) return { ok: false, error: 'Workspace owner could not be resolved.' };
-    const { data: profile } = await supabase
+    const { data: profile } = await db
       .from('profiles')
       .select('email')
       .eq('id', ws.owner_id)
-      .single();
+      .maybeSingle();
     if (profile?.email?.toLowerCase() === normalized) return { ok: true };
     return { ok: false, error: 'Unauthorized: recipient is not the workspace owner.' };
   }
@@ -112,10 +194,10 @@ async function validateRecipient(
       return { ok: false, error: 'Unauthorized: no workspace relationship for this event.' };
     }
     // Recipient must be a client row in the referenced workspace.
-    const { data: client, error } = await supabase
+    const { data: client, error } = await db
       .from('clients')
       .select('id')
-      .eq('email', normalized)
+      .ilike('email', normalized)
       .eq('workspace_id', authorizedWsId)
       .maybeSingle();
     if (error || !client) {
@@ -129,21 +211,25 @@ async function validateRecipient(
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Require an authenticated Supabase session.
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required.' },
-        { status: 401 }
-      );
+    const isDemo = isDemoModeActive();
+
+    let authenticatedUser: { id: string; email?: string } | null = null;
+
+    if (!isDemo) {
+      authenticatedUser = await getAuthenticatedUser(request);
+      if (!authenticatedUser) {
+        return NextResponse.json(
+          { success: false, error: 'Authentication required to dispatch emails.' },
+          { status: 401 }
+        );
+      }
+    } else {
+      authenticatedUser = { id: 'usr-demo-freelancer', email: 'alex@flowdesk.dev' };
     }
 
     const body = await request.json();
     const { options } = body;
 
-    // Only the structured `options` payload is supported.
-    // The legacy free-form `action` dispatcher is removed — the browser must
-    // never be able to request arbitrary templates or arbitrary recipients.
     if (!options || typeof options !== 'object') {
       return NextResponse.json(
         { success: false, error: 'Missing email options payload.' },
@@ -160,17 +246,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Recipient must be a trusted server-side record owned by the caller.
-    const recipientCheck = await validateRecipient(to, eventType, user.id, workspaceId);
-    if (!recipientCheck.ok) {
-      return NextResponse.json(
-        { success: false, error: recipientCheck.error },
-        { status: 403 }
-      );
+    // 2. Recipient must be a trusted server-side record owned by the caller (in non-demo environments)
+    if (!isDemo && authenticatedUser) {
+      const recipientCheck = await validateRecipient(to, eventType, authenticatedUser, workspaceId);
+      if (!recipientCheck.ok) {
+        return NextResponse.json(
+          { success: false, error: recipientCheck.error },
+          { status: 403 }
+        );
+      }
     }
 
-    // 3. Dispatch server-side. This route runs on the server, so EmailService
-    //    takes the direct provider path (no recursive browser relay).
+    // 3. Dispatch server-side via EmailService
     const result = await EmailService.send({
       to,
       subject,
@@ -180,7 +267,7 @@ export async function POST(request: NextRequest) {
       referenceType,
       referenceId,
       workspaceId,
-      userId: options.userId || user.id,
+      userId: options.userId || authenticatedUser?.id,
     });
 
     return NextResponse.json(result);

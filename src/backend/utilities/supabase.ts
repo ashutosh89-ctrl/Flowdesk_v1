@@ -1,6 +1,8 @@
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
 
+import { AuthError } from './errors';
+
 const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
@@ -66,37 +68,57 @@ export const isSupabaseConfigured = Boolean(validSupabaseUrl && validSupabaseAno
  * PRODUCTION = Supabase authentication only
  * DEMO = FlowDeskStore/demo authentication only
  *
- * Determined by NEXT_PUBLIC_AUTH_MODE env var.
- * Falls back to: PRODUCTION if Supabase is configured, DEMO if not.
- * NEVER auto-switches based on network failures.
+ * SECURITY (fail-closed): demo mode is ONLY active when explicitly configured
+ * via NEXT_PUBLIC_AUTH_MODE=demo. Missing/broken Supabase configuration in a
+ * production deployment MUST NOT activate demo mode — the app fails closed
+ * with a configuration error instead of fabricating a demo identity.
+ * Browser state — localStorage flags, cookies, query parameters — can NEVER
+ * activate demo mode.
  */
 export type AuthMode = 'production' | 'demo';
 
-export const authMode: AuthMode = (() => {
-  const envMode = process.env.NEXT_PUBLIC_AUTH_MODE?.toLowerCase();
-  if (envMode === 'demo') return 'demo';
-  if (envMode === 'production') return 'production';
-  // Default: production if Supabase is configured, demo if not
-  return isSupabaseConfigured ? 'production' : 'demo';
-})();
+export const authMode: AuthMode =
+  process.env.NEXT_PUBLIC_AUTH_MODE?.trim().toLowerCase() === 'demo'
+    ? 'demo'
+    : 'production';
 
 export const isProductionMode = authMode === 'production';
 export const isDemoMode = authMode === 'demo';
 
-// Legacy alias — kept for backward compatibility during migration.
-// DO NOT USE in new code. Use isDemoMode / isProductionMode instead.
-export const isDemoFallbackEnabled = isDemoMode;
+export function isDemoModeActive(): boolean {
+  return process.env.NEXT_PUBLIC_AUTH_MODE?.trim().toLowerCase() === 'demo';
+}
 
 /**
- * Runtime demo mode check.
- * Demo mode is controlled EXCLUSIVELY by deployment configuration
- * (NEXT_PUBLIC_AUTH_MODE=demo or missing Supabase credentials).
- * Browser state — localStorage flags, cookies, query parameters — can NEVER
- * activate demo mode in production. Production must fail closed.
+ * Deployment configuration failure state.
+ * True when a production deployment is missing valid Supabase configuration.
+ * In this state the app must FAIL CLOSED: authentication is unavailable,
+ * no session/profile/workspace may be fabricated, and the UI should surface
+ * a clear configuration error (without exposing any secret values).
+ *
+ * Demo deployments are exempt — they never talk to Supabase.
  */
-export function isDemoModeActive(): boolean {
-  return isDemoMode || !isSupabaseConfigured;
+export function isAuthConfigError(): boolean {
+  return !isDemoModeActive() && !isSupabaseConfigured;
 }
+
+/**
+ * Human-readable, secret-free message for configuration failures.
+ */
+/**
+ * Thrown when a production deployment lacks valid Supabase configuration.
+ * Fail-closed guard: callers stop before creating fake sessions or querying
+ * a placeholder client. Message is human-readable and exposes no secrets.
+ */
+export function assertSupabaseConfigured(): void {
+  if (isAuthConfigError()) {
+    throw new AuthError(AUTH_CONFIG_ERROR_MESSAGE);
+  }
+}
+
+export const AUTH_CONFIG_ERROR_MESSAGE =
+  'FlowDesk authentication is unavailable: the deployment is missing its Supabase configuration. ' +
+  'Please contact support or check back later. (Deployment configuration error — no credentials are exposed.)';
 
 let supabaseInstance: SupabaseClient | null = null;
 

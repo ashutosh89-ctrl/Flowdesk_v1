@@ -72,7 +72,7 @@ function OnboardingContent() {
         onboardingCompleted: true,
       });
 
-      // 2. Direct Supabase tables insert attempt
+      // 2. Direct Supabase tables upsert (idempotent — no duplicate workspace)
       try {
         await supabase.from('profiles').upsert(
           {
@@ -86,10 +86,27 @@ function OnboardingContent() {
           { onConflict: 'id' }
         );
 
-        await supabase.from('workspaces').insert({
-          owner_id: finalUserId,
-          name: businessName || 'My Workspace',
-        });
+        // DUPLICATE-WORKSPACE PREVENTION: a workspace may already exist —
+        // getCurrentWorkspace() auto-creates one lazily for authenticated users.
+        // Check first, insert only if the user owns none. The app-layer guard is
+        // paired with a partial unique index migration (phase28_workspace_unique).
+        const { data: existingWorkspaces } = await supabase
+          .from('workspaces')
+          .select('id')
+          .eq('owner_id', finalUserId)
+          .limit(1);
+
+        if (!existingWorkspaces || existingWorkspaces.length === 0) {
+          const { error: wsError } = await supabase.from('workspaces').insert({
+            owner_id: finalUserId,
+            name: businessName || 'My Workspace',
+          });
+          if (wsError) {
+            // Unique-index race with a concurrent creation: a workspace now
+            // exists — that satisfies the goal, so this is not an error state.
+            console.warn('Workspace creation notice:', wsError.message);
+          }
+        }
       } catch (dbErr: any) {
         console.warn('Database table insert notice (continuing with session profile):', dbErr?.message);
       }

@@ -40,13 +40,25 @@ export interface EmailSendResult {
   suppressed?: boolean;
 }
 
+// In-memory idempotency cache for fast deduplication & resilience (10-minute TTL)
+const inMemoryIdempotencyCache = new Map<string, { status: 'processing' | 'sent' | 'failed'; messageId?: string; timestamp: number }>();
+
+function cleanOldIdempotencyCache() {
+  const now = Date.now();
+  for (const [key, value] of inMemoryIdempotencyCache.entries()) {
+    if (now - value.timestamp > 10 * 60 * 1000) {
+      inMemoryIdempotencyCache.delete(key);
+    }
+  }
+}
+
 export const EmailService = {
   /**
    * Check if Resend API is ready for server-side dispatch
    */
   isConfigured: (): boolean => {
     if (typeof window !== 'undefined') return false;
-    const key = process.env.RESEND_API_KEY || '';
+    const key = (process.env.RESEND_API_KEY || '').trim().replace(/^['"]|['"]$/g, '');
     return Boolean(key && key.startsWith('re_'));
   },
 
@@ -80,6 +92,37 @@ export const EmailService = {
     const db = supabaseAdmin || supabase;
     const recipientNorm = to.toLowerCase().trim();
     const workerId = `worker_${process.pid || 1}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const idempotencyKey = referenceId ? `${eventType}:${referenceId}:${recipientNorm}` : null;
+
+    // Clean old cache entries
+    cleanOldIdempotencyCache();
+
+    // 0.25 In-Memory Fast Idempotency Check
+    if (idempotencyKey) {
+      const cached = inMemoryIdempotencyCache.get(idempotencyKey);
+      if (cached) {
+        if (cached.status === 'sent') {
+          console.info(`[EmailService] In-memory duplicate send suppressed for ${eventType} (ref: ${referenceId}) to ${recipientNorm}`);
+          return {
+            success: true,
+            messageId: cached.messageId || 'duplicate_suppressed_cache',
+            suppressed: true,
+          };
+        }
+        if (cached.status === 'processing') {
+          console.info(`[EmailService] In-memory concurrent send in-flight suppressed for ${eventType} (ref: ${referenceId})`);
+          return {
+            success: true,
+            messageId: 'concurrent_in_flight_cache',
+            suppressed: true,
+          };
+        }
+      }
+      inMemoryIdempotencyCache.set(idempotencyKey, {
+        status: 'processing',
+        timestamp: Date.now(),
+      });
+    }
 
     // 0.5 Email preference enforcement.
     //    Non-critical transactional emails respect the workspace owner's
@@ -133,7 +176,7 @@ export const EmailService = {
       }
     }
 
-    // 1. Check & Claim Idempotency (Atomic Outbox Claiming)
+    // 1. Check & Claim Idempotency (Atomic Outbox Claiming in Database)
     let eventRecordId: string | null = null;
 
     if (referenceId) {
@@ -150,6 +193,13 @@ export const EmailService = {
         if (existing) {
           if (existing.status === 'sent' || existing.status === 'delivered') {
             console.info(`[EmailService] Duplicate send suppressed for ${eventType} (ref: ${referenceId}) to ${recipientNorm}`);
+            if (idempotencyKey) {
+              inMemoryIdempotencyCache.set(idempotencyKey, {
+                status: 'sent',
+                messageId: existing.provider_message_id,
+                timestamp: Date.now(),
+              });
+            }
             return {
               success: true,
               messageId: existing.provider_message_id || 'duplicate_suppressed',
@@ -221,8 +271,8 @@ export const EmailService = {
 
     const resendModule = typeof window === 'undefined' ? (await import('./resend-client')) : null;
     const resendClient = resendModule?.getResendClient() || null;
-    const isConfigured = resendModule?.isResendConfigured || false;
-    const fromAddress = resendModule?.defaultSender || process.env.EMAIL_FROM || 'FlowDesk <onboarding@resend.dev>';
+    const isConfigured = resendModule?.checkIsResendConfigured ? resendModule.checkIsResendConfigured() : Boolean(resendModule?.isResendConfigured);
+    const fromAddress = resendModule?.getDefaultSender ? resendModule.getDefaultSender() : (process.env.EMAIL_FROM || 'FlowDesk <onboarding@resend.dev>');
 
     // 2. Simulated delivery ONLY in explicitly configured demo environments.
     //    Production NEVER fabricates a successful send when Resend is not
@@ -231,6 +281,9 @@ export const EmailService = {
       if (isDemoModeActive()) {
         console.info(`[EmailService - Demo Mode] Simulated email to ${recipientNorm}: "${subject}"`);
         const mockMsgId = `mock_${Date.now()}`;
+        if (idempotencyKey) {
+          inMemoryIdempotencyCache.set(idempotencyKey, { status: 'sent', messageId: mockMsgId, timestamp: Date.now() });
+        }
         if (eventRecordId) {
           try {
             await db.from('email_events').update({
@@ -262,11 +315,14 @@ export const EmailService = {
       // Production: fail closed — do NOT claim delivery. Record a configuration
       // failure on the outbox record so it can be retried once Resend is configured.
       console.error(`[EmailService] Resend is not configured; email NOT sent to ${recipientNorm} (${eventType}).`);
+      if (idempotencyKey) {
+        inMemoryIdempotencyCache.delete(idempotencyKey);
+      }
       if (eventRecordId) {
         try {
           await db.from('email_events').update({
             status: 'failed',
-            last_error: 'Resend is not configured on the server.',
+            last_error: 'Resend is not configured on the server (missing or invalid RESEND_API_KEY).',
             next_attempt_at: new Date(Date.now() + 60 * 1000).toISOString(),
           }).eq('id', eventRecordId);
         } catch {}
@@ -286,22 +342,35 @@ export const EmailService = {
 
       if (error) {
         console.warn(`[EmailService] Resend delivery error for ${eventType}:`, error.message);
+        let actionableError = error.message;
+        if (error.message.includes('can only send testing emails') || error.message.includes('not verified')) {
+          actionableError = `Resend delivery notice: ${error.message}. (Sender: ${fromAddress}, Recipient: ${recipientNorm})`;
+        }
+
         const retryDelaySec = 60; // 1 minute backoff for retry
         const nextAttempt = new Date(Date.now() + retryDelaySec * 1000).toISOString();
+
+        if (idempotencyKey) {
+          inMemoryIdempotencyCache.set(idempotencyKey, { status: 'failed', timestamp: Date.now() });
+        }
 
         if (eventRecordId) {
           try {
             await db.from('email_events').update({
               status: 'failed',
-              last_error: error.message,
+              last_error: actionableError,
               next_attempt_at: nextAttempt,
             }).eq('id', eventRecordId);
           } catch {}
         }
-        return { success: false, error: error.message };
+        return { success: false, error: actionableError };
       }
 
       const messageId = data?.id || `resend_${Date.now()}`;
+
+      if (idempotencyKey) {
+        inMemoryIdempotencyCache.set(idempotencyKey, { status: 'sent', messageId, timestamp: Date.now() });
+      }
 
       // 4. Mark Outbox Record as sent
       if (eventRecordId) {
@@ -333,15 +402,19 @@ export const EmailService = {
       return { success: true, messageId };
     } catch (err: any) {
       console.warn(`[EmailService] Unexpected dispatch error for ${eventType}:`, err);
+      const errMsg = err?.message || 'Email dispatch failed';
+      if (idempotencyKey) {
+        inMemoryIdempotencyCache.delete(idempotencyKey);
+      }
       if (eventRecordId) {
         try {
           await db.from('email_events').update({
             status: 'failed',
-            last_error: err.message || 'Unexpected dispatch exception',
+            last_error: errMsg,
           }).eq('id', eventRecordId);
         } catch {}
       }
-      return { success: false, error: err.message || 'Email dispatch failed' };
+      return { success: false, error: errMsg };
     }
   },
 

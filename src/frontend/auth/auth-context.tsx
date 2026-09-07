@@ -55,6 +55,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           email: currentUser.email || '',
           onboardingCompleted: false,
         });
+      } else if (fetchedProfile && currentUser?.email && fetchedProfile.email !== currentUser.email) {
+        // Email consistency: Supabase auth.users.email is authoritative.
+        // If the user confirmed an email change, converge profiles.email on login.
+        // Identity (auth.uid) is unchanged — email is never used for authorization.
+        try {
+          const { supabase: supabaseClient } = await import('@/backend/utilities/supabase');
+          await supabaseClient
+            .from('profiles')
+            .update({ email: currentUser.email, updated_at: new Date().toISOString() })
+            .eq('id', userId);
+          fetchedProfile = { ...fetchedProfile, email: currentUser.email };
+        } catch (syncErr: any) {
+          console.warn('Profile email sync notice:', syncErr?.message);
+        }
       }
       setProfile(fetchedProfile);
 
@@ -65,36 +79,45 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  // Restore session on mount
+  // Restore session on mount — DETERMINISTIC: isLoading resolves only after
+  // auth state is actually known (or the resolution attempt definitively failed).
+  // SECURITY: no arbitrary timer may terminate initialization — a slow session
+  // request must never cause an authenticated user to be rendered as logged out.
   useEffect(() => {
     let mounted = true;
 
-    // Safety fallback: guarantee isLoading becomes false within 1.5s max
-    const timer = setTimeout(() => {
-      if (mounted) {
-        setIsLoading(false);
-      }
-    }, 1500);
-
     async function initAuth() {
       try {
-        const { session: initialSession, user: initialUser } = await SessionService.getSession();
-        if (mounted) {
-          setSession(initialSession);
-          setUser(initialUser);
+        // 1. Server-verified identity (Supabase /user endpoint). Fails closed:
+        //    returns null on missing config or any error — never a fake user.
+        const verifiedUser = await SessionService.getVerifiedUser();
 
-          if (initialUser) {
-            await loadProfileAndSettings(initialUser.id, initialUser);
-          } else {
-            setProfile(null);
-            setUserSettings(null);
-          }
+        if (!mounted) return;
+
+        if (verifiedUser) {
+          // Keep local session state in sync with the verified identity.
+          const { session: verifiedSession } = await SessionService.getSession();
+          setSession(verifiedSession);
+          setUser(verifiedUser);
+          await loadProfileAndSettings(verifiedUser.id, verifiedUser);
+        } else {
+          // No verified user — unauthenticated. Clear any stale state.
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setUserSettings(null);
         }
       } catch (err: any) {
         console.warn('Notice initializing auth:', err?.message);
+        // Fail closed: unresolved/errored initialization means NOT authenticated.
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setUserSettings(null);
+        }
       } finally {
         if (mounted) {
-          clearTimeout(timer);
           setIsLoading(false);
         }
       }
@@ -102,7 +125,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     initAuth();
 
-    // Listen to Supabase auth state changes
+    // Listen to Supabase auth state changes for ongoing updates
     const subscription = SessionService.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
       if (isDemoModeActive() && !newSession) {
@@ -124,7 +147,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return () => {
       mounted = false;
-      clearTimeout(timer);
       if (subscription && typeof subscription.unsubscribe === 'function') {
         subscription.unsubscribe();
       }

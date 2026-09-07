@@ -9,7 +9,6 @@ import { AuthService } from '@/backend/auth/auth-service';
 import { AccountDeletionService } from '@/backend/auth/account-deletion-service';
 import { useAuth } from '@/frontend/auth/auth-context';
 import { UserProfile, UserSettings } from '@/shared/types';
-import { mockUserProfile } from '@/backend/store/mockData';
 import { StorageHelper } from '@/backend/storage/storage-helper';
 import { updateWorkspaceBranding } from '@/backend/utilities/workspace';
 import { supabase } from '@/backend/utilities/supabase';
@@ -44,7 +43,23 @@ type SettingsTab = 'profile' | 'billing' | 'notifications' | 'security';
 export const SettingsView: React.FC = () => {
   const { user, profile: authProfile, refreshProfile, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
-  const [profile, setProfile] = useState<UserProfile>(() => authProfile || mockUserProfile);
+  // Fail-closed: no mock identity fallback in production. The authenticated
+  // profile (or an empty shell that the user fills in) is the only source.
+  const [profile, setProfile] = useState<UserProfile>(() => authProfile || {
+    id: '',
+    name: '',
+    title: '',
+    email: '',
+    avatarUrl: '',
+    currency: 'USD',
+    companyName: '',
+    hourlyRate: 120,
+    profession: '',
+    country: 'United States',
+    timezone: 'America/New_York',
+    language: 'English',
+    onboardingCompleted: false,
+  });
   const [settings, setSettings] = useState<UserSettings>(() => DEFAULT_USER_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -161,7 +176,13 @@ export const SettingsView: React.FC = () => {
     setSaving(true);
 
     try {
-      // 1. Save profile
+      // 1. Save profile — block if identity fields are empty (fail-closed shell)
+      if (!user?.id) {
+        throw new Error('You must be signed in to save your profile.');
+      }
+      if (!profile.name?.trim() || !profile.email?.trim()) {
+        throw new Error('Name and email are required before saving your profile.');
+      }
       await SettingsService.updateUserProfile(
         {
           name: profile.name,
@@ -252,6 +273,24 @@ export const SettingsView: React.FC = () => {
       if (error) {
         showToast('Error', error.message, 'error');
       } else {
+        // Phase 17 — profile email consistency: once the change is CONFIRMED
+        // (via the email link), Supabase Auth email becomes authoritative.
+        // Sync profiles.email optimistically now; if confirmation never happens,
+        // Supabase leaves auth email unchanged and the next verified login
+        // re-syncs profiles.email from auth.users.email (source of truth).
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.id) {
+            await supabase
+              .from('profiles')
+              .update({ email: newLoginEmail, updated_at: new Date().toISOString() })
+              .eq('id', user.id);
+          }
+        } catch (syncErr) {
+          console.warn('Profile email sync notice:', syncErr);
+          // Non-fatal: auth email change succeeded; profile sync retried on next login.
+        }
+
         showToast(
           'Confirmation Email Sent',
           `A verification link has been sent to ${newLoginEmail}. Please confirm to complete email change.`,

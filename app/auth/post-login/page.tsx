@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { isDemoModeActive } from '@/backend/utilities/supabase';
+import { isDemoModeActive, isAuthConfigError, AUTH_CONFIG_ERROR_MESSAGE } from '@/backend/utilities/supabase';
 import { SessionService } from '@/backend/auth/session-service';
 import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 import { Loader2, ShieldCheck } from 'lucide-react';
@@ -10,12 +10,22 @@ import { Loader2, ShieldCheck } from 'lucide-react';
 export default function PostLoginGate() {
   const router = useRouter();
   const [statusText, setStatusText] = useState('Verifying credentials...');
+  // Fail-closed: production deployment without Supabase configuration must show
+  // a clear configuration error — never a fake session and never an infinite spin.
+  const [configError, setConfigError] = useState<boolean>(() => isAuthConfigError());
 
   useEffect(() => {
     let isMounted = true;
 
     async function checkUserAndProfile() {
       try {
+        // Fail closed on deployment misconfiguration before touching auth state.
+        if (isAuthConfigError()) {
+          setConfigError(true);
+          setStatusText('Configuration error detected.');
+          return;
+        }
+
         let user = null;
 
         // In demo mode, use localStorage session instead of Supabase
@@ -72,7 +82,27 @@ export default function PostLoginGate() {
           return;
         }
 
-        // 3. Query profiles table for onboarding status
+        // 3. Check if user is a registered client in any workspace
+        if (user.email) {
+          const { data: clientMatches } = await supabase
+            .from('clients')
+            .select('id, user_id, email, status')
+            .or(`user_id.eq.${user.id},email.ilike.${user.email.trim()}`);
+
+          if (clientMatches && clientMatches.length > 0) {
+            const clientMatch = clientMatches[0];
+            if (clientMatch.status !== 'pending_deletion') {
+              if (clientMatch.user_id !== user.id) {
+                await supabase.from('clients').update({ user_id: user.id }).eq('id', clientMatch.id);
+              }
+              setStatusText('Welcome to your client workspace...');
+              router.replace('/client/dashboard');
+              return;
+            }
+          }
+        }
+
+        // 4. Query profiles table for freelancer onboarding status
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('id, onboarding_completed')
@@ -85,7 +115,7 @@ export default function PostLoginGate() {
 
         if (!isMounted) return;
 
-        // 4. Routing decision:
+        // 5. Routing decision for freelancers:
         if (!profile || !profile.onboarding_completed) {
           router.replace('/onboarding');
         } else {
@@ -114,7 +144,11 @@ export default function PostLoginGate() {
         </div>
         <div>
           <FlowDeskLogo variant="full" size="sm" className="mx-auto mb-2" priority />
-          <p className="text-xs text-zinc-400">{statusText}</p>
+          {configError ? (
+            <p className="text-xs text-amber-400" role="alert">{AUTH_CONFIG_ERROR_MESSAGE}</p>
+          ) : (
+            <p className="text-xs text-zinc-400">{statusText}</p>
+          )}
         </div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-mono text-zinc-400">
           <ShieldCheck className="w-3 h-3 text-emerald-400" />

@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured, isDemoModeActive } from '@/backend/utilities/supabase';
+import { supabase, isSupabaseConfigured, isDemoModeActive, isAuthConfigError } from '@/backend/utilities/supabase';
 import { Session, User } from '@supabase/supabase-js';
 
 const LOCAL_SESSION_KEY = 'flowdesk_auth_session';
@@ -53,7 +53,8 @@ export const SessionService = {
       return { session: null, user: null };
     }
 
-    // Production: Supabase is the ONLY source of truth. Fail closed on errors.
+    // Production: Supabase is the ONLY source of truth. Fail closed on errors
+    // AND on missing configuration (never fabricate a session).
     if (!isSupabaseConfigured) {
       return { session: null, user: null };
     }
@@ -68,6 +69,38 @@ export const SessionService = {
     } catch (err: any) {
       console.warn('Session retrieval exception:', err?.message);
       return { session: null, user: null };
+    }
+  },
+
+  /**
+   * Get the current user with SERVER-SIDE verification (Supabase Auth /user
+   * endpoint). Unlike getSession(), this validates the JWT against Supabase,
+   * so stale or forged local state can never pass as identity.
+   *
+   * Used where authentication authority is required (AuthProvider init,
+   * post-login gate). Fails closed: returns null user on any error.
+   */
+  async getVerifiedUser(): Promise<User | null> {
+    // Explicitly configured demo environment: local demo session is allowed.
+    if (isDemoModeActive()) {
+      const { user } = await this.getSession();
+      return user;
+    }
+
+    if (!isSupabaseConfigured) {
+      return null;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.warn('Notice fetching verified user from Supabase:', error.message);
+        return null;
+      }
+      return data.user || null;
+    } catch (err: any) {
+      console.warn('Verified user retrieval exception:', err?.message);
+      return null;
     }
   },
 

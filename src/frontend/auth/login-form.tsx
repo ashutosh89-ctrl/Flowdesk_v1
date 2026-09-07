@@ -7,7 +7,7 @@ import { Mail, Lock, ArrowRight, AlertCircle, Briefcase, Building2, Sparkles, Sh
 import { useToast } from '@/frontend/shared/ui/toast';
 import { useAuth } from '@/frontend/auth/auth-context';
 import { ClientAuthService } from '@/backend/client';
-import { isDemoModeActive } from '@/backend/utilities/supabase';
+import { isDemoModeActive, isAuthConfigError, AUTH_CONFIG_ERROR_MESSAGE } from '@/backend/utilities/supabase';
 
 export interface LoginFormProps {
   onSuccess: () => void;
@@ -32,6 +32,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     }
     return null;
   });
+
+  // Fail-closed configuration state: a production deployment without Supabase
+  // configuration shows a clear error instead of silently demo-logging-in.
+  const [configError] = useState<boolean>(() => isAuthConfigError());
 
   const { signIn, signInDemo } = useAuth();
   const { showToast } = useToast();
@@ -118,6 +122,27 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       setDemoLoading(null);
     }
   };
+
+  // Deployment configuration failure: block all auth entry points (fail closed).
+  if (configError) {
+    return (
+      <div className="space-y-5">
+        <div className="text-center space-y-1">
+          <h2 className="text-2xl font-bold text-white tracking-tight">Authentication Unavailable</h2>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            FlowDesk cannot sign users in right now.
+          </p>
+        </div>
+        <div
+          role="alert"
+          className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-300 flex items-start gap-2.5"
+        >
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+          <span className="leading-relaxed">{AUTH_CONFIG_ERROR_MESSAGE}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">

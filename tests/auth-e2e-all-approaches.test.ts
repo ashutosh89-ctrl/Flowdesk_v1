@@ -14,6 +14,14 @@
  * 10. Multi-Tenant Session Isolation & Complete Sign-Out Teardown
  */
 
+// SECURITY NOTE: This suite tests the ISOLATED DEMO environment. Since the
+// fail-closed hardening, demo mode activates ONLY via explicit configuration
+// (NEXT_PUBLIC_AUTH_MODE=demo) — a production deployment with missing Supabase
+// env vars now fails closed instead of silently becoming a demo environment.
+// The setup import below declares demo mode BEFORE any auth module loads,
+// mirroring a real demo deployment's environment configuration.
+import './setup-demo-mode';
+
 import assert from 'assert';
 import { AuthService } from '../src/backend/auth/auth-service';
 import { SessionService } from '../src/backend/auth/session-service';

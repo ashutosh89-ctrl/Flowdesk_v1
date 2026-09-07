@@ -10,6 +10,7 @@ import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 import { Globe, Copy, CheckCircle2, ShieldCheck, RefreshCw, Power, Eye, QrCode as QrIcon, Mail } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import { FreelancerClientManagementService } from '@/backend/freelancer/client-management-service';
+import { getCurrentWorkspace } from '@/backend/utilities/workspace';
 
 export interface ClientPortalTabProps {
   summary: WorkspaceSummary;
@@ -19,13 +20,29 @@ export interface ClientPortalTabProps {
 export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRefresh }) => {
   const { client, deliverables, invoices, portalConfig } = summary;
   const { showToast } = useToast();
+  // Freelancer's own workspace identity (no hardcoded demo studio name).
+  const [freelancerIdentity, setFreelancerIdentity] = useState<string>('');
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const ws = await getCurrentWorkspace();
+        if (mounted) setFreelancerIdentity(ws?.name || '');
+      } catch {
+        // Non-fatal: falls back to client company name in the UI.
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [isSendingInvite, setIsSendingInvite] = useState(false);
 
   const portalUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/portal/${portalConfig.magicKey}`
-    : `https://flowdesk.app/portal/${portalConfig.magicKey}`;
+    ? `${window.location.origin}/portal/${client.id}`
+    : `https://flowdesk.app/portal/${client.id}`;
 
   const handleCopyLink = () => {
     navigator.clipboard?.writeText(portalUrl);
@@ -155,7 +172,9 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
             <FlowDeskLogo variant="symbol" size={36} className="p-1 rounded-xl bg-white/5 border border-white/10" />
             <div>
               <h2 className="text-lg font-bold text-white">{client.company} Client Portal</h2>
-              <p className="text-xs text-zinc-400">Prepared by Rivera Studio</p>
+              <p className="text-xs text-zinc-400">
+                {freelancerIdentity || client.company || 'Your Studio'} — client portal preview
+              </p>
             </div>
           </div>
           <span className="px-3 py-1 rounded-full bg-white/10 text-white border border-white/20 text-xs font-mono">

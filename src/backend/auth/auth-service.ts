@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured, isProductionMode, isDemoMode, isDemoModeActive } from '@/backend/utilities/supabase';
+import { supabase, isSupabaseConfigured, isDemoModeActive, isAuthConfigError, assertSupabaseConfigured, AUTH_CONFIG_ERROR_MESSAGE } from '@/backend/utilities/supabase';
 import { ProfileService } from '@/backend/auth/profile-service';
 import { UserSettingsService } from '@/backend/auth/user-settings-service';
 import { SessionService } from '@/backend/auth/session-service';
@@ -29,6 +29,10 @@ export const AuthService = {
    * Demo Mode Signup Fallback
    */
   async signUpDemo(email: string, fullName: string, businessName: string): Promise<AuthResponse> {
+    // Fail-closed guard: only explicitly configured demo deployments may reach this.
+    if (!isDemoModeActive()) {
+      return { user: null, error: 'Signup is unavailable: deployment configuration error.' };
+    }
     if (!email?.trim() || !fullName?.trim() || !businessName?.trim()) {
       return { user: null, error: 'All fields (full name, business name, email) are required.' };
     }
@@ -58,18 +62,27 @@ export const AuthService = {
       return { user: null, error: 'All fields (full name, business name, email, password) are required.' };
     }
 
-    // Explicit auth mode: only use demo if explicitly in demo mode
+    // Demo signup ONLY in explicitly configured demo deployments.
     if (isDemoModeActive()) {
       return this.signUpDemo(email, fullName, businessName);
     }
 
-    // Production mode requires Supabase
-    if (!isSupabaseConfigured) {
-      return { user: null, error: 'Supabase is not configured. Please set up your database connection.' };
+    // Fail closed when the deployment is missing Supabase configuration.
+    if (isAuthConfigError()) {
+      return { user: null, error: AUTH_CONFIG_ERROR_MESSAGE };
     }
 
     try {
-      const appUrl = process.env.APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      // APP_URL is a server-only hint for non-browser flows. In the browser the
+      // current origin is authoritative — a stale APP_URL must never redirect
+      // confirmation emails to the wrong host (e.g. localhost or an old deploy).
+      const appUrl =
+        typeof window !== 'undefined'
+          ? window.location.origin
+          : process.env.APP_URL || '';
+      if (!appUrl) {
+        return { user: null, error: 'Signup is unavailable: application URL is not configured.' };
+      }
       const redirectUri = `${appUrl}/auth/callback`;
 
       const { data, error } = await supabase.auth.signUp({
@@ -125,8 +138,10 @@ export const AuthService = {
    * Demo Mode Signin Fallback
    */
   async signInDemo(email?: string): Promise<AuthResponse> {
-    // Defense in depth: demo sign-in is only permitted in explicitly configured
-    // demo environments. A production visitor cannot activate demo mode manually.
+    // Defense in depth: demo sign-in is ONLY permitted in explicitly configured
+    // demo deployments (NEXT_PUBLIC_AUTH_MODE=demo). A production visitor —
+    // including one on a deployment with broken Supabase config — cannot enter
+    // demo mode. localStorage/cookies can never activate it either.
     if (!isDemoModeActive()) {
       return { user: null, error: 'Demo access is not enabled in this environment.' };
     }
@@ -174,14 +189,14 @@ export const AuthService = {
       return { user: null, error: 'Email and password are required.' };
     }
 
-    // Explicit auth mode: only use demo if explicitly in demo mode
+    // Demo sign-in ONLY in explicitly configured demo deployments.
     if (isDemoModeActive()) {
       return this.signInDemo(email);
     }
 
-    // Production mode requires Supabase
-    if (!isSupabaseConfigured) {
-      return { user: null, error: 'Supabase is not configured. Please set up your database connection.' };
+    // Fail closed when the deployment is missing Supabase configuration.
+    if (isAuthConfigError()) {
+      return { user: null, error: AUTH_CONFIG_ERROR_MESSAGE };
     }
 
     try {
@@ -309,14 +324,21 @@ export const AuthService = {
       return { user: null, error: null, message: 'Reset password code dispatched to your email.' };
     }
 
-    if (!isSupabaseConfigured) {
-      return { user: null, error: 'Supabase is not configured. Password reset unavailable.' };
+    // Fail closed when the deployment is missing Supabase configuration.
+    if (isAuthConfigError()) {
+      return { user: null, error: AUTH_CONFIG_ERROR_MESSAGE };
     }
 
     try {
       const originUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      if (!originUrl) {
+        return { user: null, error: 'Password reset is unavailable: application URL is not configured.' };
+      }
+      // Single authoritative recovery flow: Supabase sends the user to the app's
+      // OAuth callback with type=recovery; the callback route exchanges the code
+      // server-side and redirects to /reset-password. No competing mechanism.
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${originUrl}/auth/reset-password`,
+        redirectTo: `${originUrl}/auth/callback?type=recovery`,
       });
 
       if (error) {
@@ -341,8 +363,9 @@ export const AuthService = {
       return { user: null, error: null, message: 'Password successfully updated.' };
     }
 
-    if (!isSupabaseConfigured) {
-      return { user: null, error: 'Supabase is not configured. Password reset unavailable.' };
+    // Fail closed when the deployment is missing Supabase configuration.
+    if (isAuthConfigError()) {
+      return { user: null, error: AUTH_CONFIG_ERROR_MESSAGE };
     }
 
     try {
@@ -385,11 +408,14 @@ export const AuthService = {
       return { user, error: null, message: 'Email address verified.' };
     }
 
-    if (!isSupabaseConfigured) {
-      return { user: null, error: 'Supabase is not configured. Email verification unavailable.' };
+    // Fail closed when the deployment is missing Supabase configuration.
+    if (isAuthConfigError()) {
+      return { user: null, error: AUTH_CONFIG_ERROR_MESSAGE };
     }
 
-    if (currentLocalUser) {
+    // SECURITY: a pre-existing session must NEVER stand in for OTP verification.
+    // In production the code the user typed must always be validated by Supabase.
+    if (currentLocalUser && !isSupabaseConfigured) {
       return { user: currentLocalUser, error: null, message: 'Email address verified.' };
     }
 

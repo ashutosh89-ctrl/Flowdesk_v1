@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { validateAndFormatUrl, validateKey } from '@/backend/utilities/supabase';
+import { validateAndFormatUrl, validateKey, isDemoMode } from '@/backend/utilities/supabase';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -55,15 +55,12 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = validateAndFormatUrl(rawUrl) || rawUrl;
   const supabaseAnonKey = validateKey(rawKey) || rawKey;
 
-  // Demo mode is controlled EXCLUSIVELY by deployment configuration.
-  // Browser state (cookies/localStorage) can NEVER activate demo mode in production.
-  const isDemoEnv =
-    process.env.NEXT_PUBLIC_AUTH_MODE === 'demo' ||
-    !validateAndFormatUrl(rawUrl) ||
-    !validateKey(rawKey);
-
-  // If demo mode is explicitly configured, pass through to client-side demo guards.
-  if (isDemoEnv) {
+  // SECURITY (fail-closed): demo mode is ONLY active when explicitly configured
+  // via NEXT_PUBLIC_AUTH_MODE=demo. A production deployment with missing/broken
+  // Supabase env vars must NOT bypass the auth gate here — it fails closed via
+  // the redirect below instead of silently opening every route as demo.
+  // Browser state (cookies/localStorage) can NEVER activate demo mode.
+  if (isDemoMode) {
     return response;
   }
 

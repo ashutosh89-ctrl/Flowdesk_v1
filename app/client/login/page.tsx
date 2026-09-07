@@ -191,6 +191,21 @@ function ClientLoginForm() {
             </div>
           </div>
 
+          <div className="flex items-center justify-between text-xs">
+            <a
+              href="/forgot-password"
+              className="text-zinc-400 hover:text-white transition-colors"
+            >
+              Forgot password?
+            </a>
+            <a
+              href="/signup"
+              className="text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
+            >
+              First time here? Sign up
+            </a>
+          </div>
+
           {error && (
             <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />

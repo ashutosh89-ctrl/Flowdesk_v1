@@ -49,8 +49,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <SignupForm
             onSuccess={() => setView('onboarding')}
             onSwitchToLogin={() => setView('login')}
-            onGoToVerifyEmail={(e) => {
-              setUserEmail(e);
+            onGoToVerifyEmail={(typedEmail) => {
+              // Pass the email actually typed at signup — the OTP must be
+              // verified against the same address the code was sent to.
+              setUserEmail(typedEmail || userEmail);
               setView('verify');
             }}
           />

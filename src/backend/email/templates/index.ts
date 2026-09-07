@@ -1,4 +1,4 @@
-import { renderEmailLayout } from './layout';
+import { renderEmailLayout, escapeHtml } from './layout';
 
 export interface ClientInvitationParams {
   clientName: string;
@@ -8,13 +8,16 @@ export interface ClientInvitationParams {
 }
 
 export function renderClientInvitationEmail(params: ClientInvitationParams) {
-  const sender = params.businessName || params.freelancerName || 'FlowDesk Studio';
+  const rawSender = params.businessName || params.freelancerName || 'FlowDesk Studio';
+  const sender = escapeHtml(rawSender);
+  const clientName = escapeHtml(params.clientName);
+
   const contentHtml = `
-    <p>Hello <strong>${params.clientName}</strong>,</p>
+    <p>Hello <strong>${clientName}</strong>,</p>
     <p><strong>${sender}</strong> has invited you to access your dedicated collaboration portal on FlowDesk.</p>
     <p>From your portal, you can review deliverables, approve milestones, upload brand assets, and view invoices in one secure place.</p>
     <div class="info-box">
-      <div class="info-row"><span class="info-label">Client</span><span class="info-value">${params.clientName}</span></div>
+      <div class="info-row"><span class="info-label">Client</span><span class="info-value">${clientName}</span></div>
       <div class="info-row"><span class="info-label">Invited By</span><span class="info-value">${sender}</span></div>
       <div class="info-row"><span class="info-label">Access Type</span><span class="info-value">Client Collaboration Portal</span></div>
     </div>
@@ -22,15 +25,15 @@ export function renderClientInvitationEmail(params: ClientInvitationParams) {
   `;
 
   return {
-    subject: `Invitation: Access your client portal from ${sender}`,
+    subject: `Invitation: Access your client portal from ${rawSender}`,
     html: renderEmailLayout({
       title: 'Welcome to your Client Portal',
-      previewText: `${sender} has invited you to collaborate on FlowDesk.`,
+      previewText: `${rawSender} has invited you to collaborate on FlowDesk.`,
       contentHtml,
       ctaText: 'Enter Client Portal',
       ctaUrl: params.portalUrl,
     }),
-    text: `Hello ${params.clientName},\n\n${sender} has invited you to your dedicated collaboration portal on FlowDesk.\n\nAccess your portal here: ${params.portalUrl}\n\nFlowDesk Team`,
+    text: `Hello ${params.clientName},\n\n${rawSender} has invited you to your dedicated collaboration portal on FlowDesk.\n\nAccess your portal here: ${params.portalUrl}\n\nFlowDesk Team`,
   };
 }
 
@@ -46,16 +49,19 @@ export interface DeliverableReadyParams {
 }
 
 export function renderDeliverableReadyEmail(params: DeliverableReadyParams) {
-  const project = params.projectName || params.projectTitle || 'Project Workspace';
-  const ver = params.version || params.versionNumber || 'v1.0';
-  const freelancer = params.freelancerName || 'Freelancer';
+  const rawProject = params.projectName || params.projectTitle || 'Project Workspace';
+  const project = escapeHtml(rawProject);
+  const deliverableTitle = escapeHtml(params.deliverableTitle);
+  const ver = escapeHtml(params.version || params.versionNumber || 'v1.0');
+  const freelancer = escapeHtml(params.freelancerName || 'Freelancer');
+  const clientName = escapeHtml(params.clientName);
 
   const contentHtml = `
-    <p>Hello <strong>${params.clientName}</strong>,</p>
+    <p>Hello <strong>${clientName}</strong>,</p>
     <p>A new deliverable is ready for your review and feedback in project <strong>${project}</strong>.</p>
     <div class="info-box">
       <div class="info-row"><span class="info-label">Project</span><span class="info-value">${project}</span></div>
-      <div class="info-row"><span class="info-label">Deliverable</span><span class="info-value">${params.deliverableTitle}</span></div>
+      <div class="info-row"><span class="info-label">Deliverable</span><span class="info-value">${deliverableTitle}</span></div>
       <div class="info-row"><span class="info-label">Version</span><span class="info-value">${ver}</span></div>
       <div class="info-row"><span class="info-label">Submitted By</span><span class="info-value">${freelancer}</span></div>
     </div>
@@ -63,7 +69,7 @@ export function renderDeliverableReadyEmail(params: DeliverableReadyParams) {
   `;
 
   return {
-    subject: `Deliverable Ready for Review: "${params.deliverableTitle}" (${project})`,
+    subject: `Deliverable Ready for Review: "${params.deliverableTitle}" (${rawProject})`,
     html: renderEmailLayout({
       title: 'New Deliverable Ready for Review',
       previewText: `"${params.deliverableTitle}" has been submitted for review.`,
@@ -71,7 +77,7 @@ export function renderDeliverableReadyEmail(params: DeliverableReadyParams) {
       ctaText: 'Review Deliverable',
       ctaUrl: params.portalUrl,
     }),
-    text: `Hello ${params.clientName},\n\n"${params.deliverableTitle}" (${project}) is ready for review.\n\nReview it here: ${params.portalUrl}`,
+    text: `Hello ${params.clientName},\n\n"${params.deliverableTitle}" (${rawProject}) is ready for review.\n\nReview it here: ${params.portalUrl}`,
   };
 }
 
@@ -87,19 +93,24 @@ export interface DeliverableApprovedParams {
 }
 
 export function renderDeliverableApprovedEmail(params: DeliverableApprovedParams) {
-  const project = params.projectName || params.projectTitle || 'Project Workspace';
+  const rawProject = params.projectName || params.projectTitle || 'Project Workspace';
+  const project = escapeHtml(rawProject);
+  const freelancer = escapeHtml(params.freelancerName);
+  const clientName = escapeHtml(params.clientName);
+  const deliverableTitle = escapeHtml(params.deliverableTitle);
+  const notes = params.notes ? escapeHtml(params.notes) : null;
   const url = params.dashboardUrl || params.deliverableUrl || '#';
 
   const contentHtml = `
-    <p>Hello <strong>${params.freelancerName}</strong>,</p>
-    <p>Great news! <strong>${params.clientName}</strong> has approved your deliverable <strong>"${params.deliverableTitle}"</strong> for project <strong>${project}</strong>.</p>
+    <p>Hello <strong>${freelancer}</strong>,</p>
+    <p>Great news! <strong>${clientName}</strong> has approved your deliverable <strong>"${deliverableTitle}"</strong> for project <strong>${project}</strong>.</p>
     <div class="info-box">
-      <div class="info-row"><span class="info-label">Client</span><span class="info-value">${params.clientName}</span></div>
+      <div class="info-row"><span class="info-label">Client</span><span class="info-value">${clientName}</span></div>
       <div class="info-row"><span class="info-label">Project</span><span class="info-value">${project}</span></div>
-      <div class="info-row"><span class="info-label">Deliverable</span><span class="info-value">${params.deliverableTitle}</span></div>
+      <div class="info-row"><span class="info-label">Deliverable</span><span class="info-value">${deliverableTitle}</span></div>
       <div class="info-row"><span class="info-label">Status</span><span class="info-value" style="color: #34d399;">Approved</span></div>
     </div>
-    ${params.notes ? `<p style="font-size: 13px; color: #d4d4d8;"><strong>Client Notes:</strong> "${params.notes}"</p>` : ''}
+    ${notes ? `<p style="font-size: 13px; color: #d4d4d8;"><strong>Client Notes:</strong> "${notes}"</p>` : ''}
   `;
 
   return {
@@ -111,7 +122,7 @@ export function renderDeliverableApprovedEmail(params: DeliverableApprovedParams
       ctaText: 'View in Dashboard',
       ctaUrl: url,
     }),
-    text: `Hello ${params.freelancerName},\n\n${params.clientName} approved "${params.deliverableTitle}" (${project}).\n\nView here: ${url}`,
+    text: `Hello ${params.freelancerName},\n\n${params.clientName} approved "${params.deliverableTitle}" (${rawProject}).\n\nView here: ${url}`,
   };
 }
 
@@ -129,17 +140,22 @@ export interface RevisionRequestedParams {
 }
 
 export function renderRevisionRequestedEmail(params: RevisionRequestedParams) {
-  const project = params.projectName || params.projectTitle || 'Project Workspace';
-  const feedbackText = params.feedback || params.revisionNotes || 'Client requested modifications';
+  const rawProject = params.projectName || params.projectTitle || 'Project Workspace';
+  const project = escapeHtml(rawProject);
+  const freelancer = escapeHtml(params.freelancerName);
+  const clientName = escapeHtml(params.clientName);
+  const deliverableTitle = escapeHtml(params.deliverableTitle);
+  const rawFeedback = params.feedback || params.revisionNotes || 'Client requested modifications';
+  const feedbackText = escapeHtml(rawFeedback);
   const url = params.dashboardUrl || params.deliverableUrl || '#';
 
   const contentHtml = `
-    <p>Hello <strong>${params.freelancerName}</strong>,</p>
-    <p><strong>${params.clientName}</strong> has requested revisions for <strong>"${params.deliverableTitle}"</strong> in project <strong>${project}</strong>.</p>
+    <p>Hello <strong>${freelancer}</strong>,</p>
+    <p><strong>${clientName}</strong> has requested revisions for <strong>"${deliverableTitle}"</strong> in project <strong>${project}</strong>.</p>
     <div class="info-box">
       <div class="info-row"><span class="info-label">Project</span><span class="info-value">${project}</span></div>
-      <div class="info-row"><span class="info-label">Deliverable</span><span class="info-value">${params.deliverableTitle}</span></div>
-      <div class="info-row"><span class="info-label">Client</span><span class="info-value">${params.clientName}</span></div>
+      <div class="info-row"><span class="info-label">Deliverable</span><span class="info-value">${deliverableTitle}</span></div>
+      <div class="info-row"><span class="info-label">Client</span><span class="info-value">${clientName}</span></div>
       ${params.hasAttachment ? `<div class="info-row"><span class="info-label">Attachment</span><span class="info-value">Feedback File Uploaded</span></div>` : ''}
     </div>
     <div style="background-color: #1c1917; border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 10px; padding: 14px; margin: 16px 0;">
@@ -157,7 +173,7 @@ export function renderRevisionRequestedEmail(params: RevisionRequestedParams) {
       ctaText: 'View Revision Details',
       ctaUrl: url,
     }),
-    text: `Hello ${params.freelancerName},\n\n${params.clientName} requested revisions on "${params.deliverableTitle}".\nFeedback: ${feedbackText}\n\nView here: ${url}`,
+    text: `Hello ${params.freelancerName},\n\n${params.clientName} requested revisions on "${params.deliverableTitle}".\nFeedback: ${rawFeedback}\n\nView here: ${url}`,
   };
 }
 
@@ -172,16 +188,21 @@ export interface DocumentUploadedParams {
 }
 
 export function renderDocumentUploadedEmail(params: DocumentUploadedParams) {
+  const recipient = escapeHtml(params.recipientName);
+  const uploader = escapeHtml(params.uploaderName);
+  const documentTitle = escapeHtml(params.documentTitle);
+  const category = escapeHtml(params.category);
+  const projectTitle = params.projectTitle ? escapeHtml(params.projectTitle) : null;
   const url = params.actionUrl || params.documentUrl || '#';
 
   const contentHtml = `
-    <p>Hello <strong>${params.recipientName}</strong>,</p>
-    <p><strong>${params.uploaderName}</strong> uploaded a new document to your shared workspace.</p>
+    <p>Hello <strong>${recipient}</strong>,</p>
+    <p><strong>${uploader}</strong> uploaded a new document to your shared workspace.</p>
     <div class="info-box">
-      <div class="info-row"><span class="info-label">Document</span><span class="info-value">${params.documentTitle}</span></div>
-      <div class="info-row"><span class="info-label">Category</span><span class="info-value">${params.category}</span></div>
-      <div class="info-row"><span class="info-label">Uploaded By</span><span class="info-value">${params.uploaderName}</span></div>
-      ${params.projectTitle ? `<div class="info-row"><span class="info-label">Project</span><span class="info-value">${params.projectTitle}</span></div>` : ''}
+      <div class="info-row"><span class="info-label">Document</span><span class="info-value">${documentTitle}</span></div>
+      <div class="info-row"><span class="info-label">Category</span><span class="info-value">${category}</span></div>
+      <div class="info-row"><span class="info-label">Uploaded By</span><span class="info-value">${uploader}</span></div>
+      ${projectTitle ? `<div class="info-row"><span class="info-label">Project</span><span class="info-value">${projectTitle}</span></div>` : ''}
     </div>
   `;
 
@@ -211,32 +232,37 @@ export interface InvoiceIssuedParams {
 }
 
 export function renderInvoiceIssuedEmail(params: InvoiceIssuedParams) {
-  const sender = params.businessName || params.freelancerName || 'FlowDesk Studio';
-  const amt = params.amountFormatted || params.amount || '$0.00';
+  const rawSender = params.businessName || params.freelancerName || 'FlowDesk Studio';
+  const sender = escapeHtml(rawSender);
+  const rawAmt = params.amountFormatted || params.amount || '$0.00';
+  const amt = escapeHtml(rawAmt);
+  const clientName = escapeHtml(params.clientName);
+  const invoiceNumber = escapeHtml(params.invoiceNumber);
+  const dueDate = escapeHtml(params.dueDate);
   const url = params.portalUrl || params.invoiceUrl || '#';
 
   const contentHtml = `
-    <p>Hello <strong>${params.clientName}</strong>,</p>
-    <p><strong>${sender}</strong> has issued invoice <strong>#${params.invoiceNumber}</strong> for your account.</p>
+    <p>Hello <strong>${clientName}</strong>,</p>
+    <p><strong>${sender}</strong> has issued invoice <strong>#${invoiceNumber}</strong> for your account.</p>
     <div class="info-box">
-      <div class="info-row"><span class="info-label">Invoice Number</span><span class="info-value">#${params.invoiceNumber}</span></div>
+      <div class="info-row"><span class="info-label">Invoice Number</span><span class="info-value">#${invoiceNumber}</span></div>
       <div class="info-row"><span class="info-label">Total Amount</span><span class="info-value" style="font-size: 15px; color: #ffffff;">${amt}</span></div>
-      <div class="info-row"><span class="info-label">Due Date</span><span class="info-value">${params.dueDate}</span></div>
+      <div class="info-row"><span class="info-label">Due Date</span><span class="info-value">${dueDate}</span></div>
       <div class="info-row"><span class="info-label">Issued By</span><span class="info-value">${sender}</span></div>
     </div>
     <p>You can view the full line items, download a vector PDF, or settle the balance via your portal.</p>
   `;
 
   return {
-    subject: `Invoice #${params.invoiceNumber} from ${sender} (${amt})`,
+    subject: `Invoice #${params.invoiceNumber} from ${rawSender} (${rawAmt})`,
     html: renderEmailLayout({
       title: `Invoice #${params.invoiceNumber}`,
-      previewText: `Invoice #${params.invoiceNumber} for ${amt} is due ${params.dueDate}.`,
+      previewText: `Invoice #${params.invoiceNumber} for ${rawAmt} is due ${params.dueDate}.`,
       contentHtml,
       ctaText: 'View Invoice',
       ctaUrl: url,
     }),
-    text: `Hello ${params.clientName},\n\nInvoice #${params.invoiceNumber} from ${sender} for ${amt} is due ${params.dueDate}.\n\nView invoice: ${url}`,
+    text: `Hello ${params.clientName},\n\nInvoice #${params.invoiceNumber} from ${rawSender} for ${rawAmt} is due ${params.dueDate}.\n\nView invoice: ${url}`,
   };
 }
 
@@ -257,35 +283,41 @@ export interface PaymentReceivedParams {
 }
 
 export function renderPaymentReceivedEmail(params: PaymentReceivedParams) {
-  const amt = params.amountPaidFormatted || params.amount || '$0.00';
+  const rawAmt = params.amountPaidFormatted || params.amount || '$0.00';
+  const amt = escapeHtml(rawAmt);
   const isFull = params.isFullyPaid !== undefined ? params.isFullyPaid : true;
-  const method = params.paymentMethod || 'Bank Transfer';
+  const method = escapeHtml(params.paymentMethod || 'Bank Transfer');
+  const recipient = escapeHtml(params.recipientName);
+  const invoiceNumber = escapeHtml(params.invoiceNumber);
+  const paymentDate = params.paymentDate ? escapeHtml(params.paymentDate) : null;
+  const receiptNumber = params.receiptNumber ? escapeHtml(params.receiptNumber) : null;
+  const balance = params.balanceRemainingFormatted ? escapeHtml(params.balanceRemainingFormatted) : null;
   const url = params.actionUrl || params.receiptUrl || '#';
 
   const contentHtml = `
-    <p>Hello <strong>${params.recipientName}</strong>,</p>
-    <p>A payment of <strong>${amt}</strong> has been recorded for invoice <strong>#${params.invoiceNumber}</strong>.</p>
+    <p>Hello <strong>${recipient}</strong>,</p>
+    <p>A payment of <strong>${amt}</strong> has been recorded for invoice <strong>#${invoiceNumber}</strong>.</p>
     <div class="info-box">
-      <div class="info-row"><span class="info-label">Invoice</span><span class="info-value">#${params.invoiceNumber}</span></div>
+      <div class="info-row"><span class="info-label">Invoice</span><span class="info-value">#${invoiceNumber}</span></div>
       <div class="info-row"><span class="info-label">Amount Paid</span><span class="info-value" style="color: #34d399;">${amt}</span></div>
       <div class="info-row"><span class="info-label">Payment Method</span><span class="info-value">${method}</span></div>
-      ${params.paymentDate ? `<div class="info-row"><span class="info-label">Date</span><span class="info-value">${params.paymentDate}</span></div>` : ''}
-      ${params.receiptNumber ? `<div class="info-row"><span class="info-label">Receipt #</span><span class="info-value">${params.receiptNumber}</span></div>` : ''}
+      ${paymentDate ? `<div class="info-row"><span class="info-label">Date</span><span class="info-value">${paymentDate}</span></div>` : ''}
+      ${receiptNumber ? `<div class="info-row"><span class="info-label">Receipt #</span><span class="info-value">${receiptNumber}</span></div>` : ''}
       <div class="info-row"><span class="info-label">Status</span><span class="info-value">${isFull ? 'Paid in Full' : 'Partially Paid'}</span></div>
-      ${params.balanceRemainingFormatted && !isFull ? `<div class="info-row"><span class="info-label">Remaining Balance</span><span class="info-value">${params.balanceRemainingFormatted}</span></div>` : ''}
+      ${balance && !isFull ? `<div class="info-row"><span class="info-label">Remaining Balance</span><span class="info-value">${balance}</span></div>` : ''}
     </div>
   `;
 
   return {
-    subject: `Payment Confirmation: Invoice #${params.invoiceNumber} (${amt})`,
+    subject: `Payment Confirmation: Invoice #${params.invoiceNumber} (${rawAmt})`,
     html: renderEmailLayout({
       title: isFull ? 'Invoice Paid in Full' : 'Partial Payment Received',
-      previewText: `Payment of ${amt} recorded for #${params.invoiceNumber}.`,
+      previewText: `Payment of ${rawAmt} recorded for #${params.invoiceNumber}.`,
       contentHtml,
       ctaText: 'View Receipt & Invoice',
       ctaUrl: url,
     }),
-    text: `Hello ${params.recipientName},\n\nPayment of ${amt} recorded for Invoice #${params.invoiceNumber}.\n\nView here: ${url}`,
+    text: `Hello ${params.recipientName},\n\nPayment of ${rawAmt} recorded for Invoice #${params.invoiceNumber}.\n\nView here: ${url}`,
   };
 }
 
@@ -302,9 +334,11 @@ export interface AccountLifecycleParams {
 }
 
 export function renderAccountLifecycleEmail(params: AccountLifecycleParams) {
-  const userDisplayName = params.userName || params.name || 'User';
+  const rawUser = params.userName || params.name || 'User';
+  const userDisplayName = escapeHtml(rawUser);
   const url = params.actionUrl || params.restoreUrl || '#';
-  const deadline = params.restoreUntilDate || params.restoreUntil;
+  const rawDeadline = params.restoreUntilDate || params.restoreUntil;
+  const deadline = rawDeadline ? escapeHtml(rawDeadline) : null;
 
   if (params.action === 'deleted' || params.action === 'scheduled_deletion') {
     const days = params.gracePeriodDays || (params.role === 'client' ? 30 : 5);
@@ -329,7 +363,7 @@ export function renderAccountLifecycleEmail(params: AccountLifecycleParams) {
         ctaText: 'Manage / Restore Account',
         ctaUrl: url,
       }),
-      text: `Hello ${userDisplayName},\n\nYour FlowDesk account is scheduled for deletion (${days}-day grace period).\n\nRestore here if needed: ${url}`,
+      text: `Hello ${rawUser},\n\nYour FlowDesk account is scheduled for deletion (${days}-day grace period).\n\nRestore here if needed: ${url}`,
     };
   }
 
@@ -352,7 +386,7 @@ export function renderAccountLifecycleEmail(params: AccountLifecycleParams) {
       ctaText: 'Log In to FlowDesk',
       ctaUrl: url,
     }),
-    text: `Hello ${userDisplayName},\n\nYour FlowDesk account has been restored.\n\nLog in here: ${url}`,
+    text: `Hello ${rawUser},\n\nYour FlowDesk account has been restored.\n\nLog in here: ${url}`,
   };
 }
 
@@ -365,17 +399,20 @@ export interface SecurityAlertParams {
 }
 
 export function renderSecurityAlertEmail(params: SecurityAlertParams) {
-  const userDisplayName = params.userName || params.name || 'User';
+  const rawUser = params.userName || params.name || 'User';
+  const userDisplayName = escapeHtml(rawUser);
+  const eventType = escapeHtml(params.eventType);
+  const details = escapeHtml(params.details);
   const url = params.actionUrl || '#';
 
   const contentHtml = `
     <p>Hello <strong>${userDisplayName}</strong>,</p>
     <p>A security event occurred on your FlowDesk account:</p>
     <div class="info-box">
-      <div class="info-row"><span class="info-label">Event</span><span class="info-value">${params.eventType}</span></div>
+      <div class="info-row"><span class="info-label">Event</span><span class="info-value">${eventType}</span></div>
       <div class="info-row"><span class="info-label">Time</span><span class="info-value">${new Date().toUTCString()}</span></div>
     </div>
-    <p>${params.details}</p>
+    <p>${details}</p>
     <p>If you did not authorize this action, please reset your password immediately.</p>
   `;
 
@@ -388,6 +425,7 @@ export function renderSecurityAlertEmail(params: SecurityAlertParams) {
       ctaText: 'Review Security Settings',
       ctaUrl: url,
     }),
-    text: `Hello ${userDisplayName},\n\nSecurity event: ${params.eventType}\nDetails: ${params.details}\n\nReview: ${url}`,
+    text: `Hello ${rawUser},\n\nSecurity event: ${params.eventType}\nDetails: ${params.details}\n\nReview: ${url}`,
   };
 }
+

@@ -32,6 +32,14 @@ export const FreelancerClientManagementService = {
         await supabase.from('activities').insert({ workspace_id: ws.id, action: 'created_client', title: client.name, description: `Created client ${client.company}`, user_name: user?.email?.split('@')[0] || 'User', resource_type: 'client' });
       }
     } catch { /* non-critical */ }
+
+    // Automatically trigger invitation email dispatch if client has email
+    if (client.email && client.email.includes('@')) {
+      FreelancerClientManagementService.sendClientInvitationEmail(client.id).catch((emailErr) => {
+        console.warn('[FreelancerClientManagementService] Auto-invitation notice:', emailErr);
+      });
+    }
+
     return client;
   },
   updateClient: async (id: string, updates: Partial<Client>): Promise<Client | undefined> => {
@@ -73,27 +81,54 @@ export const FreelancerClientManagementService = {
     } catch { throw new Error('Failed to regenerate portal link'); }
   },
   sendClientInvitationEmail: async (clientId: string): Promise<{ success: boolean; message?: string; error?: string }> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      const client = FlowDeskStore.getClientById(clientId);
+      if (!client || !client.email) {
+        return { success: false, error: 'Client does not have a registered email address.' };
+      }
+      return {
+        success: true,
+        message: `[Demo] Invitation email simulated for ${client.email}`,
+      };
+    }
+
     try {
       const { data: client } = await supabase.from('clients').select('id, name, email, company, portal_token, workspace_id').eq('id', clientId).single();
       if (!client || !client.email) {
         return { success: false, error: 'Client does not have a registered email address.' };
       }
-      const { data: ws } = await supabase.from('workspaces').select('name, owner_id').eq('id', client.workspace_id).single();
-      let studioName = ws?.name || 'FlowDesk Studio';
-      if (ws?.owner_id) {
-        const { data: profile } = await supabase.from('profiles').select('business_name, full_name').eq('id', ws.owner_id).single();
-        if (profile?.business_name) studioName = profile.business_name;
+
+      let wsId = client.workspace_id;
+      let ownerId: string | undefined;
+
+      if (wsId) {
+        const { data: ws } = await supabase.from('workspaces').select('id, name, owner_id').eq('id', wsId).single();
+        ownerId = ws?.owner_id;
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: ws } = await supabase.from('workspaces').select('id, name, owner_id').eq('owner_id', user.id).limit(1).single();
+          wsId = ws?.id;
+          ownerId = ws?.owner_id;
+        }
       }
-      // Canonical portal route is /portal/{clientId}; the portal token is
-      // resolved server-side during auth, never used as the route identity.
+
+      let studioName = 'FlowDesk Studio';
+      if (ownerId) {
+        const { data: profile } = await supabase.from('profiles').select('business_name, full_name').eq('id', ownerId).single();
+        if (profile?.business_name) studioName = profile.business_name;
+        else if (profile?.full_name) studioName = profile.full_name;
+      }
+
+      // Canonical portal route is /portal/{clientId}
       const { EmailService } = await import('@/backend/email/email-service');
       const { getAppBaseUrl } = await import('@/shared/utils/url');
       const portalUrl = `${getAppBaseUrl()}/portal/${client.id}`;
-      const res = await EmailService.sendClientInvitation(client.email, {
+      const res = await EmailService.sendClientInvitation(client.email.trim(), {
         clientName: client.name || client.company || 'Client',
         freelancerName: studioName,
         portalUrl,
-      }, { workspaceId: client.workspace_id, clientId: client.id });
+      }, { workspaceId: wsId || undefined, clientId: client.id });
 
       return {
         success: res.success,

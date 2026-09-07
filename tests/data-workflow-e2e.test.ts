@@ -11,6 +11,8 @@
  * 7. Activity Timeline Auditing & Notification Dispatches
  */
 
+process.env.NEXT_PUBLIC_AUTH_MODE = 'demo';
+
 import assert from 'assert';
 import { FreelancerClientManagementService as ClientService } from '../src/backend/freelancer/client-management-service';
 import {
@@ -102,18 +104,17 @@ async function runDataWorkflowTests() {
   await test('Create project associated with Acme Global', async () => {
     const project = await FreelancerProjectService.createProject({
       clientId: createdClientId,
-      name: 'Acme Global Enterprise Rebrand',
+      title: 'Acme Global Enterprise Rebrand',
       description: 'Comprehensive brand overhaul including logo, design system, and portal assets.',
       status: 'in_progress',
       budget: 15000,
       startDate: '2026-09-01',
-      endDate: '2026-11-30',
+      dueDate: '2026-11-30',
+      tags: ['branding', 'design-system'],
       clientName: 'Acme Global Inc.',
-      clientEmail: 'mbrody@acmeglobal.com',
-      progress: 25,
       milestones: [
-        { id: 'm-1', title: 'Design System Foundation', completed: true, dueDate: '2026-09-15' },
-        { id: 'm-2', title: 'Portal Web App Design', completed: false, dueDate: '2026-10-15' },
+        { id: 'm-1', projectId: 'temp-p1', title: 'Design System Foundation', completed: true, dueDate: '2026-09-15' },
+        { id: 'm-2', projectId: 'temp-p1', title: 'Portal Web App Design', completed: false, dueDate: '2026-10-15' },
       ],
     });
     assert(project);
@@ -167,7 +168,7 @@ async function runDataWorkflowTests() {
   await test('Client requests revision with detailed notes', async () => {
     const updated = await FreelancerDeliverableService.updateDeliverable(createdDeliverableId, {
       status: 'revision_requested',
-      revisionNotes: 'Please increase contrast on secondary text elements.',
+      revisionNote: 'Please increase contrast on secondary text elements.',
     });
     assert(updated);
     assert.strictEqual(updated.status, 'revision_requested');
@@ -176,11 +177,9 @@ async function runDataWorkflowTests() {
   await test('Freelancer submits Revision V2 and client approves deliverable', async () => {
     const approved = await FreelancerDeliverableService.updateDeliverable(createdDeliverableId, {
       status: 'approved',
-      progress: 100,
     });
     assert(approved);
     assert.strictEqual(approved.status, 'approved');
-    assert.strictEqual(approved.progress, 100);
   });
 
   // -------------------------------------------------------------------------
@@ -193,30 +192,31 @@ async function runDataWorkflowTests() {
       title: 'Master Service Agreement 2026',
       fileUrl: 'https://flowdesk.app/docs/msa-acme.pdf',
       fileSize: 2150000,
-      mimeType: 'application/pdf',
-      clientId: createdClientId,
-      projectId: createdProjectId,
-      category: 'contract',
+      type: 'pdf',
+      category: 'contracts',
+      description: 'Standard master service agreement signed by client',
       clientName: 'Acme Global Inc.',
     });
     assert(doc);
     assert(doc.id);
-    assert.strictEqual(doc.category, 'contract');
+    assert.strictEqual(doc.title, 'Master Service Agreement 2026');
     createdDocId = doc.id;
   });
 
-  await test('Fetch documents for client workspace', async () => {
-    const docs = await FreelancerDocumentService.getDocuments(createdClientId);
+  await test('Fetch documents and verify presence', async () => {
+    const docs = await FreelancerDocumentService.getDocuments();
     assert(Array.isArray(docs));
-    assert(docs.some((d) => d.id === createdDocId));
+    const found = docs.find((d) => d.id === createdDocId);
+    assert(found, 'Created document exists in list');
+    assert.strictEqual(found?.category, 'contracts');
   });
 
   // -------------------------------------------------------------------------
-  // SECTION 5: Invoice Creation, Multi-step Payments & Receipts
+  // SECTION 5: Invoicing & Offline / Partial Payments
   // -------------------------------------------------------------------------
-  console.log('\n--- SECTION 5: Invoicing & Financial Settlement ---');
+  console.log('\n--- SECTION 5: Invoicing & Payments ---');
   let createdInvoiceId = '';
-  await test('Create itemized invoice with subtotal, tax and balance calculation', async () => {
+  await test('Create invoice ($11,000 including 10% tax)', async () => {
     const invoice = await FreelancerInvoiceService.createInvoice({
       clientId: createdClientId,
       projectId: createdProjectId,
@@ -228,15 +228,14 @@ async function runDataWorkflowTests() {
       currency: 'USD',
       status: 'pending',
       items: [
-        { id: 'i-1', description: 'Brand Strategy & Visual Identity', quantity: 1, unitPrice: 8000, amount: 8000 },
-        { id: 'i-2', description: 'Design System Documentation', quantity: 1, unitPrice: 2000, amount: 2000 },
+        { id: 'i-1', description: 'Brand Strategy & Visual Identity', quantity: 1, rate: 8000, unitPrice: 8000, amount: 8000 },
+        { id: 'i-2', description: 'Design System Documentation', quantity: 1, rate: 2000, unitPrice: 2000, amount: 2000 },
       ],
       subtotal: 10000,
       tax: 1000, // 10%
       total: 11000,
       paidAmount: 0,
       remainingAmount: 11000,
-      paymentMethod: 'bank_transfer',
     });
     assert(invoice);
     assert(invoice.id);

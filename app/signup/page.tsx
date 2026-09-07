@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthProvider } from '@/frontend/auth/auth-context';
 import { ToastProvider } from '@/frontend/shared/ui/toast';
@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react';
 
 function SignupContent() {
   const router = useRouter();
+  const [signupEmail, setSignupEmail] = useState('');
 
   return (
     <div className="min-h-screen bg-[#09090b] text-white flex flex-col items-center justify-center p-4 selection:bg-white selection:text-zinc-950">
@@ -24,7 +25,12 @@ function SignupContent() {
         <SignUpForm
           onSuccess={() => router.replace('/onboarding')}
           onSwitchToLogin={() => router.push('/login')}
-          onGoToVerifyEmail={() => router.push('/login')}
+          onGoToVerifyEmail={(typedEmail) => {
+            // Keep the user's signup email for OTP verification — previously
+            // discarded, which forced users to verify against a stale address.
+            setSignupEmail(typedEmail || '');
+            router.push('/verify-email');
+          }}
         />
       </div>
     </div>
