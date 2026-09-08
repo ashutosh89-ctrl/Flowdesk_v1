@@ -22,25 +22,19 @@ function DashboardContent() {
   const router = useRouter();
   const { user, profile, isLoading, isAuthenticated } = useAuth();
   const [currentView, setCurrentView] = useState<string>('dashboard');
-  const [selectedClientId, setSelectedClientId] = useState<string>('cli-1');
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [workspaceChecked, setWorkspaceChecked] = useState(false);
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-
-    // Safety fallback: guarantee workspaceChecked resolves within 1s max
     const timer = setTimeout(() => {
-      if (mounted) {
-        setWorkspaceChecked(true);
-      }
-    }, 1000);
+      if (mounted) setWorkspaceChecked(true);
+    }, 3000);
 
     async function verifyProfileAndWorkspace() {
       if (isLoading) return;
 
-      // SECURITY: demo behavior is decided ONLY by the deployment's explicit
-      // auth mode. localStorage flags and cookies can never activate it in production.
       if (isDemoMode) {
         if (mounted) {
           setWorkspaceChecked(true);
@@ -55,11 +49,45 @@ function DashboardContent() {
       }
 
       try {
-        const { supabase } = await import('@/backend/utilities/supabase');
+        const workspaceMode = typeof window !== 'undefined'
+          ? sessionStorage.getItem('flowdesk_workspace_mode')
+          : null;
 
+        const rolesResponse = await fetch('/api/auth/roles', { cache: 'no-store' });
+        const roles = await rolesResponse.json();
+
+        if (!rolesResponse.ok || !roles.authenticated) {
+          router.replace('/login?error=Unable%20to%20determine%20workspace');
+          return;
+        }
+
+        if (workspaceMode === 'client') {
+          router.replace('/client/dashboard');
+          return;
+        }
+
+        if (roles.freelancer && roles.client && workspaceMode !== 'freelancer') {
+          router.replace('/auth/choose-role');
+          return;
+        }
+
+        if (!roles.freelancer) {
+          if (roles.client) {
+            router.replace('/client/dashboard');
+          } else {
+            router.replace('/onboarding');
+          }
+          return;
+        }
+
+        if (typeof window !== 'undefined' && workspaceMode !== 'freelancer') {
+          sessionStorage.setItem('flowdesk_workspace_mode', 'freelancer');
+        }
+
+        const { supabase } = await import('@/backend/utilities/supabase');
         const { data: prof, error: profErr } = await supabase
           .from('profiles')
-          .select('*')
+          .select('onboarding_completed')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -98,7 +126,6 @@ function DashboardContent() {
   }
 
   const isDemo = isDemoMode;
-
   const fallbackName = user?.email?.split('@')[0] || (isDemo ? 'Alex Rivera' : 'User');
   const userProfile = {
     id: user?.id || (isDemo ? 'usr-demo-alex' : ''),
@@ -125,44 +152,42 @@ function DashboardContent() {
 
   return (
     <>
-    <AppShell
-      currentView={currentView}
-      onNavigate={(view) => setCurrentView(view)}
-      onSwitchViewMode={() => router.push('/')}
-      userProfile={userProfile}
-      breadcrumbLabel={currentView === 'workspace' ? 'Client Workspace' : undefined}
-      onQuickAction={() => setIsQuickActionsOpen(true)}
-    >
-      {currentView === 'dashboard' && (
-        <DashboardView
-          onNavigate={(v) => setCurrentView(v)}
-          onOpenClientWorkspace={handleOpenWorkspace}
-          onQuickAction={() => setIsQuickActionsOpen(true)}
-        />
-      )}
-      {currentView === 'clients' && <ClientsListView onOpenWorkspace={handleOpenWorkspace} />}
-      {currentView === 'workspace' && (
-        <ClientWorkspaceShell
-          clientId={selectedClientId}
-          onBackToClients={() => setCurrentView('clients')}
-        />
-      )}
-      {currentView === 'projects' && <ProjectsListView />}
-      {currentView === 'deliverables' && (
-        <DeliverablesListView onOpenClientWorkspace={handleOpenWorkspace} />
-      )}
-      {currentView === 'invoices' && <InvoicesListView />}
-      {currentView === 'documents' && <DocumentsListView />}
-      {currentView === 'activity' && <ActivityFeedView />}
-      {currentView === 'settings' && <SettingsView />}
-    </AppShell>
+      <AppShell
+        currentView={currentView}
+        onNavigate={(view) => setCurrentView(view)}
+        onSwitchViewMode={() => router.push('/')}
+        userProfile={userProfile}
+        breadcrumbLabel={currentView === 'workspace' ? 'Client Workspace' : undefined}
+        onQuickAction={() => setIsQuickActionsOpen(true)}
+      >
+        {currentView === 'dashboard' && (
+          <DashboardView
+            onNavigate={(v) => setCurrentView(v)}
+            onOpenClientWorkspace={handleOpenWorkspace}
+            onQuickAction={() => setIsQuickActionsOpen(true)}
+          />
+        )}
+        {currentView === 'clients' && <ClientsListView onOpenWorkspace={handleOpenWorkspace} />}
+        {currentView === 'workspace' && selectedClientId && (
+          <ClientWorkspaceShell
+            clientId={selectedClientId}
+            onBackToClients={() => setCurrentView('clients')}
+          />
+        )}
+        {currentView === 'projects' && <ProjectsListView />}
+        {currentView === 'deliverables' && <DeliverablesListView onOpenClientWorkspace={handleOpenWorkspace} />}
+        {currentView === 'invoices' && <InvoicesListView />}
+        {currentView === 'documents' && <DocumentsListView />}
+        {currentView === 'activity' && <ActivityFeedView />}
+        {currentView === 'settings' && <SettingsView />}
+      </AppShell>
 
-    <QuickActionsModal
-      isOpen={isQuickActionsOpen}
-      onClose={() => setIsQuickActionsOpen(false)}
-      onNavigate={(view) => setCurrentView(view)}
-      onRefresh={() => {}}
-    />
+      <QuickActionsModal
+        isOpen={isQuickActionsOpen}
+        onClose={() => setIsQuickActionsOpen(false)}
+        onNavigate={(view) => setCurrentView(view)}
+        onRefresh={() => {}}
+      />
     </>
   );
 }
