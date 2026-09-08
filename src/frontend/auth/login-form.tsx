@@ -8,6 +8,7 @@ import { useToast } from '@/frontend/shared/ui/toast';
 import { useAuth } from '@/frontend/auth/auth-context';
 import { ClientAuthService } from '@/backend/client';
 import { isDemoModeActive, isAuthConfigError, AUTH_CONFIG_ERROR_MESSAGE } from '@/backend/utilities/supabase';
+import { repairDemoStorage } from '@/backend/store/demo-storage-repair';
 
 export interface LoginFormProps {
   onSuccess: () => void;
@@ -77,6 +78,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     setDemoLoading('freelancer');
 
     try {
+      repairDemoStorage();
       if (typeof window !== 'undefined') {
         localStorage.setItem('flowdesk_demo_active', 'true');
       }
@@ -89,11 +91,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         showToast('Demo Login Notice', res.error, 'error');
       } else {
         showToast('Freelancer Studio Demo', 'Welcome, Alex Rivera! Signed into studio owner mode.', 'success');
-        router.push('/dashboard');
+        // Reload once so every FlowDeskStore singleton initializes from the
+        // repaired seeded demo storage, not from stale empty arrays.
+        window.location.assign('/dashboard');
       }
     } catch (err: any) {
       showToast('Freelancer Demo Active', 'Welcome, Alex Rivera! Accessing studio dashboard.', 'success');
-      router.push('/dashboard');
+      window.location.assign('/dashboard');
     } finally {
       setDemoLoading(null);
     }
@@ -109,15 +113,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     setDemoLoading('client');
 
     try {
+      repairDemoStorage();
       const res = await ClientAuthService.loginDemo('eleanor@apexdigital.io');
       if (res.success) {
         showToast('Client Portal Demo', 'Welcome, Eleanor Vance (Apex Digital)! Accessing client portal.', 'success');
-        router.push('/client/dashboard');
+        window.location.assign('/client/dashboard');
       } else {
         setErrorMessage(res.error || 'Client demo login failed.');
       }
     } catch (err: any) {
-      router.push('/client/dashboard');
+      window.location.assign('/client/dashboard');
     } finally {
       setDemoLoading(null);
     }
