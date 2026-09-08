@@ -6,11 +6,13 @@ import { BriefcaseBusiness, Building2, ArrowRight, ShieldCheck } from 'lucide-re
 import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 import { Card } from '@/frontend/shared/ui/card';
 
+type WorkspaceRole = 'freelancer' | 'client';
+
 export default function ChooseRolePage() {
   const router = useRouter();
-  const [selected, setSelected] = useState<'freelancer' | 'client' | null>(null);
+  const [selected, setSelected] = useState<WorkspaceRole | null>(null);
 
-  const choose = async (role: 'freelancer' | 'client') => {
+  const choose = async (role: WorkspaceRole) => {
     setSelected(role);
     try {
       const response = await fetch('/api/auth/roles', { cache: 'no-store' });
@@ -21,11 +23,17 @@ export default function ChooseRolePage() {
       }
 
       if (role === 'freelancer' && roles.freelancer) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('flowdesk_workspace_mode', 'freelancer');
+        }
         router.replace(roles.onboardingCompleted ? '/dashboard' : '/onboarding');
         return;
       }
 
       if (role === 'client' && roles.client) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('flowdesk_workspace_mode', 'client');
+        }
         router.replace('/client/dashboard');
         return;
       }
@@ -52,12 +60,7 @@ export default function ChooseRolePage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button
-            type="button"
-            onClick={() => choose('freelancer')}
-            disabled={selected !== null}
-            className="text-left disabled:opacity-60"
-          >
+          <button type="button" onClick={() => choose('freelancer')} disabled={selected !== null} className="text-left disabled:opacity-60">
             <Card interactive className="h-full p-6 sm:p-7">
               <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center mb-5">
                 <BriefcaseBusiness className="w-6 h-6 text-white" />
@@ -72,12 +75,7 @@ export default function ChooseRolePage() {
             </Card>
           </button>
 
-          <button
-            type="button"
-            onClick={() => choose('client')}
-            disabled={selected !== null}
-            className="text-left disabled:opacity-60"
-          >
+          <button type="button" onClick={() => choose('client')} disabled={selected !== null} className="text-left disabled:opacity-60">
             <Card interactive className="h-full p-6 sm:p-7">
               <div className="w-12 h-12 rounded-2xl bg-emerald-400/10 border border-emerald-400/15 flex items-center justify-center mb-5">
                 <Building2 className="w-6 h-6 text-emerald-400" />
@@ -93,9 +91,7 @@ export default function ChooseRolePage() {
           </button>
         </div>
 
-        {selected && (
-          <p className="text-center text-xs text-zinc-500">Opening your {selected} workspace…</p>
-        )}
+        {selected && <p className="text-center text-xs text-zinc-500">Opening your {selected} workspace…</p>}
       </div>
     </main>
   );
