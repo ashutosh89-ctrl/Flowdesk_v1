@@ -374,7 +374,7 @@ export default function ConnectInvitationPage({ params }: PageProps) {
 
           <div className="text-center pt-1 border-t border-white/5">
             <p className="text-[11px] text-zinc-500">
-              Your connection is secured by FlowDesk's one-time invitation link.
+              Your connection is secured by FlowDesk&apos;s one-time invitation link.
             </p>
           </div>
         </Card>
