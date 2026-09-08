@@ -7,6 +7,7 @@ import { Button } from '@/frontend/shared/ui/button';
 import { Input } from '@/frontend/shared/ui/input';
 import { ClientAuthService } from '@/backend/client';
 import { isDemoModeActive } from '@/backend/utilities/supabase';
+import { repairDemoStorage } from '@/backend/store/demo-storage-repair';
 import { ToastProvider } from '@/frontend/shared/ui/toast';
 import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 import { ShieldCheck, ArrowRight, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
@@ -51,9 +52,10 @@ function ClientLoginForm() {
     setDemoLoading(true);
     setError(null);
     try {
+      repairDemoStorage();
       const res = await ClientAuthService.loginDemo('eleanor@apexdigital.io');
       if (res.success && res.client) {
-        router.replace('/client/dashboard');
+        window.location.assign('/client/dashboard');
       } else {
         setError(res.error || 'Demo login failed.');
       }
