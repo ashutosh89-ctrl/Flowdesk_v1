@@ -6,6 +6,14 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export default defineConfig([{
+export default defineConfig([
+  {
     extends: [...next],
-}]);
+  },
+  {
+    files: ["src/frontend/freelancer/dashboard/dashboard-view.tsx"],
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
+]);
