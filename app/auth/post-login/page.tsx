@@ -36,10 +36,7 @@ export default function PostLoginGate() {
 
         const { supabase } = await import('@/backend/utilities/supabase');
         let user = (await supabase.auth.getUser()).data.user;
-
-        if (!user) {
-          user = (await supabase.auth.getSession()).data.session?.user || null;
-        }
+        if (!user) user = (await supabase.auth.getSession()).data.session?.user || null;
         if (!user) {
           await new Promise((resolve) => setTimeout(resolve, 400));
           user = (await supabase.auth.getUser()).data.user;
@@ -58,8 +55,11 @@ export default function PostLoginGate() {
           return;
         }
 
-        // A connection link can send an existing client to the shared login page.
-        // After authentication, claim that invitation before normal role routing.
+        // A fresh login must make a fresh workspace choice when the account has both roles.
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('flowdesk_workspace_mode');
+        }
+
         const connectToken = new URLSearchParams(window.location.search).get('connect');
         if (connectToken) {
           setStatusText('Connecting your client workspace...');
@@ -74,6 +74,9 @@ export default function PostLoginGate() {
             throw new Error(claimResult.error || 'Unable to connect this client workspace.');
           }
 
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('flowdesk_workspace_mode', 'client');
+          }
           router.replace(claimResult.clientId ? `/portal/${claimResult.clientId}` : '/client/dashboard');
           return;
         }
@@ -93,17 +96,17 @@ export default function PostLoginGate() {
         }
 
         if (roles.client) {
-          setStatusText('Opening your client workspace...');
+          if (typeof window !== 'undefined') sessionStorage.setItem('flowdesk_workspace_mode', 'client');
           router.replace('/client/dashboard');
           return;
         }
 
         if (roles.freelancer) {
+          if (typeof window !== 'undefined') sessionStorage.setItem('flowdesk_workspace_mode', 'freelancer');
           router.replace(roles.onboardingCompleted ? '/dashboard' : '/onboarding');
           return;
         }
 
-        // A newly created freelancer account may not have a workspace yet.
         router.replace('/onboarding');
       } catch (err) {
         console.error('Unexpected error in post-login gate:', err);
