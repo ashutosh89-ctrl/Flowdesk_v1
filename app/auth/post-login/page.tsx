@@ -58,6 +58,26 @@ export default function PostLoginGate() {
           return;
         }
 
+        // A connection link can send an existing client to the shared login page.
+        // After authentication, claim that invitation before normal role routing.
+        const connectToken = new URLSearchParams(window.location.search).get('connect');
+        if (connectToken) {
+          setStatusText('Connecting your client workspace...');
+          const claimResponse = await fetch(`/api/invitations/${encodeURIComponent(connectToken)}/claim`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, email: user.email }),
+          });
+          const claimResult = await claimResponse.json();
+
+          if (!claimResponse.ok || !claimResult.success) {
+            throw new Error(claimResult.error || 'Unable to connect this client workspace.');
+          }
+
+          router.replace(claimResult.clientId ? `/portal/${claimResult.clientId}` : '/client/dashboard');
+          return;
+        }
+
         setStatusText('Checking your FlowDesk workspaces...');
         const rolesResponse = await fetch('/api/auth/roles', { cache: 'no-store' });
         const roles = await rolesResponse.json();
@@ -88,7 +108,8 @@ export default function PostLoginGate() {
       } catch (err) {
         console.error('Unexpected error in post-login gate:', err);
         if (isMounted) {
-          router.replace('/login?error=Unable%20to%20determine%20account%20access');
+          const message = err instanceof Error ? err.message : 'Unable to determine account access';
+          router.replace(`/login?error=${encodeURIComponent(message)}`);
         }
       }
     }
