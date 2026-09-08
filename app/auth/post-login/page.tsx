@@ -10,71 +10,47 @@ import { Loader2, ShieldCheck } from 'lucide-react';
 export default function PostLoginGate() {
   const router = useRouter();
   const [statusText, setStatusText] = useState('Verifying credentials...');
-  // Fail-closed: production deployment without Supabase configuration must show
-  // a clear configuration error — never a fake session and never an infinite spin.
   const [configError, setConfigError] = useState<boolean>(() => isAuthConfigError());
 
   useEffect(() => {
     let isMounted = true;
 
-    async function checkUserAndProfile() {
+    async function checkUserAndRoles() {
       try {
-        // Fail closed on deployment misconfiguration before touching auth state.
         if (isAuthConfigError()) {
           setConfigError(true);
           setStatusText('Configuration error detected.');
           return;
         }
 
-        let user = null;
-
-        // In demo mode, use localStorage session instead of Supabase
         if (isDemoModeActive()) {
           const localSession = await SessionService.getSession();
-          user = localSession?.user || null;
-
-          if (!user) {
-            console.warn('Post-login gate: No local session found, redirecting to /login');
+          if (!localSession?.user) {
             router.replace('/login');
             return;
           }
-
-          if (!isMounted) return;
           setStatusText('Demo mode active — routing to workspace...');
-
-          // In demo mode, skip Supabase profile check — always go to dashboard
           router.replace('/dashboard');
           return;
         }
 
-        // Production mode: Use Supabase auth
         const { supabase } = await import('@/backend/utilities/supabase');
-
-        // 1. Check authenticated user
-        const { data: userData, error: userError } = await supabase.auth.getUser();
-        user = userData?.user;
+        let user = (await supabase.auth.getUser()).data.user;
 
         if (!user) {
-          const { data: sessionData } = await supabase.auth.getSession();
-          user = sessionData?.session?.user || null;
+          user = (await supabase.auth.getSession()).data.session?.user || null;
         }
-
-        // Retry once in case cookie sync is slightly delayed
         if (!user) {
-          await new Promise((res) => setTimeout(res, 400));
-          const { data: retryData } = await supabase.auth.getUser();
-          user = retryData?.user || null;
+          await new Promise((resolve) => setTimeout(resolve, 400));
+          user = (await supabase.auth.getUser()).data.user;
         }
 
         if (!isMounted) return;
-
         if (!user) {
-          console.warn('Post-login gate: No authenticated user found, redirecting to /login');
           router.replace('/login');
           return;
         }
 
-        // 2. Check if account is in pending deletion
         const { AccountDeletionService } = await import('@/backend/auth/account-deletion-service');
         const deletionStatus = await AccountDeletionService.getFreelancerDeletionStatus(user.id);
         if (deletionStatus.isPendingDeletion) {
@@ -82,55 +58,42 @@ export default function PostLoginGate() {
           return;
         }
 
-        // 3. Check if user is a registered client in any workspace
-        if (user.email) {
-          const { data: clientMatches } = await supabase
-            .from('clients')
-            .select('id, user_id, email, status')
-            .or(`user_id.eq.${user.id},email.ilike.${user.email.trim()}`);
+        setStatusText('Checking your FlowDesk workspaces...');
+        const rolesResponse = await fetch('/api/auth/roles', { cache: 'no-store' });
+        const roles = await rolesResponse.json();
 
-          if (clientMatches && clientMatches.length > 0) {
-            const clientMatch = clientMatches[0];
-            if (clientMatch.status !== 'pending_deletion') {
-              if (clientMatch.user_id !== user.id) {
-                await supabase.from('clients').update({ user_id: user.id }).eq('id', clientMatch.id);
-              }
-              setStatusText('Welcome to your client workspace...');
-              router.replace('/client/dashboard');
-              return;
-            }
-          }
+        if (!rolesResponse.ok || !roles.authenticated) {
+          throw new Error(roles.error || 'Unable to determine account roles.');
         }
 
-        // 4. Query profiles table for freelancer onboarding status
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, onboarding_completed')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.warn('Post-login profile query warning:', profileError.message);
+        if (roles.freelancer && roles.client) {
+          setStatusText('You have both freelancer and client access.');
+          router.replace('/auth/choose-role');
+          return;
         }
 
-        if (!isMounted) return;
-
-        // 5. Routing decision for freelancers:
-        if (!profile || !profile.onboarding_completed) {
-          router.replace('/onboarding');
-        } else {
-          router.replace('/dashboard');
+        if (roles.client) {
+          setStatusText('Opening your client workspace...');
+          router.replace('/client/dashboard');
+          return;
         }
+
+        if (roles.freelancer) {
+          router.replace(roles.onboardingCompleted ? '/dashboard' : '/onboarding');
+          return;
+        }
+
+        // A newly created freelancer account may not have a workspace yet.
+        router.replace('/onboarding');
       } catch (err) {
         console.error('Unexpected error in post-login gate:', err);
         if (isMounted) {
-          router.replace('/login');
+          router.replace('/login?error=Unable%20to%20determine%20account%20access');
         }
       }
     }
 
-    checkUserAndProfile();
-
+    checkUserAndRoles();
     return () => {
       isMounted = false;
     };
