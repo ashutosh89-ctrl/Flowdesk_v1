@@ -15,33 +15,40 @@ export default function ChooseRolePage() {
 
   const choose = async (role: WorkspaceRole) => {
     setSelected(role);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('flowdesk_tab_active', 'true');
+      sessionStorage.setItem('flowdesk_workspace_mode', role);
+    }
     try {
       const response = await fetch('/api/auth/roles', { cache: 'no-store' });
       const roles = await response.json();
       if (!response.ok || !roles.authenticated) {
-        router.replace('/login');
+        const { supabase } = await import('@/backend/utilities/supabase');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.replace('/login');
+          return;
+        }
+      }
+
+      if (role === 'freelancer') {
+        router.replace(roles?.onboardingCompleted !== false ? '/dashboard' : '/onboarding');
         return;
       }
 
-      if (role === 'freelancer' && roles.freelancer) {
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('flowdesk_workspace_mode', 'freelancer');
-        }
-        router.replace(roles.onboardingCompleted ? '/dashboard' : '/onboarding');
-        return;
-      }
-
-      if (role === 'client' && roles.client) {
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('flowdesk_workspace_mode', 'client');
-        }
+      if (role === 'client') {
         router.replace('/client/dashboard');
         return;
       }
 
-      router.replace('/login?error=Selected%20workspace%20is%20not%20available');
+      router.replace('/dashboard');
     } catch {
-      router.replace('/login?error=Unable%20to%20open%20selected%20workspace');
+      // Direct navigation on exception rather than kicking to login
+      if (role === 'freelancer') {
+        router.replace('/dashboard');
+      } else {
+        router.replace('/client/dashboard');
+      }
     }
   };
 

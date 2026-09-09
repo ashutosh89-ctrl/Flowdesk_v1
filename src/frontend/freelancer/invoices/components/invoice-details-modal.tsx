@@ -402,7 +402,7 @@ export function InvoiceDetailsModal({
                     </div>
                   )}
                   <p className="text-xs font-semibold text-white mt-1">
-                    {profile?.name || 'Alex Rivera'}
+                    {profile?.name || 'Studio Administrator'}
                   </p>
                   <p className="text-[10px] text-zinc-500">
                     {profile?.role || 'Principal Designer & Developer'} • FlowDesk Certified

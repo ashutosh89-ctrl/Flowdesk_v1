@@ -120,7 +120,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         activeClientsCount: realMetrics?.activeClientsCount ?? clients?.length ?? 0,
         activeProjectsCount: realMetrics?.activeProjectsCount ?? projects?.length ?? 0,
         pendingDeliverablesCount: realMetrics?.upcomingDeliverablesCount ?? pendingDeliverables.length,
-        pendingInvoicesAmount: realMetrics?.pendingInvoicesAmount ?? pendingInvoiceAmount,
+        pendingInvoicesAmount: pendingInvoiceAmount,
         pendingInvoicesCount: pendingInvoices.length,
         pendingDocumentsCount: 0,
         workspaceHealthScore: computedHealthScore,

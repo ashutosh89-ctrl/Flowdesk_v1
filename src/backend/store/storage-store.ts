@@ -63,63 +63,11 @@ const STORAGE_KEYS = {
   CLIENT_INVITATIONS: 'flowdesk_client_invitations',
 };
 
-// Initial Mock Milestones for projects
-const initialMilestones: Record<string, ProjectMilestone[]> = {
-  'proj-1': [
-    { id: 'm-1', projectId: 'proj-1', title: 'Figma Token Spec & Color System', dueDate: '2026-06-15', completed: true },
-    { id: 'm-2', projectId: 'proj-1', title: 'Command Palette UI Component', dueDate: '2026-07-20', completed: true },
-    { id: 'm-3', projectId: 'proj-1', title: 'Analytics Dashboard Widgets', dueDate: '2026-08-10', completed: false },
-    { id: 'm-4', projectId: 'proj-1', title: 'Final System Handover & Package', dueDate: '2026-08-25', completed: false },
-  ],
-  'proj-2': [
-    { id: 'm-5', projectId: 'proj-2', title: 'Data Pipeline Schema Definition', dueDate: '2026-05-20', completed: true },
-    { id: 'm-6', projectId: 'proj-2', title: 'D3 Chart Integration', dueDate: '2026-06-30', completed: true },
-    { id: 'm-7', projectId: 'proj-2', title: 'Export Engine & CSV Generators', dueDate: '2026-08-05', completed: true },
-  ],
-  'proj-3': [
-    { id: 'm-8', projectId: 'proj-3', title: 'Brand Identity Strategy & Moodboard', dueDate: '2026-07-15', completed: true },
-    { id: 'm-9', projectId: 'proj-3', title: '3D Spatial Glass Hero Render', dueDate: '2026-08-15', completed: false },
-  ],
-  'proj-4': [
-    { id: 'm-10', projectId: 'proj-4', title: 'Conversational Agent Canvas UI', dueDate: '2026-07-25', completed: true },
-    { id: 'm-11', projectId: 'proj-4', title: 'Voice Waveform Audio Visualizer', dueDate: '2026-08-10', completed: true },
-    { id: 'm-12', projectId: 'proj-4', title: 'Custom Settings & Key Storage Panel', dueDate: '2026-08-30', completed: false },
-  ],
-};
+// Initial Milestones for projects
+const initialMilestones: Record<string, ProjectMilestone[]> = {};
 
-// Initial Mock Comments for client workspaces
-const initialComments: WorkspaceComment[] = [
-  {
-    id: 'c-1',
-    clientId: 'cli-1',
-    author: 'Eleanor Vance',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
-    time: '2 hours ago',
-    text: 'The dark crystal theme and token architecture look phenomenal! Let’s proceed with option B for the analytics suite.',
-    isOwner: false,
-    read: true,
-  },
-  {
-    id: 'c-2',
-    clientId: 'cli-1',
-    author: 'Alex Rivera',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-    time: '1 hour ago',
-    text: 'Fantastic! I have updated the Figma token package and uploaded version v1.4.0 to the Deliverables tab.',
-    isOwner: true,
-    read: true,
-  },
-  {
-    id: 'c-3',
-    clientId: 'cli-2',
-    author: 'Marcus Sterling',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
-    time: 'Yesterday at 4:15 PM',
-    text: 'Hey Alex, could you send over the updated brand strategy deck before our call on Thursday?',
-    isOwner: false,
-    read: true,
-  },
-];
+// Initial Comments for client workspaces
+const initialComments: WorkspaceComment[] = [];
 
 // Helper to safely fetch item from localStorage or load default
 const loadStore = <T>(key: string, defaultValue: T): T => {
@@ -152,100 +100,18 @@ let documents: DocumentItem[] = loadStore(STORAGE_KEYS.DOCUMENTS, mockDocuments)
 let invoices: Invoice[] = loadStore(STORAGE_KEYS.INVOICES, mockInvoices);
 let activities: ActivityLog[] = loadStore(STORAGE_KEYS.ACTIVITIES, mockActivities);
 let comments: WorkspaceComment[] = loadStore(STORAGE_KEYS.COMMENTS, initialComments);
-let portals: Record<string, ClientPortalConfig> = loadStore(STORAGE_KEYS.PORTALS, {
-  'cli-1': { clientId: 'cli-1', enabled: true, magicKey: 'magic-key-cli-1', lastAccessed: '10m ago' },
-  'cli-2': { clientId: 'cli-2', enabled: true, magicKey: 'magic-key-cli-2', lastAccessed: 'Yesterday' },
-  'cli-3': { clientId: 'cli-3', enabled: true, magicKey: 'magic-key-cli-3', lastAccessed: '3 days ago' },
-  'cli-4': { clientId: 'cli-4', enabled: false, magicKey: 'magic-key-cli-4' },
-});
+let portals: Record<string, ClientPortalConfig> = loadStore(STORAGE_KEYS.PORTALS, {});
 let clientInvitations: Record<string, ClientInvitation> = loadStore(STORAGE_KEYS.CLIENT_INVITATIONS, {});
-let recentSearches: string[] = loadStore(STORAGE_KEYS.RECENT_SEARCHES, ['Apex Digital', 'Design System', 'INV-2026-001']);
+let recentSearches: string[] = loadStore(STORAGE_KEYS.RECENT_SEARCHES, []);
 let userProfile: UserProfile = loadStore(STORAGE_KEYS.USER_PROFILE, mockUserProfile);
 let notifications: NotificationItem[] = loadStore(STORAGE_KEYS.NOTIFICATIONS, mockNotifications);
 
 // Initial Mock Pinned Items
-const initialPinnedItems = [
-  {
-    id: 'pin-1',
-    resourceId: 'cli-1',
-    resourceType: 'client' as const,
-    title: 'Apex Digital Workspace',
-    subtitle: 'Enterprise Client • Health Score 98/100',
-    path: 'clients',
-    pinnedAt: '2026-08-01',
-  },
-  {
-    id: 'pin-2',
-    resourceId: 'proj-1',
-    resourceType: 'project' as const,
-    title: 'Enterprise Design System v2.0',
-    subtitle: 'Apex Digital • Budget $24,500',
-    path: 'projects',
-    pinnedAt: '2026-08-02',
-  },
-  {
-    id: 'pin-3',
-    resourceId: 'inv-2026-002',
-    resourceType: 'invoice' as const,
-    title: 'Invoice #INV-2026-002',
-    subtitle: 'Monolith Ventures • $8,500 Pending',
-    path: 'invoices',
-    pinnedAt: '2026-08-03',
-  },
-  {
-    id: 'pin-4',
-    resourceId: 'del-1',
-    resourceType: 'deliverable' as const,
-    title: 'Figma Token Spec Package v1.4.0',
-    subtitle: 'Approved Deliverable • 4 files',
-    path: 'deliverables',
-    pinnedAt: '2026-08-04',
-  },
-];
+// Initial Pinned Items
+const initialPinnedItems: any[] = [];
 
-// Initial Mock Recent Work Items
-const initialRecentItems = [
-  {
-    id: 'rec-1',
-    resourceId: 'proj-1',
-    title: 'Enterprise Design System v2.0',
-    type: 'project' as const,
-    subtitle: 'Apex Digital • Milestones 50% Complete',
-    path: 'projects',
-    timestamp: '10 minutes ago',
-    clientId: 'cli-1',
-  },
-  {
-    id: 'rec-2',
-    resourceId: 'cli-2',
-    title: 'Monolith Ventures Workspace',
-    type: 'client' as const,
-    subtitle: 'Marcus Sterling • Pending Invoice #002',
-    path: 'clients',
-    timestamp: '1 hour ago',
-    clientId: 'cli-2',
-  },
-  {
-    id: 'rec-3',
-    resourceId: 'doc-1',
-    title: 'Brand Assets & Master Guidelines',
-    type: 'document' as const,
-    subtitle: 'Verified Document • 14.2 MB PDF',
-    path: 'documents',
-    timestamp: '3 hours ago',
-    clientId: 'cli-1',
-  },
-  {
-    id: 'rec-4',
-    resourceId: 'del-2',
-    title: 'Voice Visualizer Waveform Demo',
-    type: 'deliverable' as const,
-    subtitle: 'Hyperion AI • Revision Requested',
-    path: 'deliverables',
-    timestamp: 'Yesterday',
-    clientId: 'cli-3',
-  },
-];
+// Initial Recent Work Items
+const initialRecentItems: any[] = [];
 
 // Initial Mock Widget Config
 const initialWidgets = [
@@ -2552,26 +2418,26 @@ export const FlowDeskStore = {
   getDashboardMetrics: (): DashboardMetrics => {
     const totalRev = invoices
       .filter((i) => i.status === 'paid')
-      .reduce((sum, i) => sum + i.total, 0);
+      .reduce((sum, i) => sum + (Number(i.total) || 0), 0);
 
     const pendingInvoices = invoices
-      .filter((i) => i.status === 'pending' || i.status === 'overdue')
-      .reduce((sum, i) => sum + i.total, 0);
+      .filter((i) => i.status === 'pending' || i.status === 'overdue' || i.workflowStatus === 'sent')
+      .reduce((sum, i) => sum + (Number(i.total) || 0), 0);
 
     const activeClients = clients.filter((c) => c.status === 'active' && !c.isArchived).length;
     const activeProjects = projects.filter((p) => p.status === 'in_progress' || p.status === 'review').length;
     const completedProjects = projects.filter((p) => p.status === 'completed').length;
-    const upcomingDeliverables = deliverables.filter((d) => d.status !== 'approved').length;
+    const upcomingDeliverables = deliverables.filter((d) => d.status !== 'approved' && d.status !== 'completed').length;
 
     return {
-      totalRevenue: totalRev + 85000,
-      monthlyRevenue: 24750,
+      totalRevenue: totalRev,
+      monthlyRevenue: Math.round(totalRev / 12) || 0,
       activeClientsCount: activeClients,
       pendingInvoicesAmount: pendingInvoices,
       completedProjectsCount: completedProjects,
       upcomingDeliverablesCount: upcomingDeliverables,
       activeProjectsCount: activeProjects,
-      revenueHistory: mockDashboardMetrics.revenueHistory,
+      revenueHistory: [],
     };
   },
 
@@ -2784,16 +2650,16 @@ export const FlowDeskStore = {
   getBusinessMetrics: () => {
     const activeClientsCount = clients.filter((c) => c.status === 'active' && !c.isArchived).length;
     const activeProjectsCount = projects.filter((p) => p.status === 'in_progress' || p.status === 'review').length;
-    const pendingDeliverablesCount = deliverables.filter((d) => d.status !== 'approved').length;
+    const pendingDeliverablesCount = deliverables.filter((d) => d.status !== 'approved' && d.status !== 'completed').length;
     const pendingDocumentsCount = documents.filter((d) => d.status === 'pending').length;
-    const pendingInvoices = invoices.filter((i) => i.status === 'pending' || i.status === 'overdue');
+    const pendingInvoices = invoices.filter((i) => i.status === 'pending' || i.status === 'overdue' || i.workflowStatus === 'sent');
     const pendingInvoicesCount = pendingInvoices.length;
-    const pendingInvoicesAmount = pendingInvoices.reduce((sum, i) => sum + i.total, 0);
-    const paidTotal = invoices.filter((i) => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
+    const pendingInvoicesAmount = pendingInvoices.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
+    const paidTotal = invoices.filter((i) => i.status === 'paid').reduce((sum, i) => sum + (Number(i.total) || 0), 0);
 
     const completedProj = projects.filter((p) => p.status === 'completed').length;
     const totalProj = projects.length || 1;
-    const completionRate = Math.round((completedProj / totalProj) * 100);
+    const completionRate = projects.length > 0 ? Math.round((completedProj / totalProj) * 100) : 0;
 
     return {
       activeClientsCount,
@@ -2803,13 +2669,13 @@ export const FlowDeskStore = {
       pendingInvoicesCount,
       pendingInvoicesAmount,
       outstandingRevenue: pendingInvoicesAmount,
-      monthlyRevenue: 24750,
-      totalRevenue: paidTotal + 85000,
+      monthlyRevenue: Math.round(paidTotal / 12) || 0,
+      totalRevenue: paidTotal,
       completionRate,
-      workspaceHealthScore: 96,
-      revenueGrowthPct: 18.4,
-      activeProposalsCount: 3,
-      avgProjectCompletionDays: 22,
+      workspaceHealthScore: 100,
+      revenueGrowthPct: 0,
+      activeProposalsCount: 0,
+      avgProjectCompletionDays: 0,
     };
   },
 

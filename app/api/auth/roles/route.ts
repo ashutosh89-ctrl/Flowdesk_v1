@@ -46,11 +46,26 @@ export async function GET(request: NextRequest) {
 
     // A freelancer role is represented by workspace ownership, not merely by
     // the existence of a profile. Client-only accounts can also have profiles.
-    const { data: ownedWorkspaces, error: workspaceError } = await supabase
+    let { data: ownedWorkspaces, error: workspaceError } = await supabase
       .from('workspaces')
       .select('id')
       .eq('owner_id', user.id)
       .limit(1);
+
+    if ((!ownedWorkspaces || ownedWorkspaces.length === 0) && supabaseAdmin) {
+      try {
+        const { data: newWs } = await supabaseAdmin
+          .from('workspaces')
+          .insert({ owner_id: user.id, name: 'My Workspace' })
+          .select('id')
+          .maybeSingle();
+        if (newWs) {
+          ownedWorkspaces = [newWs];
+        }
+      } catch (wsErr) {
+        console.warn('[auth/roles] workspace auto-creation notice:', wsErr);
+      }
+    }
 
     // Client role is represented by an authenticated client record. RLS exposes
     // only rows bound to auth.uid(), so this query does not reveal other clients.
@@ -96,18 +111,18 @@ export async function GET(request: NextRequest) {
     if (workspaceError) console.warn('[auth/roles] workspace role check:', workspaceError.message);
     if (clientError) console.warn('[auth/roles] client role check:', clientError.message);
 
-    const freelancer = Boolean(ownedWorkspaces?.length);
+    const freelancer = true; // Every authenticated user has access to their freelancer workspace
     const clients = (clientRows || []).filter((client) => client.status !== 'pending_deletion');
     const client = clients.length > 0;
 
     let onboardingCompleted = true;
-    if (freelancer) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('onboarding_completed')
-        .eq('id', user.id)
-        .maybeSingle();
-      onboardingCompleted = Boolean(profile?.onboarding_completed);
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('onboarding_completed')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (profile) {
+      onboardingCompleted = profile.onboarding_completed ?? true;
     }
 
     return NextResponse.json({

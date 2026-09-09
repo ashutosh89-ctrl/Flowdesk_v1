@@ -1174,13 +1174,20 @@ export const FreelancerInvoiceService = {
     if (!wsId) return [];
 
     try {
-      let query = supabase.from('invoices').select('*, invoice_items(*), invoice_payments(*), receipts(*)').eq('workspace_id', wsId);
+      let query = supabase.from('invoices').select('*, invoice_items(*), invoice_payments(*)').eq('workspace_id', wsId);
       if (clientId) query = query.eq('client_id', clientId);
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      let { data, error } = await query.order('created_at', { ascending: false });
       if (error) {
-        console.error('[FreelancerInvoiceService] Error fetching invoices:', error);
-        return [];
+        console.warn('[FreelancerInvoiceService] Primary invoice join notice, retrying base select:', error.message);
+        let fallbackQuery = supabase.from('invoices').select('*').eq('workspace_id', wsId);
+        if (clientId) fallbackQuery = fallbackQuery.eq('client_id', clientId);
+        const fallback = await fallbackQuery.order('created_at', { ascending: false });
+        if (fallback.error || !fallback.data) {
+          console.error('[FreelancerInvoiceService] Error fetching invoices:', fallback.error);
+          return [];
+        }
+        data = fallback.data;
       }
       if (!data) return [];
 

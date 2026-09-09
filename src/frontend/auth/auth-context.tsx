@@ -87,35 +87,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     async function initAuth() {
       try {
-        // Tab-scoped session guard:
-        if (typeof window !== 'undefined' && !sessionStorage.getItem('flowdesk_tab_active')) {
-          // Allow OAuth redirects / connect / onboarding links to preserve or establish session
-          const isAuthRedirect =
-            window.location.hash.includes('access_token') ||
-            window.location.search.includes('code=') ||
-            window.location.pathname.startsWith('/onboarding') ||
-            window.location.pathname.startsWith('/connect');
-
-          if (isAuthRedirect) {
-            sessionStorage.setItem('flowdesk_tab_active', 'true');
-          } else {
-            // Fresh tab without active tab session: clear lingering Supabase/local session
-            try {
-              const { supabase: sb } = await import('@/backend/utilities/supabase');
-              await sb.auth.signOut();
-            } catch {}
-            SessionService.clearLocalSession();
-            if (mounted) {
-              setSession(null);
-              setUser(null);
-              setProfile(null);
-              setUserSettings(null);
-              setIsLoading(false);
-            }
-            return;
-          }
-        }
-
         // 1. Server-verified identity (Supabase /user endpoint). Fails closed:
         //    returns null on missing config or any error — never a fake user.
         const verifiedUser = await SessionService.getVerifiedUser();
@@ -132,15 +103,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setUser(verifiedUser);
           await loadProfileAndSettings(verifiedUser.id, verifiedUser);
         } else {
-          // No verified user — unauthenticated. Clear any stale state.
+          // No verified user — unauthenticated. Clear local state.
           setSession(null);
           setUser(null);
           setProfile(null);
           setUserSettings(null);
         }
       } catch (err: any) {
-        console.warn('Notice initializing auth:', err?.message);
-        // Fail closed: unresolved/errored initialization means NOT authenticated.
+        console.warn('initAuth notice:', err?.message);
         if (mounted) {
           setSession(null);
           setUser(null);

@@ -16,7 +16,7 @@ let workspaceCache: { userId: string; workspace: Workspace } | null = null;
 const DEMO_WORKSPACE: Workspace = {
   id: 'ws-demo-001',
   ownerId: 'usr-demo',
-  name: 'Rivera Studio (Demo)',
+  name: 'My Workspace',
   logoUrl: '',
   signatureUrl: '',
   createdAt: '2026-01-01T00:00:00Z',
