@@ -137,7 +137,15 @@ export const SettingsView: React.FC = () => {
 
     setIsUploadingLogo(true);
     try {
-      const wsId = (await FreelancerWorkspaceService.getActiveWorkspaceId()) || 'default';
+      let wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+      if (!wsId && user?.id) {
+        const { getCurrentWorkspace } = await import('@/backend/utilities/workspace');
+        const ws = await getCurrentWorkspace();
+        wsId = ws?.id || null;
+      }
+      if (!wsId) {
+        throw new Error('Could not identify active workspace. Please try reloading the page.');
+      }
       const res = await StorageHelper.uploadFile('logos', wsId, 'branding', file);
       if (res.url) {
         handleProfileChange('logoUrl', res.url);
@@ -159,8 +167,16 @@ export const SettingsView: React.FC = () => {
 
     setIsUploadingSignature(true);
     try {
-      const wsId = (await FreelancerWorkspaceService.getActiveWorkspaceId()) || 'default';
-      const res = await StorageHelper.uploadFile('logos', wsId, 'branding', file);
+      let wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+      if (!wsId && user?.id) {
+        const { getCurrentWorkspace } = await import('@/backend/utilities/workspace');
+        const ws = await getCurrentWorkspace();
+        wsId = ws?.id || null;
+      }
+      if (!wsId) {
+        throw new Error('Could not identify active workspace. Please try reloading the page.');
+      }
+      const res = await StorageHelper.uploadFile('signatures', wsId, 'branding', file);
       if (res.url) {
         handleProfileChange('signatureUrl', res.url);
         showToast('Signature Uploaded', 'Authorized signature updated for invoice PDFs.', 'success');

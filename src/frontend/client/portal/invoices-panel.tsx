@@ -1,36 +1,49 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Card } from '@/frontend/shared/ui/card';
 import { Button } from '@/frontend/shared/ui/button';
 import { StatusPill } from '@/frontend/shared/ui/status-pill';
 import { Modal } from '@/frontend/shared/ui/modal';
-import { Invoice } from '@/shared/types';
+import { Invoice, UserProfile } from '@/shared/types';
 import { formatCurrency } from '@/shared/utils/currency';
+import { InvoiceDocument } from '@/frontend/shared/invoice/invoice-document';
+import {
+  exportInvoiceToPDF,
+  exportInvoiceToPNG,
+  exportInvoiceToJPG,
+  printInvoice,
+} from '@/shared/utils/invoice-export';
 import {
   Download,
   Eye,
   CheckCircle2,
-  Receipt,
   Landmark,
   FileText,
   CreditCard,
+  Printer,
+  Image as ImageIcon,
+  Loader2,
 } from 'lucide-react';
 
 interface InvoicesPanelProps {
   invoices: Invoice[];
   onPayClick: (invoice: Invoice) => void;
   onDownloadClick: (invoice: Invoice) => void;
+  profile?: UserProfile | null;
 }
 
 export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
   invoices,
   onPayClick,
   onDownloadClick,
+  profile,
 }) => {
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'paid'>('all');
   const [selectedInvoiceModal, setSelectedInvoiceModal] = useState<Invoice | null>(null);
   const [paymentInstructionsModal, setPaymentInstructionsModal] = useState<Invoice | null>(null);
+  const [exportingType, setExportingType] = useState<'pdf' | 'png' | 'jpg' | 'print' | null>(null);
+  const previewDocRef = useRef<HTMLDivElement>(null);
 
   const filteredInvoices = invoices.filter((inv) => {
     if (filter === 'unpaid') return inv.paymentStatus !== 'paid';
@@ -41,6 +54,46 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
   const totalOutstanding = invoices
     .filter((i) => i.paymentStatus !== 'paid')
     .reduce((sum, i) => sum + (i.remainingBalance ?? i.total), 0);
+
+  const handleExportPDF = async (inv: Invoice) => {
+    if (exportingType) return;
+    setExportingType('pdf');
+    try {
+      await exportInvoiceToPDF(inv, profile, previewDocRef.current);
+    } finally {
+      setExportingType(null);
+    }
+  };
+
+  const handleExportPNG = async (inv: Invoice) => {
+    if (exportingType) return;
+    setExportingType('png');
+    try {
+      await exportInvoiceToPNG(previewDocRef.current, inv.invoiceNumber);
+    } finally {
+      setExportingType(null);
+    }
+  };
+
+  const handleExportJPG = async (inv: Invoice) => {
+    if (exportingType) return;
+    setExportingType('jpg');
+    try {
+      await exportInvoiceToJPG(previewDocRef.current, inv.invoiceNumber);
+    } finally {
+      setExportingType(null);
+    }
+  };
+
+  const handlePrint = (inv: Invoice) => {
+    if (exportingType) return;
+    setExportingType('print');
+    try {
+      printInvoice(inv, profile, previewDocRef.current);
+    } finally {
+      setExportingType(null);
+    }
+  };
 
   return (
     <div className="space-y-6 font-sans">
@@ -68,7 +121,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
               <button
                 key={t.id}
                 onClick={() => setFilter(t.id as any)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   filter === t.id
                     ? 'bg-white text-zinc-950 font-bold shadow-md'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5'
@@ -121,7 +174,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedInvoiceModal(inv)}
-                        leftIcon={<Eye className="w-3.5 h-3.5" />}
+                        leftIcon={<Eye className="w-3.5 h-3.5 text-blue-400" />}
                       >
                         Preview
                       </Button>
@@ -130,7 +183,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => onDownloadClick(inv)}
-                        leftIcon={<Download className="w-3.5 h-3.5" />}
+                        leftIcon={<Download className="w-3.5 h-3.5 text-emerald-400" />}
                       >
                         PDF
                       </Button>
@@ -141,9 +194,9 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                             variant="ghost"
                             size="sm"
                             onClick={() => setPaymentInstructionsModal(inv)}
-                            leftIcon={<Landmark className="w-3.5 h-3.5" />}
+                            leftIcon={<Landmark className="w-3.5 h-3.5 text-amber-400" />}
                           >
-                            Details
+                            Bank Details
                           </Button>
                           <Button
                             variant="primary"
@@ -169,148 +222,101 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
         )}
       </div>
 
-      {/* Invoice Detail Modal */}
-      <Modal
-        isOpen={!!selectedInvoiceModal}
-        onClose={() => setSelectedInvoiceModal(null)}
-        title={`Statement #${selectedInvoiceModal?.invoiceNumber}`}
-      >
-        {selectedInvoiceModal && (
-          <div className="space-y-6 font-sans">
-            <div className="p-6 rounded-2xl bg-zinc-950 border border-white/10 space-y-4">
-              <div className="flex items-center justify-between pb-4 border-b border-white/10">
-                <div>
-                  <h3 className="text-base font-bold text-white">{selectedInvoiceModal.clientName || 'Client Workspace'}</h3>
-                  <p className="text-xs text-zinc-400">Invoice Statement</p>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-mono font-bold text-white">{selectedInvoiceModal.invoiceNumber}</span>
-                  <p className="text-[10px] text-zinc-400">Due: {selectedInvoiceModal.dueDate}</p>
-                </div>
+      {/* Upgraded Canonical Invoice Document Modal */}
+      {selectedInvoiceModal && (
+        <Modal
+          isOpen={!!selectedInvoiceModal}
+          onClose={() => setSelectedInvoiceModal(null)}
+          title={`Statement #${selectedInvoiceModal.invoiceNumber}`}
+        >
+          <div className="space-y-4 font-sans text-xs">
+            {/* Export Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-zinc-900/60 border border-white/10">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => handleExportPDF(selectedInvoiceModal)}
+                  disabled={!!exportingType}
+                  aria-label="Download Invoice PDF"
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-200 font-medium flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {exportingType === 'pdf' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5 text-emerald-400" />
+                  )}
+                  <span>PDF</span>
+                </button>
+
+                <button
+                  onClick={() => handleExportPNG(selectedInvoiceModal)}
+                  disabled={!!exportingType}
+                  aria-label="Download Invoice PNG"
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-200 font-medium flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {exportingType === 'png' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                  ) : (
+                    <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
+                  )}
+                  <span>PNG</span>
+                </button>
+
+                <button
+                  onClick={() => handleExportJPG(selectedInvoiceModal)}
+                  disabled={!!exportingType}
+                  aria-label="Download Invoice JPG"
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-200 font-medium flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {exportingType === 'jpg' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-400" />
+                  ) : (
+                    <ImageIcon className="w-3.5 h-3.5 text-violet-400" />
+                  )}
+                  <span>JPG</span>
+                </button>
+
+                <button
+                  onClick={() => handlePrint(selectedInvoiceModal)}
+                  disabled={!!exportingType}
+                  aria-label="Print Invoice"
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-200 font-medium flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <Printer className="w-3.5 h-3.5 text-zinc-300" />
+                  <span>Print</span>
+                </button>
               </div>
 
-              {/* Items Table */}
-              <div className="space-y-2">
-                <span className="text-[10px] font-mono uppercase text-zinc-400 font-bold">Line Items</span>
-                <div className="space-y-1.5">
-                  {selectedInvoiceModal.items.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2.5 rounded-lg bg-white/5 border border-white/5 text-xs">
-                      <div>
-                        <span className="font-semibold text-white">{item.description}</span>
-                        <span className="block text-[10px] text-zinc-400 font-mono">Qty: {item.quantity} × {formatCurrency(item.rate, selectedInvoiceModal.currency)}</span>
-                      </div>
-                      <span className="font-mono font-bold text-white">{formatCurrency(item.amount, selectedInvoiceModal.currency)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Totals */}
-              <div className="pt-3 border-t border-white/10 space-y-1 text-xs font-mono text-zinc-300">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>{formatCurrency(selectedInvoiceModal.subtotal, selectedInvoiceModal.currency)}</span>
-                </div>
-                {selectedInvoiceModal.discount ? (
-                  <div className="flex justify-between text-emerald-400">
-                    <span>Discount</span>
-                    <span>-{formatCurrency(selectedInvoiceModal.discount, selectedInvoiceModal.currency)}</span>
-                  </div>
-                ) : null}
-                <div className="flex justify-between">
-                  <span>Tax ({selectedInvoiceModal.taxPercentage || 0}%)</span>
-                  <span>{formatCurrency(selectedInvoiceModal.tax, selectedInvoiceModal.currency)}</span>
-                </div>
-                <div className="flex justify-between text-base font-bold text-white pt-2 border-t border-white/10">
-                  <span>Total Amount</span>
-                  <span>{formatCurrency(selectedInvoiceModal.total, selectedInvoiceModal.currency)}</span>
-                </div>
-                {(selectedInvoiceModal.paidAmount || 0) > 0 && (
-                  <div className="flex justify-between text-xs text-emerald-400 pt-1">
-                    <span>Amount Settled</span>
-                    <span>-{formatCurrency(selectedInvoiceModal.paidAmount || 0, selectedInvoiceModal.currency)}</span>
-                  </div>
-                )}
-                {(selectedInvoiceModal.remainingBalance ?? (selectedInvoiceModal.total - (selectedInvoiceModal.paidAmount || 0))) > 0 && (selectedInvoiceModal.paidAmount || 0) > 0 && (
-                  <div className="flex justify-between text-xs font-bold text-amber-400 pt-1 border-t border-white/10">
-                    <span>Remaining Balance</span>
-                    <span>{formatCurrency(selectedInvoiceModal.remainingBalance ?? (selectedInvoiceModal.total - (selectedInvoiceModal.paidAmount || 0)), selectedInvoiceModal.currency)}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Payment Receipts / Settlement History */}
-              {selectedInvoiceModal.receipts && selectedInvoiceModal.receipts.length > 0 && (
-                <div className="space-y-2 pt-3 border-t border-white/10">
-                  <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-400 uppercase">
-                    <Receipt className="w-3.5 h-3.5" />
-                    <span>Payment Receipts & Settlements ({selectedInvoiceModal.receipts.length})</span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {selectedInvoiceModal.receipts.map((rcpt, idx) => (
-                      <div
-                        key={rcpt.id || idx}
-                        className="flex items-center justify-between p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15 text-xs"
-                      >
-                        <div>
-                          <span className="font-mono font-semibold text-white">{rcpt.receiptNumber}</span>
-                          <span className="block text-[10px] text-zinc-400 font-mono">
-                            {rcpt.paymentDate} • via {String(rcpt.paymentMethod).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="text-right font-mono">
-                          <span className="font-bold text-emerald-400">
-                            +{formatCurrency(rcpt.amount, rcpt.currency || selectedInvoiceModal.currency)}
-                          </span>
-                          <span className="block text-[10px] text-emerald-300/60 font-semibold">Settled</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Payment Instructions in Modal */}
-              {selectedInvoiceModal.paymentInstructions && (
-                <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-1 text-xs">
-                  <span className="font-semibold text-zinc-300 block">Payment Instructions:</span>
-                  <p className="text-zinc-400 leading-relaxed">{selectedInvoiceModal.paymentInstructions}</p>
-                </div>
+              {selectedInvoiceModal.paymentStatus !== 'paid' && selectedInvoiceModal.status !== 'paid' && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    const inv = selectedInvoiceModal;
+                    setSelectedInvoiceModal(null);
+                    onPayClick(inv);
+                  }}
+                  leftIcon={<CreditCard className="w-4 h-4" />}
+                >
+                  Pay Securely ({formatCurrency(selectedInvoiceModal.remainingBalance ?? selectedInvoiceModal.total, selectedInvoiceModal.currency)})
+                </Button>
               )}
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <Button variant="ghost" onClick={() => setSelectedInvoiceModal(null)}>
-                Close
-              </Button>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  onClick={() => onDownloadClick(selectedInvoiceModal)}
-                  leftIcon={<Download className="w-4 h-4" />}
-                >
-                  Download PDF
-                </Button>
-                {selectedInvoiceModal.paymentStatus !== 'paid' && selectedInvoiceModal.status !== 'paid' && (
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      const inv = selectedInvoiceModal;
-                      setSelectedInvoiceModal(null);
-                      onPayClick(inv);
-                    }}
-                    leftIcon={<CreditCard className="w-4 h-4" />}
-                  >
-                    Pay Securely
-                  </Button>
-                )}
-              </div>
+            {/* Document Sheet with Responsive Scaling */}
+            <div className="max-h-[65vh] overflow-y-auto p-4 rounded-xl bg-zinc-950/80 border border-white/5 flex justify-center">
+              <InvoiceDocument
+                ref={previewDocRef}
+                invoice={selectedInvoiceModal}
+                branding={profile}
+                responsiveScale={true}
+                documentId={`client-portal-preview-${selectedInvoiceModal.id}`}
+              />
             </div>
           </div>
-        )}
-      </Modal>
+        </Modal>
+      )}
 
-      {/* Payment Instructions Modal */}
+      {/* Bank Settlement Details Modal */}
       {paymentInstructionsModal && (
         <Modal
           isOpen={!!paymentInstructionsModal}
@@ -341,7 +347,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                 <span>Bank Transfer & Settlement Instructions</span>
               </div>
               <p className="text-zinc-300 leading-relaxed">
-                {paymentInstructionsModal.paymentInstructions || 'Please transfer payment to the studio bank account noted on your invoice PDF, quoting your invoice number as reference.'}
+                {paymentInstructionsModal.paymentInstructions || 'Please transfer payment to the studio bank account noted on your invoice document, quoting your invoice number as reference.'}
               </p>
             </div>
 
@@ -380,4 +386,3 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
     </div>
   );
 };
-
