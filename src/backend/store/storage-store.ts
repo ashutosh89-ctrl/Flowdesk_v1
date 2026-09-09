@@ -406,7 +406,7 @@ export const FlowDeskStore = {
       action: 'created project',
       target: newProj.title,
       category: 'project',
-      metadata: `Client: ${newProj.clientName} | Budget: $${newProj.budget.toLocaleString()}`,
+      metadata: `Client: ${newProj.clientName || 'Client'} | Budget: $${(newProj.budget || 0).toLocaleString()}`,
     });
 
     return newProj;

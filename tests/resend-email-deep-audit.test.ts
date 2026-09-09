@@ -431,8 +431,10 @@ async function runEmailAuditTestSuite() {
     }
   } else {
     console.log('  ℹ️ No live RESEND_API_KEY provided in test runner environment.');
-    // Verify fail-closed behavior when Resend is unconfigured
+    // Verify fail-closed behavior when email provider is unconfigured
+    const savedBrevoKey = process.env.BREVO_API_KEY;
     process.env.RESEND_API_KEY = '';
+    process.env.BREVO_API_KEY = '';
     const unconfiguredRes = await EmailService.send({
       to: 'delivered@resend.dev',
       subject: 'Unconfigured Test',
@@ -453,6 +455,7 @@ async function runEmailAuditTestSuite() {
     }
 
     if (originalResendApiKey !== undefined) process.env.RESEND_API_KEY = originalResendApiKey;
+    if (savedBrevoKey !== undefined) process.env.BREVO_API_KEY = savedBrevoKey;
   }
 
   // -------------------------------------------------------------------------

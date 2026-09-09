@@ -8,6 +8,8 @@ import {
   validSupabaseAnonKey,
   isDemoModeActive,
 } from '@/backend/utilities/supabase';
+import { checkRateLimit, getClientIp, RATE_LIMIT_PRESETS } from '@/backend/utilities/rate-limiter';
+import { logger } from '@/backend/utilities/logger';
 
 /**
  * Resolves the authenticated Supabase user from the NextRequest
@@ -72,7 +74,30 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const clientIp = getClientIp(request);
+
   try {
+    // 0. Rate limiting protection
+    const rateLimit = await checkRateLimit(clientIp, RATE_LIMIT_PRESETS.INVITATION_CLAIM);
+    if (!rateLimit.allowed) {
+      logger.security('INVITATION_CLAIM_RATE_LIMITED', {
+        ip: clientIp,
+        status: 'BLOCKED',
+        reason: 'Rate limit exceeded',
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          errorCode: 'RATE_LIMITED',
+          error: `Too many claim attempts. Please try again in ${rateLimit.retryAfterSeconds} seconds.`,
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) },
+        }
+      );
+    }
+
     const { token } = await params;
 
     if (!token || typeof token !== 'string' || token.trim().length < 8) {
@@ -88,24 +113,19 @@ export async function POST(
     if (!isDemo) {
       authenticatedUser = await getAuthenticatedUser(request);
       if (!authenticatedUser) {
-        // Also check if request body provided temporary verified session
-        try {
-          const body = await request.json().catch(() => ({}));
-          if (body?.userId) {
-            authenticatedUser = { id: body.userId, email: body.email };
-          }
-        } catch {}
-
-        if (!authenticatedUser) {
-          return NextResponse.json(
-            {
-              success: false,
-              errorCode: 'UNAUTHORIZED',
-              error: 'Authentication required. Please sign in to claim this connection.',
-            },
-            { status: 401 }
-          );
-        }
+        logger.security('INVITATION_CLAIM_UNAUTHORIZED', {
+          ip: clientIp,
+          status: 'BLOCKED',
+          reason: 'No authenticated session provided',
+        });
+        return NextResponse.json(
+          {
+            success: false,
+            errorCode: 'UNAUTHORIZED',
+            error: 'Authentication required. Please sign in to claim this connection.',
+          },
+          { status: 401 }
+        );
       }
     } else {
       authenticatedUser = { id: 'usr-demo-client', email: 'eleanor@apexdigital.io' };
@@ -131,12 +151,27 @@ export async function POST(
           ? 409
           : 400;
 
+      logger.security('INVITATION_CLAIM_FAILED', {
+        userId: authenticatedUser.id,
+        ip: clientIp,
+        status: 'FAILURE',
+        reason: result.errorCode,
+      });
+
       return NextResponse.json(result, { status: statusCode });
     }
 
+    logger.security('INVITATION_CLAIM_SUCCESS', {
+      userId: authenticatedUser.id,
+      clientId: result.clientId,
+      workspaceId: result.workspaceId,
+      ip: clientIp,
+      status: 'SUCCESS',
+    });
+
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error('[API /api/invitations/claim] Claim error:', error);
+    logger.error('[API /api/invitations/claim] Claim error', error, { ip: clientIp });
     return NextResponse.json(
       {
         success: false,
@@ -147,3 +182,4 @@ export async function POST(
     );
   }
 }
+

@@ -1,5 +1,10 @@
 import crypto from 'crypto';
 import { getRazorpayClient } from './razorpay-client';
+import { isDemoModeActive } from '@/backend/utilities/supabase';
+
+function isMockPaymentAllowed(): boolean {
+  return process.env.ALLOW_TEST_PAYMENTS === 'true' && isDemoModeActive();
+}
 
 export interface CreateOrderParams {
   amountSubunits: bigint | number;
@@ -84,9 +89,8 @@ export const RazorpayService = {
       return order as unknown as RazorpayOrderResponse;
     } catch (err: any) {
       console.warn('[RazorpayService.createOrder] Gateway API notice:', err?.error?.description || err.message || err);
-      // In test mode (rzp_test_...), provide a deterministic test order response if upstream credentials are in sandbox activation
-      const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
-      if (keyId.startsWith('rzp_test_')) {
+      // In explicitly configured demo environments with ALLOW_TEST_PAYMENTS=true, provide mock order response
+      if (isMockPaymentAllowed()) {
         return {
           id: `order_test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           entity: 'order',
@@ -115,8 +119,7 @@ export const RazorpayService = {
       return order as unknown as RazorpayOrderResponse;
     } catch (err: any) {
       console.warn(`[RazorpayService.fetchOrder] API lookup notice for ${orderId}:`, err?.error?.description || err.message);
-      const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
-      if (keyId.startsWith('rzp_test_') && orderId.startsWith('order_')) {
+      if (isMockPaymentAllowed() && orderId.startsWith('order_')) {
         return {
           id: orderId,
           entity: 'order',
@@ -145,8 +148,7 @@ export const RazorpayService = {
       return payment as unknown as RazorpayPaymentResponse;
     } catch (err: any) {
       console.warn(`[RazorpayService.fetchPayment] API lookup notice for ${paymentId}:`, err?.error?.description || err.message);
-      const keyId = process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
-      if (keyId.startsWith('rzp_test_') && (paymentId.startsWith('pay_') || paymentId.startsWith('test_'))) {
+      if (isMockPaymentAllowed() && (paymentId.startsWith('pay_') || paymentId.startsWith('test_'))) {
         return {
           id: paymentId,
           entity: 'payment',

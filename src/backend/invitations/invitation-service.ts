@@ -55,7 +55,7 @@ export const InvitationService = {
     }
   ): Promise<{ rawToken: string; url: string; invitation: ClientInvitation }> => {
     // 1. Demo / Local Store Fallback
-    if (DemoDataProvider.isDemo() || isDemoModeActive() || !isSupabaseConfigured) {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.createOrGetInvitation(clientId, options?.recipientEmail);
     }
 
@@ -202,7 +202,7 @@ export const InvitationService = {
     const tokenHash = hashInvitationToken(rawToken);
 
     // 1. Demo / Local Store Fallback
-    if (DemoDataProvider.isDemo() || isDemoModeActive() || !isSupabaseConfigured) {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.getPublicInvitationDetails(tokenHash);
     }
 
@@ -351,7 +351,7 @@ export const InvitationService = {
     const tokenHash = hashInvitationToken(rawToken);
 
     // 1. Demo / Local Store Fallback
-    if (DemoDataProvider.isDemo() || isDemoModeActive() || !isSupabaseConfigured) {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.claimInvitation(tokenHash, userId, userEmail);
     }
 
@@ -506,7 +506,7 @@ export const InvitationService = {
    * Revokes any pending invitation for a client.
    */
   revokeInvitation: async (clientId: string): Promise<{ success: boolean; error?: string }> => {
-    if (DemoDataProvider.isDemo() || isDemoModeActive() || !isSupabaseConfigured) {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.revokeInvitation(clientId);
     }
 

@@ -190,25 +190,67 @@ async function validateRecipient(
   }
 
   if (CLIENT_DIRECTED_EVENTS.has(eventType)) {
-    if (!authorizedWsId && !user.id) {
+    if (!authorizedWsId) {
       return { ok: false, error: 'Unauthorized: no workspace relationship for this event.' };
     }
-    // Allow authenticated freelancer to dispatch invitations/emails to any recipient email address
+
+    // Verify recipient belongs to a client in this workspace
+    const { data: clientRecord } = await db
+      .from('clients')
+      .select('id, email')
+      .eq('workspace_id', authorizedWsId)
+      .eq('email', normalized)
+      .maybeSingle();
+
+    if (!clientRecord && eventType !== 'client_invitation') {
+      return { ok: false, error: 'Unauthorized: recipient is not an active client in this workspace.' };
+    }
+
     return { ok: true };
   }
 
   return { ok: false, error: `Unsupported email event type: ${eventType}` };
 }
 
+import { checkRateLimit, getClientIp, RATE_LIMIT_PRESETS } from '@/backend/utilities/rate-limiter';
+import { logger } from '@/backend/utilities/logger';
+
 export async function POST(request: NextRequest) {
+  const clientIp = getClientIp(request);
+
   try {
     const isDemo = isDemoModeActive();
+
+    // 0. Rate limiting protection
+    const rateLimit = await checkRateLimit(clientIp, RATE_LIMIT_PRESETS.EMAIL_DISPATCH);
+    if (!rateLimit.allowed) {
+      logger.security('EMAIL_DISPATCH_RATE_LIMITED', {
+        ip: clientIp,
+        status: 'BLOCKED',
+        reason: 'Rate limit exceeded',
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Too many email dispatch requests. Please try again in ${rateLimit.retryAfterSeconds} seconds.`,
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) },
+        }
+      );
+    }
 
     let authenticatedUser: { id: string; email?: string } | null = null;
 
     if (!isDemo) {
       authenticatedUser = await getAuthenticatedUser(request);
       if (!authenticatedUser) {
+        logger.security('EMAIL_DISPATCH_UNAUTHORIZED', {
+          ip: clientIp,
+          status: 'BLOCKED',
+          reason: 'Missing authenticated session',
+        });
         return NextResponse.json(
           { success: false, error: 'Authentication required to dispatch emails.' },
           { status: 401 }
@@ -241,6 +283,14 @@ export async function POST(request: NextRequest) {
     if (!isDemo && authenticatedUser) {
       const recipientCheck = await validateRecipient(to, eventType, authenticatedUser, workspaceId);
       if (!recipientCheck.ok) {
+        logger.security('EMAIL_RECIPIENT_VALIDATION_FAILED', {
+          userId: authenticatedUser.id,
+          to,
+          eventType,
+          workspaceId,
+          status: 'BLOCKED',
+          reason: recipientCheck.error,
+        });
         return NextResponse.json(
           { success: false, error: recipientCheck.error },
           { status: 403 }
@@ -261,9 +311,19 @@ export async function POST(request: NextRequest) {
       userId: options.userId || authenticatedUser?.id,
     });
 
+    if (result.success) {
+      logger.info('Email dispatched successfully', {
+        userId: authenticatedUser?.id,
+        eventType,
+        referenceType,
+        referenceId,
+        provider: (result as any).provider,
+      });
+    }
+
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error('[API /api/email] Dispatch error:', error);
+    logger.error('[API /api/email] Dispatch error', error, { ip: clientIp });
     return NextResponse.json(
       { success: false, error: error.message || 'Internal server error while processing email.' },
       { status: 500 }

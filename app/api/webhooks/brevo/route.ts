@@ -7,6 +7,26 @@ import { supabase, supabaseAdmin } from '@/backend/utilities/supabase';
  */
 export async function POST(request: NextRequest) {
   try {
+    // 1. Webhook Secret Authentication Check
+    const webhookSecret = process.env.BREVO_WEBHOOK_SECRET?.trim();
+    if (webhookSecret) {
+      const authHeader = request.headers.get('authorization');
+      const customToken = request.headers.get('x-sib-webhook-token') || request.headers.get('x-brevo-token');
+      const querySecret = request.nextUrl.searchParams.get('secret');
+
+      const isAuthorized =
+        (authHeader && authHeader === `Bearer ${webhookSecret}`) ||
+        (customToken && customToken === webhookSecret) ||
+        (querySecret && querySecret === webhookSecret);
+
+      if (!isAuthorized) {
+        return NextResponse.json(
+          { received: false, error: 'Unauthorized: Invalid Brevo webhook signature/secret.' },
+          { status: 401 }
+        );
+      }
+    }
+
     const payload = await request.json().catch(() => null);
 
     if (!payload || typeof payload !== 'object') {

@@ -98,16 +98,32 @@ export const ClientRepository = {
       }
     }
 
+    // Check if client email already corresponds to a registered FlowDesk account
+    let matchedUserId: string | null = null;
+    if (clientData.email && clientData.email.includes('@')) {
+      try {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', clientData.email.trim().toLowerCase())
+          .maybeSingle();
+        if (prof?.id) {
+          matchedUserId = prof.id;
+        }
+      } catch {}
+    }
+
     const { data, error } = await supabase
       .from('clients')
       .insert({
         workspace_id: workspaceId || '',
+        user_id: matchedUserId,
         name: clientData.name,
         company: clientData.company,
         email: clientData.email,
         phone: clientData.phone || '',
         avatar_url: clientData.avatarUrl || '',
-        status: clientData.status || 'active',
+        status: clientData.status || (matchedUserId ? 'active' : 'invited'),
         health_badge: clientData.healthBadge || 'healthy',
         active_projects_count: clientData.activeProjectsCount || 0,
         country: clientData.country || 'India',

@@ -247,6 +247,34 @@ async function runSuite() {
   assert(maskEmail('jo@domain.com') === 'j***@domain.com', 'Masks 2-letter username correctly');
   assert(maskEmail(undefined) === undefined, 'Returns undefined for undefined email');
 
+  // --- SECTION 8: Route Handler Security (Zero body.userId Identity Trust) ---
+  console.log('\n--- SECTION 8: Route Handler Security (Zero body.userId Identity Trust) ---');
+
+  const { POST: claimHandler } = await import('../app/api/invitations/[token]/claim/route');
+  const { NextRequest } = await import('next/server');
+
+  // 1. Unauthenticated request with body.userId in production mode
+  const originalAuthMode = process.env.NEXT_PUBLIC_AUTH_MODE;
+  process.env.NEXT_PUBLIC_AUTH_MODE = 'production';
+
+  const unauthReqWithBodyUser = new NextRequest('http://localhost:3000/api/invitations/sample-token-12345/claim', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ userId: 'usr-attacker-injected', email: 'attacker@evil.com' }),
+  });
+
+  const unauthRes = await claimHandler(unauthReqWithBodyUser, {
+    params: Promise.resolve({ token: 'sample-token-12345' }),
+  });
+
+  assert(unauthRes.status === 401, 'Unauthenticated request with body.userId returns HTTP 401');
+  const unauthData = await unauthRes.json();
+  assert(unauthData.errorCode === 'UNAUTHORIZED', 'ErrorCode is UNAUTHORIZED');
+  assert(unauthData.success === false, 'Claim marked success: false');
+
+  // Restore auth mode
+  process.env.NEXT_PUBLIC_AUTH_MODE = originalAuthMode;
+
   console.log('\n================================================================');
   console.log(`📊 RESULTS: ${passed} Passed, ${failed} Failed`);
   console.log('🎉 ALL CLIENT CONNECTION & ONE-TIME REDEMPTION TESTS PASSED!');

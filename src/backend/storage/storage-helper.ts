@@ -5,7 +5,59 @@ export type StorageBucket = 'documents' | 'deliverables' | 'avatars' | 'logos' |
 // Private buckets must NEVER be served through public URLs.
 const PRIVATE_BUCKETS: ReadonlySet<string> = new Set(['documents', 'deliverables']);
 
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
+
+const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set([
+  // Images
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/svg+xml',
+  'image/gif',
+  // Documents
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+  'text/csv',
+  'application/zip',
+  'application/x-zip-compressed',
+]);
+
 export const StorageHelper = {
+  /**
+   * Validates file size and MIME type before storage operations.
+   */
+  validateFile(file: File): { valid: boolean; error?: string } {
+    if (!file) {
+      return { valid: false, error: 'No file provided.' };
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return {
+        valid: false,
+        error: `File size (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds maximum allowed limit of 25MB.`,
+      };
+    }
+
+    if (file.type && !ALLOWED_MIME_TYPES.has(file.type.toLowerCase())) {
+      // Allow general fallback only if extension matches standard safe extensions
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      const safeExtensions = new Set(['pdf', 'jpg', 'jpeg', 'png', 'webp', 'svg', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv', 'zip']);
+      if (!ext || !safeExtensions.has(ext)) {
+        return {
+          valid: false,
+          error: `File type "${file.type || ext}" is not permitted. Please upload standard document or image formats.`,
+        };
+      }
+    }
+
+    return { valid: true };
+  },
+
   /**
    * Reads a File object into a base64 Data URL.
    * Only used by the explicitly configured demo environment.
@@ -21,11 +73,13 @@ export const StorageHelper = {
 
   /**
    * Generates standard file path: workspaces/{workspaceId}/{folder}/{filename}
+   * Sanitizes input to prevent path traversal attacks.
    */
   getFilePath(workspaceId: string, folder: string, filename: string): string {
-    const cleanFolder = folder.replace(/^\/+|\/+$/g, '');
-    const cleanFilename = filename.replace(/^\/+|\/+$/g, '');
-    return `workspaces/${workspaceId}/${cleanFolder}/${cleanFilename}`;
+    const cleanWorkspaceId = workspaceId.replace(/[^a-zA-Z0-9_-]/g, '');
+    const cleanFolder = folder.replace(/[^a-zA-Z0-9_/-]/g, '').replace(/^\/+|\/+$/g, '');
+    const cleanFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    return `workspaces/${cleanWorkspaceId}/${cleanFolder}/${cleanFilename}`;
   },
 
   /**
@@ -39,6 +93,11 @@ export const StorageHelper = {
     folder: string,
     file: File
   ): Promise<{ path: string; url: string; error: string | null }> {
+    const validation = this.validateFile(file);
+    if (!validation.valid) {
+      return { path: '', url: '', error: validation.error || 'Invalid file.' };
+    }
+
     // Demo mode: local Data URL previews only in explicitly configured demo environments.
     if (isDemoModeActive()) {
       try {
@@ -78,6 +137,7 @@ export const StorageHelper = {
       return { path: '', url: '', error: err?.message || 'File upload failed' };
     }
   },
+
 
   /**
    * Replace existing file in storage
