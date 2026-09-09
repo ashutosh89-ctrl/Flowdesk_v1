@@ -81,23 +81,23 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
           <div className="space-y-1 text-xs min-w-0">
             <div className="flex items-center justify-between gap-4 text-zinc-300">
               <span>Overdue Invoices:</span>
-              <span className={`font-bold ${health.metrics.overdueInvoicesCount > 0 ? 'text-rose-400' : 'text-zinc-400'}`}>
-                {health.metrics.overdueInvoicesCount}
+              <span className={`font-bold ${(health.metrics?.overdueInvoicesCount ?? 0) > 0 ? 'text-rose-400' : 'text-zinc-400'}`}>
+                {health.metrics?.overdueInvoicesCount ?? 0}
               </span>
             </div>
             <div className="flex items-center justify-between gap-4 text-zinc-300">
               <span>Late Projects:</span>
-              <span className={`font-bold ${health.metrics.lateProjectsCount > 0 ? 'text-amber-400' : 'text-zinc-400'}`}>
-                {health.metrics.lateProjectsCount}
+              <span className={`font-bold ${(health.metrics?.lateProjectsCount ?? 0) > 0 ? 'text-amber-400' : 'text-zinc-400'}`}>
+                {health.metrics?.lateProjectsCount ?? 0}
               </span>
             </div>
             <div className="flex items-center justify-between gap-4 text-zinc-300">
               <span>Pending Approvals:</span>
-              <span className="font-bold text-sky-400">{health.metrics.pendingApprovalsCount}</span>
+              <span className="font-bold text-sky-400">{health.metrics?.pendingApprovalsCount ?? 0}</span>
             </div>
             <div className="flex items-center justify-between gap-4 text-zinc-300">
               <span>Client Engagement:</span>
-              <span className="font-bold text-emerald-400">{health.metrics.clientEngagementScore}%</span>
+              <span className="font-bold text-emerald-400">{health.metrics?.clientEngagementScore ?? 100}%</span>
             </div>
           </div>
         </div>
@@ -107,7 +107,7 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
           <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
             Smart Recommendations
           </h4>
-          {health.recommendations.length === 0 ? (
+          {(!health.recommendations || health.recommendations.length === 0) ? (
             <p className="text-xs text-zinc-500 italic">No recommendations at this time.</p>
           ) : (
             health.recommendations.map((rec) => (

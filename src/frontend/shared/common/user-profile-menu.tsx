@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dropdown, DropdownItem } from '../ui/dropdown';
 import { Avatar } from '../ui/avatar';
-import { Settings, User, LogOut, Monitor } from 'lucide-react';
+import { Settings, User, LogOut, Monitor, Building2 } from 'lucide-react';
 import { UserProfile } from '@/shared/types';
 import { useAuth } from '@/frontend/auth/auth-context';
 
@@ -17,13 +17,45 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
   onSwitchViewMode,
 }) => {
   const { user, signOut } = useAuth();
+  const [hasClientAccess, setHasClientAccess] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function checkRoles() {
+      try {
+        const res = await fetch('/api/auth/roles', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.client) {
+            setHasClientAccess(true);
+          }
+        }
+      } catch {
+        // Non-critical role check
+      }
+    }
+    checkRoles();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const displayName = profile?.name ?? user?.email?.split('@')[0] ?? 'User';
   const displayCompany = profile?.companyName || 'My Workspace';
 
   const handleLogout = async () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('flowdesk_workspace_mode');
+    }
     await signOut();
     onSwitchViewMode('landing');
+  };
+
+  const handleSwitchToClient = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('flowdesk_workspace_mode', 'client');
+    }
+    window.location.assign('/client/dashboard');
   };
 
   const items: DropdownItem[] = [
@@ -33,6 +65,16 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
       icon: <User className="w-4 h-4" />,
       onClick: () => onNavigate('settings'),
     },
+    ...(hasClientAccess
+      ? [
+          {
+            id: 'item-client-portal',
+            label: 'Switch to Client Portal',
+            icon: <Building2 className="w-4 h-4 text-emerald-400" />,
+            onClick: handleSwitchToClient,
+          },
+        ]
+      : []),
     {
       id: 'item-settings',
       label: 'Preferences & Rates',
@@ -74,3 +116,4 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
     />
   );
 };
+

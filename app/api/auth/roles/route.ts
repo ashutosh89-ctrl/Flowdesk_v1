@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { validateAndFormatUrl, validateKey } from '@/backend/utilities/supabase';
+import { validateAndFormatUrl, validateKey, isDemoModeActive, supabaseAdmin } from '@/backend/utilities/supabase';
 
 export async function GET(request: NextRequest) {
+  if (isDemoModeActive()) {
+    const demoRole = request.cookies.get('flowdesk_client_demo')?.value ? 'client' : 'freelancer';
+    return NextResponse.json({
+      authenticated: true,
+      userId: demoRole === 'client' ? 'usr-demo-client' : 'usr-demo-alex',
+      freelancer: true,
+      client: true,
+      clientCount: 1,
+      clients: [{ id: 'cli-demo-001', name: 'Eleanor Vance', company: 'Apex Digital', status: 'active' }],
+      onboardingCompleted: true,
+    });
+  }
+
   const supabaseUrl = validateAndFormatUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || '');
   const supabaseAnonKey = validateKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
 
@@ -41,13 +54,44 @@ export async function GET(request: NextRequest) {
 
     // Client role is represented by an authenticated client record. RLS exposes
     // only rows bound to auth.uid(), so this query does not reveal other clients.
-    const { data: clientRows, error: clientError } = await supabase
+    let { data: clientRows, error: clientError } = await supabase
       .from('clients')
       .select('id, name, company, status')
       .eq('user_id', user.id)
       .neq('status', 'pending_deletion')
       .order('created_at', { ascending: true })
       .limit(10);
+
+    // If no client row is bound to user.id yet, check if there is an unbound client record
+    // matching user.email (case-insensitive) and bind it.
+    if ((!clientRows || clientRows.length === 0) && user.email) {
+      try {
+        const { data: emailMatches } = await supabaseAdmin
+          .from('clients')
+          .select('id, name, company, status, user_id')
+          .ilike('email', user.email.trim())
+          .neq('status', 'pending_deletion');
+
+        if (emailMatches && emailMatches.length > 0) {
+          const unbound = emailMatches.filter((c) => !c.user_id || c.user_id === user.id);
+          if (unbound.length > 0) {
+            for (const c of unbound) {
+              if (c.user_id !== user.id) {
+                await supabaseAdmin.from('clients').update({ user_id: user.id }).eq('id', c.id);
+              }
+            }
+            clientRows = unbound.map((c) => ({
+              id: c.id,
+              name: c.name,
+              company: c.company,
+              status: c.status,
+            }));
+          }
+        }
+      } catch (bindErr) {
+        console.warn('[auth/roles] email client auto-binding notice:', bindErr);
+      }
+    }
 
     if (workspaceError) console.warn('[auth/roles] workspace role check:', workspaceError.message);
     if (clientError) console.warn('[auth/roles] client role check:', clientError.message);
@@ -83,3 +127,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+

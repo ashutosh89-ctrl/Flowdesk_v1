@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -14,6 +14,7 @@ import {
   X,
   Sparkles,
   LogOut,
+  BriefcaseBusiness,
 } from 'lucide-react';
 import { ClientAuthService } from '@/backend/client/client-auth-service';
 
@@ -52,13 +53,47 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   pendingDocumentsCount = 0,
   unpaidInvoicesCount = 0,
 }) => {
+  const [hasFreelancerAccess, setHasFreelancerAccess] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function checkRoles() {
+      try {
+        const res = await fetch('/api/auth/roles', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.freelancer) {
+            setHasFreelancerAccess(true);
+          }
+        }
+      } catch {
+        // Non-critical role check
+      }
+    }
+    checkRoles();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleLogout = async () => {
     try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('flowdesk_workspace_mode');
+      }
       await ClientAuthService.logout();
     } finally {
-      window.location.href = '/client/login';
+      window.location.href = '/login';
     }
   };
+
+  const handleSwitchToFreelancer = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('flowdesk_workspace_mode', 'freelancer');
+    }
+    window.location.assign('/dashboard');
+  };
+
   const navItems: {
     id: PortalTabType;
     label: string;
@@ -173,14 +208,25 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         </nav>
       </div>
 
-      {/* Security & Magic Link Footer */}
-      <div className="pt-4 border-t border-white/10 space-y-3">
+      {/* Switcher & Security Footer */}
+      <div className="pt-4 border-t border-white/10 space-y-2.5">
+        {hasFreelancerAccess && (
+          <button
+            type="button"
+            onClick={handleSwitchToFreelancer}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition-all shadow-sm"
+          >
+            <BriefcaseBusiness className="w-3.5 h-3.5 text-amber-400" />
+            Switch to Freelancer Studio
+          </button>
+        )}
+
         <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 flex items-start gap-2.5">
           <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
           <div>
             <p className="text-[11px] font-semibold text-emerald-300">Magic Access Security</p>
             <p className="text-[10px] text-zinc-400 leading-relaxed mt-0.5">
-              Encrypted passwordless access provided by your service provider.
+              Encrypted authenticated access provided by your service provider.
             </p>
           </div>
         </div>
@@ -212,3 +258,4 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
     </>
   );
 };
+

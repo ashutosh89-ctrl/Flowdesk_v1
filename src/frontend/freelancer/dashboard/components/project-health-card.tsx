@@ -38,61 +38,77 @@ export const ProjectHealthCard: React.FC<ProjectHealthCardProps> = ({ summaries,
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {summaries.map((item) => (
-          <div
-            key={item.projectId}
+      {summaries.length === 0 ? (
+        <div className="p-8 rounded-xl bg-zinc-900/40 border border-dashed border-white/10 text-center flex flex-col items-center justify-center">
+          <FolderKanban className="w-8 h-8 text-zinc-600 mb-2" />
+          <p className="text-sm font-medium text-zinc-300">No active projects yet</p>
+          <p className="text-xs text-zinc-500 mt-1 max-w-sm">
+            Create your first project or milestone to monitor execution health and risk triggers in real-time.
+          </p>
+          <button
             onClick={() => onNavigate('projects')}
-            className="p-4 rounded-xl bg-zinc-900/60 border border-white/10 hover:border-white/25 transition-all cursor-pointer group flex flex-col justify-between"
+            className="mt-4 px-3 py-1.5 text-xs font-semibold bg-white/10 hover:bg-white text-white hover:text-zinc-950 rounded-lg transition-colors"
           >
-            <div>
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div>
-                  <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
-                    {item.projectTitle}
-                  </h4>
-                  <p className="text-xs text-zinc-400">{item.clientName}</p>
+            Create Project
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {summaries.map((item) => (
+            <div
+              key={item.projectId}
+              onClick={() => onNavigate('projects')}
+              className="p-4 rounded-xl bg-zinc-900/60 border border-white/10 hover:border-white/25 transition-all cursor-pointer group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+                      {item.projectTitle}
+                    </h4>
+                    <p className="text-xs text-zinc-400">{item.clientName}</p>
+                  </div>
+                  {getStatusBadge(item.status)}
                 </div>
-                {getStatusBadge(item.status)}
-              </div>
 
-              {/* Completion Progress Bar */}
-              <div className="my-3 space-y-1">
-                <div className="flex justify-between text-[11px] text-zinc-400 font-mono">
-                  <span>Milestone Completion</span>
-                  <span className="font-bold text-white">{item.completionPercentage}%</span>
+                {/* Completion Progress Bar */}
+                <div className="my-3 space-y-1">
+                  <div className="flex justify-between text-[11px] text-zinc-400 font-mono">
+                    <span>Milestone Completion</span>
+                    <span className="font-bold text-white">{item.completionPercentage}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-500 ${
+                        item.completionPercentage === 100
+                          ? 'bg-emerald-400'
+                          : item.status === 'Critical'
+                          ? 'bg-rose-500'
+                          : 'bg-sky-400'
+                      }`}
+                      style={{ width: `${item.completionPercentage}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-500 ${
-                      item.completionPercentage === 100
-                        ? 'bg-emerald-400'
-                        : item.status === 'Critical'
-                        ? 'bg-rose-500'
-                        : 'bg-sky-400'
-                    }`}
-                    style={{ width: `${item.completionPercentage}%` }}
-                  />
-                </div>
-              </div>
 
-              {/* Reasons / Risk Triggers */}
-              <div className="flex items-center gap-2 flex-wrap text-[11px] text-zinc-400 mt-3 pt-3 border-t border-white/5">
-                {item.reasons.map((reason, idx) => (
-                  <span key={idx} className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded text-zinc-300 border border-white/5">
-                    {item.status === 'Critical' || item.status === 'Needs Attention' ? (
-                      <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
-                    ) : (
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                    )}
-                    {reason}
-                  </span>
-                ))}
+                {/* Reasons / Risk Triggers */}
+                <div className="flex items-center gap-2 flex-wrap text-[11px] text-zinc-400 mt-3 pt-3 border-t border-white/5">
+                  {item.reasons.map((reason, idx) => (
+                    <span key={idx} className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded text-zinc-300 border border-white/5">
+                      {item.status === 'Critical' || item.status === 'Needs Attention' ? (
+                        <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                      ) : (
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                      )}
+                      {reason}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
