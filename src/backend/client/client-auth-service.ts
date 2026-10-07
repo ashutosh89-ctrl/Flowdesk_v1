@@ -1,4 +1,5 @@
 import { supabase, isDemoModeActive, isSupabaseConfigured } from '@/backend/utilities/supabase';
+import { logger } from '@/backend/utilities/logger';
 import { Client } from '@/shared/types';
 import { mockClients } from '@/backend/store/mockData';
 
@@ -196,23 +197,63 @@ export const ClientAuthService = {
       // 1. Identity is bound to the authenticated Supabase user.
       const { data } = await supabase.from('clients').select('*').eq('user_id', userId).maybeSingle();
 
-      // 2. First-login fallback: bind by email ONLY when the email maps to
-      //    exactly one client record. If the same email exists in multiple
-      //    workspaces, the match is ambiguous and MUST NOT grant access to any
-      //    of them — the freelancer must explicitly associate the account.
+      // 2. First-login fallback: bind by email ONLY when:
+      //    a) The authenticated user's email is confirmed (SEC-HIGH-01)
+      //    b) Exactly one client record matches the lowercased, trimmed email (exact match, no wildcards)
+      //    c) The matching client record is unbound (user_id IS NULL)
+      //    d) Conditional update .is('user_id', null) prevents overwrite races
+      //    If the same email exists in multiple workspaces, the match is ambiguous and MUST NOT grant access.
       if (!data && email) {
+        const { data: authData } = await supabase.auth.getUser();
+        const currentUser = authData?.user;
+        const isConfirmed = Boolean(
+          currentUser &&
+          currentUser.id === userId &&
+          (currentUser.email_confirmed_at || (currentUser as any).confirmed_at)
+        );
+
+        if (!isConfirmed) {
+          return null;
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const escapedEmail = normalizedEmail.replace(/[%_\\]/g, '\\$&');
+
         const { data: matches, error: matchErr } = await supabase
           .from('clients')
           .select('*')
-          .eq('email', email);
+          .ilike('email', escapedEmail);
 
-        if (!matchErr && matches && matches.length === 1) {
-          const match = matches[0];
-          // Bind the authenticated user to this client record so future
-          // lookups are user-scoped, not email-scoped.
-          if (match.user_id !== userId) {
-            await supabase.from('clients').update({ user_id: userId }).eq('id', match.id);
+        const exactMatches = (matches || []).filter(
+          (c) => c.email && c.email.trim().toLowerCase() === normalizedEmail
+        );
+
+        if (!matchErr && exactMatches && exactMatches.length === 1) {
+          const match = exactMatches[0];
+
+          // Only bind if unbound (user_id is null)
+          if (!match.user_id) {
+            const { error: updateErr } = await supabase
+              .from('clients')
+              .update({ user_id: userId })
+              .eq('id', match.id)
+              .is('user_id', null);
+
+            if (!updateErr) {
+              logger.security('CLIENT_AUTO_BIND_SUCCESS', {
+                status: 'SUCCESS',
+                userId,
+                clientId: match.id,
+              });
+              match.user_id = userId;
+            } else {
+              return null;
+            }
+          } else if (match.user_id !== userId) {
+            // Already bound to another user
+            return null;
           }
+
           return {
             id: match.id,
             userId: match.user_id || userId,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { InvitationService } from '@/backend/invitations/invitation-service';
+import { checkRateLimit, getClientIp, RATE_LIMIT_PRESETS } from '@/backend/utilities/rate-limiter';
 
 /**
  * Public Invitation Details Endpoint
@@ -12,6 +13,24 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const clientIp = getClientIp(request);
+
+  // Rate limiting protection on public lookup
+  const rateLimit = await checkRateLimit(clientIp, RATE_LIMIT_PRESETS.INVITATION_CLAIM);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        isValid: false,
+        status: 'invalid',
+        error: `Too many lookup attempts. Please try again in ${rateLimit.retryAfterSeconds} seconds.`,
+      },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) },
+      }
+    );
+  }
+
   try {
     const { token } = await params;
 

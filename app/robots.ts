@@ -26,6 +26,8 @@ export default function robots(): MetadataRoute.Robots {
           '/auth/*',
           '/api',
           '/api/*',
+          '/connect',
+          '/connect/*',
         ],
       },
     ],

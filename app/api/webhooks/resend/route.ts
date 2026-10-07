@@ -81,21 +81,42 @@ function verifyResendWebhookSignature(params: {
   }
 }
 
+const ALLOWED_RESEND_EVENTS = new Set([
+  'email.sent',
+  'email.delivered',
+  'email.delivery_delayed',
+  'email.bounced',
+  'email.complained',
+  'email.opened',
+  'email.clicked',
+]);
+
 export async function POST(request: NextRequest) {
   try {
-    // 1. Read raw body as text for cryptographic signature check
+    // 1. Fail Closed: Require RESEND_WEBHOOK_SECRET
+    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET?.trim();
+    if (!webhookSecret) {
+      console.error('[Resend Webhook] RESEND_WEBHOOK_SECRET environment variable is missing or empty on server.');
+      return NextResponse.json(
+        { received: false, error: 'Webhook service configuration unavailable' },
+        { status: 503 }
+      );
+    }
+
+    // 2. Read raw body as text for cryptographic signature check
     const rawBody = await request.text();
 
     const svixId = request.headers.get('svix-id');
     const svixTimestamp = request.headers.get('svix-timestamp');
     const svixSignature = request.headers.get('svix-signature');
 
-    // 2. Verify Svix/Resend Authenticity
+    // 3. Verify Svix/Resend Authenticity
     const isValid = verifyResendWebhookSignature({
       rawBody,
       svixId,
       svixTimestamp,
       svixSignature,
+      secret: webhookSecret,
     });
 
     if (!isValid) {
@@ -106,15 +127,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Parse validated JSON payload
-    const payload = JSON.parse(rawBody);
-    const { type, data } = payload;
+    // 4. Parse validated JSON payload with schema enforcement
+    let payload: any;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ received: false, error: 'Invalid webhook JSON payload' }, { status: 400 });
+    }
 
-    if (!type || !data) {
+    if (!payload || typeof payload !== 'object') {
       return NextResponse.json({ received: false, error: 'Invalid webhook payload structure' }, { status: 400 });
     }
 
-    const emailId = data.email_id || data.id;
+    const { type, data } = payload;
+
+    if (!type || typeof type !== 'string' || !ALLOWED_RESEND_EVENTS.has(type)) {
+      return NextResponse.json(
+        { received: false, error: `Invalid or unapproved Resend event type: ${String(type).slice(0, 50)}` },
+        { status: 400 }
+      );
+    }
+
+    if (!data || typeof data !== 'object') {
+      return NextResponse.json({ received: false, error: 'Invalid webhook data object' }, { status: 400 });
+    }
+
+    const rawEmailId = data.email_id || data.id;
+    const emailId = typeof rawEmailId === 'string' ? rawEmailId.slice(0, 255) : null;
     if (!emailId) {
       return NextResponse.json({ received: true, note: 'No message ID identified in payload' });
     }

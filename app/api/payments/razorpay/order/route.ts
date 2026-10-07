@@ -43,6 +43,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 1b. User-level rate limiting check
+    const callerId = caller.userId || caller.clientId || 'caller';
+    const userRateLimit = await checkRateLimit(`user:${callerId}`, RATE_LIMIT_PRESETS.PAYMENT_ORDER);
+    if (!userRateLimit.allowed) {
+      logger.security('PAYMENT_ORDER_RATE_LIMITED', {
+        userId: callerId,
+        status: 'BLOCKED',
+        reason: 'User rate limit exceeded',
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Too many payment order requests for your account. Please try again in ${userRateLimit.retryAfterSeconds} seconds.`,
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(userRateLimit.retryAfterSeconds) },
+        }
+      );
+    }
+
     const body = await request.json();
     const { invoiceId, requestedAmount, partialPayment } = body;
 

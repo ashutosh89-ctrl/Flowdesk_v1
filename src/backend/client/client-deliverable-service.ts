@@ -339,10 +339,11 @@ export const ClientDeliverableService = {
       let attachmentMetadata: { name: string; size: string; url: string } | null = null;
       if (attachmentFile && existing.workspace_id) {
         const uploadRes = await StorageHelper.uploadFile(
-          'deliverables',
+          'documents',
           existing.workspace_id,
           `revisions/${deliverableId}`,
-          attachmentFile
+          attachmentFile,
+          { clientId }
         );
         if (!uploadRes.error && uploadRes.path) {
           attachmentMetadata = {

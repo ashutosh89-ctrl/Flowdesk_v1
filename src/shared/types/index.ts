@@ -960,7 +960,7 @@ export interface ClaimInvitationResult {
   workspaceId?: string;
   clientName?: string;
   company?: string;
-  errorCode?: 'INVALID_TOKEN' | 'ALREADY_CLAIMED' | 'EXPIRED' | 'REVOKED' | 'CLIENT_ALREADY_CONNECTED' | 'UNAUTHORIZED' | 'CLIENT_NOT_FOUND' | 'SERVER_ERROR';
+  errorCode?: 'INVALID_TOKEN' | 'ALREADY_CLAIMED' | 'EXPIRED' | 'REVOKED' | 'CLIENT_ALREADY_CONNECTED' | 'UNAUTHORIZED' | 'CLIENT_NOT_FOUND' | 'SERVER_ERROR' | 'EMAIL_MISMATCH' | 'EMAIL_UNCONFIRMED' | 'RATE_LIMITED';
   error?: string;
   message?: string;
 }

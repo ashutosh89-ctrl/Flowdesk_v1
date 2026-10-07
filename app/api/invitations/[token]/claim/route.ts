@@ -14,7 +14,7 @@ import { logger } from '@/backend/utilities/logger';
 /**
  * Resolves the authenticated Supabase user from the NextRequest
  */
-async function getAuthenticatedUser(request: NextRequest): Promise<{ id: string; email?: string } | null> {
+async function getAuthenticatedUser(request: NextRequest): Promise<{ id: string; email?: string; isEmailConfirmed?: boolean } | null> {
   // 1. Check Bearer Authorization header
   const authHeader = request.headers.get('authorization');
   if (authHeader?.startsWith('Bearer ')) {
@@ -23,7 +23,11 @@ async function getAuthenticatedUser(request: NextRequest): Promise<{ id: string;
       try {
         const { data: { user }, error } = await (supabaseAdmin || supabase).auth.getUser(token);
         if (!error && user) {
-          return { id: user.id, email: user.email || undefined };
+          return {
+            id: user.id,
+            email: user.email || undefined,
+            isEmailConfirmed: Boolean(user.email_confirmed_at || (user as any).confirmed_at),
+          };
         }
       } catch (err) {
         console.warn('[API /api/invitations/claim] Bearer auth check notice:', err);
@@ -45,7 +49,11 @@ async function getAuthenticatedUser(request: NextRequest): Promise<{ id: string;
 
       const { data: { user }, error } = await serverClient.auth.getUser();
       if (!error && user) {
-        return { id: user.id, email: user.email || undefined };
+        return {
+          id: user.id,
+          email: user.email || undefined,
+          isEmailConfirmed: Boolean(user.email_confirmed_at || (user as any).confirmed_at),
+        };
       }
     } catch (err) {
       console.warn('[API /api/invitations/claim] Cookie auth check notice:', err);
@@ -56,7 +64,11 @@ async function getAuthenticatedUser(request: NextRequest): Promise<{ id: string;
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      return { id: user.id, email: user.email || undefined };
+      return {
+        id: user.id,
+        email: user.email || undefined,
+        isEmailConfirmed: Boolean(user.email_confirmed_at || (user as any).confirmed_at),
+      };
     }
   } catch {}
 
@@ -108,7 +120,7 @@ export async function POST(
     }
 
     const isDemo = isDemoModeActive();
-    let authenticatedUser: { id: string; email?: string } | null = null;
+    let authenticatedUser: { id: string; email?: string; isEmailConfirmed?: boolean } | null = null;
 
     if (!isDemo) {
       authenticatedUser = await getAuthenticatedUser(request);
@@ -128,13 +140,27 @@ export async function POST(
         );
       }
     } else {
-      authenticatedUser = { id: 'usr-demo-client', email: 'eleanor@apexdigital.io' };
+      authenticatedUser = { id: 'usr-demo-client', email: 'eleanor@apexdigital.io', isEmailConfirmed: true };
+    }
+
+    // Secondary rate limiting keyed by authenticated user ID
+    const userRateLimit = await checkRateLimit(`user:${authenticatedUser.id}`, RATE_LIMIT_PRESETS.INVITATION_CLAIM);
+    if (!userRateLimit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          errorCode: 'RATE_LIMITED',
+          error: `Too many claim attempts for this account. Please try again in ${userRateLimit.retryAfterSeconds} seconds.`,
+        },
+        { status: 429, headers: { 'Retry-After': String(userRateLimit.retryAfterSeconds) } }
+      );
     }
 
     const result = await InvitationService.claimInvitation(
       token.trim(),
       authenticatedUser.id,
-      authenticatedUser.email
+      authenticatedUser.email,
+      { isEmailConfirmed: authenticatedUser.isEmailConfirmed }
     );
 
     if (!result.success) {
@@ -144,6 +170,10 @@ export async function POST(
           : result.errorCode === 'EXPIRED'
           ? 410
           : result.errorCode === 'REVOKED'
+          ? 403
+          : result.errorCode === 'EMAIL_MISMATCH'
+          ? 403
+          : result.errorCode === 'EMAIL_UNCONFIRMED'
           ? 403
           : result.errorCode === 'INVALID_TOKEN'
           ? 404

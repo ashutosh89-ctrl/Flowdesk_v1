@@ -1,15 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthProvider } from '@/frontend/auth/auth-context';
 import { ToastProvider } from '@/frontend/shared/ui/toast';
 import { SignUpForm } from '@/frontend/auth/signup-form';
 import { ArrowLeft } from 'lucide-react';
+import { getSafeRedirectPath } from '@/shared/utils/safe-redirect';
 
 function SignupContent() {
   const router = useRouter();
-  const [signupEmail, setSignupEmail] = useState('');
+  const searchParams = useSearchParams();
+  const rawNext = searchParams.get('next');
+  const targetNext = getSafeRedirectPath(rawNext, '/onboarding');
+  const [, setSignupEmail] = useState('');
 
   return (
     <div className="min-h-screen bg-[#09090b] text-white flex flex-col items-center justify-center p-4 selection:bg-white selection:text-zinc-950">
@@ -23,11 +27,9 @@ function SignupContent() {
         </button>
 
         <SignUpForm
-          onSuccess={() => router.replace('/onboarding')}
-          onSwitchToLogin={() => router.push('/login')}
+          onSuccess={() => router.replace(targetNext)}
+          onSwitchToLogin={() => router.push(rawNext ? `/login?next=${encodeURIComponent(rawNext)}` : '/login')}
           onGoToVerifyEmail={(typedEmail) => {
-            // Keep the user's signup email for OTP verification — previously
-            // discarded, which forced users to verify against a stale address.
             setSignupEmail(typedEmail || '');
             router.push('/verify-email');
           }}
@@ -41,7 +43,9 @@ export default function SignupPage() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <SignupContent />
+        <React.Suspense fallback={<div className="min-h-screen bg-[#09090b]" />}>
+          <SignupContent />
+        </React.Suspense>
       </AuthProvider>
     </ToastProvider>
   );

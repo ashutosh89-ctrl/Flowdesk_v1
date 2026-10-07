@@ -288,7 +288,7 @@ export const InvitationService = {
       const { data: client, error: clientErr } = await db
         .from('clients')
         .select('id, name, company, email, user_id, workspace_id, portal_token')
-        .or(`portal_token.eq.${tokenHash},portal_token.eq.${rawToken},id.eq.${rawToken}`)
+        .eq('portal_token', tokenHash)
         .maybeSingle();
 
       if (!clientErr && client) {
@@ -338,7 +338,8 @@ export const InvitationService = {
   claimInvitation: async (
     rawToken: string,
     userId: string,
-    userEmail?: string
+    userEmail?: string,
+    options?: { isEmailConfirmed?: boolean }
   ): Promise<ClaimInvitationResult> => {
     if (!rawToken || !userId) {
       return {
@@ -352,7 +353,7 @@ export const InvitationService = {
 
     // 1. Demo / Local Store Fallback
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
-      return FlowDeskStore.claimInvitation(tokenHash, userId, userEmail);
+      return FlowDeskStore.claimInvitation(tokenHash, userId, userEmail, options?.isEmailConfirmed);
     }
 
     const db = supabaseAdmin || supabase;
@@ -406,6 +407,25 @@ export const InvitationService = {
           };
         }
 
+        // Email validation rule
+        if (inv.recipient_email && userEmail) {
+          if (userEmail.trim().toLowerCase() !== inv.recipient_email.trim().toLowerCase()) {
+            return {
+              success: false,
+              errorCode: 'EMAIL_MISMATCH',
+              error: 'The email address of your account does not match the invitation.',
+            };
+          }
+        }
+
+        if (options?.isEmailConfirmed === false) {
+          return {
+            success: false,
+            errorCode: 'EMAIL_UNCONFIRMED',
+            error: 'Please verify your email address before connecting this account.',
+          };
+        }
+
         // Check client record
         const { data: client, error: clientErr } = await db
           .from('clients')
@@ -430,8 +450,22 @@ export const InvitationService = {
           };
         }
 
-        // Bind client to user
-        await db.from('clients').update({ user_id: userId }).eq('id', client.id);
+        // Atomically bind client to user if not already bound to another user
+        const { data: updatedClient, error: clientUpdateErr } = await db
+          .from('clients')
+          .update({ user_id: userId })
+          .eq('id', client.id)
+          .is('user_id', null)
+          .select('id, workspace_id, name, company')
+          .maybeSingle();
+
+        if (clientUpdateErr || (!updatedClient && client.user_id !== userId)) {
+          return {
+            success: false,
+            errorCode: 'CLIENT_ALREADY_CONNECTED',
+            error: 'This client connection has already been completed by another user.',
+          };
+        }
 
         // Consume invitation
         await db
@@ -461,7 +495,7 @@ export const InvitationService = {
       const { data: client, error: clientErr } = await db
         .from('clients')
         .select('*')
-        .or(`portal_token.eq.${tokenHash},portal_token.eq.${rawToken},id.eq.${rawToken}`)
+        .eq('portal_token', tokenHash)
         .maybeSingle();
 
       if (clientErr || !client) {
@@ -480,17 +514,48 @@ export const InvitationService = {
         };
       }
 
-      await db
+      // Email validation rule
+      if (client.email && userEmail) {
+        if (client.email.trim().toLowerCase() !== userEmail.trim().toLowerCase()) {
+          return {
+            success: false,
+            errorCode: 'EMAIL_MISMATCH',
+            error: 'The email address of your account does not match the invitation.',
+          };
+        }
+      }
+
+      if (options?.isEmailConfirmed === false) {
+        return {
+          success: false,
+          errorCode: 'EMAIL_UNCONFIRMED',
+          error: 'Please verify your email address before connecting this account.',
+        };
+      }
+
+      // Atomic update: only updates if user_id is null, preventing race conditions
+      const { data: updatedClient, error: updateErr } = await db
         .from('clients')
         .update({ user_id: userId, portal_token: null })
-        .eq('id', client.id);
+        .eq('id', client.id)
+        .is('user_id', null)
+        .select('id, workspace_id, name, company')
+        .maybeSingle();
+
+      if (updateErr || !updatedClient) {
+        return {
+          success: false,
+          errorCode: 'CLIENT_ALREADY_CONNECTED',
+          error: 'This client connection has already been completed by another user.',
+        };
+      }
 
       return {
         success: true,
-        clientId: client.id,
-        workspaceId: client.workspace_id,
-        clientName: client.name,
-        company: client.company,
+        clientId: updatedClient.id,
+        workspaceId: updatedClient.workspace_id,
+        clientName: updatedClient.name,
+        company: updatedClient.company,
         message: 'Client account successfully connected.',
       };
     } catch (fallbackErr: any) {

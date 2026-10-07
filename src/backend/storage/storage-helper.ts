@@ -7,6 +7,8 @@ const PRIVATE_BUCKETS: ReadonlySet<string> = new Set(['documents', 'deliverables
 
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set([
   // Images
   'image/jpeg',
@@ -27,7 +29,120 @@ const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set([
   'application/x-zip-compressed',
 ]);
 
+export interface BuildStoragePathOptions {
+  bucket: StorageBucket;
+  workspaceId: string;
+  clientId?: string | null;
+  fileName: string;
+}
+
+/**
+ * Sanitizes a filename:
+ * - Normalizes unicode (NFKC)
+ * - Strips directory traversal sequences ('..')
+ * - Strips path separators ('/' and '\')
+ * - Strips control characters
+ * - Limits length (max 80 chars base name, preserving extension)
+ * - Retains safe unicode characters (letters, numbers)
+ */
+export function sanitizeFileName(rawName: string): string {
+  if (!rawName || typeof rawName !== 'string' || !rawName.trim()) {
+    throw new Error('Filename cannot be empty.');
+  }
+
+  // 1. Normalize unicode
+  let normalized = rawName.normalize('NFKC');
+
+  // 2. Strip control characters (\x00-\x1f and \x7f-\x9f)
+  normalized = normalized.replace(/[\u0000-\u001f\u007f-\u009f]/g, '');
+
+  // 3. Extract final path segment if path separators were included
+  const segments = normalized.split(/[/\\]+/).filter(Boolean);
+  let baseName = segments.length > 0 ? segments[segments.length - 1] : '';
+
+  // 4. Strip directory traversal sequences
+  baseName = baseName.replace(/\.{2,}/g, '');
+
+  // 5. Trim leading and trailing periods, spaces, underscores
+  baseName = baseName.trim().replace(/^[._\s]+|[._\s]+$/g, '');
+
+  if (!baseName) {
+    throw new Error('Filename cannot be empty after sanitization.');
+  }
+
+  // 6. Separate base and extension
+  const lastDot = baseName.lastIndexOf('.');
+  let ext = '';
+  let nameOnly = baseName;
+  if (lastDot > 0) {
+    ext = baseName.slice(lastDot).toLowerCase();
+    nameOnly = baseName.slice(0, lastDot);
+  }
+
+  // 7. Sanitize extension (only safe alphanumeric chars)
+  ext = ext.replace(/[^a-zA-Z0-9.]/g, '');
+  if (ext.length > 15) ext = ext.slice(0, 15);
+
+  // 8. Sanitize base name (unicode letters, numbers, dash, underscore, space)
+  nameOnly = nameOnly.replace(/[^\p{L}\p{N}_\-\s]/gu, '_').trim();
+  if (!nameOnly) {
+    nameOnly = 'file';
+  }
+
+  // 9. Limit length of base name to 80 characters
+  if (nameOnly.length > 80) {
+    nameOnly = nameOnly.slice(0, 80).trim();
+  }
+
+  const finalName = `${nameOnly}${ext}`;
+  if (!finalName || finalName === '.') {
+    throw new Error('Filename cannot be empty after sanitization.');
+  }
+
+  return finalName;
+}
+
+/**
+ * Builds canonical storage path:
+ * Private buckets (documents, deliverables):
+ *   - Client-scoped:   workspaces/<workspaceId>/clients/<clientId>/<prefix>_<fileName>
+ *   - Workspace-level: workspaces/<workspaceId>/shared/<prefix>_<fileName>
+ * Public buckets (logos, signatures, avatars):
+ *   - Branding/public: workspaces/<workspaceId>/branding/<prefix>_<fileName>
+ */
+export function buildStoragePath(options: BuildStoragePathOptions): string {
+  const { bucket, workspaceId, clientId, fileName } = options;
+
+  if (!workspaceId || typeof workspaceId !== 'string' || !UUID_REGEX.test(workspaceId.trim())) {
+    throw new Error(`Invalid workspace ID: must be a valid UUID, got "${workspaceId}".`);
+  }
+  const cleanWsId = workspaceId.trim().toLowerCase();
+
+  let cleanClientId: string | null = null;
+  if (clientId !== undefined && clientId !== null && clientId !== '') {
+    if (typeof clientId !== 'string' || !UUID_REGEX.test(clientId.trim())) {
+      throw new Error(`Invalid client ID: must be a valid UUID, got "${clientId}".`);
+    }
+    cleanClientId = clientId.trim().toLowerCase();
+  }
+
+  const sanitized = sanitizeFileName(fileName);
+  const randomPrefix = crypto.randomUUID();
+
+  if (PRIVATE_BUCKETS.has(bucket)) {
+    if (cleanClientId) {
+      return `workspaces/${cleanWsId}/clients/${cleanClientId}/${randomPrefix}_${sanitized}`;
+    }
+    return `workspaces/${cleanWsId}/shared/${randomPrefix}_${sanitized}`;
+  }
+
+  return `workspaces/${cleanWsId}/branding/${randomPrefix}_${sanitized}`;
+}
+
 export const StorageHelper = {
+  buildStoragePath,
+  sanitizeFileName,
+
   /**
    * Validates file size and MIME type before storage operations.
    */
@@ -72,8 +187,8 @@ export const StorageHelper = {
   },
 
   /**
+   * Legacy path generator for backward compatibility.
    * Generates standard file path: workspaces/{workspaceId}/{folder}/{filename}
-   * Sanitizes input to prevent path traversal attacks.
    */
   getFilePath(workspaceId: string, folder: string, filename: string): string {
     const cleanWorkspaceId = workspaceId.replace(/[^a-zA-Z0-9_-]/g, '');
@@ -91,11 +206,29 @@ export const StorageHelper = {
     bucket: StorageBucket,
     workspaceId: string,
     folder: string,
-    file: File
+    file: File,
+    options?: { clientId?: string | null; customPath?: string }
   ): Promise<{ path: string; url: string; error: string | null }> {
     const validation = this.validateFile(file);
     if (!validation.valid) {
       return { path: '', url: '', error: validation.error || 'Invalid file.' };
+    }
+
+    // Rate limiting: on server runtime, apply UPLOADS preset rate limit
+    if (typeof window === 'undefined') {
+      try {
+        const { checkRateLimit, RATE_LIMIT_PRESETS } = await import('@/backend/utilities/rate-limiter');
+        const rateLimit = await checkRateLimit(workspaceId, RATE_LIMIT_PRESETS.UPLOADS);
+        if (!rateLimit.allowed) {
+          return {
+            path: '',
+            url: '',
+            error: `Upload rate limit exceeded. Please try again in ${rateLimit.retryAfterSeconds} seconds.`,
+          };
+        }
+      } catch {
+        // Fall through safely if rate limiter module unavailable in isolation
+      }
     }
 
     // Demo mode: local Data URL previews only in explicitly configured demo environments.
@@ -110,7 +243,21 @@ export const StorageHelper = {
     }
 
     try {
-      const path = this.getFilePath(workspaceId, folder, `${Date.now()}_${file.name}`);
+      let path: string;
+      if (options?.customPath) {
+        path = options.customPath;
+      } else if (UUID_REGEX.test(workspaceId)) {
+        // Use canonical path when workspaceId is a valid UUID
+        path = buildStoragePath({
+          bucket,
+          workspaceId,
+          clientId: options?.clientId,
+          fileName: file.name,
+        });
+      } else {
+        path = this.getFilePath(workspaceId, folder, `${Date.now()}_${file.name}`);
+      }
+
       const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
         cacheControl: '3600',
         upsert: true,
@@ -138,7 +285,6 @@ export const StorageHelper = {
     }
   },
 
-
   /**
    * Replace existing file in storage
    */
@@ -147,12 +293,13 @@ export const StorageHelper = {
     oldPath: string,
     workspaceId: string,
     folder: string,
-    newFile: File
+    newFile: File,
+    options?: { clientId?: string | null; customPath?: string }
   ): Promise<{ path: string; url: string; error: string | null }> {
     if (oldPath) {
       await this.deleteFile(bucket, oldPath);
     }
-    return this.uploadFile(bucket, workspaceId, folder, newFile);
+    return this.uploadFile(bucket, workspaceId, folder, newFile, options);
   },
 
   /**
@@ -187,10 +334,11 @@ export const StorageHelper = {
 
   /**
    * Get signed URL for downloads (private and public buckets).
+   * Short default expiration of 300 seconds (5 minutes, within 60–300s window).
    * Production fails closed: if signed URL generation fails, an error is thrown —
    * it NEVER falls back to a public URL.
    */
-  async getSignedUrl(bucket: StorageBucket, path: string, expiresIn = 3600): Promise<string> {
+  async getSignedUrl(bucket: StorageBucket, path: string, expiresIn = 300): Promise<string> {
     if (!path) throw new Error('File path is required to generate a download URL.');
     try {
       const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expiresIn);
@@ -209,8 +357,9 @@ export const StorageHelper = {
    * private buckets and a public URL for public buckets. Returns '' when the
    * path is empty or signed URL generation fails (never falls back to a public
    * URL for private content).
+   * Uses short default expiry of 300 seconds.
    */
-  async getDownloadUrl(bucket: StorageBucket, path: string, expiresIn = 3600): Promise<string> {
+  async getDownloadUrl(bucket: StorageBucket, path: string, expiresIn = 300): Promise<string> {
     if (!path) return '';
     if (PRIVATE_BUCKETS.has(bucket)) {
       try {

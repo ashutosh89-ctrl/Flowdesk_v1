@@ -472,7 +472,8 @@ export const FreelancerDocumentService = {
 
       // Upload to Supabase Storage if File object provided
       if (fileData.file) {
-        const result = await StorageHelper.uploadFile('documents', wsId, `documents/${docId}`, fileData.file);
+        const { data: existingDoc } = await supabase.from('documents').select('client_id').eq('id', docId).maybeSingle();
+        const result = await StorageHelper.uploadFile('documents', wsId, `documents/${docId}`, fileData.file, { clientId: existingDoc?.client_id });
         if (!result.error && result.path) { payload.file_url = result.path; }
       }
 
@@ -710,7 +711,8 @@ export const FreelancerDeliverableService = {
               'deliverables',
               wsId,
               `deliverables/${data.id}`,
-              fileToUpload
+              fileToUpload,
+              { clientId: data.client_id }
             );
             if (fileResult.error) {
               console.warn('Storage upload error during deliverable creation:', fileResult.error);
@@ -847,11 +849,13 @@ export const FreelancerDeliverableService = {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
+      const { data: delInfo } = await supabase.from('deliverables').select('title, client_id').eq('id', id).single();
+
       // Upload file to Supabase Storage if a File object is provided
       let fileUrl = versionData.fileUrl || '';
       let fileUrlPath = '';
       if (versionData.file && typeof StorageHelper !== 'undefined') {
-        const result = await StorageHelper.uploadFile('deliverables', wsId, `deliverables/${id}/versions`, versionData.file);
+        const result = await StorageHelper.uploadFile('deliverables', wsId, `deliverables/${id}/versions`, versionData.file, { clientId: delInfo?.client_id });
         if (result.error) console.warn('Storage upload error:', result.error);
         if (!result.error && result.path) { fileUrlPath = result.path; }
       }
@@ -890,11 +894,13 @@ export const FreelancerDeliverableService = {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
+      const { data: delInfo } = await supabase.from('deliverables').select('client_id').eq('id', id).single();
+
       // Upload file to Supabase Storage if a File object is provided
       let fileUrl = fileData.fileUrl || '';
       let fileUrlPath = '';
       if (fileData.file && typeof StorageHelper !== 'undefined') {
-        const result = await StorageHelper.uploadFile('deliverables', wsId, `deliverables/${id}/files`, fileData.file);
+        const result = await StorageHelper.uploadFile('deliverables', wsId, `deliverables/${id}/files`, fileData.file, { clientId: delInfo?.client_id });
         if (result.error) console.warn('Storage upload error:', result.error);
         if (!result.error && result.path) { fileUrlPath = result.path; }
       }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { validateAndFormatUrl, validateKey, isDemoModeActive, supabaseAdmin } from '@/backend/utilities/supabase';
+import { logger } from '@/backend/utilities/logger';
 
 export async function GET(request: NextRequest) {
   if (isDemoModeActive()) {
@@ -78,24 +79,58 @@ export async function GET(request: NextRequest) {
       .limit(10);
 
     // If no client row is bound to user.id yet, check if there is an unbound client record
-    // matching user.email (case-insensitive) and bind it.
-    if ((!clientRows || clientRows.length === 0) && user.email) {
+    // matching user.email (exact case-insensitive match) and bind it.
+    // SEC-HIGH-01:
+    // a) Only bind when user's email is confirmed (email_confirmed_at / confirmed_at).
+    // b) Exact match on lowercased, trimmed email without wildcard matching.
+    // c) Only bind rows where user_id IS NULL with conditional update .is('user_id', null).
+    // d) Log security event with userId and clientId only (no plaintext email).
+    const isEmailConfirmed = Boolean(user.email_confirmed_at || (user as any).confirmed_at);
+    if ((!clientRows || clientRows.length === 0) && user.email && isEmailConfirmed && supabaseAdmin) {
       try {
+        const normalizedEmail = user.email.trim().toLowerCase();
+        const escapedEmail = normalizedEmail.replace(/[%_\\]/g, '\\$&');
+
         const { data: emailMatches } = await supabaseAdmin
           .from('clients')
-          .select('id, name, company, status, user_id')
-          .ilike('email', user.email.trim())
+          .select('id, name, company, status, user_id, email')
+          .ilike('email', escapedEmail)
           .neq('status', 'pending_deletion');
 
-        if (emailMatches && emailMatches.length > 0) {
-          const unbound = emailMatches.filter((c) => !c.user_id || c.user_id === user.id);
-          if (unbound.length > 0) {
-            for (const c of unbound) {
-              if (c.user_id !== user.id) {
-                await supabaseAdmin.from('clients').update({ user_id: user.id }).eq('id', c.id);
-              }
+        const exactMatches = (emailMatches || []).filter(
+          (c) => c.email && c.email.trim().toLowerCase() === normalizedEmail
+        );
+
+        if (exactMatches.length > 0) {
+          const unbound = exactMatches.filter((c) => !c.user_id);
+          const alreadyBound = exactMatches.filter((c) => c.user_id === user.id);
+          const newlyBoundClients: Array<{ id: string; name: string; company: string; status: string }> = [];
+
+          for (const c of unbound) {
+            const { error: updateErr } = await supabaseAdmin
+              .from('clients')
+              .update({ user_id: user.id })
+              .eq('id', c.id)
+              .is('user_id', null);
+
+            if (!updateErr) {
+              newlyBoundClients.push({
+                id: c.id,
+                name: c.name,
+                company: c.company,
+                status: c.status,
+              });
+              logger.security('CLIENT_AUTO_BIND_SUCCESS', {
+                status: 'SUCCESS',
+                userId: user.id,
+                clientId: c.id,
+              });
             }
-            clientRows = unbound.map((c) => ({
+          }
+
+          const combined = [...alreadyBound, ...newlyBoundClients];
+          if (combined.length > 0) {
+            clientRows = combined.map((c) => ({
               id: c.id,
               name: c.name,
               company: c.company,

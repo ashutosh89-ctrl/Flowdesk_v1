@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { validateAndFormatUrl, validateKey } from '@/backend/utilities/supabase';
+import { getSafeRedirectPath } from '@/shared/utils/safe-redirect';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -8,7 +9,7 @@ export async function GET(request: NextRequest) {
   const type = requestUrl.searchParams.get('type');
   const error = requestUrl.searchParams.get('error');
   const errorDescription = requestUrl.searchParams.get('error_description');
-  let next = requestUrl.searchParams.get('next') || '/auth/post-login';
+  let next = getSafeRedirectPath(requestUrl.searchParams.get('next'), '/auth/post-login');
 
   // Determine external canonical base URL for serverless/reverse proxy environments (Vercel)
   const forwardedHost = request.headers.get('x-forwarded-host');
@@ -23,8 +24,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(errorMsg)}`, origin));
   }
 
-  if (type === 'recovery' && next === '/auth/post-login') {
-    next = '/reset-password';
+  if (type === 'recovery') {
+    next = next === '/auth/post-login' ? '/reset-password' : getSafeRedirectPath(next, '/reset-password');
   }
 
   if (code) {

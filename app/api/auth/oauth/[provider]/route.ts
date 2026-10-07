@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { validateAndFormatUrl, validateKey } from '@/backend/utilities/supabase';
+import { getSafeRedirectPath } from '@/shared/utils/safe-redirect';
 
 const ALLOWED_PROVIDERS = new Set(['google', 'github']);
 
@@ -34,7 +35,11 @@ export async function GET(
   }
 
   const origin = request.nextUrl.origin;
-  const redirectTo = `${origin}/auth/callback`;
+  const nextParam = request.nextUrl.searchParams.get('next');
+  const safeNext = nextParam ? getSafeRedirectPath(nextParam, '') : '';
+  const redirectTo = safeNext
+    ? `${origin}/auth/callback?next=${encodeURIComponent(safeNext)}`
+    : `${origin}/auth/callback`;
 
   // Keep this exact response object for the whole flow. Supabase's SSR client
   // will attach the PKCE verifier cookie to it via setAll().
