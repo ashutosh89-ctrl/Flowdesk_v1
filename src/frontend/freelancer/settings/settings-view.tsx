@@ -41,6 +41,7 @@ import { InvoiceNumberFormatPreset } from '@/shared/types';
 import { CountrySelect } from '@/frontend/shared/ui/country-select';
 import { PhoneInput } from '@/frontend/shared/ui/phone-input';
 import { switchCountryPrefix } from '@/shared/utils/countries';
+import { BillingPlanPanel } from './billing-plan-panel';
 
 type SettingsTab = 'profile' | 'billing' | 'notifications' | 'security';
 
@@ -690,6 +691,8 @@ export const SettingsView: React.FC = () => {
         {/* TAB 2: RATES & INVOICE DEFAULTS + NUMBERING SYSTEM */}
         {activeTab === 'billing' && (
           <div className="space-y-6">
+            <BillingPlanPanel />
+
             {/* Rates & Financial Defaults */}
             <Card variant="crystal">
               <CardHeader>

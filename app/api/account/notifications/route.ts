@@ -4,6 +4,8 @@ import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/utilities/logger';
 import { parseJsonBody, UpdateNotificationSettingsSchema } from '@/shared/validation';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
+import { assertCan } from '@/backend/billing';
+import { PlanLimitError } from '@/shared/billing';
 
 /**
  * Notification Settings Mutation Route Handler (Batch 4: Account & Settings)
@@ -76,6 +78,31 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
   // 5. Production DB Execution & Upsert
   try {
+    if (updates.invoiceReminders === true && supabaseAdmin) {
+      const { data: ws } = await supabaseAdmin
+        .from('workspaces')
+        .select('id')
+        .eq('owner_id', caller.userId)
+        .limit(1)
+        .maybeSingle();
+
+      if (ws) {
+        try {
+          await assertCan(ws.id, 'emailReminders');
+        } catch (planErr: any) {
+          if (planErr instanceof PlanLimitError) {
+            return createApiErrorResponse({
+              message: planErr.message,
+              code: planErr.code,
+              status: planErr.statusCode,
+              requestId,
+            });
+          }
+          throw planErr;
+        }
+      }
+    }
+
     const dbPayload: Record<string, any> = {
       id: caller.userId,
       updated_at: new Date().toISOString(),

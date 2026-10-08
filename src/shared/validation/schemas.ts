@@ -242,3 +242,32 @@ export const AccountDeletionRestoreSchema = z.object({
   target: z.enum(['freelancer', 'client']).optional().default('freelancer'),
   clientId: uuidSchema.optional(),
 }).strict();
+
+// ==========================================
+// Billing & Subscriptions Schemas
+// ==========================================
+
+export const BillingPlanKeyEnum = z.enum(['pro', 'studio']);
+export const BillingIntervalEnum = z.enum(['monthly', 'yearly']);
+
+export const BillingCheckoutSchema = z.object({
+  workspaceId: uuidSchema.optional(),
+  planKey: BillingPlanKeyEnum,
+  interval: BillingIntervalEnum,
+}).strict();
+
+export const BillingCancelSchema = z.object({
+  workspaceId: uuidSchema.optional(),
+  atPeriodEnd: z.boolean().optional().default(true),
+  reason: z.string().trim().max(500).optional(),
+}).strict();
+
+export const BillingResumeSchema = z.object({
+  workspaceId: uuidSchema.optional(),
+}).strict();
+
+export const BillingChangePlanSchema = z.object({
+  workspaceId: uuidSchema.optional(),
+  planKey: BillingPlanKeyEnum,
+  interval: BillingIntervalEnum,
+}).strict();

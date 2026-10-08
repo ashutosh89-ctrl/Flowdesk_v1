@@ -1,4 +1,4 @@
-import { supabase } from '@/backend/utilities/supabase';
+import { supabase, supabaseAdmin } from '@/backend/utilities/supabase';
 import { getCurrentWorkspace } from '@/backend/utilities/workspace';
 
 /**
@@ -19,16 +19,27 @@ export const NotificationHelper = {
     link?: string;
     clientId?: string;
     priority?: 'high' | 'medium' | 'low';
+    workspaceId?: string;
+    userId?: string;
   }): Promise<void> => {
     try {
-      const ws = await getCurrentWorkspace();
-      if (!ws?.id) return;
+      const wsId = params.workspaceId || (await getCurrentWorkspace())?.id;
+      if (!wsId) return;
 
-      const { data: { user } } = await supabase.auth.getUser();
+      let targetUserId = params.userId || null;
+      if (!targetUserId) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          targetUserId = user?.id || null;
+        } catch {
+          // In server/webhook context auth.getUser() may fail gracefully
+        }
+      }
 
-      await supabase.from('notifications').insert({
-        workspace_id: ws.id,
-        user_id: user?.id || null,
+      const client = supabaseAdmin || supabase;
+      await client.from('notifications').insert({
+        workspace_id: wsId,
+        user_id: targetUserId,
         client_id: params.clientId || null,
         title: params.title,
         message: params.message,
@@ -205,6 +216,80 @@ export const NotificationHelper = {
       message: `Version ${versionNumber} of "${deliverableTitle}" is available for review.`,
       category: 'deliverable',
       link: 'deliverables',
+    });
+  },
+
+  // --- Billing & Subscription Notifications ---
+
+  billingPaymentFailed: async (planName: string, reason?: string, meta?: { workspaceId?: string; userId?: string }) => {
+    await NotificationHelper.notifyFreelancer({
+      title: 'Subscription Payment Failed',
+      message: `Payment failed for your ${planName} subscription.${reason ? ` (${reason})` : ''} Please update payment details.`,
+      category: 'billing',
+      link: 'settings',
+      priority: 'high',
+      workspaceId: meta?.workspaceId,
+      userId: meta?.userId,
+    });
+  },
+
+  billingGraceEndingSoon: async (daysRemaining: number, meta?: { workspaceId?: string; userId?: string }) => {
+    await NotificationHelper.notifyFreelancer({
+      title: 'Grace Period Ending Soon',
+      message: `Your workspace grace period concludes in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}. Feature creation will be locked thereafter.`,
+      category: 'billing',
+      link: 'settings',
+      priority: 'high',
+      workspaceId: meta?.workspaceId,
+      userId: meta?.userId,
+    });
+  },
+
+  billingSubscriptionActivated: async (planName: string, meta?: { workspaceId?: string; userId?: string }) => {
+    await NotificationHelper.notifyFreelancer({
+      title: 'Subscription Active',
+      message: `Your workspace has been upgraded to ${planName}. All tier benefits are live.`,
+      category: 'billing',
+      link: 'settings',
+      priority: 'medium',
+      workspaceId: meta?.workspaceId,
+      userId: meta?.userId,
+    });
+  },
+
+  billingSubscriptionCanceled: async (planName: string, effectiveDate: string, meta?: { workspaceId?: string; userId?: string }) => {
+    await NotificationHelper.notifyFreelancer({
+      title: 'Subscription Cancelled',
+      message: `Your ${planName} subscription has been cancelled and will end on ${effectiveDate}.`,
+      category: 'billing',
+      link: 'settings',
+      priority: 'medium',
+      workspaceId: meta?.workspaceId,
+      userId: meta?.userId,
+    });
+  },
+
+  billingPlanChanged: async (oldPlan: string, newPlan: string, meta?: { workspaceId?: string; userId?: string }) => {
+    await NotificationHelper.notifyFreelancer({
+      title: 'Plan Updated',
+      message: `Your workspace subscription was changed from ${oldPlan} to ${newPlan}.`,
+      category: 'billing',
+      link: 'settings',
+      priority: 'medium',
+      workspaceId: meta?.workspaceId,
+      userId: meta?.userId,
+    });
+  },
+
+  billingTrialEnding: async (daysRemaining: number, meta?: { workspaceId?: string; userId?: string }) => {
+    await NotificationHelper.notifyFreelancer({
+      title: 'Trial Ending Soon',
+      message: `Your free Pro trial ends in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}. Upgrade to keep premium features.`,
+      category: 'billing',
+      link: 'settings',
+      priority: 'medium',
+      workspaceId: meta?.workspaceId,
+      userId: meta?.userId,
     });
   },
 };

@@ -468,3 +468,239 @@ export function renderSecurityAlertEmail(params: SecurityAlertParams) {
   };
 }
 
+// ==========================================
+// Billing & Subscription Templates
+// ==========================================
+
+export interface BillingTrialEndingParams {
+  userName?: string;
+  workspaceName?: string;
+  daysRemaining: number;
+  upgradeUrl: string;
+}
+
+export function renderBillingTrialEndingEmail(params: BillingTrialEndingParams) {
+  const cleanUser = truncateText(params.userName || 'Creator', 200);
+  const cleanWorkspace = truncateText(params.workspaceName || 'Your Workspace', 200);
+  const safeUrl = sanitizeUrl(params.upgradeUrl);
+
+  const userName = escapeHtml(cleanUser);
+  const workspaceName = escapeHtml(cleanWorkspace);
+
+  const contentHtml = `
+    <p>Hello <strong>${userName}</strong>,</p>
+    <p>Your free Pro trial for <strong>${workspaceName}</strong> will conclude in <strong>${params.daysRemaining} days</strong>.</p>
+    <p>To continue enjoying unlimited projects, branded client portals, and automated reminders without interruption, upgrade your workspace subscription.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`Your FlowDesk Pro trial ends in ${params.daysRemaining} days`),
+    html: renderEmailLayout({
+      title: 'Pro Trial Ending Soon',
+      previewText: `Your Pro trial ends in ${params.daysRemaining} days. Upgrade to maintain uninterrupted access.`,
+      contentHtml,
+      ctaText: 'Upgrade Workspace Plan',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nYour Pro trial for ${cleanWorkspace} ends in ${params.daysRemaining} days.\n\nUpgrade here: ${safeUrl}`,
+  };
+}
+
+export interface BillingPaymentFailedParams {
+  userName?: string;
+  workspaceName?: string;
+  planName: string;
+  updateUrl: string;
+  reason?: string;
+}
+
+export function renderBillingPaymentFailedEmail(params: BillingPaymentFailedParams) {
+  const cleanUser = truncateText(params.userName || 'Creator', 200);
+  const cleanWorkspace = truncateText(params.workspaceName || 'Your Workspace', 200);
+  const cleanPlan = truncateText(params.planName, 100);
+  const cleanReason = truncateText(params.reason || 'Card charge declined by issuer', 200);
+  const safeUrl = sanitizeUrl(params.updateUrl);
+
+  const userName = escapeHtml(cleanUser);
+  const workspaceName = escapeHtml(cleanWorkspace);
+  const planName = escapeHtml(cleanPlan);
+  const reason = escapeHtml(cleanReason);
+
+  const contentHtml = `
+    <p>Hello <strong>${userName}</strong>,</p>
+    <p>We were unable to process the recurring payment for your <strong>${planName}</strong> plan on workspace <strong>${workspaceName}</strong>.</p>
+    <div class="info-box">
+      <div class="info-row"><span class="info-label">Plan</span><span class="info-value">${planName}</span></div>
+      <div class="info-row"><span class="info-label">Status</span><span class="info-value">Payment Failed</span></div>
+      <div class="info-row"><span class="info-label">Reason</span><span class="info-value">${reason}</span></div>
+    </div>
+    <p>Razorpay will automatically re-attempt this charge over the next few days. You can also update your payment method now to prevent service interruptions.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`Action Required: Payment failed for ${cleanWorkspace}`),
+    html: renderEmailLayout({
+      title: 'Payment Failed',
+      previewText: `Recurring subscription charge failed for ${cleanPlan}. Please update your payment method.`,
+      contentHtml,
+      ctaText: 'Update Payment Method',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nRecurring payment failed for ${cleanPlan} on ${cleanWorkspace}.\n\nUpdate your card: ${safeUrl}`,
+  };
+}
+
+export interface BillingGraceEndingSoonParams {
+  userName?: string;
+  workspaceName?: string;
+  daysRemaining: number;
+  updateUrl: string;
+}
+
+export function renderBillingGraceEndingSoonEmail(params: BillingGraceEndingSoonParams) {
+  const cleanUser = truncateText(params.userName || 'Creator', 200);
+  const cleanWorkspace = truncateText(params.workspaceName || 'Your Workspace', 200);
+  const safeUrl = sanitizeUrl(params.updateUrl);
+
+  const userName = escapeHtml(cleanUser);
+  const workspaceName = escapeHtml(cleanWorkspace);
+
+  const contentHtml = `
+    <p>Hello <strong>${userName}</strong>,</p>
+    <p>This is a final notice regarding your FlowDesk workspace <strong>${workspaceName}</strong>.</p>
+    <p>Your workspace is currently in a grace period which will expire in <strong>${params.daysRemaining} days</strong>. Once the grace period concludes, creating new projects, clients, and invoices will be temporarily locked.</p>
+    <p>Your client data and invoices will remain safe and accessible.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`Important: ${params.daysRemaining} days left in your workspace grace period`),
+    html: renderEmailLayout({
+      title: 'Grace Period Ending Soon',
+      previewText: `Final notice: ${params.daysRemaining} days until workspace access is restricted.`,
+      contentHtml,
+      ctaText: 'Restore Full Access',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nYour workspace grace period expires in ${params.daysRemaining} days.\n\nRestore access: ${safeUrl}`,
+  };
+}
+
+export interface BillingSubscriptionCanceledParams {
+  userName?: string;
+  workspaceName?: string;
+  planName: string;
+  effectiveDate: string;
+  resubscribeUrl: string;
+}
+
+export function renderBillingSubscriptionCanceledEmail(params: BillingSubscriptionCanceledParams) {
+  const cleanUser = truncateText(params.userName || 'Creator', 200);
+  const cleanWorkspace = truncateText(params.workspaceName || 'Your Workspace', 200);
+  const cleanPlan = truncateText(params.planName, 100);
+  const cleanDate = truncateText(params.effectiveDate, 100);
+  const safeUrl = sanitizeUrl(params.resubscribeUrl);
+
+  const userName = escapeHtml(cleanUser);
+  const workspaceName = escapeHtml(cleanWorkspace);
+  const planName = escapeHtml(cleanPlan);
+  const effectiveDate = escapeHtml(cleanDate);
+
+  const contentHtml = `
+    <p>Hello <strong>${userName}</strong>,</p>
+    <p>Your subscription to <strong>${planName}</strong> for workspace <strong>${workspaceName}</strong> has been cancelled.</p>
+    <p>You will retain full access until <strong>${effectiveDate}</strong>, after which your workspace will automatically revert to the Free Starter tier.</p>
+    <p>All of your existing clients, projects, and deliverables will remain safely stored.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`Subscription cancelled for ${cleanWorkspace}`),
+    html: renderEmailLayout({
+      title: 'Subscription Cancelled',
+      previewText: `Your subscription to ${cleanPlan} will end on ${cleanDate}.`,
+      contentHtml,
+      ctaText: 'Manage Subscription',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nYour subscription to ${cleanPlan} for ${cleanWorkspace} was cancelled and will end on ${cleanDate}.\n\nManage: ${safeUrl}`,
+  };
+}
+
+export interface BillingSubscriptionActivatedParams {
+  userName?: string;
+  workspaceName?: string;
+  planName: string;
+  interval: string;
+  dashboardUrl: string;
+}
+
+export function renderBillingSubscriptionActivatedEmail(params: BillingSubscriptionActivatedParams) {
+  const cleanUser = truncateText(params.userName || 'Creator', 200);
+  const cleanWorkspace = truncateText(params.workspaceName || 'Your Workspace', 200);
+  const cleanPlan = truncateText(params.planName, 100);
+  const cleanInterval = truncateText(params.interval, 50);
+  const safeUrl = sanitizeUrl(params.dashboardUrl);
+
+  const userName = escapeHtml(cleanUser);
+  const workspaceName = escapeHtml(cleanWorkspace);
+  const planName = escapeHtml(cleanPlan);
+  const interval = escapeHtml(cleanInterval);
+
+  const contentHtml = `
+    <p>Hello <strong>${userName}</strong>,</p>
+    <p>Thank you for subscribing! Your workspace <strong>${workspaceName}</strong> is now upgraded to <strong>${planName} (${interval})</strong>.</p>
+    <p>All higher limits and premium features are immediately available in your studio dashboard.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`Welcome to ${cleanPlan} on FlowDesk!`),
+    html: renderEmailLayout({
+      title: 'Subscription Activated',
+      previewText: `Your workspace is now live on ${cleanPlan}.`,
+      contentHtml,
+      ctaText: 'Go to Workspace Dashboard',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nYour subscription to ${cleanPlan} is now active!\n\nOpen workspace: ${safeUrl}`,
+  };
+}
+
+export interface BillingPlanChangedParams {
+  userName?: string;
+  workspaceName?: string;
+  oldPlanName: string;
+  newPlanName: string;
+  dashboardUrl: string;
+}
+
+export function renderBillingPlanChangedEmail(params: BillingPlanChangedParams) {
+  const cleanUser = truncateText(params.userName || 'Creator', 200);
+  const cleanWorkspace = truncateText(params.workspaceName || 'Your Workspace', 200);
+  const cleanOld = truncateText(params.oldPlanName, 100);
+  const cleanNew = truncateText(params.newPlanName, 100);
+  const safeUrl = sanitizeUrl(params.dashboardUrl);
+
+  const userName = escapeHtml(cleanUser);
+  const workspaceName = escapeHtml(cleanWorkspace);
+  const oldPlan = escapeHtml(cleanOld);
+  const newPlan = escapeHtml(cleanNew);
+
+  const contentHtml = `
+    <p>Hello <strong>${userName}</strong>,</p>
+    <p>Your subscription for <strong>${workspaceName}</strong> has been updated from <strong>${oldPlan}</strong> to <strong>${newPlan}</strong>.</p>
+    <p>Your revised entitlements are active and your next recurring invoice will reflect this change.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`Plan updated to ${cleanNew} for ${cleanWorkspace}`),
+    html: renderEmailLayout({
+      title: 'Plan Updated',
+      previewText: `Your workspace plan has been changed to ${cleanNew}.`,
+      contentHtml,
+      ctaText: 'View Studio Settings',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nYour plan for ${cleanWorkspace} was updated to ${cleanNew}.\n\nView settings: ${safeUrl}`,
+  };
+}
+
+

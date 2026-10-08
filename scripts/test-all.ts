@@ -48,6 +48,11 @@ const SUITES: Step[] = [
   { name: 'Deliverable Server Mutations (Batch 2)', command: 'npx', args: ['tsx', '--test', 'tests/deliverable-server-mutations.test.ts'] },
   { name: 'Client Server Mutations (Batch 3)', command: 'npx', args: ['tsx', '--test', 'tests/client-server-mutations.test.ts'] },
   { name: 'Account Server Mutations (Batch 4)', command: 'npx', args: ['tsx', '--test', 'tests/account-server-mutations.test.ts'] },
+
+  // 4. Billing & Entitlements Test Suites (Phase 6)
+  { name: 'Billing Plan Pure Rules (Phase 6 Task 7)', command: 'npx', args: ['tsx', '--test', 'tests/billing-plan-rules.test.ts'] },
+  { name: 'Billing Webhook Security (Phase 6 Task 7)', command: 'npx', args: ['tsx', '--test', 'tests/billing-webhook.test.ts'] },
+  { name: 'Billing API Routes Security (Phase 6 Task 7)', command: 'npx', args: ['tsx', '--test', 'tests/billing-routes.test.ts'] },
 ];
 
 function runAll() {

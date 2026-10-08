@@ -5,6 +5,8 @@ import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/
 import { parseJsonBody, CreateInvoiceSchema } from '@/shared/validation';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
 import { calculateInvoiceTotals, formatInvoiceNumber } from '@/shared/rules';
+import { assertWithinLimit } from '@/backend/billing';
+import { PlanLimitError } from '@/shared/billing';
 
 /**
  * Invoice Creation Route Handler (Batch 1: Money & Invoices)
@@ -119,6 +121,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         status: 404,
         requestId,
       });
+    }
+
+    // 6a. Quota Enforcement: Verify within plan limit for invoices per month
+    try {
+      await assertWithinLimit(workspace.id, 'invoicesPerMonth', 1);
+    } catch (limitErr: any) {
+      if (limitErr instanceof PlanLimitError) {
+        return createApiErrorResponse({
+          message: limitErr.message,
+          code: limitErr.code,
+          status: limitErr.statusCode,
+          requestId,
+        });
+      }
+      throw limitErr;
     }
 
     // 7. Calculate Financial Totals Server-Side (Zero Client Trust)

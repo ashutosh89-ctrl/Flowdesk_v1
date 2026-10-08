@@ -5,6 +5,8 @@ import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/
 import { parseJsonBody, CreateClientSchema } from '@/shared/validation';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
 import { InvitationService } from '@/backend/invitations/invitation-service';
+import { assertWithinLimit } from '@/backend/billing';
+import { PlanLimitError } from '@/shared/billing';
 
 /**
  * Client Creation Route Handler (Batch 3: Client Management & Invitations)
@@ -97,6 +99,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         status: 403,
         requestId,
       });
+    }
+
+    // 5a. Quota Enforcement: Verify within plan limit for active clients
+    try {
+      await assertWithinLimit(workspace.id, 'activeClients', 1);
+    } catch (limitErr: any) {
+      if (limitErr instanceof PlanLimitError) {
+        return createApiErrorResponse({
+          message: limitErr.message,
+          code: limitErr.code,
+          status: limitErr.statusCode,
+          requestId,
+        });
+      }
+      throw limitErr;
     }
 
     const nowIso = new Date().toISOString();
