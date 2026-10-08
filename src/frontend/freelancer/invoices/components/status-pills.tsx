@@ -87,3 +87,17 @@ export function DueIndicatorBadge({
     </span>
   );
 }
+
+export function RecurringInvoiceBadge({ scheduleId }: { scheduleId?: string | null }) {
+  if (!scheduleId) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium border rounded-full bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
+      title="Created by recurring invoice schedule"
+    >
+      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+      Recurring
+    </span>
+  );
+}
+

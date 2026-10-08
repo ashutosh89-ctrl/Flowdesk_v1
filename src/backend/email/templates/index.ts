@@ -703,4 +703,74 @@ export function renderBillingPlanChangedEmail(params: BillingPlanChangedParams) 
   };
 }
 
+export interface InvoiceReminderParams {
+  clientName: string;
+  freelancerName?: string;
+  businessName?: string;
+  invoiceNumber: string;
+  amountFormatted: string;
+  remainingBalanceFormatted?: string;
+  dueDate: string;
+  portalUrl?: string;
+  stage: 'before_due' | 'due_date' | 'after_due';
+}
+
+export function renderInvoiceReminderEmail(params: InvoiceReminderParams) {
+  const cleanSender = truncateText(params.businessName || params.freelancerName || 'FlowDesk Studio', 200);
+  const cleanAmt = truncateText(params.remainingBalanceFormatted || params.amountFormatted || '$0.00', 50);
+  const cleanClientName = truncateText(params.clientName, 200);
+  const cleanInvoiceNumber = truncateText(params.invoiceNumber, 100);
+  const cleanDueDate = truncateText(params.dueDate, 50);
+  const safeUrl = sanitizeUrl(params.portalUrl);
+
+  const sender = escapeHtml(cleanSender);
+  const amt = escapeHtml(cleanAmt);
+  const clientName = escapeHtml(cleanClientName);
+  const invoiceNumber = escapeHtml(cleanInvoiceNumber);
+  const dueDate = escapeHtml(cleanDueDate);
+
+  let title = `Payment Reminder: Invoice #${cleanInvoiceNumber}`;
+  let subjectPrefix = 'Reminder:';
+  let messageBody = `<p>This is a friendly reminder that invoice <strong>#${invoiceNumber}</strong> for <strong>${amt}</strong> is due on <strong>${dueDate}</strong>.</p>`;
+
+  if (params.stage === 'before_due') {
+    title = `Upcoming Payment: Invoice #${cleanInvoiceNumber}`;
+    subjectPrefix = 'Upcoming Payment:';
+    messageBody = `<p>This is a quick courtesy note that invoice <strong>#${invoiceNumber}</strong> from <strong>${sender}</strong> will be due on <strong>${dueDate}</strong>.</p>`;
+  } else if (params.stage === 'due_date') {
+    title = `Due Today: Invoice #${cleanInvoiceNumber}`;
+    subjectPrefix = 'Due Today:';
+    messageBody = `<p>This is a reminder that invoice <strong>#${invoiceNumber}</strong> from <strong>${sender}</strong> is due for payment today, <strong>${dueDate}</strong>.</p>`;
+  } else if (params.stage === 'after_due') {
+    title = `Overdue Notice: Invoice #${cleanInvoiceNumber}`;
+    subjectPrefix = 'Overdue Notice:';
+    messageBody = `<p>Our records show that payment for invoice <strong>#${invoiceNumber}</strong> from <strong>${sender}</strong> was due on <strong>${dueDate}</strong> and is currently overdue.</p>`;
+  }
+
+  const contentHtml = `
+    <p>Hello <strong>${clientName}</strong>,</p>
+    ${messageBody}
+    <div class="info-box">
+      <div class="info-row"><span class="info-label">Invoice Number</span><span class="info-value">#${invoiceNumber}</span></div>
+      <div class="info-row"><span class="info-label">Remaining Balance</span><span class="info-value" style="font-size: 15px; color: #ffffff;">${amt}</span></div>
+      <div class="info-row"><span class="info-label">Due Date</span><span class="info-value">${dueDate}</span></div>
+      <div class="info-row"><span class="info-label">Issued By</span><span class="info-value">${sender}</span></div>
+    </div>
+    <p>Please review and settle the outstanding balance through your secure portal link below.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`${subjectPrefix} Invoice #${cleanInvoiceNumber} from ${cleanSender} (${cleanAmt})`),
+    html: renderEmailLayout({
+      title,
+      previewText: `Payment reminder for Invoice #${cleanInvoiceNumber} (${cleanAmt}).`,
+      contentHtml,
+      ctaText: 'Review & Pay Invoice',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanClientName},\n\nPayment reminder for Invoice #${cleanInvoiceNumber} from ${cleanSender}.\nBalance: ${cleanAmt}\nDue Date: ${cleanDueDate}\n\nReview invoice: ${safeUrl}`,
+  };
+}
+
+
 

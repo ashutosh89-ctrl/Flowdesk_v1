@@ -271,3 +271,71 @@ export const BillingChangePlanSchema = z.object({
   planKey: BillingPlanKeyEnum,
   interval: BillingIntervalEnum,
 }).strict();
+
+// ==========================================
+// Phase 7: Background Jobs & Automations Schemas
+// ==========================================
+
+export const RecurringFrequencyEnum = z.enum(['weekly', 'monthly', 'quarterly', 'yearly', 'custom']);
+
+export const RecurringTemplateSchema = z.object({
+  items: z.array(InvoiceItemInputSchema).min(1, 'At least one line item is required'),
+  taxPercentage: z.number().min(0).max(100).optional().default(0),
+  taxName: z.string().trim().max(50).optional().default('Tax'),
+  discount: z.number().min(0).optional().default(0),
+  notes: z.string().trim().max(2000).optional(),
+  paymentInstructions: z.string().trim().max(2000).optional(),
+}).strict();
+
+export const CreateRecurringScheduleSchema = z.object({
+  clientId: uuidSchema,
+  projectId: uuidSchema.optional().nullable(),
+  name: z.string().trim().min(1, 'Schedule name is required').max(255),
+  frequency: RecurringFrequencyEnum,
+  intervalDays: z.number().int().min(1).max(365).optional().nullable(),
+  anchorDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Anchor date must be YYYY-MM-DD'),
+  dayOfMonth: z.number().int().min(1).max(31).optional().nullable(),
+  timezone: z.string().trim().max(100).default('UTC'),
+  endsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'End date must be YYYY-MM-DD').optional().nullable(),
+  maxOccurrences: z.number().int().min(1).max(1000).optional().nullable(),
+  autoSend: z.boolean().default(false),
+  dueInDays: z.number().int().min(0).max(180).default(14),
+  currency: z.string().trim().length(3).default('USD'),
+  template: RecurringTemplateSchema,
+}).strict();
+
+export const UpdateRecurringScheduleSchema = CreateRecurringScheduleSchema.partial().strict();
+
+export const UpdateRecurringScheduleStatusSchema = z.object({
+  action: z.enum(['pause', 'resume', 'cancel']),
+}).strict();
+
+export const PreviewRecurringScheduleSchema = z.object({
+  frequency: RecurringFrequencyEnum,
+  intervalDays: z.number().int().min(1).max(365).optional().nullable(),
+  anchorDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Anchor date must be YYYY-MM-DD'),
+  dayOfMonth: z.number().int().min(1).max(31).optional().nullable(),
+  timezone: z.string().trim().max(100).default('UTC'),
+  endsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  maxOccurrences: z.number().int().min(1).max(1000).optional().nullable(),
+  occurrencesCount: z.number().int().min(0).optional().default(0),
+  count: z.number().int().min(1).max(12).optional().default(3),
+}).strict();
+
+export const UpdateReminderSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  sendBeforeDue: z.boolean().optional(),
+  daysBeforeDue: z.number().int().min(1).max(30).optional(),
+  sendOnDueDate: z.boolean().optional(),
+  sendAfterDue: z.boolean().optional(),
+  daysAfterDue: z.array(z.number().int().min(1).max(180)).optional(),
+  maxRemindersPerInvoice: z.number().int().min(1).max(20).optional(),
+  quietHoursStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+  quietHoursEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+  weekdaysOnly: z.boolean().optional(),
+}).strict();
+
+export type CreateRecurringSchedulePayload = z.infer<typeof CreateRecurringScheduleSchema>;
+export type UpdateRecurringSchedulePayload = z.infer<typeof UpdateRecurringScheduleSchema>;
+export type UpdateReminderSettingsPayload = z.infer<typeof UpdateReminderSettingsSchema>;
+

@@ -16,12 +16,14 @@ import {
   renderBillingSubscriptionCanceledEmail,
   renderBillingSubscriptionActivatedEmail,
   renderBillingPlanChangedEmail,
+  renderInvoiceReminderEmail,
   ClientInvitationParams,
   DeliverableReadyParams,
   DeliverableApprovedParams,
   RevisionRequestedParams,
   DocumentUploadedParams,
   InvoiceIssuedParams,
+  InvoiceReminderParams,
   PaymentReceivedParams,
   AccountLifecycleParams,
   SecurityAlertParams,
@@ -146,6 +148,7 @@ export const EmailService = {
       revision_requested: 'email_deliverables',
       document_uploaded: 'email_documents',
       invoice_issued: 'email_invoices',
+      invoice_reminder: 'email_invoices',
       payment_received: 'email_invoices',
       receipt_issued: 'email_invoices',
     };
@@ -547,6 +550,28 @@ export const EmailService = {
       eventType: 'invoice_issued',
       referenceType: 'invoice',
       referenceId: meta?.invoiceId,
+      workspaceId: meta?.workspaceId,
+    });
+  },
+
+  sendInvoiceReminder: async (
+    recipientEmail: string,
+    params: InvoiceReminderParams,
+    meta?: { workspaceId?: string; invoiceId?: string; ruleKey?: string }
+  ): Promise<EmailSendResult> => {
+    const template = renderInvoiceReminderEmail(params);
+    const referenceId = meta?.invoiceId && meta?.ruleKey
+      ? `${meta.invoiceId}_${meta.ruleKey}`
+      : meta?.invoiceId;
+
+    return EmailService.send({
+      to: recipientEmail,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+      eventType: 'invoice_reminder',
+      referenceType: 'invoice',
+      referenceId,
       workspaceId: meta?.workspaceId,
     });
   },

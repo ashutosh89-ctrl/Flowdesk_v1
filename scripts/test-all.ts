@@ -53,6 +53,13 @@ const SUITES: Step[] = [
   { name: 'Billing Plan Pure Rules (Phase 6 Task 7)', command: 'npx', args: ['tsx', '--test', 'tests/billing-plan-rules.test.ts'] },
   { name: 'Billing Webhook Security (Phase 6 Task 7)', command: 'npx', args: ['tsx', '--test', 'tests/billing-webhook.test.ts'] },
   { name: 'Billing API Routes Security (Phase 6 Task 7)', command: 'npx', args: ['tsx', '--test', 'tests/billing-routes.test.ts'] },
+
+  // 5. Background Jobs & Automations Test Suites (Phase 7)
+  { name: 'Pure Recurring Rules (Phase 7 Task 3)', command: 'npx', args: ['tsx', '--test', 'tests/recurring-rules.test.ts'] },
+  { name: 'Pure Reminder Rules (Phase 7 Task 4)', command: 'npx', args: ['tsx', '--test', 'tests/reminder-rules.test.ts'] },
+  { name: 'Job Runner Engine (Phase 7 Task 2)', command: 'npx', args: ['tsx', '--test', 'tests/job-runner.test.ts'] },
+  { name: 'Recurring Invoices Parity (Phase 7 Task 3)', command: 'npx', args: ['tsx', '--test', 'tests/recurring-invoices.test.ts'] },
+  { name: 'Cron Run-Jobs Route Security (Phase 7 Task 2)', command: 'npx', args: ['tsx', '--test', 'tests/cron-jobs-route.test.ts'] },
 ];
 
 function runAll() {
