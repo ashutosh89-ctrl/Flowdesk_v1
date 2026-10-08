@@ -248,6 +248,62 @@ The new migrations MUST NOT be applied until the code changes are deployed and t
 
 ## 6. Phase 5A Milestone Sign-off
 
-All requirements for **Phase 5A (Tasks 1 to 3)** have been completed and verified with zero regressions against the codebase baseline.
-In accordance with the instruction brief:
-**"5A complete, run 5B in a fresh session."**
+All requirements for **Phase 5A (Tasks 1 to 3)** were successfully completed, validated, committed, and pushed to remote branch `shubh`.
+
+---
+
+## 7. Phase 5B: Regression Re-Audit and Release Readiness (Tasks 4 to 6)
+
+### 7.1 Overview & Scope
+Phase 5B completes the final phase of the FlowDesk remediation program:
+- **Task 4 (Exploit Re-Verification):** Re-tested all 10 original findings (`SEC-CRIT-01..04`, `SEC-HIGH-01..04`, `SEC-MED-01..02`) against the live codebase and automated CI test suites.
+- **Task 5 (Fresh Adversarial Audit):** Conducted a deep security audit across all 31 API routes, middleware, authorization boundaries, rate limiting, `supabaseAdmin` invocations, payments idempotency, currency subunit arithmetic, and supply chain dependencies.
+- **Task 6 (Release Readiness):** Formulated the Go/No-Go release decision, reconciled environment configuration, drafted Supabase dashboard checklists, and established a multi-tiered rollback runbook.
+
+### 7.2 Key Hardening Completed in Phase 5B
+1. **Endpoint Rate Limiting:**
+   - Added distributed rate limiting to `app/api/invoices/[invoiceId]/payment-status/route.ts` (60 req/min).
+   - Added distributed rate limiting to `app/api/payments/[paymentId]/route.ts` (60 req/min).
+   - Added rate limiting to `app/api/auth/roles/route.ts` (120 req/min).
+   - Added rate limiting to `app/api/auth/oauth/[provider]/route.ts` (30 req/min).
+2. **Documentation & Runbooks:**
+   - Authored `docs/audits/FINAL-REAUDIT-REPORT.md` covering all details of Tasks 4 through 6.
+   - Created `docs/audits/REMEDIATION-STATUS.md` as the unified master status tracker.
+   - Reconciled `README.md` and `.env.example` with exact environment requirements.
+
+### 7.3 Automated CI Suite Execution (23/23 Passing)
+```
+╔══════════════════════════════════════════════════════════════╗
+║             FLOWDESK UNIFIED CI TEST RUNNER                  ║
+╚══════════════════════════════════════════════════════════════╝
+
+⏳ Running: TypeScript Static Typecheck... ✅ PASS
+⏳ Running: ESLint Static Analysis... ✅ PASS
+⏳ Running: Hardcoded Secrets Detection... ✅ PASS
+⏳ Running: Input Validation (Task 1)... ✅ PASS
+⏳ Running: XSS & URL Sanitization (Task 2)... ✅ PASS
+⏳ Running: File Upload & Magic Bytes (Task 3)... ✅ PASS
+⏳ Running: Security Headers & CSP (Task 4)... ✅ PASS
+⏳ Running: Logger Masking & Sanitization (Task 5)... ✅ PASS
+⏳ Running: Account Purge Cron Route (Task 6)... ✅ PASS
+⏳ Running: Storage Scoping & Canonical Paths... ✅ PASS
+⏳ Running: Open Redirect & Safe Navigation... ✅ PASS
+⏳ Running: API Authentication & Bearer Protection... ✅ PASS
+⏳ Running: Authentication Fail-Closed... ✅ PASS
+⏳ Running: Rate Limiting & IP Resolution... ✅ PASS
+⏳ Running: Roles & Auto-Bind Prevention... ✅ PASS
+⏳ Running: Invitation Claim Security... ✅ PASS
+⏳ Running: Webhook HMAC Authentication... ✅ PASS
+⏳ Running: Deliverable Approval Pilot (Task 9)... ✅ PASS
+⏳ Running: Pure Business Rules (Phase 5A Task 1)... ✅ PASS
+⏳ Running: Invoice Server Mutations (Batch 1)... ✅ PASS
+⏳ Running: Deliverable Server Mutations (Batch 2)... ✅ PASS
+⏳ Running: Client Server Mutations (Batch 3)... ✅ PASS
+⏳ Running: Account Server Mutations (Batch 4)... ✅ PASS
+
+SUMMARY: 23 total steps executed in 120.82s (100% PASS, 0 FAIL)
+```
+
+### 7.4 Final Milestone Sign-off
+**Phases 1 through 5 (including 5A and 5B) are 100% COMPLETE.**  
+FlowDesk is hardened, tested, documented, and ready for production staging deployment.

@@ -4,12 +4,26 @@ import { requireApiCaller } from '@/backend/utilities/api-auth';
 import { FlowDeskStore } from '@/backend/store/storage-store';
 import { logger, createApiErrorResponse } from '@/backend/utilities/logger';
 import { validateRouteParam, paymentIdParamSchema, uuidSchema } from '@/shared/validation';
+import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ paymentId: string }> }
 ) {
   try {
+    const ip = getClientIp(request);
+    const rateLimit = await checkRateLimit(ip, {
+      prefix: 'payment_lookup',
+      maxRequests: 60,
+      windowSeconds: 60,
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again shortly.', code: 'RATE_LIMIT_EXCEEDED' },
+        { status: 429, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
     // 1. Authentication required — this endpoint returns financial data.
     const caller = await requireApiCaller();
     if (!caller) {

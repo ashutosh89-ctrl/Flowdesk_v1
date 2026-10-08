@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { validateAndFormatUrl, validateKey } from '@/backend/utilities/supabase';
 import { getSafeRedirectPath } from '@/shared/utils/safe-redirect';
+import { oauthProviderSchema } from '@/shared/validation';
+import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 
 const ALLOWED_PROVIDERS = new Set(['google', 'github']);
 
@@ -14,12 +16,23 @@ const ALLOWED_PROVIDERS = new Set(['google', 'github']);
  * afterwards. That is important because @supabase/ssr writes the verifier
  * cookie through the response cookie adapter.
  */
-import { oauthProviderSchema } from '@/shared/validation';
-
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ provider: string }> }
 ) {
+  const clientIp = getClientIp(request);
+  const rateLimit = await checkRateLimit(clientIp, {
+    prefix: 'oauth_start',
+    maxRequests: 30,
+    windowSeconds: 60,
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } }
+    );
+  }
+
   const { provider: rawProvider } = await params;
   const validation = oauthProviderSchema.safeParse(rawProvider?.toLowerCase());
 

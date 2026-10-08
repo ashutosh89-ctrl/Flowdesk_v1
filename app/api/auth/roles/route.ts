@@ -2,8 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { validateAndFormatUrl, validateKey, isDemoModeActive, supabaseAdmin } from '@/backend/utilities/supabase';
 import { logger } from '@/backend/utilities/logger';
+import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 
 export async function GET(request: NextRequest) {
+  const clientIp = getClientIp(request);
+  const rateLimit = await checkRateLimit(clientIp, {
+    prefix: 'auth_roles',
+    maxRequests: 120,
+    windowSeconds: 60,
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } }
+    );
+  }
+
   if (isDemoModeActive()) {
     const demoRole = request.cookies.get('flowdesk_client_demo')?.value ? 'client' : 'freelancer';
     return NextResponse.json({
