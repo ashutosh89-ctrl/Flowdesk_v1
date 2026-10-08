@@ -41,6 +41,13 @@ const SUITES: Step[] = [
   { name: 'Invitation Claim Security', command: 'npx', args: ['tsx', 'tests/invitation-claim-security.test.ts'] },
   { name: 'Webhook HMAC Authentication', command: 'npx', args: ['tsx', 'tests/email-webhooks-auth.test.ts'] },
   { name: 'Deliverable Approval Pilot (Task 9)', command: 'npx', args: ['tsx', 'tests/deliverable-approval.test.ts'] },
+
+  // 3. Server-Boundary Migration Test Suites (Phase 5A)
+  { name: 'Pure Business Rules (Phase 5A Task 1)', command: 'npx', args: ['tsx', '--test', 'tests/shared-rules.test.ts'] },
+  { name: 'Invoice Server Mutations (Batch 1)', command: 'npx', args: ['tsx', '--test', 'tests/invoice-server-mutations.test.ts'] },
+  { name: 'Deliverable Server Mutations (Batch 2)', command: 'npx', args: ['tsx', '--test', 'tests/deliverable-server-mutations.test.ts'] },
+  { name: 'Client Server Mutations (Batch 3)', command: 'npx', args: ['tsx', '--test', 'tests/client-server-mutations.test.ts'] },
+  { name: 'Account Server Mutations (Batch 4)', command: 'npx', args: ['tsx', '--test', 'tests/account-server-mutations.test.ts'] },
 ];
 
 function runAll() {

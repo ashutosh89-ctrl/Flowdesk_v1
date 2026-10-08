@@ -2,6 +2,7 @@ import { supabase, isDemoModeActive, isSupabaseConfigured } from '@/backend/util
 import { StorageHelper } from '@/backend/storage/storage-helper';
 import { AccountDeletionRecord, Client } from '@/shared/types';
 import { getCurrentWorkspace } from '@/backend/utilities/workspace';
+import { isServerMutationBatchEnabled } from '@/shared/config/feature-flags';
 
 const CLIENT_SESSION_KEY = 'flowdesk_client_session';
 const DEMO_DELETED_CLIENTS_KEY = 'flowdesk_demo_deleted_clients';
@@ -45,6 +46,24 @@ export const AccountDeletionService = {
         document.cookie = 'flowdesk_client_demo=; path=/; max-age=0';
       }
       return { success: true };
+    }
+
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(4)) {
+      try {
+        const res = await fetch('/api/account/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target: 'client', clientId }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return { success: false, error: data.error || 'Failed to delete client account.' };
+        }
+        localStorage.removeItem(CLIENT_SESSION_KEY);
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Failed to delete client account.' };
+      }
     }
 
     // 2. Production Supabase
@@ -138,6 +157,23 @@ export const AccountDeletionService = {
         localStorage.setItem(DEMO_DELETED_CLIENTS_KEY, JSON.stringify(updated));
       }
       return { success: true };
+    }
+
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(4)) {
+      try {
+        const res = await fetch('/api/account/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target: 'client', clientId }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return { success: false, error: data.error || 'Failed to restore client.' };
+        }
+        return { success: true, client: data.client };
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Failed to restore client.' };
+      }
     }
 
     // 2. Production Supabase
@@ -328,6 +364,24 @@ export const AccountDeletionService = {
       return { success: true };
     }
 
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(4)) {
+      try {
+        const res = await fetch('/api/account/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target: 'freelancer' }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return { success: false, error: data.error || 'Failed to delete freelancer account.' };
+        }
+        await supabase.auth.signOut();
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Failed to delete freelancer account.' };
+      }
+    }
+
     try {
       const ws = await getCurrentWorkspace();
       const wsId = ws?.id;
@@ -398,6 +452,23 @@ export const AccountDeletionService = {
         localStorage.setItem('flowdesk_demo_active', 'true');
       }
       return { success: true };
+    }
+
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(4)) {
+      try {
+        const res = await fetch('/api/account/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target: 'freelancer' }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return { success: false, error: data.error || 'Failed to restore freelancer account.' };
+        }
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Failed to restore freelancer account.' };
+      }
     }
 
     try {

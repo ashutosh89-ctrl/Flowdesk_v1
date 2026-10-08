@@ -2,6 +2,7 @@ import { supabase, isDemoModeActive } from '@/backend/utilities/supabase';
 import { Deliverable } from '@/shared/types';
 import { mockClients, mockDeliverables } from '@/backend/store/mockData';
 import { StorageHelper } from '@/backend/storage/storage-helper';
+import { isServerMutationBatchEnabled } from '@/shared/config/feature-flags';
 
 const CLIENT_SESSION_KEY = 'flowdesk_client_session';
 
@@ -333,6 +334,23 @@ export const ClientDeliverableService = {
       const deliverable = mockDeliverables.find((d) => d.id === deliverableId && d.clientId === clientId);
       if (!deliverable) return { success: false, error: 'Deliverable not found.' };
       return { success: true, deliverable: { ...deliverable, status: 'revision_requested', approvalStatus: 'revision_requested', rejectionReason: revisionComment } };
+    }
+
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
+      try {
+        const response = await fetch(`/api/deliverables/${encodeURIComponent(deliverableId)}/revision`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ revisionComment }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          return { success: false, error: data.error || 'Failed to request revision.' };
+        }
+        return { success: true, deliverable: data.deliverable };
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Network error requesting revision.' };
+      }
     }
 
     try {

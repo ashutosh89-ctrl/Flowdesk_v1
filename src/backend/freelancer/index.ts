@@ -7,6 +7,7 @@ import { NotificationHelper } from '@/backend/utilities/notification-helper';
 import { DemoDataProvider } from '@/backend/utilities/demo-data-provider';
 import { UserSettingsService } from '@/backend/auth/user-settings-service';
 import { FlowDeskStore } from '@/backend/store/storage-store';
+import { isServerMutationBatchEnabled } from '@/shared/config/feature-flags';
 
 /** Helper: format bytes to human-readable string */
 const formatFileSize = (bytes: number): string => {
@@ -844,6 +845,24 @@ export const FreelancerDeliverableService = {
     }
   },
   uploadNewVersion: async (id: string, versionData: any): Promise<Deliverable | undefined> => {
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
+      const res = await fetch(`/api/deliverables/${encodeURIComponent(id)}/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          note: versionData.note,
+          fileName: versionData.fileName,
+          fileUrl: versionData.fileUrl,
+          fileSize: versionData.fileSize,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to upload new version.');
+      }
+      return FreelancerDeliverableService.getDeliverableById(id);
+    }
+
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {
@@ -950,6 +969,21 @@ export const FreelancerDeliverableService = {
     }
   },
   addDeliverableComment: async (id: string, commentData: any): Promise<Deliverable | undefined> => {
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
+      const res = await fetch(`/api/deliverables/${encodeURIComponent(id)}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: commentData.content,
+          isInternal: Boolean(commentData.isInternal),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to add deliverable comment.');
+      }
+      return FreelancerDeliverableService.getDeliverableById(id);
+    }
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const authorName = commentData.author || user?.email?.split('@')[0] || 'User';
@@ -984,6 +1018,22 @@ export const FreelancerDeliverableService = {
     } catch { return undefined; }
   },
   submitDeliverableClientReview: async (id: string, reviewData?: any): Promise<Deliverable | undefined> => {
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
+      const submissionMessage = reviewData?.submissionMessage || reviewData?.message || '';
+      const res = await fetch(`/api/deliverables/${encodeURIComponent(id)}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          submissionMessage,
+          reviewDeadline: reviewData?.reviewDeadline || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to submit deliverable.');
+      }
+      return FreelancerDeliverableService.getDeliverableById(id);
+    }
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {
@@ -1295,6 +1345,38 @@ export const FreelancerInvoiceService = {
       return created;
     }
 
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(1)) {
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: invoice.clientId,
+          projectId: invoice.projectId || undefined,
+          invoiceNumber: invoice.invoiceNumber || undefined,
+          issueDate: invoice.issueDate || new Date().toISOString().split('T')[0],
+          dueDate: invoice.dueDate || new Date().toISOString().split('T')[0],
+          items: (invoice.items || []).map((it) => ({
+            description: it.description || 'Item',
+            quantity: Number(it.quantity) || 1,
+            rate: Number(it.rate) || 0,
+          })),
+          taxPercentage: invoice.taxPercentage,
+          taxName: invoice.taxName,
+          discount: invoice.discount,
+          currency: invoice.currency || 'USD',
+          notes: invoice.notes,
+          paymentInstructions: invoice.paymentInstructions,
+          internalNotes: invoice.internalNotes,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create invoice.');
+      }
+      const fetched = await FreelancerInvoiceService.getInvoiceById(data.invoice.id);
+      return fetched || (data.invoice as any);
+    }
+
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) {
       // Production: fail closed — never persist invoices to local/demo storage.
@@ -1580,6 +1662,50 @@ export const FreelancerInvoiceService = {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.updateInvoice(id, updates);
     }
+
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(1)) {
+      if (updates.workflowStatus || updates.status) {
+        const targetStatus = updates.workflowStatus || updates.status;
+        if (targetStatus && ['sent', 'viewed', 'cancelled'].includes(targetStatus)) {
+          const statusRes = await fetch(`/api/invoices/${encodeURIComponent(id)}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: targetStatus, notes: updates.notes }),
+          });
+          const statusData = await statusRes.json();
+          if (!statusRes.ok || !statusData.success) {
+            throw new Error(statusData.error || 'Failed to update invoice status.');
+          }
+        }
+      }
+
+      const res = await fetch(`/api/invoices/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          issueDate: updates.issueDate,
+          dueDate: updates.dueDate,
+          items: updates.items ? updates.items.map((it) => ({
+            description: it.description || 'Item',
+            quantity: Number(it.quantity) || 1,
+            rate: Number(it.rate) || 0,
+          })) : undefined,
+          taxPercentage: updates.taxPercentage,
+          taxName: updates.taxName,
+          discount: updates.discount,
+          currency: updates.currency,
+          notes: updates.notes,
+          paymentInstructions: updates.paymentInstructions,
+          internalNotes: updates.internalNotes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update invoice.');
+      }
+      return FreelancerInvoiceService.getInvoiceById(id);
+    }
+
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) {
       // Production: fail closed — never persist invoices to local/demo storage.
@@ -1671,6 +1797,15 @@ export const FreelancerInvoiceService = {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.deleteInvoice(id);
     }
+
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(1)) {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      return Boolean(res.ok && data.success);
+    }
+
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) {
       // Production: fail closed — never persist invoices to local/demo storage.
@@ -1720,6 +1855,20 @@ export const FreelancerInvoiceService = {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.markInvoicePaidOffline(id, paymentMethod, notes, amount);
     }
+
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(1)) {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(id)}/payments/offline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentMethod, notes, amount }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Payment could not be recorded.');
+      }
+      return FreelancerInvoiceService.getInvoiceById(id);
+    }
+
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) {
       // Production: fail closed — never persist payments to local/demo storage.
@@ -1841,6 +1990,20 @@ export const FreelancerInvoiceService = {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.getInvoiceById(id);
     }
+
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(1)) {
+      try {
+        await fetch(`/api/invoices/${encodeURIComponent(id)}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'viewed' }),
+        });
+      } catch (err) {
+        console.warn('recordInvoiceView server notice:', err);
+      }
+      return FreelancerInvoiceService.getInvoiceById(id);
+    }
+
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return undefined;
     try {

@@ -5,6 +5,7 @@ import { DemoDataProvider } from '@/backend/utilities/demo-data-provider';
 import { AccountDeletionService } from '@/backend/auth/account-deletion-service';
 import { FlowDeskStore } from '@/backend/store/storage-store';
 import { InvitationService } from '@/backend/invitations/invitation-service';
+import { isServerMutationBatchEnabled } from '@/shared/config/feature-flags';
 
 /**
  * Freelancer-side Client Relationship & Management Service.
@@ -25,6 +26,25 @@ export const FreelancerClientManagementService = {
   createClient: async (clientData: Omit<Client, 'id' | 'totalBilled' | 'createdAt'>): Promise<Client> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.createClient(clientData);
+    }
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(3)) {
+      const res = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: clientData.name,
+          email: clientData.email,
+          company: clientData.company,
+          phone: clientData.phone,
+          hourlyRate: (clientData as any).hourlyRate,
+          currency: clientData.currency,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create client.');
+      }
+      return data.client;
     }
     const client = await ClientRepository.createClient(clientData);
     // Log activity (non-critical)
@@ -55,11 +75,35 @@ export const FreelancerClientManagementService = {
 
   updateClient: async (id: string, updates: Partial<Client>): Promise<Client | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.updateClient(id, updates);
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(3)) {
+      const res = await fetch(`/api/clients/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update client.');
+      }
+      return data.client;
+    }
     return ClientRepository.updateClient(id, updates);
   },
 
   archiveClient: async (id: string): Promise<Client | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.archiveClient(id);
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(3)) {
+      const res = await fetch(`/api/clients/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'archived' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to archive client.');
+      }
+      return data.client;
+    }
     return ClientRepository.updateClient(id, { status: 'archived' });
   },
 
@@ -78,10 +122,29 @@ export const FreelancerClientManagementService = {
 
   deleteClient: async (id: string): Promise<boolean> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.deleteClient(id);
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(3)) {
+      const res = await fetch(`/api/clients/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      return Boolean(res.ok && data.success);
+    }
     return ClientRepository.deleteClient(id);
   },
 
   togglePortalAccess: async (clientId: string, enabled: boolean): Promise<ClientPortalConfig> => {
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(3)) {
+      const res = await fetch(`/api/clients/${encodeURIComponent(clientId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ portalAccessEnabled: enabled }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to toggle portal access');
+      }
+      return { clientId, enabled, magicKey: data.client?.portal_token || '', portalUrl: `/portal/${clientId}` };
+    }
     try {
       const { data, error } = await supabase.from('clients').update({ portal_access_enabled: enabled }).eq('id', clientId).select().single();
       if (error || !data) throw error || new Error('Failed');
@@ -94,6 +157,22 @@ export const FreelancerClientManagementService = {
    * Method B — Copy Connection Link uses the exact same invitation as Method A (Email).
    */
   getOrCreateConnectionLink: async (clientId: string): Promise<{ success: boolean; url: string; rawToken?: string; error?: string }> => {
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(3)) {
+      try {
+        const res = await fetch(`/api/clients/${encodeURIComponent(clientId)}/invitation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ forceNew: false }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return { success: false, url: '', error: data.error || 'Failed to generate connection link' };
+        }
+        return { success: true, url: data.url, rawToken: data.rawToken };
+      } catch (err: any) {
+        return { success: false, url: '', error: err.message || 'Failed to generate connection link' };
+      }
+    }
     try {
       const result = await InvitationService.createOrGetInvitation(clientId);
       return {
@@ -112,6 +191,24 @@ export const FreelancerClientManagementService = {
   },
 
   regeneratePortalLink: async (clientId: string): Promise<ClientPortalConfig> => {
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(3)) {
+      const res = await fetch(`/api/clients/${encodeURIComponent(clientId)}/invitation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ forceNew: true }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to regenerate portal link');
+      }
+      return {
+        clientId,
+        enabled: true,
+        magicKey: data.rawToken,
+        portalUrl: data.url,
+        inviteLink: data.url,
+      };
+    }
     try {
       const result = await InvitationService.createOrGetInvitation(clientId, { forceNew: true });
       return {
@@ -134,6 +231,26 @@ export const FreelancerClientManagementService = {
   sendClientInvitationEmail: async (
     clientId: string
   ): Promise<{ success: boolean; message?: string; inviteUrl?: string; error?: string }> => {
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(3)) {
+      try {
+        const res = await fetch(`/api/clients/${encodeURIComponent(clientId)}/invitation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ forceNew: false, sendEmail: true }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return { success: false, error: data.error || 'Failed to dispatch invitation email' };
+        }
+        return {
+          success: true,
+          message: data.message || 'Invitation email dispatched',
+          inviteUrl: data.url,
+        };
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Failed to dispatch invitation email' };
+      }
+    }
     try {
       // 1. Generate or retrieve the one-time connection invitation
       const inviteResult = await InvitationService.createOrGetInvitation(clientId);

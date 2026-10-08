@@ -120,3 +120,125 @@ export const ApproveDeliverableSchema = z.object({
 }).strict();
 
 export type ApproveDeliverablePayload = z.infer<typeof ApproveDeliverableSchema>;
+
+// ==========================================
+// Phase 5A: Server Mutation Schemas
+// ==========================================
+
+// Batch 1: Invoices & Money
+export const UpdateInvoiceStatusSchema = z.object({
+  status: z.enum(['sent', 'viewed', 'cancelled']),
+  notes: z.string().trim().max(500).optional(),
+}).strict();
+
+export const RecordOfflinePaymentSchema = z.object({
+  paymentMethod: z.enum(['bank_transfer', 'cash', 'cheque', 'other']).default('bank_transfer'),
+  amount: z.number().positive('Payment amount must be greater than zero').finite().max(100_000_000).optional(),
+  notes: z.string().trim().max(500).optional(),
+}).strict();
+
+export const InvoiceItemInputSchema = z.object({
+  id: z.string().optional(),
+  description: z.string().trim().min(1, 'Item description is required').max(255),
+  quantity: z.number().positive('Quantity must be greater than zero').finite().max(10_000),
+  rate: z.number().min(0, 'Rate cannot be negative').finite().max(100_000_000),
+}).strict();
+
+export const CreateInvoiceSchema = z.object({
+  clientId: uuidSchema,
+  projectId: uuidSchema.optional().nullable(),
+  invoiceNumber: z.string().trim().min(1).max(100).optional(),
+  issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Issue date must be YYYY-MM-DD'),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must be YYYY-MM-DD'),
+  items: z.array(InvoiceItemInputSchema).min(1, 'At least one line item is required'),
+  taxPercentage: z.number().min(0).max(100).optional().default(0),
+  taxName: z.string().trim().max(50).optional().default('Tax'),
+  discount: z.number().min(0).optional().default(0),
+  currency: z.string().trim().length(3).default('USD'),
+  notes: z.string().trim().max(2000).optional(),
+  paymentInstructions: z.string().trim().max(2000).optional(),
+  internalNotes: z.string().trim().max(2000).optional(),
+}).strict();
+
+export const UpdateInvoiceSchema = CreateInvoiceSchema.partial().strict();
+
+// Batch 2: Approvals & Deliverables
+export const SubmitDeliverableSchema = z.object({
+  submissionMessage: z.string().trim().max(1000).optional(),
+  reviewDeadline: z.string().optional(),
+}).strict();
+
+export const RequestRevisionDeliverableSchema = z.object({
+  revisionComment: z.string().trim().min(1, 'Revision comment is required').max(2000),
+}).strict();
+
+export const CreateDeliverableVersionSchema = z.object({
+  note: z.string().trim().max(500).optional(),
+  fileName: z.string().trim().max(255).optional(),
+  fileUrl: z.string().trim().max(1024).optional(),
+  fileSize: z.string().trim().max(50).optional(),
+}).strict();
+
+export const CreateDeliverableCommentSchema = z.object({
+  content: z.string().trim().min(1, 'Comment text is required').max(2000),
+  isInternal: z.boolean().optional().default(false),
+}).strict();
+
+// Batch 3: Client Management & Invitations
+export const CreateClientInvitationSchema = z.object({
+  recipientEmail: z.string().trim().email().max(255).optional(),
+  forceNew: z.boolean().optional().default(false),
+  sendEmail: z.boolean().optional().default(false),
+}).strict();
+
+export const CreateClientSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(100),
+  email: z.string().trim().email('Valid email required').max(255),
+  company: z.string().trim().max(100).optional().default(''),
+  phone: z.string().trim().max(50).optional(),
+  hourlyRate: z.number().min(0).optional(),
+  currency: z.string().trim().length(3).optional().default('USD'),
+}).strict();
+
+export const UpdateClientSchema = CreateClientSchema.partial().extend({
+  status: z.enum(['active', 'archived']).optional(),
+  portalAccessEnabled: z.boolean().optional(),
+}).strict();
+
+// Batch 4: Account & Settings
+export const UpdateUserSettingsSchema = z.object({
+  currency: z.string().trim().length(3).optional(),
+  timezone: z.string().trim().max(50).optional(),
+  dateFormat: z.string().trim().max(20).optional(),
+  invoicePrefix: z.string().trim().max(10).optional(),
+  invoiceNumberFormat: z.string().trim().max(50).optional(),
+  invoiceSeparator: z.string().trim().max(5).optional(),
+  invoiceIncludeYear: z.boolean().optional(),
+  invoicePadding: z.number().min(1).max(10).optional(),
+  invoiceNextSequence: z.number().min(1).optional(),
+  defaultTaxRate: z.number().min(0).max(100).optional(),
+  taxName: z.string().trim().max(50).optional(),
+  defaultPaymentTerms: z.number().min(0).max(365).optional(),
+}).strict();
+
+export const UpdateNotificationSettingsSchema = z.object({
+  emailNotifications: z.boolean().optional(),
+  emailDeliverables: z.boolean().optional(),
+  emailDocuments: z.boolean().optional(),
+  emailInvoices: z.boolean().optional(),
+  invoiceReminders: z.boolean().optional(),
+  commentAlerts: z.boolean().optional(),
+  weeklyDigest: z.boolean().optional(),
+}).strict();
+
+export const AccountDeletionRequestSchema = z.object({
+  target: z.enum(['freelancer', 'client']).optional().default('freelancer'),
+  clientId: uuidSchema.optional(),
+  confirmText: z.string().optional(),
+  reason: z.string().trim().max(500).optional(),
+}).strict();
+
+export const AccountDeletionRestoreSchema = z.object({
+  target: z.enum(['freelancer', 'client']).optional().default('freelancer'),
+  clientId: uuidSchema.optional(),
+}).strict();

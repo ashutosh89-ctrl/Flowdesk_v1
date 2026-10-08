@@ -124,11 +124,13 @@ const res = await fetch(`/api/deliverables/${delivId}/approve`, {
 
 ---
 
-## 5. Phased Migration Roadmap
+## 5. Phased Migration Roadmap & Remediation Status
 
-| Phase | Domain / Entity | Scope | Target Completion |
-| :--- | :--- | :--- | :--- |
-| **Phase 4B (Pilot)** | Deliverables Approval | Migrate `approveDeliverable` to Route Handler | **COMPLETED** |
-| **Phase 5** | Deliverable Revisions | Migrate `requestRevision` and comment thread to Route Handler | Next Sprint |
-| **Phase 6** | Invoice Lifecycle | Migrate invoice status transitions (`sent`, `cancelled`, `void`) | Planned |
-| **Phase 7** | Client Onboarding & Profile | Migrate client self-service profile and password changes | Planned |
+| Phase / Batch | Domain / Entity | Scope | Target Completion | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Phase 4B (Pilot)** | Deliverables Approval | Migrate `approveDeliverable` to Route Handler (`/api/deliverables/[id]/approve`) | Phase 4B | **COMPLETED & VERIFIED** |
+| **Phase 5A - Batch 1** | Money & Invoices | Migrate invoice status transitions (`/status`), offline payments (`/payments/offline`), sequential numbering (`/next-number`), line items & recalculation (`/invoices`) | Phase 5A | **IN PROGRESS** |
+| **Phase 5A - Batch 2** | Approvals & Deliverables | Migrate deliverable status transitions (`submit`, `request_revision`), version creation, internal/client notes | Phase 5A | **IN PROGRESS** |
+| **Phase 5A - Batch 3** | Client Management & Invitations | Migrate connection invitation generation, revocation, regeneration, and client creation/archive | Phase 5A | **IN PROGRESS** |
+| **Phase 5A - Batch 4** | Account, Branding & Settings | Migrate workspace numbering/branding settings, notification preferences, and account deletion/restore | Phase 5A | **IN PROGRESS** |
+| **Phase 5B** | Final Re-Audit & Readiness | Full regression exploit re-verification, new vulnerability pass, release runbook | Phase 5B | **PLANNED** |
