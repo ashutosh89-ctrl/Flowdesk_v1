@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PaymentService } from '@/backend/payments';
 import { requireApiCaller } from '@/backend/utilities/api-auth';
 import { checkRateLimit, getClientIp, RATE_LIMIT_PRESETS } from '@/backend/utilities/rate-limiter';
-import { logger } from '@/backend/utilities/logger';
+import { logger, createApiErrorResponse } from '@/backend/utilities/logger';
+import { parseJsonBody, VerifyPaymentSchema } from '@/shared/validation';
+
 
 export async function POST(request: NextRequest) {
   const clientIp = getClientIp(request);
@@ -64,34 +66,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { orderId, paymentId, signature } = body;
-
-    if (
-      !orderId ||
-      typeof orderId !== 'string' ||
-      !paymentId ||
-      typeof paymentId !== 'string' ||
-      !signature ||
-      typeof signature !== 'string'
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Missing or invalid required parameters (orderId, paymentId, signature).',
-        },
-        { status: 400 }
-      );
+    const bodyResult = await parseJsonBody(request, VerifyPaymentSchema, {
+      maxBytes: 10 * 1024,
+    });
+    if (!bodyResult.success) {
+      return bodyResult.response;
     }
+
+    const { orderId, paymentId, signature } = bodyResult.data;
 
     // 2. Authorization: client identity is derived server-side from the session.
     //    The browser-supplied clientId is NEVER trusted.
     const result = await PaymentService.verifyAndCapturePayment({
-      orderId: orderId.trim(),
-      paymentId: paymentId.trim(),
-      signature: signature.trim(),
+      orderId,
+      paymentId,
+      signature,
       clientId: caller.clientId || undefined,
     });
+
 
     if (!result.success) {
       logger.security('PAYMENT_VERIFICATION_FAILED', {
@@ -117,12 +109,16 @@ export async function POST(request: NextRequest) {
       status: 'SUCCESS',
     });
 
-    return NextResponse.json(result);
+    const res = NextResponse.json(result);
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
   } catch (error: any) {
     logger.error('[API /api/payments/razorpay/verify] Error', error, { ip: clientIp });
-    return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error verifying payment.' },
-      { status: 500 }
-    );
+    return createApiErrorResponse({
+      message: 'Failed to verify payment.',
+      code: 'PAYMENT_VERIFY_ERROR',
+      status: 500,
+      internalError: error,
+    });
   }
-}
+}

@@ -1,4 +1,5 @@
 import { supabase, isDemoModeActive } from '@/backend/utilities/supabase';
+import { validateUploadFile } from './upload-validator';
 
 export type StorageBucket = 'documents' | 'deliverables' | 'avatars' | 'logos' | 'signatures';
 
@@ -10,12 +11,11 @@ const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set([
-  // Images
+  // Images (SVG strictly rejected per Task 2d)
   'image/jpeg',
   'image/jpg',
   'image/png',
   'image/webp',
-  'image/svg+xml',
   'image/gif',
   // Documents
   'application/pdf',
@@ -28,6 +28,7 @@ const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set([
   'application/zip',
   'application/x-zip-compressed',
 ]);
+
 
 export interface BuildStoragePathOptions {
   bucket: StorageBucket;
@@ -144,33 +145,21 @@ export const StorageHelper = {
   sanitizeFileName,
 
   /**
-   * Validates file size and MIME type before storage operations.
+   * Validates file size, extension, and MIME type before storage operations.
    */
-  validateFile(file: File): { valid: boolean; error?: string } {
+  validateFile(file: File, bucket: StorageBucket = 'documents'): { valid: boolean; error?: string } {
     if (!file) {
       return { valid: false, error: 'No file provided.' };
     }
 
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      return {
-        valid: false,
-        error: `File size (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds maximum allowed limit of 25MB.`,
-      };
-    }
-
-    if (file.type && !ALLOWED_MIME_TYPES.has(file.type.toLowerCase())) {
-      // Allow general fallback only if extension matches standard safe extensions
-      const ext = file.name.split('.').pop()?.toLowerCase();
-      const safeExtensions = new Set(['pdf', 'jpg', 'jpeg', 'png', 'webp', 'svg', 'gif', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv', 'zip']);
-      if (!ext || !safeExtensions.has(ext)) {
-        return {
-          valid: false,
-          error: `File type "${file.type || ext}" is not permitted. Please upload standard document or image formats.`,
-        };
-      }
-    }
-
-    return { valid: true };
+    return validateUploadFile(
+      {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      },
+      bucket
+    );
   },
 
   /**
@@ -209,7 +198,26 @@ export const StorageHelper = {
     file: File,
     options?: { clientId?: string | null; customPath?: string }
   ): Promise<{ path: string; url: string; error: string | null }> {
-    const validation = this.validateFile(file);
+    let bytes: Uint8Array | undefined = undefined;
+    if (typeof file.arrayBuffer === 'function') {
+      try {
+        const buf = await file.arrayBuffer();
+        bytes = new Uint8Array(buf);
+      } catch {
+        // Fallback safely if arrayBuffer unavailable
+      }
+    }
+
+    const validation = validateUploadFile(
+      {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        bytes,
+      },
+      bucket
+    );
+
     if (!validation.valid) {
       return { path: '', url: '', error: validation.error || 'Invalid file.' };
     }
@@ -261,7 +269,9 @@ export const StorageHelper = {
       const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
         cacheControl: '3600',
         upsert: true,
+        contentType: validation.sniffedMime || file.type || 'application/octet-stream',
       });
+
 
       if (error) {
         // Production: fail closed — never fabricate a file URL.

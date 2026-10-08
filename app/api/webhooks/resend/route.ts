@@ -103,10 +103,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 1b. Enforce body size limit (50 KB)
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && parseInt(contentLength, 10) > 50 * 1024) {
+      return NextResponse.json(
+        { received: false, error: 'Payload exceeds size limit' },
+        { status: 400 }
+      );
+    }
+
     // 2. Read raw body as text for cryptographic signature check
     const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).length > 50 * 1024) {
+      return NextResponse.json(
+        { received: false, error: 'Payload exceeds size limit' },
+        { status: 400 }
+      );
+    }
 
     const svixId = request.headers.get('svix-id');
+
     const svixTimestamp = request.headers.get('svix-timestamp');
     const svixSignature = request.headers.get('svix-signature');
 

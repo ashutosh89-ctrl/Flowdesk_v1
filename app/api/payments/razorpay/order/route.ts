@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PaymentService } from '@/backend/payments';
 import { requireApiCaller } from '@/backend/utilities/api-auth';
 import { checkRateLimit, getClientIp, RATE_LIMIT_PRESETS } from '@/backend/utilities/rate-limiter';
-import { logger } from '@/backend/utilities/logger';
+import { logger, createApiErrorResponse } from '@/backend/utilities/logger';
+import { parseJsonBody, CreatePaymentOrderSchema } from '@/shared/validation';
+
 
 export async function POST(request: NextRequest) {
   const clientIp = getClientIp(request);
@@ -64,37 +66,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { invoiceId, requestedAmount, partialPayment } = body;
-
-    if (!invoiceId || typeof invoiceId !== 'string' || invoiceId.trim().length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Missing or invalid invoiceId parameter.' },
-        { status: 400 }
-      );
+    const bodyResult = await parseJsonBody(request, CreatePaymentOrderSchema, {
+      maxBytes: 10 * 1024,
+    });
+    if (!bodyResult.success) {
+      return bodyResult.response;
     }
 
-    let parsedAmount: number | undefined = undefined;
-    if (requestedAmount !== undefined && requestedAmount !== null) {
-      const num = Number(requestedAmount);
-      if (isNaN(num) || !isFinite(num) || num <= 0) {
-        return NextResponse.json(
-          { success: false, error: 'Invalid requestedAmount. Must be a positive finite number.' },
-          { status: 400 }
-        );
-      }
-      parsedAmount = num;
-    }
+    const { invoiceId, requestedAmount, partialPayment } = bodyResult.data;
 
     // 2. Authorization: identity is derived server-side from the session.
     //    Browser-supplied clientId/workspaceId are NEVER trusted.
     const result = await PaymentService.createPaymentOrder({
-      invoiceId: invoiceId.trim(),
+      invoiceId,
       clientId: caller.clientId || undefined,
       workspaceId: caller.workspaceId || undefined,
-      requestedAmount: parsedAmount,
+      requestedAmount,
       partialPayment: Boolean(partialPayment),
     });
+
 
     if (!result.success) {
       logger.security('PAYMENT_ORDER_CREATION_FAILED', {
@@ -123,12 +113,16 @@ export async function POST(request: NextRequest) {
       status: 'SUCCESS',
     });
 
-    return NextResponse.json(result);
+    const res = NextResponse.json(result);
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
   } catch (error: any) {
     logger.error('[API /api/payments/razorpay/order] Error', error, { ip: clientIp });
-    return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error processing payment order.' },
-      { status: 500 }
-    );
+    return createApiErrorResponse({
+      message: 'Failed to process payment order.',
+      code: 'PAYMENT_ORDER_ERROR',
+      status: 500,
+      internalError: error,
+    });
   }
-}
+}

@@ -126,7 +126,7 @@ async function runRateLimiterTests() {
   });
 
   await test('Second request within in-memory window is allowed', async () => {
-    const key = `mem-test-1-${Date.now()}`;
+    const key = `mem-test-2-${Date.now()}`;
     await checkRateLimit(key, { maxRequests: 3, windowSeconds: 2 });
     const res = await checkRateLimit(key, { maxRequests: 3, windowSeconds: 2 });
     assert.strictEqual(res.allowed, true);

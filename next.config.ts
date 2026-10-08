@@ -1,15 +1,11 @@
 import type { NextConfig } from 'next';
 import path from 'path';
 
-const securityHeaders = [
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'X-Frame-Options', value: 'DENY' },
-  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-];
+import { getSecurityHeaders } from './src/shared/config/security-headers';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -35,10 +31,20 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/(.*)',
-        headers: securityHeaders,
+        headers: getSecurityHeaders(),
+      },
+      {
+        source: '/connect/:path*',
+        headers: [
+          {
+            key: 'Referrer-Policy',
+            value: 'no-referrer',
+          },
+        ],
       },
     ];
   },
+
   webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve = config.resolve || {};

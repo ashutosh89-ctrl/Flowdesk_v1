@@ -1,0 +1,22 @@
+# FlowDesk Repository CODEOWNERS
+# Enforces mandatory reviewer approval on security-critical boundaries.
+
+# Global fallback
+* @ashutosh89-ctrl
+
+# Security & API Boundaries
+/app/api/                          @ashutosh89-ctrl
+/src/backend/utilities/api-auth.ts @ashutosh89-ctrl
+/src/backend/utilities/logger.ts   @ashutosh89-ctrl
+/src/backend/utilities/rate-limiter.ts @ashutosh89-ctrl
+/src/backend/storage/              @ashutosh89-ctrl
+/src/shared/validation/            @ashutosh89-ctrl
+/src/shared/config/                @ashutosh89-ctrl
+
+# Database Schema & Migrations
+/database/migrations/              @ashutosh89-ctrl
+
+# CI / CD & Tooling
+/.github/                          @ashutosh89-ctrl
+/scripts/                          @ashutosh89-ctrl
+/next.config.ts                    @ashutosh89-ctrl

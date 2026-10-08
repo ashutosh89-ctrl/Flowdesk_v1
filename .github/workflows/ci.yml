@@ -1,0 +1,42 @@
+name: FlowDesk Security & Quality CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit-and-test:
+    name: Security Lints, Typecheck & Offline Test Suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Unified Test Runner (Typecheck, Lint, Secrets, Security Suites)
+        run: npm run test:all
+
+      - name: Verify Production Next.js Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NODE_ENV: 'production'
+          # Safe build-time dummy variables (no real secrets in CI)
+          NEXT_PUBLIC_SUPABASE_URL: 'https://flowdesk-ci.supabase.co'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'ci-build-mock-anon-key-1234567890'

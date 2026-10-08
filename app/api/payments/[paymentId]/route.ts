@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase, supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
 import { requireApiCaller } from '@/backend/utilities/api-auth';
 import { FlowDeskStore } from '@/backend/store/storage-store';
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+import { logger, createApiErrorResponse } from '@/backend/utilities/logger';
+import { validateRouteParam, paymentIdParamSchema, uuidSchema } from '@/shared/validation';
 
 export async function GET(
   request: NextRequest,
@@ -13,33 +13,40 @@ export async function GET(
     // 1. Authentication required — this endpoint returns financial data.
     const caller = await requireApiCaller();
     if (!caller) {
-      return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Authentication required.', code: 'UNAUTHORIZED' },
+        { status: 401, headers: { 'Cache-Control': 'no-store' } }
+      );
     }
 
     const { paymentId } = await context.params;
-    if (!paymentId) {
-      return NextResponse.json({ error: 'Missing paymentId' }, { status: 400 });
+    const paramValidation = validateRouteParam(paymentId, paymentIdParamSchema, 'paymentId');
+    if (!paramValidation.success) {
+      return paramValidation.response;
     }
+    const cleanPaymentId = paramValidation.data;
 
     const db = supabaseAdmin || supabase;
-    const isUuid = UUID_REGEX.test(paymentId);
+    const isUuid = uuidSchema.safeParse(cleanPaymentId).success;
 
     let payment: any = null;
     let error: any = null;
 
     if (isUuid) {
+      // Direct parameterized query for UUID
       const res = await db
         .from('invoice_payments')
         .select('*, invoices(invoice_number, client_name, currency, total_amount, paid_amount, status, client_id, workspace_id), receipts(*)')
-        .or(`id.eq.${paymentId},razorpay_payment_id.eq.${paymentId}`)
+        .eq('id', cleanPaymentId)
         .maybeSingle();
       payment = res.data;
       error = res.error;
     } else {
+      // Direct parameterized query for Razorpay payment ID
       const res = await db
         .from('invoice_payments')
         .select('*, invoices(invoice_number, client_name, currency, total_amount, paid_amount, status, client_id, workspace_id), receipts(*)')
-        .eq('razorpay_payment_id', paymentId)
+        .eq('razorpay_payment_id', cleanPaymentId)
         .maybeSingle();
       payment = res.data;
       error = res.error;
@@ -51,9 +58,9 @@ export async function GET(
       if (isDemoModeActive()) {
         const demoInvs = FlowDeskStore.getInvoices();
         for (const inv of demoInvs) {
-          const rcp = (inv.receipts || []).find((r: any) => r.id === paymentId || r.razorpayPaymentId === paymentId);
+          const rcp = (inv.receipts || []).find((r: any) => r.id === cleanPaymentId || r.razorpayPaymentId === cleanPaymentId);
           if (rcp) {
-            return NextResponse.json({
+            const demoRes = NextResponse.json({
               id: rcp.id,
               receiptNumber: rcp.receiptNumber,
               razorpayPaymentId: rcp.razorpayPaymentId || rcp.id,
@@ -67,10 +74,15 @@ export async function GET(
               clientName: inv.clientName,
               invoiceStatus: inv.status,
             });
+            demoRes.headers.set('Cache-Control', 'no-store');
+            return demoRes;
           }
         }
       }
-      return NextResponse.json({ error: 'Payment record not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Payment record not found', code: 'NOT_FOUND' },
+        { status: 404, headers: { 'Cache-Control': 'no-store' } }
+      );
     }
 
     // 3. Authorization: resolve payment → invoice → ownership.
@@ -78,21 +90,30 @@ export async function GET(
     if (!caller.isDemo) {
       if (caller.clientId) {
         if (!invoice.client_id || invoice.client_id !== caller.clientId) {
-          return NextResponse.json({ error: 'Payment record not found' }, { status: 404 });
+          return NextResponse.json(
+            { error: 'Payment record not found', code: 'NOT_FOUND' },
+            { status: 404, headers: { 'Cache-Control': 'no-store' } }
+          );
         }
       } else if (caller.workspaceId) {
         if (!invoice.workspace_id || invoice.workspace_id !== caller.workspaceId) {
-          return NextResponse.json({ error: 'Payment record not found' }, { status: 404 });
+          return NextResponse.json(
+            { error: 'Payment record not found', code: 'NOT_FOUND' },
+            { status: 404, headers: { 'Cache-Control': 'no-store' } }
+          );
         }
       } else {
-        return NextResponse.json({ error: 'Payment record not found' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Payment record not found', code: 'NOT_FOUND' },
+          { status: 404, headers: { 'Cache-Control': 'no-store' } }
+        );
       }
     }
 
     const receipt = payment.receipts?.[0];
 
     // Safe return without internal database or secret details
-    return NextResponse.json({
+    const response = NextResponse.json({
       id: payment.id,
       receiptNumber: receipt?.receipt_number || `RCP-${invoice.invoice_number || 'INV'}-${payment.id.slice(0, 4)}`,
       receiptId: receipt?.id,
@@ -107,8 +128,15 @@ export async function GET(
       clientName: invoice.client_name,
       invoiceStatus: invoice.status,
     });
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
   } catch (error: any) {
-    console.error('[API /api/payments/[paymentId]] Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    logger.error('[API /api/payments/[paymentId]] Error', error);
+    return createApiErrorResponse({
+      message: 'Failed to retrieve payment record.',
+      code: 'PAYMENT_LOOKUP_ERROR',
+      status: 500,
+      internalError: error,
+    });
   }
 }

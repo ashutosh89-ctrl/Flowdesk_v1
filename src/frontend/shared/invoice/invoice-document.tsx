@@ -4,6 +4,8 @@ import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import { Invoice, UserProfile, InvoiceBranding } from '@/shared/types';
 import { formatCurrency, getCurrencySymbol } from '@/shared/utils/currency';
 import { convertAmountToWords } from '@/shared/utils/number-to-words';
+import { isSafeHttpUrl } from '@/shared/utils/safe-url';
+
 import { Building2, Landmark, QrCode } from 'lucide-react';
 
 export interface InvoiceDocumentProps {
@@ -241,7 +243,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
           <div className="flex items-start justify-between gap-6 pb-6 border-b border-zinc-300">
             {/* Business / Studio Info (Left) */}
             <div className="flex items-start gap-4 max-w-[60%]">
-              {logoUrl ? (
+              {logoUrl && isSafeHttpUrl(logoUrl) ? (
                 <img
                   src={logoUrl}
                   alt={studioName}
@@ -253,6 +255,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
                   <Building2 className="w-6 h-6 text-zinc-100" />
                 </div>
               )}
+
               <div className="space-y-1">
                 <h1 className="text-xl font-bold tracking-tight text-zinc-950 leading-tight">
                   {studioName}
@@ -531,7 +534,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
                 for <strong className="text-zinc-950">{studioName}</strong>
               </p>
               <div className="h-16 flex items-center justify-end">
-                {signatureUrl ? (
+                {signatureUrl && isSafeHttpUrl(signatureUrl) ? (
                   <img
                     src={signatureUrl}
                     alt="Authorized Signature"
@@ -542,6 +545,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
                   <div className="w-32 border-b border-zinc-400"></div>
                 )}
               </div>
+
               <p className="text-[10px] font-medium text-zinc-500 border-t border-zinc-300 pt-1 inline-block min-w-[180px]">
                 Authorized Representative Sign/Seal
               </p>

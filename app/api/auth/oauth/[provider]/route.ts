@@ -14,16 +14,23 @@ const ALLOWED_PROVIDERS = new Set(['google', 'github']);
  * afterwards. That is important because @supabase/ssr writes the verifier
  * cookie through the response cookie adapter.
  */
+import { oauthProviderSchema } from '@/shared/validation';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ provider: string }> }
 ) {
   const { provider: rawProvider } = await params;
-  const provider = rawProvider?.toLowerCase();
+  const validation = oauthProviderSchema.safeParse(rawProvider?.toLowerCase());
 
-  if (!provider || !ALLOWED_PROVIDERS.has(provider)) {
-    return NextResponse.json({ error: 'Unsupported OAuth provider.' }, { status: 400 });
+  if (!validation.success) {
+    return NextResponse.json(
+      { error: 'Unsupported OAuth provider.', code: 'INVALID_PROVIDER' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } }
+    );
   }
+  const provider = validation.data;
+
 
   const supabaseUrl = validateAndFormatUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || '');
   const supabaseAnonKey = validateKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');

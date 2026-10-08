@@ -234,9 +234,11 @@ async function validateRecipient(
 }
 
 import { checkRateLimit, getClientIp, RATE_LIMIT_PRESETS } from '@/backend/utilities/rate-limiter';
-import { logger } from '@/backend/utilities/logger';
+import { logger, createApiErrorResponse } from '@/backend/utilities/logger';
+import { parseJsonBody, EmailDispatchRouteSchema } from '@/shared/validation';
 
 export async function POST(request: NextRequest) {
+
   const clientIp = getClientIp(request);
 
   try {
@@ -294,24 +296,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { options } = body;
-
-    if (!options || typeof options !== 'object') {
-      return NextResponse.json(
-        { success: false, error: 'Missing email options payload.' },
-        { status: 400 }
-      );
+    const bodyResult = await parseJsonBody(request, EmailDispatchRouteSchema, {
+      maxBytes: 100 * 1024,
+    });
+    if (!bodyResult.success) {
+      return bodyResult.response;
     }
 
+    const { options } = bodyResult.data;
     const { to, eventType, referenceType, referenceId, workspaceId, subject, html } = options;
 
-    if (!eventType || !subject || !html) {
-      return NextResponse.json(
-        { success: false, error: 'Email payload is incomplete (eventType, subject, html required).' },
-        { status: 400 }
-      );
-    }
 
     // 2. Recipient must be a trusted server-side record owned by the caller (in non-demo environments)
     let validatedWsId = workspaceId;
@@ -425,12 +419,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(result);
+    const res = NextResponse.json(result);
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
   } catch (error: any) {
     logger.error('[API /api/email] Dispatch error', error, { ip: clientIp });
-    return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error while processing email.' },
-      { status: 500 }
-    );
+    return createApiErrorResponse({
+      message: 'Internal server error while processing email.',
+      code: 'EMAIL_DISPATCH_ERROR',
+      status: 500,
+      internalError: error,
+    });
   }
-}
+}

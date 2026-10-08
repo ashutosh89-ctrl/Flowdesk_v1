@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "clean": "next clean",
     "test": "npx tsx tests/razorpay-payment.test.ts",
+    "test:all": "tsx scripts/test-all.ts",
     "check:secrets": "tsx scripts/check-secrets.ts"
   },
   "dependencies": {

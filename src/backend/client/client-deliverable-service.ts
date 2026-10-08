@@ -174,6 +174,24 @@ export const ClientDeliverableService = {
       return { success: true, deliverable: { ...deliverable, status: 'approved', approvalStatus: 'approved' } };
     }
 
+    // In browser environment, delegate to the hardened server Route Handler
+    if (typeof window !== 'undefined') {
+      try {
+        const response = await fetch(`/api/deliverables/${encodeURIComponent(deliverableId)}/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes: notes || '' }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          return { success: false, error: data.error || 'Failed to approve deliverable.' };
+        }
+        return { success: true, deliverable: data.deliverable };
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Network error while approving deliverable.' };
+      }
+    }
+
     try {
       // 1. Verify that deliverable belongs to this client
       const { data: existing, error: fetchError } = await supabase

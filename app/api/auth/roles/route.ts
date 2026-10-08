@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
       onboardingCompleted = profile.onboarding_completed ?? true;
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       authenticated: true,
       userId: user.id,
       freelancer,
@@ -169,12 +169,17 @@ export async function GET(request: NextRequest) {
       clients,
       onboardingCompleted,
     });
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
   } catch (error: any) {
-    console.error('[auth/roles] role resolution failed:', error);
-    return NextResponse.json(
+    logger.error('[auth/roles] role resolution failed:', error);
+    const errRes = NextResponse.json(
       { authenticated: false, freelancer: false, client: false, error: 'Unable to determine account roles.' },
       { status: 500 }
     );
+    errRes.headers.set('Cache-Control', 'no-store');
+    return errRes;
   }
 }
+
 

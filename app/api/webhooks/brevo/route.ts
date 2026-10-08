@@ -57,12 +57,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Payload shape validation
-    const payload = await request.json().catch(() => null);
+    // 3. Payload size check & shape validation (max 50 KB)
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && parseInt(contentLength, 10) > 50 * 1024) {
+      return NextResponse.json({ received: false, error: 'Payload exceeds size limit' }, { status: 400 });
+    }
+
+    const rawBody = await request.text().catch(() => '');
+    if (new TextEncoder().encode(rawBody).length > 50 * 1024) {
+      return NextResponse.json({ received: false, error: 'Payload exceeds size limit' }, { status: 400 });
+    }
+
+    let payload: any = null;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ received: false, error: 'Invalid webhook JSON payload' }, { status: 400 });
+    }
 
     if (!payload || typeof payload !== 'object') {
       return NextResponse.json({ received: false, error: 'Invalid webhook JSON payload' }, { status: 400 });
     }
+
 
     const event = payload.event || payload.type;
     if (!event || typeof event !== 'string' || !ALLOWED_BREVO_EVENTS.has(event)) {
