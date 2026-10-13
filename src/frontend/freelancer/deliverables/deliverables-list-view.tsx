@@ -120,11 +120,11 @@ export const DeliverablesListView: React.FC<DeliverablesListViewProps> = ({
         const q = searchQuery.toLowerCase();
         const clientName = clients.find((c) => c.id === del.clientId)?.company || clients.find((c) => c.id === del.clientId)?.name || '';
         const projName = projects.find((p) => p.id === del.projectId)?.title || '';
-        const matchTitle = del.title.toLowerCase().includes(q);
-        const matchDesc = del.description.toLowerCase().includes(q);
-        const matchVer = del.version.toLowerCase().includes(q);
-        const matchClient = clientName.toLowerCase().includes(q);
-        const matchProj = projName.toLowerCase().includes(q);
+        const matchTitle = (del.title || '').toLowerCase().includes(q);
+        const matchDesc = (del.description || '').toLowerCase().includes(q);
+        const matchVer = (del.version || '').toLowerCase().includes(q);
+        const matchClient = (clientName || '').toLowerCase().includes(q);
+        const matchProj = (projName || '').toLowerCase().includes(q);
 
         if (!matchTitle && !matchDesc && !matchVer && !matchClient && !matchProj) {
           return false;
@@ -195,9 +195,16 @@ export const DeliverablesListView: React.FC<DeliverablesListViewProps> = ({
 
   // Single Actions
   const handleCreateDeliverable = async (delData: any) => {
-    await DeliverableService.addDeliverable(delData);
-    showToast('Deliverable Created', `Created package "${delData.title}" (${delData.version})`, 'success');
-    loadData();
+    try {
+      await DeliverableService.addDeliverable(delData);
+      showToast('Deliverable Created', `Created package "${delData.title}" (${delData.version})`, 'success');
+      loadData();
+    } catch (err: any) {
+      console.error('Failed to create deliverable:', err);
+      const msg = err?.message || 'Unable to create deliverable package.';
+      showToast('Create Failed', msg, 'error');
+      throw err;
+    }
   };
 
   const handleDuplicate = async (id: string) => {

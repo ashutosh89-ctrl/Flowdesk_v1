@@ -3,6 +3,38 @@ import { createBrowserClient } from '@supabase/ssr';
 
 import { AuthError } from './errors';
 
+// In Node.js < 22 environments where globalThis.WebSocket is not natively available,
+// provide a WebSocket polyfill (or fallback mock) to prevent RealtimeClient initialization errors.
+if (typeof globalThis !== 'undefined' && typeof globalThis.WebSocket === 'undefined') {
+  try {
+    const ws = require('ws');
+    (globalThis as unknown as { WebSocket: unknown }).WebSocket = ws.default || ws;
+  } catch {
+    class FallbackWebSocket {
+      static readonly CONNECTING = 0;
+      static readonly OPEN = 1;
+      static readonly CLOSING = 2;
+      static readonly CLOSED = 3;
+      readonly CONNECTING = 0;
+      readonly OPEN = 1;
+      readonly CLOSING = 2;
+      readonly CLOSED = 3;
+      readyState = 3;
+      url = '';
+      protocol = '';
+      onopen = null;
+      onmessage = null;
+      onclose = null;
+      onerror = null;
+      close() {}
+      send() {}
+      addEventListener() {}
+      removeEventListener() {}
+    }
+    (globalThis as unknown as { WebSocket: unknown }).WebSocket = FallbackWebSocket;
+  }
+}
+
 const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 

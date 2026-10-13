@@ -261,7 +261,7 @@ export const ClientPortalService = {
         id: del.id || `act-${idx}`,
         clientId: resolvedClientId,
         title: del.title,
-        description: `Deliverable status: ${del.status.replace(/_/g, ' ')}`,
+        description: `Deliverable status: ${(del.status || 'draft').replace(/_/g, ' ')}`,
         timestamp: del.dueDate || 'Active',
         actor: client!.company,
         category: 'deliverable' as const,

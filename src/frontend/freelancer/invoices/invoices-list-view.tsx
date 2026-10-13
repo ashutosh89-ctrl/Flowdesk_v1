@@ -245,11 +245,11 @@ export const InvoicesListView: React.FC = () => {
 
   // Filter & Sort Logic
   const filteredInvoices = invoices.filter((inv) => {
-    const q = search.toLowerCase();
+    const q = (search || '').toLowerCase();
     const matchesSearch =
-      inv.invoiceNumber.toLowerCase().includes(q) ||
-      inv.clientName.toLowerCase().includes(q) ||
-      (inv.projectName && inv.projectName.toLowerCase().includes(q));
+      (inv.invoiceNumber || '').toLowerCase().includes(q) ||
+      (inv.clientName || '').toLowerCase().includes(q) ||
+      (inv.projectName ? inv.projectName.toLowerCase().includes(q) : false);
 
     const matchesWorkflow = workflowFilter === 'all' || inv.workflowStatus === workflowFilter;
     const matchesPayment = paymentFilter === 'all' || inv.paymentStatus === paymentFilter;
