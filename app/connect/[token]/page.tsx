@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, Suspense, use } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/frontend/shared/ui/card';
 import { Button } from '@/frontend/shared/ui/button';
@@ -25,8 +25,10 @@ interface PageProps {
   params: Promise<{ token: string }>;
 }
 
-function ConnectInvitationContent({ token }: { token: string }) {
+export default function ConnectInvitationPage({ params }: PageProps) {
   const router = useRouter();
+  const resolvedParams = use(params);
+  const token = resolvedParams.token;
 
   const [loading, setLoading] = useState(true);
   const [details, setDetails] = useState<PublicInvitationDetails | null>(null);
@@ -378,33 +380,5 @@ function ConnectInvitationContent({ token }: { token: string }) {
         </Card>
       </div>
     </div>
-  );
-}
-
-function ConnectPageWrapper({ params }: PageProps) {
-  const { token } = use(params);
-
-  if (!token) {
-    return (
-      <div className="min-h-screen bg-[#070708] text-white flex items-center justify-center p-6">
-        <Loader2 className="w-8 h-8 animate-spin text-white" />
-      </div>
-    );
-  }
-
-  return <ConnectInvitationContent token={token} />;
-}
-
-export default function ConnectInvitationPage({ params }: PageProps) {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-[#070708] text-white flex items-center justify-center p-6">
-          <Loader2 className="w-8 h-8 animate-spin text-white" />
-        </div>
-      }
-    >
-      <ConnectPageWrapper params={params} />
-    </Suspense>
   );
 }

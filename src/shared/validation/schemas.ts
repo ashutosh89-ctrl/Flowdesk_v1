@@ -163,27 +163,6 @@ export const CreateInvoiceSchema = z.object({
 export const UpdateInvoiceSchema = CreateInvoiceSchema.partial().strict();
 
 // Batch 2: Approvals & Deliverables
-export const CreateDeliverableSchema = z.object({
-  clientId: z.string().trim().min(1, 'Client ID is required'),
-  clientName: z.string().trim().max(255).optional(),
-  projectId: z.string().trim().optional().nullable(),
-  title: z.string().trim().min(1, 'Title is required').max(255),
-  description: z.string().trim().max(5000).optional().default(''),
-  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must be YYYY-MM-DD').optional(),
-  reviewDeadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  version: z.string().trim().max(50).optional().default('v1.0'),
-  priority: z.enum(['low', 'medium', 'high']).optional().default('medium'),
-  fileName: z.string().trim().max(255).optional(),
-  fileSize: z.string().trim().max(50).optional(),
-  fileUrl: z.string().trim().max(2048).optional(),
-  internalNotes: z.string().trim().max(5000).optional().default(''),
-  submissionMessage: z.string().trim().max(5000).optional().default(''),
-  status: z.enum(['draft', 'preparing', 'ready_for_review', 'submitted', 'approved', 'revision_requested', 'completed', 'archived']).optional().default('draft'),
-  approvalStatus: z.enum(['pending', 'approved', 'revision_requested', 'rejected']).optional().default('pending'),
-}).strict();
-
-export type CreateDeliverablePayload = z.infer<typeof CreateDeliverableSchema>;
-
 export const SubmitDeliverableSchema = z.object({
   submissionMessage: z.string().trim().max(1000).optional(),
   reviewDeadline: z.string().optional(),
