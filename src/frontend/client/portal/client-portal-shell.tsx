@@ -116,11 +116,11 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
     if (!searchQuery.trim()) return null;
     const q = searchQuery.toLowerCase();
     return {
-      projects: projects.filter(p => p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)),
-      deliverables: deliverables.filter(d => d.title.toLowerCase().includes(q) || d.description.toLowerCase().includes(q)),
-      documents: documents.filter(d => d.title.toLowerCase().includes(q)),
-      invoices: invoices.filter(i => i.invoiceNumber.toLowerCase().includes(q)),
-      comments: comments.filter(c => c.text.toLowerCase().includes(q)),
+      projects: projects.filter(p => (p.title || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q)),
+      deliverables: deliverables.filter(d => (d.title || '').toLowerCase().includes(q) || (d.description || '').toLowerCase().includes(q)),
+      documents: documents.filter(d => (d.title || '').toLowerCase().includes(q)),
+      invoices: invoices.filter(i => (i.invoiceNumber || '').toLowerCase().includes(q)),
+      comments: comments.filter(c => (c.text || '').toLowerCase().includes(q)),
     };
   }, [searchQuery, projects, deliverables, documents, invoices, comments]);
 

@@ -113,18 +113,19 @@ export const ProjectsListView: React.FC<ProjectsListViewProps> = ({ onOpenWorksp
   };
 
   const filteredProjects = projects.filter((p) => {
+    const q = (search || '').toLowerCase();
     const matchesSearch =
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      p.clientName.toLowerCase().includes(search.toLowerCase()) ||
-      p.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
+      (p.title || '').toLowerCase().includes(q) ||
+      (p.clientName || '').toLowerCase().includes(q) ||
+      (p.tags || []).some((t) => (t || '').toLowerCase().includes(q));
     const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const sortedProjects = [...filteredProjects].sort((a, b) => {
-    if (sortBy === 'dueDate') return a.dueDate.localeCompare(b.dueDate);
-    if (sortBy === 'budget') return b.budget - a.budget;
-    return b.completionPercentage - a.completionPercentage;
+    if (sortBy === 'dueDate') return (a.dueDate || '').localeCompare(b.dueDate || '');
+    if (sortBy === 'budget') return (Number(b.budget) || 0) - (Number(a.budget) || 0);
+    return (Number(b.completionPercentage) || 0) - (Number(a.completionPercentage) || 0);
   });
 
   return (
