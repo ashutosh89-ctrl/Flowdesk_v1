@@ -10,15 +10,29 @@ import {
   renderPaymentReceivedEmail,
   renderAccountLifecycleEmail,
   renderSecurityAlertEmail,
+  renderBillingTrialEndingEmail,
+  renderBillingPaymentFailedEmail,
+  renderBillingGraceEndingSoonEmail,
+  renderBillingSubscriptionCanceledEmail,
+  renderBillingSubscriptionActivatedEmail,
+  renderBillingPlanChangedEmail,
+  renderInvoiceReminderEmail,
   ClientInvitationParams,
   DeliverableReadyParams,
   DeliverableApprovedParams,
   RevisionRequestedParams,
   DocumentUploadedParams,
   InvoiceIssuedParams,
+  InvoiceReminderParams,
   PaymentReceivedParams,
   AccountLifecycleParams,
   SecurityAlertParams,
+  BillingTrialEndingParams,
+  BillingPaymentFailedParams,
+  BillingGraceEndingSoonParams,
+  BillingSubscriptionCanceledParams,
+  BillingSubscriptionActivatedParams,
+  BillingPlanChangedParams,
 } from './templates';
 
 export interface SendEmailOptions {
@@ -134,10 +148,22 @@ export const EmailService = {
       revision_requested: 'email_deliverables',
       document_uploaded: 'email_documents',
       invoice_issued: 'email_invoices',
+      invoice_reminder: 'email_invoices',
       payment_received: 'email_invoices',
       receipt_issued: 'email_invoices',
     };
-    const MANDATORY_EVENTS = new Set(['client_invitation', 'account_deleted', 'account_restored', 'security_alert']);
+    const MANDATORY_EVENTS = new Set([
+      'client_invitation',
+      'account_deleted',
+      'account_restored',
+      'security_alert',
+      'billing_trial_ending',
+      'billing_payment_failed',
+      'billing_grace_ending_soon',
+      'billing_subscription_canceled',
+      'billing_subscription_activated',
+      'billing_plan_changed',
+    ]);
 
     if (workspaceId && !MANDATORY_EVENTS.has(eventType)) {
       const prefColumn = PREFERENCE_MAP[eventType];
@@ -528,6 +554,28 @@ export const EmailService = {
     });
   },
 
+  sendInvoiceReminder: async (
+    recipientEmail: string,
+    params: InvoiceReminderParams,
+    meta?: { workspaceId?: string; invoiceId?: string; ruleKey?: string }
+  ): Promise<EmailSendResult> => {
+    const template = renderInvoiceReminderEmail(params);
+    const referenceId = meta?.invoiceId && meta?.ruleKey
+      ? `${meta.invoiceId}_${meta.ruleKey}`
+      : meta?.invoiceId;
+
+    return EmailService.send({
+      to: recipientEmail,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+      eventType: 'invoice_reminder',
+      referenceType: 'invoice',
+      referenceId,
+      workspaceId: meta?.workspaceId,
+    });
+  },
+
   sendPaymentReceived: async (
     recipientEmail: string,
     params: PaymentReceivedParams,
@@ -610,6 +658,120 @@ export const EmailService = {
       html: template.html,
       text: template.text,
       eventType: 'security_alert',
+      workspaceId: meta?.workspaceId,
+      userId: meta?.userId,
+    });
+  },
+
+  sendBillingTrialEnding: async (
+    recipientEmail: string,
+    params: BillingTrialEndingParams,
+    meta?: { workspaceId?: string; userId?: string }
+  ): Promise<EmailSendResult> => {
+    const template = renderBillingTrialEndingEmail(params);
+    return EmailService.send({
+      to: recipientEmail,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+      eventType: 'billing_trial_ending',
+      referenceType: 'billing',
+      referenceId: meta?.workspaceId ? `trial_${meta.workspaceId}_${params.daysRemaining}d` : undefined,
+      workspaceId: meta?.workspaceId,
+      userId: meta?.userId,
+    });
+  },
+
+  sendBillingPaymentFailed: async (
+    recipientEmail: string,
+    params: BillingPaymentFailedParams,
+    meta?: { workspaceId?: string; userId?: string; subscriptionId?: string }
+  ): Promise<EmailSendResult> => {
+    const template = renderBillingPaymentFailedEmail(params);
+    return EmailService.send({
+      to: recipientEmail,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+      eventType: 'billing_payment_failed',
+      referenceType: 'subscription',
+      referenceId: meta?.subscriptionId ? `payfail_${meta.subscriptionId}_${Date.now()}` : undefined,
+      workspaceId: meta?.workspaceId,
+      userId: meta?.userId,
+    });
+  },
+
+  sendBillingGraceEndingSoon: async (
+    recipientEmail: string,
+    params: BillingGraceEndingSoonParams,
+    meta?: { workspaceId?: string; userId?: string; subscriptionId?: string }
+  ): Promise<EmailSendResult> => {
+    const template = renderBillingGraceEndingSoonEmail(params);
+    return EmailService.send({
+      to: recipientEmail,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+      eventType: 'billing_grace_ending_soon',
+      referenceType: 'subscription',
+      referenceId: meta?.subscriptionId ? `grace_${meta.subscriptionId}_${params.daysRemaining}d` : undefined,
+      workspaceId: meta?.workspaceId,
+      userId: meta?.userId,
+    });
+  },
+
+  sendBillingSubscriptionCanceled: async (
+    recipientEmail: string,
+    params: BillingSubscriptionCanceledParams,
+    meta?: { workspaceId?: string; userId?: string; subscriptionId?: string }
+  ): Promise<EmailSendResult> => {
+    const template = renderBillingSubscriptionCanceledEmail(params);
+    return EmailService.send({
+      to: recipientEmail,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+      eventType: 'billing_subscription_canceled',
+      referenceType: 'subscription',
+      referenceId: meta?.subscriptionId ? `cancel_${meta.subscriptionId}` : undefined,
+      workspaceId: meta?.workspaceId,
+      userId: meta?.userId,
+    });
+  },
+
+  sendBillingSubscriptionActivated: async (
+    recipientEmail: string,
+    params: BillingSubscriptionActivatedParams,
+    meta?: { workspaceId?: string; userId?: string; subscriptionId?: string }
+  ): Promise<EmailSendResult> => {
+    const template = renderBillingSubscriptionActivatedEmail(params);
+    return EmailService.send({
+      to: recipientEmail,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+      eventType: 'billing_subscription_activated',
+      referenceType: 'subscription',
+      referenceId: meta?.subscriptionId ? `activate_${meta.subscriptionId}` : undefined,
+      workspaceId: meta?.workspaceId,
+      userId: meta?.userId,
+    });
+  },
+
+  sendBillingPlanChanged: async (
+    recipientEmail: string,
+    params: BillingPlanChangedParams,
+    meta?: { workspaceId?: string; userId?: string; subscriptionId?: string }
+  ): Promise<EmailSendResult> => {
+    const template = renderBillingPlanChangedEmail(params);
+    return EmailService.send({
+      to: recipientEmail,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+      eventType: 'billing_plan_changed',
+      referenceType: 'subscription',
+      referenceId: meta?.subscriptionId ? `change_${meta.subscriptionId}_${Date.now()}` : undefined,
       workspaceId: meta?.workspaceId,
       userId: meta?.userId,
     });

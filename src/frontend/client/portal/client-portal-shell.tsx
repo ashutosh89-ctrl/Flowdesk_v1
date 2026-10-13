@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { isSafeHttpUrl } from '@/shared/utils/safe-url';
+
 import { PortalSidebar, PortalTabType } from './portal-sidebar';
 import { PortalHeader } from './portal-header';
 import { OverviewCards } from './overview-cards';
@@ -313,7 +315,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
                   onDownloadClick={(deliv) => {
                     // Use the file URL from Supabase Storage if available
                     const fileUrl = (deliv as any).fileUrl || (deliv as any).file_url;
-                    if (fileUrl && fileUrl !== '#') {
+                    if (fileUrl && isSafeHttpUrl(fileUrl)) {
                       const link = document.createElement('a');
                       link.href = fileUrl;
                       link.download = `${deliv.title}-v${deliv.version || '1.0'}.zip`;
@@ -325,6 +327,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
                     } else {
                       showToast(`No file available for ${deliv.title}. Please ask your freelancer to upload a file.`);
                     }
+
                   }}
                 />
               )}

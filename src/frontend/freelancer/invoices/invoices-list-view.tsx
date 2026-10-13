@@ -4,7 +4,7 @@ import { InvoiceService } from '@/backend/freelancer';
 import { formatCurrency } from '@/shared/utils/currency';
 import { generateInvoicePDF, printInvoiceDocument } from '@/shared/utils/invoice-pdf';
 import { InvoiceDashboard } from './components/invoice-dashboard';
-import { DueIndicatorBadge, PaymentStatusPill, WorkflowStatusPill } from './components/status-pills';
+import { DueIndicatorBadge, PaymentStatusPill, WorkflowStatusPill, RecurringInvoiceBadge } from './components/status-pills';
 import { InvoiceBuilderModal } from './components/invoice-builder-modal';
 import { InvoiceDetailsModal } from './components/invoice-details-modal';
 import { MarkPaidModal } from './components/mark-paid-modal';
@@ -474,8 +474,9 @@ export const InvoicesListView: React.FC = () => {
                         </td>
 
                         <td className="p-4">
-                          <div className="font-bold font-mono text-white">
-                            {inv.invoiceNumber}
+                          <div className="font-bold font-mono text-white flex items-center gap-2">
+                            <span>{inv.invoiceNumber}</span>
+                            <RecurringInvoiceBadge scheduleId={(inv as any).recurringScheduleId || (inv as any).recurring_schedule_id} />
                           </div>
                           <div className="text-zinc-400 font-medium mt-0.5">
                             {inv.clientName}

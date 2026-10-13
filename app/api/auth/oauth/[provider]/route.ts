@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { validateAndFormatUrl, validateKey } from '@/backend/utilities/supabase';
+import { getSafeRedirectPath } from '@/shared/utils/safe-redirect';
+import { oauthProviderSchema } from '@/shared/validation';
+import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 
 const ALLOWED_PROVIDERS = new Set(['google', 'github']);
 
@@ -17,12 +20,30 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ provider: string }> }
 ) {
-  const { provider: rawProvider } = await params;
-  const provider = rawProvider?.toLowerCase();
-
-  if (!provider || !ALLOWED_PROVIDERS.has(provider)) {
-    return NextResponse.json({ error: 'Unsupported OAuth provider.' }, { status: 400 });
+  const clientIp = getClientIp(request);
+  const rateLimit = await checkRateLimit(clientIp, {
+    prefix: 'oauth_start',
+    maxRequests: 30,
+    windowSeconds: 60,
+  });
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } }
+    );
   }
+
+  const { provider: rawProvider } = await params;
+  const validation = oauthProviderSchema.safeParse(rawProvider?.toLowerCase());
+
+  if (!validation.success) {
+    return NextResponse.json(
+      { error: 'Unsupported OAuth provider.', code: 'INVALID_PROVIDER' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } }
+    );
+  }
+  const provider = validation.data;
+
 
   const supabaseUrl = validateAndFormatUrl(process.env.NEXT_PUBLIC_SUPABASE_URL || '');
   const supabaseAnonKey = validateKey(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
@@ -34,7 +55,11 @@ export async function GET(
   }
 
   const origin = request.nextUrl.origin;
-  const redirectTo = `${origin}/auth/callback`;
+  const nextParam = request.nextUrl.searchParams.get('next');
+  const safeNext = nextParam ? getSafeRedirectPath(nextParam, '') : '';
+  const redirectTo = safeNext
+    ? `${origin}/auth/callback?next=${encodeURIComponent(safeNext)}`
+    : `${origin}/auth/callback`;
 
   // Keep this exact response object for the whole flow. Supabase's SSR client
   // will attach the PKCE verifier cookie to it via setAll().

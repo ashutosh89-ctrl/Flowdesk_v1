@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { isSafeHttpUrl } from '@/shared/utils/safe-url';
 import { Modal } from '@/frontend/shared/ui/modal';
+
 import { Button } from '@/frontend/shared/ui/button';
 import { StatusBadge } from './status-badge';
 import { ApprovalBadge } from './approval-badge';
@@ -904,13 +906,14 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
                         {file.folder || 'Root'}
                       </span>
                       <a
-                        href={file.fileUrl || '#'}
+                        href={isSafeHttpUrl(file.fileUrl) ? file.fileUrl : '#'}
                         target="_blank"
                         rel="noreferrer"
                         className="flex items-center gap-1 text-emerald-400 hover:underline font-medium"
                       >
                         <Download className="w-3 h-3" /> Download Asset
                       </a>
+
                     </div>
                   </div>
                 ))}
@@ -1746,13 +1749,14 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
             </div>
             <div className="pt-4">
               <a
-                href={previewFile.fileUrl}
+                href={isSafeHttpUrl(previewFile.fileUrl) ? previewFile.fileUrl : '#'}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-zinc-950 font-bold text-xs hover:bg-emerald-400 transition-colors"
               >
                 <Download className="w-4 h-4" /> Download File Package
               </a>
+
             </div>
           </div>
         </Modal>

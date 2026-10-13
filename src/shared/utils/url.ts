@@ -49,3 +49,6 @@ function cleanUrl(url: string): string {
   return url.trim().replace(/\/+$/, '');
 }
 
+export { isSafeHttpUrl, getSafeHttpUrl } from './safe-url';
+
+

@@ -119,7 +119,8 @@ export const ClientDocumentService = {
           'documents',
           wsId,
           `documents/${docId}`,
-          fileData.file
+          fileData.file,
+          { clientId }
         );
 
         if (uploadResult.error || !uploadResult.path) {
@@ -276,7 +277,8 @@ export const ClientDocumentService = {
         'documents',
         wsId,
         `documents/client-uploads`,
-        payload.file
+        payload.file,
+        { clientId }
       );
 
       if (uploadResult.error || !uploadResult.path) {

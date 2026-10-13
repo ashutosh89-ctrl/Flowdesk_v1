@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { validateAndFormatUrl, validateKey } from '@/backend/utilities/supabase';
+import { getSafeRedirectPath } from '@/shared/utils/safe-redirect';
+import { logger } from '@/backend/utilities/logger';
+
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -8,7 +11,7 @@ export async function GET(request: NextRequest) {
   const type = requestUrl.searchParams.get('type');
   const error = requestUrl.searchParams.get('error');
   const errorDescription = requestUrl.searchParams.get('error_description');
-  let next = requestUrl.searchParams.get('next') || '/auth/post-login';
+  let next = getSafeRedirectPath(requestUrl.searchParams.get('next'), '/auth/post-login');
 
   // Determine external canonical base URL for serverless/reverse proxy environments (Vercel)
   const forwardedHost = request.headers.get('x-forwarded-host');
@@ -23,8 +26,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(errorMsg)}`, origin));
   }
 
-  if (type === 'recovery' && next === '/auth/post-login') {
-    next = '/reset-password';
+  if (type === 'recovery') {
+    next = next === '/auth/post-login' ? '/reset-password' : getSafeRedirectPath(next, '/reset-password');
   }
 
   if (code) {
@@ -55,13 +58,16 @@ export async function GET(request: NextRequest) {
         if (!exchangeError) {
           return response;
         } else {
-          console.error('exchangeCodeForSession error:', exchangeError.message);
-          return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(exchangeError.message)}`, origin));
+          logger.error('[OAuth callback] exchangeCodeForSession error', exchangeError);
+          const userMsg = process.env.NODE_ENV === 'production' ? 'Unable to authenticate with OAuth provider.' : exchangeError.message;
+          return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(userMsg)}`, origin));
         }
       } catch (err: any) {
-        console.error('Error exchanging code for session in OAuth callback:', err);
-        return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(err?.message || 'OAuth session exchange failed')}`, origin));
+        logger.error('[OAuth callback] Error exchanging code for session', err);
+        const userMsg = process.env.NODE_ENV === 'production' ? 'OAuth session exchange failed.' : (err?.message || 'OAuth session exchange failed.');
+        return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(userMsg)}`, origin));
       }
+
     }
   }
 

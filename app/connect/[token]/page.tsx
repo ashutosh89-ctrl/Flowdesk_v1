@@ -153,7 +153,7 @@ export default function ConnectInvitationPage({ params }: PageProps) {
         // Do not create a second client login form here. Existing clients use
         // the same shared /login page, with the invitation token preserved.
         if (signUpErr.message.toLowerCase().includes('already registered')) {
-          router.replace(`/login?connect=${encodeURIComponent(token)}`);
+          router.replace(`/login?next=${encodeURIComponent('/connect/' + token)}`);
           return;
         }
         throw signUpErr;
@@ -364,7 +364,7 @@ export default function ConnectInvitationPage({ params }: PageProps) {
                   type="button"
                   variant="secondary"
                   className="w-full justify-center gap-2"
-                  onClick={() => router.push(`/login?connect=${encodeURIComponent(token)}`)}
+                  onClick={() => router.push(`/login?next=${encodeURIComponent('/connect/' + token)}`)}
                 >
                   Continue to Shared Login <ArrowRight className="w-3.5 h-3.5" />
                 </Button>

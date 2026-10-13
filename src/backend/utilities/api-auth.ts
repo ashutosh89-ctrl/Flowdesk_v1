@@ -1,11 +1,12 @@
-import { supabase, isDemoModeActive } from './supabase';
-import { ClientAuthService } from '@/backend/client/client-auth-service';
+import { isDemoModeActive } from './supabase';
+import { createRouteSupabaseClient } from './supabase-server';
 
 /**
  * Server-side identity resolution for API routes.
  *
- * Identity is ALWAYS derived from the authenticated Supabase session — never
- * from request bodies, query parameters, cookies, or localStorage.
+ * Identity is ALWAYS derived from the authenticated Supabase session via
+ * cookie-aware server client — never from request bodies, query parameters,
+ * or localStorage.
  *
  * Returns:
  *  - userId: the authenticated Supabase user id (null if unauthenticated)
@@ -38,31 +39,41 @@ export async function resolveApiCaller(): Promise<ApiCallerIdentity> {
   }
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const supabaseServer = await createRouteSupabaseClient();
+    if (!supabaseServer) {
       return { userId: null, clientId: null, workspaceId: null, isDemo: false };
     }
 
-    // Resolve client identity (a user may be a client in a workspace)
+    const { data: { user }, error: userError } = await supabaseServer.auth.getUser();
+    if (userError || !user) {
+      return { userId: null, clientId: null, workspaceId: null, isDemo: false };
+    }
+
+    // Resolve client identity using user-scoped server client (RLS enforced)
     let clientId: string | null = null;
     try {
-      const client = await ClientAuthService.resolveClientByUserIdOrEmail(user.id, user.email || undefined);
-      clientId = client?.id || null;
+      const { data: clientData } = await supabaseServer
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+      clientId = clientData?.id || null;
     } catch {
       clientId = null;
     }
 
-    // Resolve freelancer workspace identity
+    // Resolve freelancer workspace identity using user-scoped server client (RLS enforced)
     let workspaceId: string | null = null;
     try {
-      const { data } = await supabase
+      const { data: wsData } = await supabaseServer
         .from('workspaces')
         .select('id')
         .eq('owner_id', user.id)
         .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle();
-      workspaceId = data?.id || null;
+      workspaceId = wsData?.id || null;
     } catch {
       workspaceId = null;
     }

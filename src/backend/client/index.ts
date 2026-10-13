@@ -112,16 +112,30 @@ export const ClientPortalService = {
 
     const cleanId = clientIdOrToken.trim();
 
-    // 1. Resolve client record
+    // 1. Resolve client record safely without filter injection
     let client: Client | null = null;
+
+    const UUID_PATTERN = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+    const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const TOKEN_PATTERN = /^[a-zA-Z0-9_-]{8,128}$/;
 
     // Supabase query
       try {
-        const { data } = await supabase
-          .from('clients')
-          .select('*')
-          .or(`id.eq.${cleanId},portal_token.eq.${cleanId},user_id.eq.${cleanId},email.eq.${cleanId}`)
-          .maybeSingle();
+        let query = supabase.from('clients').select('*');
+
+        if (UUID_PATTERN.test(cleanId)) {
+          query = query.or(`id.eq.${cleanId},user_id.eq.${cleanId}`);
+        } else if (EMAIL_PATTERN.test(cleanId)) {
+          query = query.eq('email', cleanId.toLowerCase());
+        } else if (TOKEN_PATTERN.test(cleanId)) {
+          query = query.eq('portal_token', cleanId);
+        } else {
+          // Reject malformed inputs containing PostgREST filter injection operators
+          query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+        }
+
+        const { data } = await query.maybeSingle();
+
 
         if (data) {
           client = {

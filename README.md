@@ -81,19 +81,26 @@ Client
 
 ### Environment Variables
 
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_APP_URL` / `APP_URL` | Canonical public application URL |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
-| `NEXT_PUBLIC_ENABLE_DEMO_FALLBACK` | Set to `false` in production to enforce database persistence |
-| `RAZORPAY_KEY_ID` | Razorpay API Key ID (server-side) |
-| `RAZORPAY_KEY_SECRET` | Razorpay API Key Secret (server-side only) |
-| `RAZORPAY_WEBHOOK_SECRET` | Razorpay Webhook Secret (server-side only) |
-| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Razorpay Key ID for client checkout SDK |
-| `RESEND_API_KEY` | Resend API key (server-side only) |
-| `EMAIL_FROM` | Sender address for transactional emails |
+| Variable | Description | Where Set |
+|---|---|---|
+| `NEXT_PUBLIC_APP_URL` / `APP_URL` | Canonical public application URL (e.g. `https://app.flowdesk.io`) | Shared |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL (`https://<project-ref>.supabase.co`) | Shared (Public) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous public key | Shared (Public) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only, bypasses RLS for trusted jobs) | Server |
+| `NEXT_PUBLIC_AUTH_MODE` | Explicit authentication mode: `production` (default) or `demo` (offline storage only) | Shared (Public) |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL for distributed rate limiting | Server |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST Token for distributed rate limiting | Server |
+| `RAZORPAY_KEY_ID` | Razorpay API Key ID (server-side order generation) | Server |
+| `RAZORPAY_KEY_SECRET` | Razorpay API Key Secret (server-side HMAC verification) | Server |
+| `RAZORPAY_WEBHOOK_SECRET` | Razorpay Webhook Secret (HMAC verification) | Server |
+| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Razorpay Key ID for client checkout SDK | Shared (Public) |
+| `BREVO_API_KEY` | Brevo Transactional Email API key (v3 `xkeysib-...`) | Server |
+| `BREVO_WEBHOOK_SECRET` | Brevo Webhook authentication secret | Server |
+| `RESEND_API_KEY` | Resend API key (`re_...`, alternative email provider) | Server |
+| `RESEND_WEBHOOK_SECRET` | Resend Svix Webhook signing secret (`whsec_...`) | Server |
+| `EMAIL_FROM` | Sender address for transactional emails (e.g. `FlowDesk <noreply@flowdesk.io>`) | Server |
+| `CRON_SECRET` | Bearer token for automated cron routes (e.g. account purge) | Server |
+| `NEXT_PUBLIC_SERVER_MUTATIONS_BATCH_1..4` | Feature flags to toggle server routes for Batches 1 to 4 (default `true`) | Shared (Public) |
 
 ---
 
@@ -102,11 +109,11 @@ Client
 Run the automated verification suite before creating releases:
 
 ```bash
-# Run backend integrity and RLS verification tests
-npx tsx scripts/verify-hardening.ts
+# Run unified security and integration CI test runner
+npm run test:all
 
-# Run payment settlement and concurrency tests
-npx tsx scripts/verify-razorpay.ts
+# Run static secrets scanner
+npm run check:secrets
 
 # TypeScript type check
 npm run typecheck

@@ -1417,7 +1417,7 @@ export const FlowDeskStore = {
   // --- SECURE ONE-TIME CONNECTION INVITATIONS ---
   createOrGetInvitation: (clientId: string, recipientEmail?: string): { rawToken: string; url: string; invitation: ClientInvitation } => {
     const client = clients.find((c) => c.id === clientId);
-    const targetEmail = recipientEmail || client?.email || 'client@example.com';
+    const targetEmail = recipientEmail || undefined;
     const nowIso = new Date().toISOString();
 
     // Revoke any existing pending invitations for this client
@@ -1503,7 +1503,7 @@ export const FlowDeskStore = {
     };
   },
 
-  claimInvitation: (tokenHash: string, userId: string, userEmail?: string): ClaimInvitationResult => {
+  claimInvitation: (tokenHash: string, userId: string, userEmail?: string, isEmailConfirmed?: boolean): ClaimInvitationResult => {
     const inv = clientInvitations[tokenHash];
     if (!inv) {
       return {
@@ -1546,6 +1546,25 @@ export const FlowDeskStore = {
         success: false,
         errorCode: 'CLIENT_NOT_FOUND',
         error: 'Associated client record not found.',
+      };
+    }
+
+    // Email validation rule (enforce when invitation has a targeted recipient email)
+    if (inv.recipientEmail && userEmail) {
+      if (userEmail.trim().toLowerCase() !== inv.recipientEmail.trim().toLowerCase()) {
+        return {
+          success: false,
+          errorCode: 'EMAIL_MISMATCH',
+          error: 'The email address of your account does not match the invitation.',
+        };
+      }
+    }
+
+    if (isEmailConfirmed === false) {
+      return {
+        success: false,
+        errorCode: 'EMAIL_UNCONFIRMED',
+        error: 'Please verify your email address before connecting this account.',
       };
     }
 

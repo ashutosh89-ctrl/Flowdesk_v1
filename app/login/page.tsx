@@ -1,15 +1,19 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthProvider } from '@/frontend/auth/auth-context';
 import { ToastProvider } from '@/frontend/shared/ui/toast';
 import { LoginForm } from '@/frontend/auth/login-form';
 import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 import { ArrowLeft } from 'lucide-react';
+import { getSafeRedirectPath } from '@/shared/utils/safe-redirect';
 
 function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawNext = searchParams.get('next');
+  const targetNext = getSafeRedirectPath(rawNext, '/auth/post-login');
 
   return (
     <div className="min-h-screen bg-[#070708] text-zinc-100 flex flex-col items-center justify-center p-4 sm:p-6 selection:bg-white selection:text-zinc-950 relative overflow-hidden">
@@ -32,8 +36,8 @@ function LoginContent() {
         </div>
 
         <LoginForm
-          onSuccess={() => router.replace('/auth/post-login')}
-          onSwitchToSignup={() => router.push('/signup')}
+          onSuccess={() => router.replace(targetNext)}
+          onSwitchToSignup={() => router.push(rawNext ? `/signup?next=${encodeURIComponent(rawNext)}` : '/signup')}
           onSwitchToForgotPassword={() => router.push('/forgot-password')}
         />
       </div>
@@ -45,7 +49,9 @@ export default function LoginPage() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <LoginContent />
+        <React.Suspense fallback={<div className="min-h-screen bg-[#070708]" />}>
+          <LoginContent />
+        </React.Suspense>
       </AuthProvider>
     </ToastProvider>
   );

@@ -21,12 +21,16 @@ export function renderEmailLayout({
   const baseUrl = getAppBaseUrl();
   const logoUrl = `${baseUrl}/branding/flowdesk-logo.png`;
 
+  const cleanTitle = sanitizeHeader(title, 200);
+  const cleanPreview = sanitizeHeader(previewText, 500);
+  const safeCtaUrl = sanitizeUrl(ctaUrl);
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(title)}</title>
+  <title>${escapeHtml(cleanTitle)}</title>
   <style>
     body {
       margin: 0;
@@ -141,7 +145,7 @@ export function renderEmailLayout({
 </head>
 <body>
   <div style="display: none; max-height: 0px; overflow: hidden;">
-    ${escapeHtml(previewText)}
+    ${escapeHtml(cleanPreview)}
   </div>
   <div class="wrapper">
     <div class="container">
@@ -149,18 +153,18 @@ export function renderEmailLayout({
         <img src="${logoUrl}" alt="FlowDesk" class="header-logo" />
       </div>
       <div class="content">
-        <h1>${escapeHtml(title)}</h1>
+        <h1>${escapeHtml(cleanTitle)}</h1>
         ${contentHtml}
         ${
-          ctaText && ctaUrl
+          ctaText && safeCtaUrl !== '#'
             ? `<div class="btn-container">
-                <a href="${escapeHtml(ctaUrl)}" class="btn" target="_blank">${escapeHtml(ctaText)}</a>
+                <a href="${escapeHtml(safeCtaUrl)}" class="btn" target="_blank">${escapeHtml(truncateText(ctaText, 200))}</a>
               </div>`
             : ''
         }
       </div>
       <div class="footer">
-        <p style="margin: 0 0 6px 0;">${escapeHtml(footerNote)}</p>
+        <p style="margin: 0 0 6px 0;">${escapeHtml(truncateText(footerNote, 500))}</p>
         <p style="margin: 0;">FlowDesk · Freelancer Operating System</p>
       </div>
     </div>
@@ -177,5 +181,40 @@ export function escapeHtml(str: string | undefined | null): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+/**
+ * Strips Carriage Return and Line Feed control characters to protect against
+ * email header injection and response splitting.
+ */
+export function sanitizeHeader(str: string | undefined | null, maxLength = 200): string {
+  if (!str) return '';
+  return String(str)
+    .replace(/[\r\n]+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
+
+/**
+ * Validates that an href target uses http or https scheme.
+ * Prevents javascript:, data:, and relative redirection exploitation.
+ */
+export function sanitizeUrl(url: string | undefined | null): string {
+  if (!url) return '#';
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return '#';
+}
+
+/**
+ * Limits maximum string length to prevent resource exhaustion / email bloat.
+ */
+export function truncateText(str: string | undefined | null, maxLength = 2000): string {
+  if (!str) return '';
+  const trimmed = String(str).trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  return trimmed.slice(0, maxLength);
 }
 

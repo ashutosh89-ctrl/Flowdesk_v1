@@ -32,6 +32,7 @@ import {
   Hash,
   Layers,
   LogOut,
+  RefreshCw,
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import { SUPPORTED_CURRENCIES } from '@/shared/utils/currency';
@@ -41,8 +42,10 @@ import { InvoiceNumberFormatPreset } from '@/shared/types';
 import { CountrySelect } from '@/frontend/shared/ui/country-select';
 import { PhoneInput } from '@/frontend/shared/ui/phone-input';
 import { switchCountryPrefix } from '@/shared/utils/countries';
+import { BillingPlanPanel } from './billing-plan-panel';
+import { AutomationsPanel } from './automations-panel';
 
-type SettingsTab = 'profile' | 'billing' | 'notifications' | 'security';
+type SettingsTab = 'profile' | 'billing' | 'automations' | 'notifications' | 'security';
 
 export const SettingsView: React.FC = () => {
   const { user, profile: authProfile, refreshProfile, signOut } = useAuth();
@@ -466,6 +469,19 @@ export const SettingsView: React.FC = () => {
 
         <button
           type="button"
+          onClick={() => setActiveTab('automations')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
+            activeTab === 'automations'
+              ? 'bg-white/10 text-white shadow-sm border border-white/15'
+              : 'text-zinc-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <RefreshCw className="w-4 h-4 text-cyan-400" />
+          <span>Automations & Jobs</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('notifications')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
             activeTab === 'notifications'
@@ -690,6 +706,8 @@ export const SettingsView: React.FC = () => {
         {/* TAB 2: RATES & INVOICE DEFAULTS + NUMBERING SYSTEM */}
         {activeTab === 'billing' && (
           <div className="space-y-6">
+            <BillingPlanPanel />
+
             {/* Rates & Financial Defaults */}
             <Card variant="crystal">
               <CardHeader>
@@ -954,6 +972,9 @@ export const SettingsView: React.FC = () => {
             </Card>
           </div>
         )}
+
+        {/* TAB: AUTOMATIONS & BACKGROUND JOBS */}
+        {activeTab === 'automations' && <AutomationsPanel />}
 
         {/* TAB 3: NOTIFICATIONS & EMAIL PREFERENCES */}
         {activeTab === 'notifications' && (

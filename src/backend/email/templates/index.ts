@@ -1,4 +1,4 @@
-import { renderEmailLayout, escapeHtml } from './layout';
+import { renderEmailLayout, escapeHtml, sanitizeHeader, sanitizeUrl, truncateText } from './layout';
 
 export interface ClientInvitationParams {
   clientName: string;
@@ -8,9 +8,12 @@ export interface ClientInvitationParams {
 }
 
 export function renderClientInvitationEmail(params: ClientInvitationParams) {
-  const rawSender = params.businessName || params.freelancerName || 'FlowDesk Studio';
-  const sender = escapeHtml(rawSender);
-  const clientName = escapeHtml(params.clientName);
+  const cleanSender = truncateText(params.businessName || params.freelancerName || 'FlowDesk Studio', 200);
+  const cleanClientName = truncateText(params.clientName, 200);
+  const safePortalUrl = sanitizeUrl(params.portalUrl);
+
+  const sender = escapeHtml(cleanSender);
+  const clientName = escapeHtml(cleanClientName);
 
   const contentHtml = `
     <p>Hello <strong>${clientName}</strong>,</p>
@@ -25,15 +28,15 @@ export function renderClientInvitationEmail(params: ClientInvitationParams) {
   `;
 
   return {
-    subject: `Invitation: Access your client portal from ${rawSender}`,
+    subject: sanitizeHeader(`Invitation: Access your client portal from ${cleanSender}`),
     html: renderEmailLayout({
       title: 'Welcome to your Client Portal',
-      previewText: `${rawSender} has invited you to collaborate on FlowDesk.`,
+      previewText: `${cleanSender} has invited you to collaborate on FlowDesk.`,
       contentHtml,
       ctaText: 'Enter Client Portal',
-      ctaUrl: params.portalUrl,
+      ctaUrl: safePortalUrl,
     }),
-    text: `Hello ${params.clientName},\n\n${rawSender} has invited you to your dedicated collaboration portal on FlowDesk.\n\nAccess your portal here: ${params.portalUrl}\n\nFlowDesk Team`,
+    text: `Hello ${cleanClientName},\n\n${cleanSender} has invited you to your dedicated collaboration portal on FlowDesk.\n\nAccess your portal here: ${safePortalUrl}\n\nFlowDesk Team`,
   };
 }
 
@@ -49,12 +52,18 @@ export interface DeliverableReadyParams {
 }
 
 export function renderDeliverableReadyEmail(params: DeliverableReadyParams) {
-  const rawProject = params.projectName || params.projectTitle || 'Project Workspace';
-  const project = escapeHtml(rawProject);
-  const deliverableTitle = escapeHtml(params.deliverableTitle);
-  const ver = escapeHtml(params.version || params.versionNumber || 'v1.0');
-  const freelancer = escapeHtml(params.freelancerName || 'Freelancer');
-  const clientName = escapeHtml(params.clientName);
+  const cleanProject = truncateText(params.projectName || params.projectTitle || 'Project Workspace', 200);
+  const cleanDeliverable = truncateText(params.deliverableTitle, 200);
+  const cleanVer = truncateText(params.version || params.versionNumber || 'v1.0', 50);
+  const cleanFreelancer = truncateText(params.freelancerName || 'Freelancer', 200);
+  const cleanClientName = truncateText(params.clientName, 200);
+  const safePortalUrl = sanitizeUrl(params.portalUrl);
+
+  const project = escapeHtml(cleanProject);
+  const deliverableTitle = escapeHtml(cleanDeliverable);
+  const ver = escapeHtml(cleanVer);
+  const freelancer = escapeHtml(cleanFreelancer);
+  const clientName = escapeHtml(cleanClientName);
 
   const contentHtml = `
     <p>Hello <strong>${clientName}</strong>,</p>
@@ -69,15 +78,15 @@ export function renderDeliverableReadyEmail(params: DeliverableReadyParams) {
   `;
 
   return {
-    subject: `Deliverable Ready for Review: "${params.deliverableTitle}" (${rawProject})`,
+    subject: sanitizeHeader(`Deliverable Ready for Review: "${cleanDeliverable}" (${cleanProject})`),
     html: renderEmailLayout({
       title: 'New Deliverable Ready for Review',
-      previewText: `"${params.deliverableTitle}" has been submitted for review.`,
+      previewText: `"${cleanDeliverable}" has been submitted for review.`,
       contentHtml,
       ctaText: 'Review Deliverable',
-      ctaUrl: params.portalUrl,
+      ctaUrl: safePortalUrl,
     }),
-    text: `Hello ${params.clientName},\n\n"${params.deliverableTitle}" (${rawProject}) is ready for review.\n\nReview it here: ${params.portalUrl}`,
+    text: `Hello ${cleanClientName},\n\n"${cleanDeliverable}" (${cleanProject}) is ready for review.\n\nReview it here: ${safePortalUrl}`,
   };
 }
 
@@ -93,13 +102,18 @@ export interface DeliverableApprovedParams {
 }
 
 export function renderDeliverableApprovedEmail(params: DeliverableApprovedParams) {
-  const rawProject = params.projectName || params.projectTitle || 'Project Workspace';
-  const project = escapeHtml(rawProject);
-  const freelancer = escapeHtml(params.freelancerName);
-  const clientName = escapeHtml(params.clientName);
-  const deliverableTitle = escapeHtml(params.deliverableTitle);
-  const notes = params.notes ? escapeHtml(params.notes) : null;
-  const url = params.dashboardUrl || params.deliverableUrl || '#';
+  const cleanProject = truncateText(params.projectName || params.projectTitle || 'Project Workspace', 200);
+  const cleanFreelancer = truncateText(params.freelancerName, 200);
+  const cleanClientName = truncateText(params.clientName, 200);
+  const cleanDeliverable = truncateText(params.deliverableTitle, 200);
+  const cleanNotes = params.notes ? truncateText(params.notes, 2000) : null;
+  const safeUrl = sanitizeUrl(params.dashboardUrl || params.deliverableUrl);
+
+  const project = escapeHtml(cleanProject);
+  const freelancer = escapeHtml(cleanFreelancer);
+  const clientName = escapeHtml(cleanClientName);
+  const deliverableTitle = escapeHtml(cleanDeliverable);
+  const notes = cleanNotes ? escapeHtml(cleanNotes) : null;
 
   const contentHtml = `
     <p>Hello <strong>${freelancer}</strong>,</p>
@@ -114,15 +128,15 @@ export function renderDeliverableApprovedEmail(params: DeliverableApprovedParams
   `;
 
   return {
-    subject: `Deliverable Approved: "${params.deliverableTitle}" by ${params.clientName}`,
+    subject: sanitizeHeader(`Deliverable Approved: "${cleanDeliverable}" by ${cleanClientName}`),
     html: renderEmailLayout({
       title: 'Deliverable Approved!',
-      previewText: `${params.clientName} approved "${params.deliverableTitle}".`,
+      previewText: `${cleanClientName} approved "${cleanDeliverable}".`,
       contentHtml,
       ctaText: 'View in Dashboard',
-      ctaUrl: url,
+      ctaUrl: safeUrl,
     }),
-    text: `Hello ${params.freelancerName},\n\n${params.clientName} approved "${params.deliverableTitle}" (${rawProject}).\n\nView here: ${url}`,
+    text: `Hello ${cleanFreelancer},\n\n${cleanClientName} approved "${cleanDeliverable}" (${cleanProject}).\n\nView here: ${safeUrl}`,
   };
 }
 
@@ -140,14 +154,18 @@ export interface RevisionRequestedParams {
 }
 
 export function renderRevisionRequestedEmail(params: RevisionRequestedParams) {
-  const rawProject = params.projectName || params.projectTitle || 'Project Workspace';
-  const project = escapeHtml(rawProject);
-  const freelancer = escapeHtml(params.freelancerName);
-  const clientName = escapeHtml(params.clientName);
-  const deliverableTitle = escapeHtml(params.deliverableTitle);
-  const rawFeedback = params.feedback || params.revisionNotes || 'Client requested modifications';
-  const feedbackText = escapeHtml(rawFeedback);
-  const url = params.dashboardUrl || params.deliverableUrl || '#';
+  const cleanProject = truncateText(params.projectName || params.projectTitle || 'Project Workspace', 200);
+  const cleanFreelancer = truncateText(params.freelancerName, 200);
+  const cleanClientName = truncateText(params.clientName, 200);
+  const cleanDeliverable = truncateText(params.deliverableTitle, 200);
+  const cleanFeedback = truncateText(params.feedback || params.revisionNotes || 'Client requested modifications', 2000);
+  const safeUrl = sanitizeUrl(params.dashboardUrl || params.deliverableUrl);
+
+  const project = escapeHtml(cleanProject);
+  const freelancer = escapeHtml(cleanFreelancer);
+  const clientName = escapeHtml(cleanClientName);
+  const deliverableTitle = escapeHtml(cleanDeliverable);
+  const feedbackText = escapeHtml(cleanFeedback);
 
   const contentHtml = `
     <p>Hello <strong>${freelancer}</strong>,</p>
@@ -165,15 +183,15 @@ export function renderRevisionRequestedEmail(params: RevisionRequestedParams) {
   `;
 
   return {
-    subject: `Revision Requested: "${params.deliverableTitle}" by ${params.clientName}`,
+    subject: sanitizeHeader(`Revision Requested: "${cleanDeliverable}" by ${cleanClientName}`),
     html: renderEmailLayout({
       title: 'Revision Requested',
-      previewText: `Client requested changes on "${params.deliverableTitle}".`,
+      previewText: `Client requested changes on "${cleanDeliverable}".`,
       contentHtml,
       ctaText: 'View Revision Details',
-      ctaUrl: url,
+      ctaUrl: safeUrl,
     }),
-    text: `Hello ${params.freelancerName},\n\n${params.clientName} requested revisions on "${params.deliverableTitle}".\nFeedback: ${rawFeedback}\n\nView here: ${url}`,
+    text: `Hello ${cleanFreelancer},\n\n${cleanClientName} requested revisions on "${cleanDeliverable}".\nFeedback: ${cleanFeedback}\n\nView here: ${safeUrl}`,
   };
 }
 
@@ -188,12 +206,18 @@ export interface DocumentUploadedParams {
 }
 
 export function renderDocumentUploadedEmail(params: DocumentUploadedParams) {
-  const recipient = escapeHtml(params.recipientName);
-  const uploader = escapeHtml(params.uploaderName);
-  const documentTitle = escapeHtml(params.documentTitle);
-  const category = escapeHtml(params.category);
-  const projectTitle = params.projectTitle ? escapeHtml(params.projectTitle) : null;
-  const url = params.actionUrl || params.documentUrl || '#';
+  const cleanRecipient = truncateText(params.recipientName, 200);
+  const cleanUploader = truncateText(params.uploaderName, 200);
+  const cleanDocumentTitle = truncateText(params.documentTitle, 200);
+  const cleanCategory = truncateText(params.category, 100);
+  const cleanProjectTitle = params.projectTitle ? truncateText(params.projectTitle, 200) : null;
+  const safeUrl = sanitizeUrl(params.actionUrl || params.documentUrl);
+
+  const recipient = escapeHtml(cleanRecipient);
+  const uploader = escapeHtml(cleanUploader);
+  const documentTitle = escapeHtml(cleanDocumentTitle);
+  const category = escapeHtml(cleanCategory);
+  const projectTitle = cleanProjectTitle ? escapeHtml(cleanProjectTitle) : null;
 
   const contentHtml = `
     <p>Hello <strong>${recipient}</strong>,</p>
@@ -207,15 +231,15 @@ export function renderDocumentUploadedEmail(params: DocumentUploadedParams) {
   `;
 
   return {
-    subject: `New Document Uploaded: "${params.documentTitle}"`,
+    subject: sanitizeHeader(`New Document Uploaded: "${cleanDocumentTitle}"`),
     html: renderEmailLayout({
       title: 'New Document Uploaded',
-      previewText: `${params.uploaderName} uploaded "${params.documentTitle}".`,
+      previewText: `${cleanUploader} uploaded "${cleanDocumentTitle}".`,
       contentHtml,
       ctaText: 'View Document',
-      ctaUrl: url,
+      ctaUrl: safeUrl,
     }),
-    text: `Hello ${params.recipientName},\n\n${params.uploaderName} uploaded "${params.documentTitle}" (${params.category}).\n\nView here: ${url}`,
+    text: `Hello ${cleanRecipient},\n\n${cleanUploader} uploaded "${cleanDocumentTitle}" (${cleanCategory}).\n\nView here: ${safeUrl}`,
   };
 }
 
@@ -232,14 +256,18 @@ export interface InvoiceIssuedParams {
 }
 
 export function renderInvoiceIssuedEmail(params: InvoiceIssuedParams) {
-  const rawSender = params.businessName || params.freelancerName || 'FlowDesk Studio';
-  const sender = escapeHtml(rawSender);
-  const rawAmt = params.amountFormatted || params.amount || '$0.00';
-  const amt = escapeHtml(rawAmt);
-  const clientName = escapeHtml(params.clientName);
-  const invoiceNumber = escapeHtml(params.invoiceNumber);
-  const dueDate = escapeHtml(params.dueDate);
-  const url = params.portalUrl || params.invoiceUrl || '#';
+  const cleanSender = truncateText(params.businessName || params.freelancerName || 'FlowDesk Studio', 200);
+  const cleanAmt = truncateText(params.amountFormatted || params.amount || '$0.00', 50);
+  const cleanClientName = truncateText(params.clientName, 200);
+  const cleanInvoiceNumber = truncateText(params.invoiceNumber, 100);
+  const cleanDueDate = truncateText(params.dueDate, 50);
+  const safeUrl = sanitizeUrl(params.portalUrl || params.invoiceUrl);
+
+  const sender = escapeHtml(cleanSender);
+  const amt = escapeHtml(cleanAmt);
+  const clientName = escapeHtml(cleanClientName);
+  const invoiceNumber = escapeHtml(cleanInvoiceNumber);
+  const dueDate = escapeHtml(cleanDueDate);
 
   const contentHtml = `
     <p>Hello <strong>${clientName}</strong>,</p>
@@ -254,15 +282,15 @@ export function renderInvoiceIssuedEmail(params: InvoiceIssuedParams) {
   `;
 
   return {
-    subject: `Invoice #${params.invoiceNumber} from ${rawSender} (${rawAmt})`,
+    subject: sanitizeHeader(`Invoice #${cleanInvoiceNumber} from ${cleanSender} (${cleanAmt})`),
     html: renderEmailLayout({
-      title: `Invoice #${params.invoiceNumber}`,
-      previewText: `Invoice #${params.invoiceNumber} for ${rawAmt} is due ${params.dueDate}.`,
+      title: `Invoice #${cleanInvoiceNumber}`,
+      previewText: `Invoice #${cleanInvoiceNumber} for ${cleanAmt} is due ${cleanDueDate}.`,
       contentHtml,
       ctaText: 'View Invoice',
-      ctaUrl: url,
+      ctaUrl: safeUrl,
     }),
-    text: `Hello ${params.clientName},\n\nInvoice #${params.invoiceNumber} from ${rawSender} for ${rawAmt} is due ${params.dueDate}.\n\nView invoice: ${url}`,
+    text: `Hello ${cleanClientName},\n\nInvoice #${cleanInvoiceNumber} from ${cleanSender} for ${cleanAmt} is due ${cleanDueDate}.\n\nView invoice: ${safeUrl}`,
   };
 }
 
@@ -283,16 +311,23 @@ export interface PaymentReceivedParams {
 }
 
 export function renderPaymentReceivedEmail(params: PaymentReceivedParams) {
-  const rawAmt = params.amountPaidFormatted || params.amount || '$0.00';
-  const amt = escapeHtml(rawAmt);
+  const cleanAmt = truncateText(params.amountPaidFormatted || params.amount || '$0.00', 50);
+  const cleanRecipient = truncateText(params.recipientName, 200);
+  const cleanInvoiceNumber = truncateText(params.invoiceNumber, 100);
+  const cleanMethod = truncateText(params.paymentMethod || 'Bank Transfer', 100);
+  const cleanPaymentDate = params.paymentDate ? truncateText(params.paymentDate, 50) : null;
+  const cleanReceiptNumber = params.receiptNumber ? truncateText(params.receiptNumber, 100) : null;
+  const cleanBalance = params.balanceRemainingFormatted ? truncateText(params.balanceRemainingFormatted, 50) : null;
+  const safeUrl = sanitizeUrl(params.actionUrl || params.receiptUrl);
+
+  const amt = escapeHtml(cleanAmt);
   const isFull = params.isFullyPaid !== undefined ? params.isFullyPaid : true;
-  const method = escapeHtml(params.paymentMethod || 'Bank Transfer');
-  const recipient = escapeHtml(params.recipientName);
-  const invoiceNumber = escapeHtml(params.invoiceNumber);
-  const paymentDate = params.paymentDate ? escapeHtml(params.paymentDate) : null;
-  const receiptNumber = params.receiptNumber ? escapeHtml(params.receiptNumber) : null;
-  const balance = params.balanceRemainingFormatted ? escapeHtml(params.balanceRemainingFormatted) : null;
-  const url = params.actionUrl || params.receiptUrl || '#';
+  const method = escapeHtml(cleanMethod);
+  const recipient = escapeHtml(cleanRecipient);
+  const invoiceNumber = escapeHtml(cleanInvoiceNumber);
+  const paymentDate = cleanPaymentDate ? escapeHtml(cleanPaymentDate) : null;
+  const receiptNumber = cleanReceiptNumber ? escapeHtml(cleanReceiptNumber) : null;
+  const balance = cleanBalance ? escapeHtml(cleanBalance) : null;
 
   const contentHtml = `
     <p>Hello <strong>${recipient}</strong>,</p>
@@ -309,15 +344,15 @@ export function renderPaymentReceivedEmail(params: PaymentReceivedParams) {
   `;
 
   return {
-    subject: `Payment Confirmation: Invoice #${params.invoiceNumber} (${rawAmt})`,
+    subject: sanitizeHeader(`Payment Confirmation: Invoice #${cleanInvoiceNumber} (${cleanAmt})`),
     html: renderEmailLayout({
       title: isFull ? 'Invoice Paid in Full' : 'Partial Payment Received',
-      previewText: `Payment of ${rawAmt} recorded for #${params.invoiceNumber}.`,
+      previewText: `Payment of ${cleanAmt} recorded for #${cleanInvoiceNumber}.`,
       contentHtml,
       ctaText: 'View Receipt & Invoice',
-      ctaUrl: url,
+      ctaUrl: safeUrl,
     }),
-    text: `Hello ${params.recipientName},\n\nPayment of ${rawAmt} recorded for Invoice #${params.invoiceNumber}.\n\nView here: ${url}`,
+    text: `Hello ${cleanRecipient},\n\nPayment of ${cleanAmt} recorded for Invoice #${cleanInvoiceNumber}.\n\nView here: ${safeUrl}`,
   };
 }
 
@@ -334,11 +369,12 @@ export interface AccountLifecycleParams {
 }
 
 export function renderAccountLifecycleEmail(params: AccountLifecycleParams) {
-  const rawUser = params.userName || params.name || 'User';
-  const userDisplayName = escapeHtml(rawUser);
-  const url = params.actionUrl || params.restoreUrl || '#';
-  const rawDeadline = params.restoreUntilDate || params.restoreUntil;
-  const deadline = rawDeadline ? escapeHtml(rawDeadline) : null;
+  const cleanUser = truncateText(params.userName || params.name || 'User', 200);
+  const safeUrl = sanitizeUrl(params.actionUrl || params.restoreUrl);
+  const cleanDeadline = params.restoreUntilDate || params.restoreUntil ? truncateText(params.restoreUntilDate || params.restoreUntil, 50) : null;
+
+  const userDisplayName = escapeHtml(cleanUser);
+  const deadline = cleanDeadline ? escapeHtml(cleanDeadline) : null;
 
   if (params.action === 'deleted' || params.action === 'scheduled_deletion') {
     const days = params.gracePeriodDays || (params.role === 'client' ? 30 : 5);
@@ -354,17 +390,17 @@ export function renderAccountLifecycleEmail(params: AccountLifecycleParams) {
       <p>If this was a mistake, you can restore your account before the deadline:</p>
     `;
 
-    return {
-      subject: `Security Alert: FlowDesk Account Deletion Initiated`,
-      html: renderEmailLayout({
-        title: 'Account Scheduled for Deletion',
-        previewText: `Your FlowDesk account is in the ${days}-day recovery period.`,
-        contentHtml,
-        ctaText: 'Manage / Restore Account',
-        ctaUrl: url,
-      }),
-      text: `Hello ${rawUser},\n\nYour FlowDesk account is scheduled for deletion (${days}-day grace period).\n\nRestore here if needed: ${url}`,
-    };
+  return {
+    subject: sanitizeHeader(`Security Alert: FlowDesk Account Deletion Initiated`),
+    html: renderEmailLayout({
+      title: 'Account Scheduled for Deletion',
+      previewText: `Your FlowDesk account is in the ${days}-day recovery period.`,
+      contentHtml,
+      ctaText: 'Manage / Restore Account',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nYour FlowDesk account is scheduled for deletion (${days}-day grace period).\n\nRestore here if needed: ${safeUrl}`,
+  };
   }
 
   // Restored
@@ -378,15 +414,15 @@ export function renderAccountLifecycleEmail(params: AccountLifecycleParams) {
   `;
 
   return {
-    subject: `Security Alert: FlowDesk Account Restored`,
+    subject: sanitizeHeader(`Security Alert: FlowDesk Account Restored`),
     html: renderEmailLayout({
       title: 'Account Successfully Restored',
       previewText: 'Your FlowDesk account and workspace are active.',
       contentHtml,
       ctaText: 'Log In to FlowDesk',
-      ctaUrl: url,
+      ctaUrl: safeUrl,
     }),
-    text: `Hello ${rawUser},\n\nYour FlowDesk account has been restored.\n\nLog in here: ${url}`,
+    text: `Hello ${cleanUser},\n\nYour FlowDesk account has been restored.\n\nLog in here: ${safeUrl}`,
   };
 }
 
@@ -399,11 +435,14 @@ export interface SecurityAlertParams {
 }
 
 export function renderSecurityAlertEmail(params: SecurityAlertParams) {
-  const rawUser = params.userName || params.name || 'User';
-  const userDisplayName = escapeHtml(rawUser);
-  const eventType = escapeHtml(params.eventType);
-  const details = escapeHtml(params.details);
-  const url = params.actionUrl || '#';
+  const cleanUser = truncateText(params.userName || params.name || 'User', 200);
+  const cleanEventType = truncateText(params.eventType, 100);
+  const cleanDetails = truncateText(params.details, 2000);
+  const safeUrl = sanitizeUrl(params.actionUrl);
+
+  const userDisplayName = escapeHtml(cleanUser);
+  const eventType = escapeHtml(cleanEventType);
+  const details = escapeHtml(cleanDetails);
 
   const contentHtml = `
     <p>Hello <strong>${userDisplayName}</strong>,</p>
@@ -417,15 +456,321 @@ export function renderSecurityAlertEmail(params: SecurityAlertParams) {
   `;
 
   return {
-    subject: `Security Alert: ${params.eventType}`,
+    subject: sanitizeHeader(`Security Alert: ${cleanEventType}`),
     html: renderEmailLayout({
       title: 'Security Alert',
-      previewText: `Security event on your FlowDesk account: ${params.eventType}`,
+      previewText: `Security event on your FlowDesk account: ${cleanEventType}`,
       contentHtml,
       ctaText: 'Review Security Settings',
-      ctaUrl: url,
+      ctaUrl: safeUrl,
     }),
-    text: `Hello ${rawUser},\n\nSecurity event: ${params.eventType}\nDetails: ${params.details}\n\nReview: ${url}`,
+    text: `Hello ${cleanUser},\n\nSecurity event: ${cleanEventType}\nDetails: ${cleanDetails}\n\nReview: ${safeUrl}`,
   };
 }
+
+// ==========================================
+// Billing & Subscription Templates
+// ==========================================
+
+export interface BillingTrialEndingParams {
+  userName?: string;
+  workspaceName?: string;
+  daysRemaining: number;
+  upgradeUrl: string;
+}
+
+export function renderBillingTrialEndingEmail(params: BillingTrialEndingParams) {
+  const cleanUser = truncateText(params.userName || 'Creator', 200);
+  const cleanWorkspace = truncateText(params.workspaceName || 'Your Workspace', 200);
+  const safeUrl = sanitizeUrl(params.upgradeUrl);
+
+  const userName = escapeHtml(cleanUser);
+  const workspaceName = escapeHtml(cleanWorkspace);
+
+  const contentHtml = `
+    <p>Hello <strong>${userName}</strong>,</p>
+    <p>Your free Pro trial for <strong>${workspaceName}</strong> will conclude in <strong>${params.daysRemaining} days</strong>.</p>
+    <p>To continue enjoying unlimited projects, branded client portals, and automated reminders without interruption, upgrade your workspace subscription.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`Your FlowDesk Pro trial ends in ${params.daysRemaining} days`),
+    html: renderEmailLayout({
+      title: 'Pro Trial Ending Soon',
+      previewText: `Your Pro trial ends in ${params.daysRemaining} days. Upgrade to maintain uninterrupted access.`,
+      contentHtml,
+      ctaText: 'Upgrade Workspace Plan',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nYour Pro trial for ${cleanWorkspace} ends in ${params.daysRemaining} days.\n\nUpgrade here: ${safeUrl}`,
+  };
+}
+
+export interface BillingPaymentFailedParams {
+  userName?: string;
+  workspaceName?: string;
+  planName: string;
+  updateUrl: string;
+  reason?: string;
+}
+
+export function renderBillingPaymentFailedEmail(params: BillingPaymentFailedParams) {
+  const cleanUser = truncateText(params.userName || 'Creator', 200);
+  const cleanWorkspace = truncateText(params.workspaceName || 'Your Workspace', 200);
+  const cleanPlan = truncateText(params.planName, 100);
+  const cleanReason = truncateText(params.reason || 'Card charge declined by issuer', 200);
+  const safeUrl = sanitizeUrl(params.updateUrl);
+
+  const userName = escapeHtml(cleanUser);
+  const workspaceName = escapeHtml(cleanWorkspace);
+  const planName = escapeHtml(cleanPlan);
+  const reason = escapeHtml(cleanReason);
+
+  const contentHtml = `
+    <p>Hello <strong>${userName}</strong>,</p>
+    <p>We were unable to process the recurring payment for your <strong>${planName}</strong> plan on workspace <strong>${workspaceName}</strong>.</p>
+    <div class="info-box">
+      <div class="info-row"><span class="info-label">Plan</span><span class="info-value">${planName}</span></div>
+      <div class="info-row"><span class="info-label">Status</span><span class="info-value">Payment Failed</span></div>
+      <div class="info-row"><span class="info-label">Reason</span><span class="info-value">${reason}</span></div>
+    </div>
+    <p>Razorpay will automatically re-attempt this charge over the next few days. You can also update your payment method now to prevent service interruptions.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`Action Required: Payment failed for ${cleanWorkspace}`),
+    html: renderEmailLayout({
+      title: 'Payment Failed',
+      previewText: `Recurring subscription charge failed for ${cleanPlan}. Please update your payment method.`,
+      contentHtml,
+      ctaText: 'Update Payment Method',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nRecurring payment failed for ${cleanPlan} on ${cleanWorkspace}.\n\nUpdate your card: ${safeUrl}`,
+  };
+}
+
+export interface BillingGraceEndingSoonParams {
+  userName?: string;
+  workspaceName?: string;
+  daysRemaining: number;
+  updateUrl: string;
+}
+
+export function renderBillingGraceEndingSoonEmail(params: BillingGraceEndingSoonParams) {
+  const cleanUser = truncateText(params.userName || 'Creator', 200);
+  const cleanWorkspace = truncateText(params.workspaceName || 'Your Workspace', 200);
+  const safeUrl = sanitizeUrl(params.updateUrl);
+
+  const userName = escapeHtml(cleanUser);
+  const workspaceName = escapeHtml(cleanWorkspace);
+
+  const contentHtml = `
+    <p>Hello <strong>${userName}</strong>,</p>
+    <p>This is a final notice regarding your FlowDesk workspace <strong>${workspaceName}</strong>.</p>
+    <p>Your workspace is currently in a grace period which will expire in <strong>${params.daysRemaining} days</strong>. Once the grace period concludes, creating new projects, clients, and invoices will be temporarily locked.</p>
+    <p>Your client data and invoices will remain safe and accessible.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`Important: ${params.daysRemaining} days left in your workspace grace period`),
+    html: renderEmailLayout({
+      title: 'Grace Period Ending Soon',
+      previewText: `Final notice: ${params.daysRemaining} days until workspace access is restricted.`,
+      contentHtml,
+      ctaText: 'Restore Full Access',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nYour workspace grace period expires in ${params.daysRemaining} days.\n\nRestore access: ${safeUrl}`,
+  };
+}
+
+export interface BillingSubscriptionCanceledParams {
+  userName?: string;
+  workspaceName?: string;
+  planName: string;
+  effectiveDate: string;
+  resubscribeUrl: string;
+}
+
+export function renderBillingSubscriptionCanceledEmail(params: BillingSubscriptionCanceledParams) {
+  const cleanUser = truncateText(params.userName || 'Creator', 200);
+  const cleanWorkspace = truncateText(params.workspaceName || 'Your Workspace', 200);
+  const cleanPlan = truncateText(params.planName, 100);
+  const cleanDate = truncateText(params.effectiveDate, 100);
+  const safeUrl = sanitizeUrl(params.resubscribeUrl);
+
+  const userName = escapeHtml(cleanUser);
+  const workspaceName = escapeHtml(cleanWorkspace);
+  const planName = escapeHtml(cleanPlan);
+  const effectiveDate = escapeHtml(cleanDate);
+
+  const contentHtml = `
+    <p>Hello <strong>${userName}</strong>,</p>
+    <p>Your subscription to <strong>${planName}</strong> for workspace <strong>${workspaceName}</strong> has been cancelled.</p>
+    <p>You will retain full access until <strong>${effectiveDate}</strong>, after which your workspace will automatically revert to the Free Starter tier.</p>
+    <p>All of your existing clients, projects, and deliverables will remain safely stored.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`Subscription cancelled for ${cleanWorkspace}`),
+    html: renderEmailLayout({
+      title: 'Subscription Cancelled',
+      previewText: `Your subscription to ${cleanPlan} will end on ${cleanDate}.`,
+      contentHtml,
+      ctaText: 'Manage Subscription',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nYour subscription to ${cleanPlan} for ${cleanWorkspace} was cancelled and will end on ${cleanDate}.\n\nManage: ${safeUrl}`,
+  };
+}
+
+export interface BillingSubscriptionActivatedParams {
+  userName?: string;
+  workspaceName?: string;
+  planName: string;
+  interval: string;
+  dashboardUrl: string;
+}
+
+export function renderBillingSubscriptionActivatedEmail(params: BillingSubscriptionActivatedParams) {
+  const cleanUser = truncateText(params.userName || 'Creator', 200);
+  const cleanWorkspace = truncateText(params.workspaceName || 'Your Workspace', 200);
+  const cleanPlan = truncateText(params.planName, 100);
+  const cleanInterval = truncateText(params.interval, 50);
+  const safeUrl = sanitizeUrl(params.dashboardUrl);
+
+  const userName = escapeHtml(cleanUser);
+  const workspaceName = escapeHtml(cleanWorkspace);
+  const planName = escapeHtml(cleanPlan);
+  const interval = escapeHtml(cleanInterval);
+
+  const contentHtml = `
+    <p>Hello <strong>${userName}</strong>,</p>
+    <p>Thank you for subscribing! Your workspace <strong>${workspaceName}</strong> is now upgraded to <strong>${planName} (${interval})</strong>.</p>
+    <p>All higher limits and premium features are immediately available in your studio dashboard.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`Welcome to ${cleanPlan} on FlowDesk!`),
+    html: renderEmailLayout({
+      title: 'Subscription Activated',
+      previewText: `Your workspace is now live on ${cleanPlan}.`,
+      contentHtml,
+      ctaText: 'Go to Workspace Dashboard',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nYour subscription to ${cleanPlan} is now active!\n\nOpen workspace: ${safeUrl}`,
+  };
+}
+
+export interface BillingPlanChangedParams {
+  userName?: string;
+  workspaceName?: string;
+  oldPlanName: string;
+  newPlanName: string;
+  dashboardUrl: string;
+}
+
+export function renderBillingPlanChangedEmail(params: BillingPlanChangedParams) {
+  const cleanUser = truncateText(params.userName || 'Creator', 200);
+  const cleanWorkspace = truncateText(params.workspaceName || 'Your Workspace', 200);
+  const cleanOld = truncateText(params.oldPlanName, 100);
+  const cleanNew = truncateText(params.newPlanName, 100);
+  const safeUrl = sanitizeUrl(params.dashboardUrl);
+
+  const userName = escapeHtml(cleanUser);
+  const workspaceName = escapeHtml(cleanWorkspace);
+  const oldPlan = escapeHtml(cleanOld);
+  const newPlan = escapeHtml(cleanNew);
+
+  const contentHtml = `
+    <p>Hello <strong>${userName}</strong>,</p>
+    <p>Your subscription for <strong>${workspaceName}</strong> has been updated from <strong>${oldPlan}</strong> to <strong>${newPlan}</strong>.</p>
+    <p>Your revised entitlements are active and your next recurring invoice will reflect this change.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`Plan updated to ${cleanNew} for ${cleanWorkspace}`),
+    html: renderEmailLayout({
+      title: 'Plan Updated',
+      previewText: `Your workspace plan has been changed to ${cleanNew}.`,
+      contentHtml,
+      ctaText: 'View Studio Settings',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanUser},\n\nYour plan for ${cleanWorkspace} was updated to ${cleanNew}.\n\nView settings: ${safeUrl}`,
+  };
+}
+
+export interface InvoiceReminderParams {
+  clientName: string;
+  freelancerName?: string;
+  businessName?: string;
+  invoiceNumber: string;
+  amountFormatted: string;
+  remainingBalanceFormatted?: string;
+  dueDate: string;
+  portalUrl?: string;
+  stage: 'before_due' | 'due_date' | 'after_due';
+}
+
+export function renderInvoiceReminderEmail(params: InvoiceReminderParams) {
+  const cleanSender = truncateText(params.businessName || params.freelancerName || 'FlowDesk Studio', 200);
+  const cleanAmt = truncateText(params.remainingBalanceFormatted || params.amountFormatted || '$0.00', 50);
+  const cleanClientName = truncateText(params.clientName, 200);
+  const cleanInvoiceNumber = truncateText(params.invoiceNumber, 100);
+  const cleanDueDate = truncateText(params.dueDate, 50);
+  const safeUrl = sanitizeUrl(params.portalUrl);
+
+  const sender = escapeHtml(cleanSender);
+  const amt = escapeHtml(cleanAmt);
+  const clientName = escapeHtml(cleanClientName);
+  const invoiceNumber = escapeHtml(cleanInvoiceNumber);
+  const dueDate = escapeHtml(cleanDueDate);
+
+  let title = `Payment Reminder: Invoice #${cleanInvoiceNumber}`;
+  let subjectPrefix = 'Reminder:';
+  let messageBody = `<p>This is a friendly reminder that invoice <strong>#${invoiceNumber}</strong> for <strong>${amt}</strong> is due on <strong>${dueDate}</strong>.</p>`;
+
+  if (params.stage === 'before_due') {
+    title = `Upcoming Payment: Invoice #${cleanInvoiceNumber}`;
+    subjectPrefix = 'Upcoming Payment:';
+    messageBody = `<p>This is a quick courtesy note that invoice <strong>#${invoiceNumber}</strong> from <strong>${sender}</strong> will be due on <strong>${dueDate}</strong>.</p>`;
+  } else if (params.stage === 'due_date') {
+    title = `Due Today: Invoice #${cleanInvoiceNumber}`;
+    subjectPrefix = 'Due Today:';
+    messageBody = `<p>This is a reminder that invoice <strong>#${invoiceNumber}</strong> from <strong>${sender}</strong> is due for payment today, <strong>${dueDate}</strong>.</p>`;
+  } else if (params.stage === 'after_due') {
+    title = `Overdue Notice: Invoice #${cleanInvoiceNumber}`;
+    subjectPrefix = 'Overdue Notice:';
+    messageBody = `<p>Our records show that payment for invoice <strong>#${invoiceNumber}</strong> from <strong>${sender}</strong> was due on <strong>${dueDate}</strong> and is currently overdue.</p>`;
+  }
+
+  const contentHtml = `
+    <p>Hello <strong>${clientName}</strong>,</p>
+    ${messageBody}
+    <div class="info-box">
+      <div class="info-row"><span class="info-label">Invoice Number</span><span class="info-value">#${invoiceNumber}</span></div>
+      <div class="info-row"><span class="info-label">Remaining Balance</span><span class="info-value" style="font-size: 15px; color: #ffffff;">${amt}</span></div>
+      <div class="info-row"><span class="info-label">Due Date</span><span class="info-value">${dueDate}</span></div>
+      <div class="info-row"><span class="info-label">Issued By</span><span class="info-value">${sender}</span></div>
+    </div>
+    <p>Please review and settle the outstanding balance through your secure portal link below.</p>
+  `;
+
+  return {
+    subject: sanitizeHeader(`${subjectPrefix} Invoice #${cleanInvoiceNumber} from ${cleanSender} (${cleanAmt})`),
+    html: renderEmailLayout({
+      title,
+      previewText: `Payment reminder for Invoice #${cleanInvoiceNumber} (${cleanAmt}).`,
+      contentHtml,
+      ctaText: 'Review & Pay Invoice',
+      ctaUrl: safeUrl,
+    }),
+    text: `Hello ${cleanClientName},\n\nPayment reminder for Invoice #${cleanInvoiceNumber} from ${cleanSender}.\nBalance: ${cleanAmt}\nDue Date: ${cleanDueDate}\n\nReview invoice: ${safeUrl}`,
+  };
+}
+
+
 

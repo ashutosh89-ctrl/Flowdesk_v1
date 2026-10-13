@@ -39,10 +39,17 @@ export async function middleware(request: NextRequest) {
     path.startsWith('/reset-password') ||
     path.startsWith('/forgot-password');
 
+  // SEC-MED-01: Set strict privacy headers on invitation connection routes
+  if (path.startsWith('/connect')) {
+    response.headers.set('Referrer-Policy', 'no-referrer');
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  }
+
   // 2. Client Portal Public Routes
   const isClientPublicRoute =
     path === '/client' ||
-    path.startsWith('/client/login');
+    path.startsWith('/client/login') ||
+    path.startsWith('/connect');
 
   // 3. Client Portal Protected Routes (requiring client token / session)
   const isClientProtectedRoute =

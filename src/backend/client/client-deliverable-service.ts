@@ -2,6 +2,7 @@ import { supabase, isDemoModeActive } from '@/backend/utilities/supabase';
 import { Deliverable } from '@/shared/types';
 import { mockClients, mockDeliverables } from '@/backend/store/mockData';
 import { StorageHelper } from '@/backend/storage/storage-helper';
+import { isServerMutationBatchEnabled } from '@/shared/config/feature-flags';
 
 const CLIENT_SESSION_KEY = 'flowdesk_client_session';
 
@@ -174,6 +175,24 @@ export const ClientDeliverableService = {
       return { success: true, deliverable: { ...deliverable, status: 'approved', approvalStatus: 'approved' } };
     }
 
+    // In browser environment, delegate to the hardened server Route Handler
+    if (typeof window !== 'undefined') {
+      try {
+        const response = await fetch(`/api/deliverables/${encodeURIComponent(deliverableId)}/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes: notes || '' }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          return { success: false, error: data.error || 'Failed to approve deliverable.' };
+        }
+        return { success: true, deliverable: data.deliverable };
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Network error while approving deliverable.' };
+      }
+    }
+
     try {
       // 1. Verify that deliverable belongs to this client
       const { data: existing, error: fetchError } = await supabase
@@ -317,6 +336,23 @@ export const ClientDeliverableService = {
       return { success: true, deliverable: { ...deliverable, status: 'revision_requested', approvalStatus: 'revision_requested', rejectionReason: revisionComment } };
     }
 
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
+      try {
+        const response = await fetch(`/api/deliverables/${encodeURIComponent(deliverableId)}/revision`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ revisionComment }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          return { success: false, error: data.error || 'Failed to request revision.' };
+        }
+        return { success: true, deliverable: data.deliverable };
+      } catch (err: any) {
+        return { success: false, error: err?.message || 'Network error requesting revision.' };
+      }
+    }
+
     try {
       // 1. Verify that deliverable belongs to this client
       const { data: existing, error: fetchError } = await supabase
@@ -339,10 +375,11 @@ export const ClientDeliverableService = {
       let attachmentMetadata: { name: string; size: string; url: string } | null = null;
       if (attachmentFile && existing.workspace_id) {
         const uploadRes = await StorageHelper.uploadFile(
-          'deliverables',
+          'documents',
           existing.workspace_id,
           `revisions/${deliverableId}`,
-          attachmentFile
+          attachmentFile,
+          { clientId }
         );
         if (!uploadRes.error && uploadRes.path) {
           attachmentMetadata = {

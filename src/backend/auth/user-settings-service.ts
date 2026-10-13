@@ -1,5 +1,6 @@
 import { supabase } from '@/backend/utilities/supabase';
 import { UserSettings } from '@/shared/types';
+import { isServerMutationBatchEnabled } from '@/shared/config/feature-flags';
 
 const LOCAL_SETTINGS_PREFIX = 'flowdesk_user_settings_';
 
@@ -126,6 +127,57 @@ export const UserSettingsService = {
 
     // Always cache locally
     this.setLocalSettings(targetUserId, mergedSettings);
+
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(4)) {
+      if (userId && userId !== 'usr-default' && !userId.startsWith('usr-demo')) {
+        try {
+          await fetch('/api/account/settings', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              currency: updates.currency,
+              timezone: updates.timezone,
+              dateFormat: updates.date_format,
+              invoicePrefix: updates.invoice_prefix,
+              invoiceNumberFormat: updates.invoice_number_format,
+              invoiceSeparator: updates.invoice_separator,
+              invoiceIncludeYear: updates.invoice_include_year,
+              invoicePadding: updates.invoice_padding,
+              invoiceNextSequence: updates.invoice_next_sequence,
+              defaultTaxRate: updates.default_tax_rate,
+              taxName: updates.tax_name,
+              defaultPaymentTerms: updates.default_payment_terms,
+            }),
+          });
+          if (
+            updates.email_notifications !== undefined ||
+            updates.email_deliverables !== undefined ||
+            updates.email_documents !== undefined ||
+            updates.email_invoices !== undefined ||
+            updates.invoice_reminders !== undefined ||
+            updates.comment_alerts !== undefined ||
+            updates.weekly_digest !== undefined
+          ) {
+            await fetch('/api/account/notifications', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                emailNotifications: updates.email_notifications,
+                emailDeliverables: updates.email_deliverables,
+                emailDocuments: updates.email_documents,
+                emailInvoices: updates.email_invoices,
+                invoiceReminders: updates.invoice_reminders,
+                commentAlerts: updates.comment_alerts,
+                weeklyDigest: updates.weekly_digest,
+              }),
+            });
+          }
+        } catch (err) {
+          console.warn('Server settings sync notice:', err);
+        }
+      }
+      return mergedSettings;
+    }
 
     // Sync to Supabase if valid user
     if (userId && userId !== 'usr-default' && !userId.startsWith('usr-demo')) {

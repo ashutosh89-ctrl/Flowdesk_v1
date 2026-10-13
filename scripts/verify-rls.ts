@@ -9,12 +9,45 @@
  * Usage: npx tsx scripts/verify-rls.ts
  */
 
+import fs from 'fs';
+import path from 'path';
 import { createClient } from '@supabase/supabase-js';
 
+// Load .env.local / .env into process.env if present
+const envLocalPath = path.resolve(__dirname, '../.env.local');
+if (fs.existsSync(envLocalPath)) {
+  const content = fs.readFileSync(envLocalPath, 'utf8');
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx !== -1) {
+      const key = trimmed.slice(0, eqIdx).trim();
+      const val = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
+      if (!process.env[key]) {
+        process.env[key] = val;
+      }
+    }
+  }
+}
+
 // ─── CONFIG ────────────────────────────────────────────────────────
-const SUPABASE_URL = 'https://ldgjmojwkktymnrthzho.supabase.co';
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkZ2ptb2p3a2t0eW1ucnRoemhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTYzMzIsImV4cCI6MjEwMTQzMjMzMn0.EB7MrBIbfIlAIwB-FX61bxeE6wpFTicnCbAH1DxSUGQ';
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxkZ2ptb2p3a2t0eW1ucnRoemhvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTg1NjMzMiwiZXhwIjoyMTAxNDMyMzMyfQ.f_HXeFUfrmVUwF2BbLKGK8JtypMYmGn2MH53B9KiM60';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_URL) {
+  console.error('[verify-rls] Missing required environment variable: NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL)');
+  process.exit(1);
+}
+if (!ANON_KEY) {
+  console.error('[verify-rls] Missing required environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY');
+  process.exit(1);
+}
+if (!SERVICE_ROLE_KEY) {
+  console.error('[verify-rls] Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(1);
+}
 
 // ─── TYPES ─────────────────────────────────────────────────────────
 interface TestResult {

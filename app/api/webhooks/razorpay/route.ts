@@ -3,9 +3,20 @@ import { RazorpayService, PaymentService, fromSubunits } from '@/backend/payment
 
 export async function POST(request: NextRequest) {
   try {
+    // 0. Body size limit pre-check (100 KB)
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && parseInt(contentLength, 10) > 100 * 1024) {
+      return NextResponse.json({ error: 'Payload exceeds size limit' }, { status: 400 });
+    }
+
     // 1. Read raw body as text for HMAC verification
     const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).length > 100 * 1024) {
+      return NextResponse.json({ error: 'Payload exceeds size limit' }, { status: 400 });
+    }
+
     const signature = request.headers.get('x-razorpay-signature');
+
 
     if (!signature) {
       console.warn('[Webhook /api/webhooks/razorpay] Missing X-Razorpay-Signature header');
