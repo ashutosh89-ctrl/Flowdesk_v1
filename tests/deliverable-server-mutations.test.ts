@@ -123,4 +123,43 @@ test('Batch 2: Deliverable Server Mutations Suite', async (suite) => {
     assert.equal(data.success, true);
     assert.equal(data.comment.content, 'Reviewing the updated typography now.');
   });
+
+  await suite.test('Deliverables Collection: rejects unauthenticated create in production', async () => {
+    const { POST: handleCreateDeliverable } = await import('../app/api/deliverables/route');
+    process.env.NEXT_PUBLIC_AUTH_MODE = 'production';
+    const req = new NextRequest('http://localhost:3000/api/deliverables', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: 'c1c1c1c1-1111-4111-8111-111111111111',
+        title: 'Brand Guideline Documentation',
+      }),
+    });
+    const res = await handleCreateDeliverable(req);
+    assert.equal(res.status, 401);
+    const data = await res.json();
+    assert.equal(data.code, 'UNAUTHORIZED');
+    process.env.NEXT_PUBLIC_AUTH_MODE = 'demo';
+  });
+
+  await suite.test('Deliverables Collection: creates deliverable package in demo mode', async () => {
+    const { POST: handleCreateDeliverable } = await import('../app/api/deliverables/route');
+    const req = new NextRequest('http://localhost:3000/api/deliverables', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId: 'c1c1c1c1-1111-4111-8111-111111111111',
+        title: 'Mobile App Wireframes V1',
+        description: 'Complete figma wireframe kit',
+        version: 'v1.0.0',
+        priority: 'high',
+      }),
+    });
+    const res = await handleCreateDeliverable(req);
+    assert.equal(res.status, 201);
+    const data = await res.json();
+    assert.equal(data.success, true);
+    assert.equal(data.deliverable.title, 'Mobile App Wireframes V1');
+    assert.equal(data.deliverable.priority, 'high');
+  });
 });

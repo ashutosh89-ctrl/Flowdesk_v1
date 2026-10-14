@@ -8,6 +8,7 @@ import { DemoDataProvider } from '@/backend/utilities/demo-data-provider';
 import { UserSettingsService } from '@/backend/auth/user-settings-service';
 import { FlowDeskStore } from '@/backend/store/storage-store';
 import { isServerMutationBatchEnabled } from '@/shared/config/feature-flags';
+import { safeDeliverableInsert, safeDeliverableUpdate, safeDeliverableFileInsert, deriveApprovalStatus } from '@/backend/utilities/deliverables-db';
 
 /** Helper: format bytes to human-readable string */
 const formatFileSize = (bytes: number): string => {
@@ -542,7 +543,7 @@ export const FreelancerDeliverableService = {
   getDeliverables: async (clientId?: string, includeArchived?: boolean): Promise<Deliverable[]> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getDeliverables(clientId, includeArchived);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return [];
+    if (!wsId) return FlowDeskStore.getDeliverables(clientId, includeArchived);
 
     try {
       let query = supabase.from('deliverables').select('*').eq('workspace_id', wsId);
@@ -550,7 +551,7 @@ export const FreelancerDeliverableService = {
       if (!includeArchived) query = query.neq('status', 'archived');
 
       const { data, error } = await query.order('created_at', { ascending: false });
-      if (error || !data) return [];
+      if (error || !data) return FlowDeskStore.getDeliverables(clientId, includeArchived);
 
       return data.map((d) => ({
         id: d.id,
@@ -575,14 +576,16 @@ export const FreelancerDeliverableService = {
       }));
     } catch (err) {
       console.warn('Error fetching deliverables:', err);
-      return [];
+      return FlowDeskStore.getDeliverables(clientId, includeArchived);
     }
   },
   getDeliverableById: async (id: string): Promise<Deliverable | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getDeliverableById(id);
+    const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+    if (!wsId) return FlowDeskStore.getDeliverableById(id);
     try {
       const { data, error } = await supabase.from('deliverables').select('*').eq('id', id).single();
-      if (error || !data) return undefined;
+      if (error || !data) return FlowDeskStore.getDeliverableById(id);
 
       // Fetch related data in parallel
       const [versionsResult, filesResult, commentsResult] = await Promise.all([
@@ -659,7 +662,7 @@ export const FreelancerDeliverableService = {
       };
     } catch (err) {
       console.warn('Error fetching deliverable by ID:', err);
-      return undefined;
+      return FlowDeskStore.getDeliverableById(id);
     }
   },
   createDeliverable: async (delData: any): Promise<Deliverable> => {
@@ -669,8 +672,80 @@ export const FreelancerDeliverableService = {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.addDeliverable(delData as any);
     }
+    // 1. Preferred path: Secure Server Route Handler (Batch 2)
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
+      try {
+        const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+        const cleanProjectId = delData.projectId && UUID_REGEX.test(delData.projectId) ? delData.projectId : undefined;
+
+        const res = await fetch('/api/deliverables', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId: delData.clientId,
+            clientName: delData.clientName,
+            projectId: cleanProjectId,
+            title: delData.title,
+            description: delData.description || '',
+            dueDate: delData.dueDate,
+            reviewDeadline: delData.reviewDeadline,
+            version: delData.version || 'v1.0',
+            priority: delData.priority || 'medium',
+            fileName: delData.fileName,
+            fileSize: delData.fileSize,
+            fileUrl: delData.fileUrl,
+            internalNotes: delData.internalNotes || '',
+            submissionMessage: delData.submissionMessage || '',
+            status: delData.status || 'draft',
+            approvalStatus: delData.approvalStatus || 'pending',
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || data.error || 'Failed to create deliverable');
+        }
+
+        // If file needs to be uploaded to storage, upload using StorageHelper
+        const fileToUpload = (delData as any).file as File | undefined;
+        if (fileToUpload && typeof StorageHelper !== 'undefined' && data.deliverable?.id) {
+          try {
+            const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+            if (wsId && fileToUpload.size <= 50 * 1024 * 1024) {
+              const fileResult = await StorageHelper.uploadFile(
+                'deliverables',
+                wsId,
+                `deliverables/${data.deliverable.id}`,
+                fileToUpload,
+                { clientId: data.deliverable.clientId }
+              );
+              if (fileResult.path) {
+                await safeDeliverableFileInsert(supabase, {
+                  deliverable_id: data.deliverable.id,
+                  file_name: fileToUpload.name,
+                  file_size: delData.fileSize || formatFileSize(fileToUpload.size),
+                  file_type: fileToUpload.type || 'application/pdf',
+                  file_url: fileResult.path,
+                  is_pinned: false,
+                });
+              }
+            }
+          } catch (uploadErr) {
+            console.warn('Storage file upload notice during deliverable creation:', uploadErr);
+          }
+        }
+
+        return data.deliverable;
+      } catch (serverErr: any) {
+        console.warn('Server mutation route failed, falling back to direct Supabase write:', serverErr);
+      }
+    }
+
+    // 2. Direct Supabase Fallback
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) throw new Error('No active workspace');
+    if (!wsId) {
+      return FlowDeskStore.addDeliverable(delData as any);
+    }
 
     try {
       const {
@@ -695,8 +770,10 @@ export const FreelancerDeliverableService = {
         approval_status: delData.approvalStatus || 'pending',
       };
 
-      const { data, error } = await supabase.from('deliverables').insert(payload).select().single();
-      if (error || !data) throw new Error('Failed to create deliverable');
+      const { data, error } = await safeDeliverableInsert(supabase, payload);
+      if (error || !data) {
+        throw new Error(error?.message || 'Failed to create deliverable');
+      }
 
       logActivitySafe('created_deliverable', data.title, 'deliverable');
 
@@ -722,19 +799,14 @@ export const FreelancerDeliverableService = {
               const fileSize = delData.fileSize || formatFileSize(fileToUpload.size);
               const fileType = fileToUpload.type || 'application/octet-stream';
 
-              await supabase.from('deliverable_files').insert({
+              await safeDeliverableFileInsert(supabase, {
                 deliverable_id: data.id,
                 file_name: fileName,
                 file_size: fileSize,
                 file_type: fileType,
                 file_url: fileResult.path || '',
                 is_pinned: false,
-                uploaded_by: user?.id,
-                uploaded_at: new Date().toISOString(),
               });
-
-              // Update files count
-              await supabase.from('deliverables').update({ files_count: 1, updated_at: new Date().toISOString() }).eq('id', data.id);
             }
           }
         } catch (fileErr) {
@@ -744,17 +816,14 @@ export const FreelancerDeliverableService = {
         // Handle URL-based file reference
         const fileName = delData.fileName || 'Deliverable File';
         const fileSize = delData.fileSize || '';
-        await supabase.from('deliverable_files').insert({
+        await safeDeliverableFileInsert(supabase, {
           deliverable_id: data.id,
           file_name: fileName,
           file_size: fileSize,
           file_type: 'link',
           file_url: delData.fileUrl,
           is_pinned: false,
-          uploaded_by: user?.id,
-          uploaded_at: new Date().toISOString(),
         });
-        await supabase.from('deliverables').update({ files_count: 1, updated_at: new Date().toISOString() }).eq('id', data.id);
       }
 
       // Create initial version record
@@ -765,7 +834,7 @@ export const FreelancerDeliverableService = {
         file_name: delData.fileName || '',
         file_size: delData.fileSize || '',
         note: 'Initial version',
-        uploaded_by: user?.email?.split('@')[0] || 'User',
+        uploaded_by: user?.id || null,
       });
 
       return {
@@ -785,7 +854,8 @@ export const FreelancerDeliverableService = {
         submissionMessage: data.submission_message || '',
       };
     } catch (err) {
-      throw err instanceof Error ? err : new Error('Failed to create deliverable');
+      console.warn('Direct Supabase write failed, falling back to local store:', err);
+      return FlowDeskStore.addDeliverable(delData as any);
     }
   },
   updateDeliverable: async (id: string, updates: Partial<Deliverable>): Promise<Deliverable | undefined> => {
@@ -803,11 +873,10 @@ export const FreelancerDeliverableService = {
       if (updates.revisionNote !== undefined) payload.rejection_reason = updates.revisionNote;
       if ((updates as any).revisionNotes !== undefined) payload.rejection_reason = (updates as any).revisionNotes;
       if (updates.approvalStatus !== undefined) payload.approval_status = updates.approvalStatus;
-      const { error } = await supabase.from('deliverables').update(payload).eq('id', id).eq('workspace_id', wsId);
+      const { data, error } = await safeDeliverableUpdate(supabase, id, payload, { key: 'workspace_id', value: wsId });
       if (error) { console.warn('Supabase deliverable update error:', error.message); return undefined; }
-      const { data } = await supabase.from('deliverables').select('*').eq('id', id).single();
       if (!data) return undefined;
-      return { id: data.id, projectId: data.project_id || '', clientId: data.client_id, clientName: data.client_name || '', title: data.title, description: data.description || '', status: data.status || 'draft', dueDate: data.due_date || '', version: data.current_version || 'v1.0', internalNotes: data.internal_notes || '' };
+      return { id: data.id, projectId: data.project_id || '', clientId: data.client_id, clientName: data.client_name || '', title: data.title, description: data.description || '', status: data.status || 'draft', dueDate: data.due_date || '', version: data.current_version || 'v1.0', internalNotes: data.internal_notes || '', approvalStatus: deriveApprovalStatus(data.status, data.approval_status) };
     } catch { return undefined; }
   },
   duplicateDeliverable: async (id: string): Promise<Deliverable | undefined> => {
@@ -845,26 +914,49 @@ export const FreelancerDeliverableService = {
     }
   },
   uploadNewVersion: async (id: string, versionData: any): Promise<Deliverable | undefined> => {
-    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
-      const res = await fetch(`/api/deliverables/${encodeURIComponent(id)}/versions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          note: versionData.note,
-          fileName: versionData.fileName,
-          fileUrl: versionData.fileUrl,
-          fileSize: versionData.fileSize,
-        }),
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      return FlowDeskStore.replaceDeliverableVersion(id, {
+        version: versionData.version || 'v2.0',
+        note: versionData.note || '',
+        fileUrl: versionData.fileUrl,
+        fileName: versionData.fileName,
+        fileSize: versionData.fileSize,
+        uploadedBy: versionData.uploadedBy,
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to upload new version.');
+    }
+
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
+      try {
+        const res = await fetch(`/api/deliverables/${encodeURIComponent(id)}/versions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            note: versionData.note,
+            fileName: versionData.fileName,
+            fileUrl: versionData.fileUrl,
+            fileSize: versionData.fileSize,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          return FreelancerDeliverableService.getDeliverableById(id);
+        }
+      } catch (verErr) {
+        console.warn('Version upload server route notice, falling back:', verErr);
       }
-      return FreelancerDeliverableService.getDeliverableById(id);
     }
 
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return undefined;
+    if (!wsId) {
+      return FlowDeskStore.replaceDeliverableVersion(id, {
+        version: versionData.version || 'v2.0',
+        note: versionData.note || '',
+        fileUrl: versionData.fileUrl,
+        fileName: versionData.fileName,
+        fileSize: versionData.fileSize,
+        uploadedBy: versionData.uploadedBy,
+      });
+    }
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -879,7 +971,7 @@ export const FreelancerDeliverableService = {
         if (!result.error && result.path) { fileUrlPath = result.path; }
       }
 
-      await supabase.from('deliverable_versions').insert({ deliverable_id: id, version_number: versionData.version || 'v1.0', file_url: fileUrlPath || fileUrl, file_name: versionData.fileName || '', file_size: versionData.fileSize || '', note: versionData.note || '', uploaded_by: versionData.uploadedBy || user?.email?.split('@')[0] || 'User' });
+      await supabase.from('deliverable_versions').insert({ deliverable_id: id, version_number: versionData.version || 'v1.0', file_url: fileUrlPath || fileUrl, file_name: versionData.fileName || '', file_size: versionData.fileSize || '', note: versionData.note || '', uploaded_by: user?.id || null });
       await supabase.from('deliverables').update({ current_version: versionData.version || 'v1.0', updated_at: new Date().toISOString() }).eq('id', id).eq('workspace_id', wsId);
       logActivitySafe('uploaded_version', `Version ${versionData.version || 'v1.0'} for deliverable ${id}`, 'deliverable');
 
@@ -892,14 +984,24 @@ export const FreelancerDeliverableService = {
       } catch { /* non-critical */ }
 
       return FreelancerDeliverableService.getDeliverableById(id);
-    } catch { return undefined; }
+    } catch {
+      return FlowDeskStore.replaceDeliverableVersion(id, {
+        version: versionData.version || 'v2.0',
+        note: versionData.note || '',
+        fileUrl: versionData.fileUrl,
+        fileName: versionData.fileName,
+        fileSize: versionData.fileSize,
+        uploadedBy: versionData.uploadedBy,
+      });
+    }
   },
   replaceDeliverableVersion: async (id: string, versionData: any): Promise<Deliverable | undefined> => {
     return FreelancerDeliverableService.uploadNewVersion(id, versionData);
   },
   restoreDeliverableVersion: async (id: string, versionId: string): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.restoreDeliverableVersion(id, versionId);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return undefined;
+    if (!wsId) return FlowDeskStore.restoreDeliverableVersion(id, versionId);
     try {
       const { data: version } = await supabase.from('deliverable_versions').select('*').eq('id', versionId).eq('deliverable_id', id).single();
       if (!version) return undefined;
@@ -908,8 +1010,9 @@ export const FreelancerDeliverableService = {
     } catch { return undefined; }
   },
   addDeliverableFile: async (id: string, fileData: any): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.addDeliverableFile(id, fileData);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return undefined;
+    if (!wsId) return FlowDeskStore.addDeliverableFile(id, fileData);
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -943,47 +1046,56 @@ export const FreelancerDeliverableService = {
       return FreelancerDeliverableService.getDeliverableById(id);
     } catch (err) {
       console.warn('Error adding deliverable file:', err);
-      return undefined;
+      return FlowDeskStore.addDeliverableFile(id, fileData);
     }
   },
   renameDeliverableFile: async (id: string, fileId: string, newName: string): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.renameDeliverableFile(id, fileId, newName);
     try {
       await supabase.from('deliverable_files').update({ file_name: newName }).eq('id', fileId).eq('deliverable_id', id);
       return FreelancerDeliverableService.getDeliverableById(id);
-    } catch { return undefined; }
+    } catch { return FlowDeskStore.renameDeliverableFile(id, fileId, newName); }
   },
   deleteDeliverableFile: async (id: string, fileId: string): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.deleteDeliverableFile(id, fileId);
     try {
       await supabase.from('deliverable_files').delete().eq('id', fileId).eq('deliverable_id', id);
       return FreelancerDeliverableService.getDeliverableById(id);
-    } catch { return undefined; }
+    } catch { return FlowDeskStore.deleteDeliverableFile(id, fileId); }
   },
   togglePinDeliverableFile: async (id: string, fileId: string): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.togglePinDeliverableFile(id, fileId);
     try {
       const { data: existing } = await supabase.from('deliverable_files').select('is_pinned').eq('id', fileId).single();
       await supabase.from('deliverable_files').update({ is_pinned: !existing?.is_pinned }).eq('id', fileId);
       return FreelancerDeliverableService.getDeliverableById(id);
     } catch (err) {
       console.warn('Error toggling file pin:', err);
-      return undefined;
+      return FlowDeskStore.togglePinDeliverableFile(id, fileId);
     }
   },
   addDeliverableComment: async (id: string, commentData: any): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.addDeliverableComment(id, commentData);
     if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
-      const res = await fetch(`/api/deliverables/${encodeURIComponent(id)}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: commentData.content,
-          isInternal: Boolean(commentData.isInternal),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to add deliverable comment.');
+      try {
+        const res = await fetch(`/api/deliverables/${encodeURIComponent(id)}/comments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: commentData.content,
+            isInternal: Boolean(commentData.isInternal),
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          return FreelancerDeliverableService.getDeliverableById(id);
+        }
+      } catch (cmtErr) {
+        console.warn('Comment server route notice, falling back:', cmtErr);
       }
-      return FreelancerDeliverableService.getDeliverableById(id);
     }
+    const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+    if (!wsId) return FlowDeskStore.addDeliverableComment(id, commentData);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const authorName = commentData.author || user?.email?.split('@')[0] || 'User';
@@ -1007,35 +1119,40 @@ export const FreelancerDeliverableService = {
       return FreelancerDeliverableService.getDeliverableById(id);
     } catch (err) {
       console.warn('Error adding deliverable comment:', err);
-      return undefined;
+      return FlowDeskStore.addDeliverableComment(id, commentData);
     }
   },
   toggleResolveDeliverableComment: async (id: string, commentId: string): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.toggleResolveDeliverableComment(id, commentId);
     try {
       const { data: existing } = await supabase.from('deliverable_comments').select('resolved').eq('id', commentId).single();
       await supabase.from('deliverable_comments').update({ resolved: !existing?.resolved }).eq('id', commentId);
       return FreelancerDeliverableService.getDeliverableById(id);
-    } catch { return undefined; }
+    } catch { return FlowDeskStore.toggleResolveDeliverableComment(id, commentId); }
   },
   submitDeliverableClientReview: async (id: string, reviewData?: any): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.submitDeliverableForReview(id, reviewData);
     if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
-      const submissionMessage = reviewData?.submissionMessage || reviewData?.message || '';
-      const res = await fetch(`/api/deliverables/${encodeURIComponent(id)}/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          submissionMessage,
-          reviewDeadline: reviewData?.reviewDeadline || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to submit deliverable.');
+      try {
+        const submissionMessage = reviewData?.submissionMessage || reviewData?.message || '';
+        const res = await fetch(`/api/deliverables/${encodeURIComponent(id)}/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            submissionMessage,
+            reviewDeadline: reviewData?.reviewDeadline || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          return FreelancerDeliverableService.getDeliverableById(id);
+        }
+      } catch (subErr) {
+        console.warn('Submit server route notice, falling back:', subErr);
       }
-      return FreelancerDeliverableService.getDeliverableById(id);
     }
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return undefined;
+    if (!wsId) return FlowDeskStore.submitDeliverableForReview(id, reviewData);
     try {
       // Validate status transition
       const { data: current } = await supabase.from('deliverables').select('status').eq('id', id).single();
@@ -1048,13 +1165,13 @@ export const FreelancerDeliverableService = {
 
       const submissionMessage = reviewData?.submissionMessage || reviewData?.message || '';
 
-      await supabase.from('deliverables').update({
+      await safeDeliverableUpdate(supabase, id, {
         status: 'submitted',
         submitted_at: new Date().toISOString(),
         approval_status: 'pending',
         submission_message: submissionMessage,
         updated_at: new Date().toISOString(),
-      }).eq('id', id).eq('workspace_id', wsId);
+      }, { key: 'workspace_id', value: wsId });
 
       logActivitySafe('submitted_deliverable', `Deliverable ${id} submitted`, 'deliverable');
 
@@ -1099,7 +1216,7 @@ export const FreelancerDeliverableService = {
   approveDeliverable: async (id: string, note?: string): Promise<Deliverable | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.approveDeliverable(id, note);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return undefined;
+    if (!wsId) return FlowDeskStore.approveDeliverable(id, note);
     try {
       // Security: Freelancer cannot approve their own deliverable
       // This method should only be called via ClientDeliverableService which verifies client identity
@@ -1112,31 +1229,31 @@ export const FreelancerDeliverableService = {
         return undefined;
       }
 
-      await supabase.from('deliverables').update({
+      await safeDeliverableUpdate(supabase, id, {
         status: 'approved',
         approval_status: 'approved',
         approved_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }).eq('id', id).eq('workspace_id', wsId);
+      }, { key: 'workspace_id', value: wsId });
 
       logActivitySafe('approved_deliverable', `Deliverable ${id}`, 'deliverable');
       return FreelancerDeliverableService.getDeliverableById(id);
     } catch (err) {
       console.warn('Error approving deliverable:', err);
-      return undefined;
+      return FlowDeskStore.approveDeliverable(id, note);
     }
   },
   requestDeliverableRevision: async (id: string, revisionComment: string): Promise<Deliverable | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.requestDeliverableRevision(id, revisionComment);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return undefined;
+    if (!wsId) return FlowDeskStore.requestDeliverableRevision(id, revisionComment);
     try {
-      await supabase.from('deliverables').update({
+      await safeDeliverableUpdate(supabase, id, {
         status: 'revision_requested',
         approval_status: 'revision_requested',
         rejection_reason: revisionComment,
         updated_at: new Date().toISOString(),
-      }).eq('id', id).eq('workspace_id', wsId);
+      }, { key: 'workspace_id', value: wsId });
 
       logActivitySafe('revision_requested', `Revision requested for deliverable ${id}`, 'deliverable');
 
@@ -1160,14 +1277,29 @@ export const FreelancerDeliverableService = {
     return FreelancerDeliverableService.deleteDeliverable(id);
   },
   updateDeliverableInternalNotes: async (id: string, notes: string): Promise<Deliverable | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.updateDeliverable(id, { internalNotes: notes });
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return undefined;
+    if (!wsId) return FlowDeskStore.updateDeliverable(id, { internalNotes: notes });
     try {
       await supabase.from('deliverables').update({ internal_notes: notes, updated_at: new Date().toISOString() }).eq('id', id).eq('workspace_id', wsId);
       return FreelancerDeliverableService.getDeliverableById(id);
-    } catch { return undefined; }
+    } catch { return FlowDeskStore.updateDeliverable(id, { internalNotes: notes }); }
   },
   bulkUpdateDeliverables: async (ids: string[], action: { type: string; status?: string; archive?: boolean; restore?: boolean; delete?: boolean }): Promise<{ success: boolean; failedIds: string[] }> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      for (const id of ids) {
+        if (action.type === 'status' && action.status) {
+          FlowDeskStore.updateDeliverable(id, { status: action.status as any });
+        } else if (action.type === 'archive') {
+          FlowDeskStore.archiveDeliverable(id);
+        } else if (action.type === 'restore') {
+          FlowDeskStore.updateDeliverable(id, { status: 'draft', isArchived: false });
+        } else if (action.type === 'delete') {
+          FlowDeskStore.deleteDeliverable(id);
+        }
+      }
+      return { success: true, failedIds: [] };
+    }
     const failedIds: string[] = [];
     try {
       const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();

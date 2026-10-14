@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiCaller } from '@/backend/utilities/api-auth';
 import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/utilities/logger';
-import { parseJsonBody, validateRouteParam, uuidSchema, CreateDeliverableVersionSchema } from '@/shared/validation';
+import { parseJsonBody, validateRouteParam, uuidSchema, deliverableIdParamSchema, CreateDeliverableVersionSchema } from '@/shared/validation';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
 
 /**
@@ -48,7 +48,12 @@ export async function POST(
 
   // 3. Route Parameter Validation
   const rawParams = await context.params;
-  const paramValidation = validateRouteParam(rawParams.deliverableId, uuidSchema, 'deliverableId');
+  const isDemo = isDemoModeActive();
+  const paramValidation = validateRouteParam(
+    rawParams.deliverableId,
+    isDemo ? deliverableIdParamSchema : uuidSchema,
+    'deliverableId'
+  );
   if (!paramValidation.success) {
     return paramValidation.response;
   }

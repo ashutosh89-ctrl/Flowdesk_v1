@@ -54,22 +54,31 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
 
   const handleSubmitDeliverable = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!title.trim()) return;
+
+    const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+    const chosenProj = projectId || projects[0]?.id;
+    const cleanProjId = chosenProj && (UUID_REGEX.test(chosenProj) || chosenProj.startsWith('proj-')) ? chosenProj : undefined;
+
     DeliverableService.addDeliverable({
       clientId: client.id,
-      projectId: projectId || (projects[0]?.id ?? 'proj-1'),
-      title,
-      description,
+      projectId: cleanProjId || '',
+      title: title.trim(),
+      description: description.trim(),
       status: 'submitted',
       approvalStatus: 'pending',
       dueDate,
       version,
       fileSize,
-      fileUrl: `https://flowdesk.app/assets/${title.toLowerCase().replace(/\s+/g, '-')}`,
+      fileUrl: `https://flowdesk.app/assets/${title.trim().toLowerCase().replace(/\s+/g, '-')}`,
     }).then(() => {
-      showToast('Deliverable Submitted', `Submitted "${title}" (${version}) for review.`, 'success');
+      showToast('Deliverable Submitted', `Submitted "${title.trim()}" (${version}) for review.`, 'success');
       setIsSubmitModalOpen(false);
       resetForm();
       onRefresh();
+    }).catch((err: any) => {
+      console.error('Submit deliverable error:', err);
+      showToast('Submit Failed', err?.message || 'Unable to submit deliverable.', 'error');
     });
   };
 
@@ -88,6 +97,9 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
       setNewVersionDeliv(null);
       setNewVerNote('');
       onRefresh();
+    }).catch((err: any) => {
+      console.error('Upload version error:', err);
+      showToast('Upload Failed', err?.message || 'Unable to upload new version.', 'error');
     });
   };
 
@@ -96,6 +108,8 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
       DeliverableService.approveDeliverable(id, note).then(() => {
         showToast('Work Approved', `Deliverable approved and signed off!`, 'success');
         onRefresh();
+      }).catch((err: any) => {
+        showToast('Approval Failed', err?.message || 'Unable to approve deliverable.', 'error');
       });
     } else if (newStatus === 'revision_requested') {
       DeliverableService.requestDeliverableRevision(id, note || '').then(() => {
@@ -103,6 +117,8 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
         setRevisionDeliv(null);
         setRevisionNote('');
         onRefresh();
+      }).catch((err: any) => {
+        showToast('Revision Failed', err?.message || 'Unable to request revision.', 'error');
       });
     }
   };
