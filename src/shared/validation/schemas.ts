@@ -25,6 +25,14 @@ export const paymentIdParamSchema = z
     'Invalid payment ID format'
   );
 
+export const deliverableIdParamSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^(del-[a-zA-Z0-9_-]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$/,
+    'Invalid deliverable ID format'
+  );
+
 export const oauthProviderSchema = z.enum(['google', 'github']);
 
 // ==========================================

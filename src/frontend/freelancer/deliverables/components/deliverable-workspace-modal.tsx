@@ -192,7 +192,18 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
     }
   };
 
-  if (!deliverable) return null;
+  if (!isOpen) return null;
+
+  if (!deliverable) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} title="Deliverable Workspace" size="xl">
+        <div className="flex flex-col items-center justify-center p-12 space-y-3">
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+          <p className="text-sm text-zinc-400">Loading deliverable details...</p>
+        </div>
+      </Modal>
+    );
+  }
 
   const client = clients.find((c) => c.id === deliverable.clientId);
   const project = projects.find((p) => p.id === deliverable.projectId);
@@ -404,11 +415,17 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
 
     setIsSubmittingReview(true);
     try {
-      await DeliverableService.submitDeliverableClientReview(deliverable.id, {
-        action: reviewAction,
-        notes: reviewNote,
-        reviewerName: clientName,
-      });
+      if (reviewAction === 'approve') {
+        await DeliverableService.approveDeliverable(deliverable.id, reviewNote);
+      } else if (reviewAction === 'revision') {
+        await DeliverableService.requestDeliverableRevision(deliverable.id, reviewNote);
+      } else {
+        await DeliverableService.submitDeliverableClientReview(deliverable.id, {
+          action: reviewAction,
+          notes: reviewNote,
+          reviewerName: clientName,
+        });
+      }
 
       showToast(
         reviewAction === 'approve' ? 'Deliverable Approved' : 'Review Updated',
@@ -419,6 +436,8 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
       setReviewNote('');
       loadDeliverable(deliverable.id);
       onRefresh();
+    } catch (err: any) {
+      showToast('Review Failed', err?.message || 'Failed to submit review decision.', 'error');
     } finally {
       setIsSubmittingReview(false);
     }

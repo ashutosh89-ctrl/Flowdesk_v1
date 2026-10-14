@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiCaller } from '@/backend/utilities/api-auth';
 import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/utilities/logger';
-import { parseJsonBody, validateRouteParam, uuidSchema, RequestRevisionDeliverableSchema } from '@/shared/validation';
+import { parseJsonBody, validateRouteParam, uuidSchema, deliverableIdParamSchema, RequestRevisionDeliverableSchema } from '@/shared/validation';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
 import { canTransitionDeliverableStatus, ActorRole } from '@/shared/rules';
+import { safeDeliverableUpdate } from '@/backend/utilities/deliverables-db';
 
 /**
  * Deliverable Revision Request Route Handler (Batch 2: Approvals & Deliverables)
@@ -50,7 +51,12 @@ export async function POST(
 
   // 3. Route Parameter Validation
   const rawParams = await context.params;
-  const paramValidation = validateRouteParam(rawParams.deliverableId, uuidSchema, 'deliverableId');
+  const isDemo = isDemoModeActive();
+  const paramValidation = validateRouteParam(
+    rawParams.deliverableId,
+    isDemo ? deliverableIdParamSchema : uuidSchema,
+    'deliverableId'
+  );
   if (!paramValidation.success) {
     return paramValidation.response;
   }
@@ -168,17 +174,16 @@ export async function POST(
 
     // 8. Atomic Status Transition Update
     const nowIso = new Date().toISOString();
-    const { data: updated, error: updateError } = await supabaseAdmin
-      .from('deliverables')
-      .update({
+    const { data: updated, error: updateError } = await safeDeliverableUpdate(
+      supabaseAdmin,
+      deliverableId,
+      {
         status: 'revision_requested',
         approval_status: 'revision_requested',
         rejection_reason: revisionComment,
         updated_at: nowIso,
-      })
-      .eq('id', deliverableId)
-      .select()
-      .single();
+      }
+    );
 
     if (updateError || !updated) {
       logger.error('Failed to update deliverable revision in database', updateError, { requestId, deliverableId });

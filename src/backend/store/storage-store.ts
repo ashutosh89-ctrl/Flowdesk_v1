@@ -383,16 +383,16 @@ export const FlowDeskStore = {
       version: delData.version || 'v1.0.0',
       createdAt: today,
       updatedAt: today,
-      filesCount: delData.files ? delData.files.length : delData.fileUrl ? 1 : 0,
+      filesCount: delData.files ? delData.files.length : (delData.fileUrl || delData.fileName) ? 1 : 0,
       commentsCount: 0,
-      files: delData.files || (delData.fileUrl ? [
+      files: delData.files || ((delData.fileUrl || delData.fileName) ? [
         {
           id: `file-${Date.now()}-1`,
           deliverableId: newId,
           fileName: delData.fileName || `${delData.title.toLowerCase().replace(/\s+/g, '-')}-v1.pdf`,
           fileSize: delData.fileSize || '2.4 MB',
-          fileType: 'pdf',
-          fileUrl: delData.fileUrl,
+          fileType: delData.fileName?.endsWith('.png') || delData.fileName?.endsWith('.jpg') ? 'image' : 'pdf',
+          fileUrl: delData.fileUrl || '#',
           uploadedAt: today,
           uploadedBy: 'Alex Rivera',
           isPinned: true,
@@ -842,6 +842,10 @@ export const FlowDeskStore = {
     return del;
   },
 
+  toggleDeliverableCommentResolved: (id: string, commentId: string): Deliverable | undefined => {
+    return FlowDeskStore.toggleResolveDeliverableComment(id, commentId);
+  },
+
   submitDeliverableClientReview: (
     id: string,
     reviewData: { action: 'approve' | 'reject' | 'revision' | 'viewed'; notes?: string; reviewerName: string }
@@ -938,6 +942,15 @@ export const FlowDeskStore = {
       action: 'revision',
       notes: revisionComment,
       reviewerName: 'Client',
+    });
+  },
+
+  submitDeliverableForReview: (id: string, reviewData?: any): Deliverable | undefined => {
+    return FlowDeskStore.updateDeliverable(id, {
+      status: 'submitted',
+      approvalStatus: 'pending',
+      submissionMessage: reviewData?.submissionMessage || reviewData?.message || '',
+      reviewDeadline: reviewData?.reviewDeadline || undefined,
     });
   },
 

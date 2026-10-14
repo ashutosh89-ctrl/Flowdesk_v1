@@ -1,8 +1,10 @@
 import { supabase, isDemoModeActive } from '@/backend/utilities/supabase';
 import { Deliverable } from '@/shared/types';
 import { mockClients, mockDeliverables } from '@/backend/store/mockData';
+import { FlowDeskStore } from '@/backend/store/storage-store';
 import { StorageHelper } from '@/backend/storage/storage-helper';
 import { isServerMutationBatchEnabled } from '@/shared/config/feature-flags';
+import { safeDeliverableUpdate, deriveApprovalStatus } from '@/backend/utilities/deliverables-db';
 
 const CLIENT_SESSION_KEY = 'flowdesk_client_session';
 
@@ -15,7 +17,7 @@ export const ClientDeliverableService = {
 
     // Demo mode: return mock data
     if (isDemoModeActive()) {
-      return mockDeliverables.filter((d) => d.clientId === clientId);
+      return FlowDeskStore.getDeliverables(clientId);
     }
 
     try {
@@ -68,7 +70,7 @@ export const ClientDeliverableService = {
 
     // Demo mode
     if (isDemoModeActive()) {
-      return mockDeliverables.find((d) => d.id === deliverableId && d.clientId === clientId);
+      return FlowDeskStore.getDeliverableById(deliverableId);
     }
 
     try {
@@ -170,9 +172,9 @@ export const ClientDeliverableService = {
 
     // Demo mode
     if (isDemoModeActive()) {
-      const deliverable = mockDeliverables.find((d) => d.id === deliverableId && d.clientId === clientId);
-      if (!deliverable) return { success: false, error: 'Deliverable not found.' };
-      return { success: true, deliverable: { ...deliverable, status: 'approved', approvalStatus: 'approved' } };
+      const updated = FlowDeskStore.approveDeliverable(deliverableId, notes);
+      if (!updated) return { success: false, error: 'Deliverable not found.' };
+      return { success: true, deliverable: updated };
     }
 
     // In browser environment, delegate to the hardened server Route Handler
@@ -212,18 +214,17 @@ export const ClientDeliverableService = {
       }
 
       // 3. Perform the approval
-      const { data: updated, error } = await supabase
-        .from('deliverables')
-        .update({
+      const { data: updated, error } = await safeDeliverableUpdate(
+        supabase,
+        deliverableId,
+        {
           status: 'approved',
           approval_status: 'approved',
           approved_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', deliverableId)
-        .eq('client_id', clientId)
-        .select()
-        .single();
+        },
+        { key: 'client_id', value: clientId }
+      );
 
       if (error || !updated) {
         return { success: false, error: 'Failed to approve deliverable.' };
@@ -331,9 +332,9 @@ export const ClientDeliverableService = {
 
     // Demo mode
     if (isDemoModeActive()) {
-      const deliverable = mockDeliverables.find((d) => d.id === deliverableId && d.clientId === clientId);
-      if (!deliverable) return { success: false, error: 'Deliverable not found.' };
-      return { success: true, deliverable: { ...deliverable, status: 'revision_requested', approvalStatus: 'revision_requested', rejectionReason: revisionComment } };
+      const updated = FlowDeskStore.requestDeliverableRevision(deliverableId, revisionComment);
+      if (!updated) return { success: false, error: 'Deliverable not found.' };
+      return { success: true, deliverable: updated };
     }
 
     if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
@@ -391,18 +392,17 @@ export const ClientDeliverableService = {
       }
 
       // 3. Update the deliverable
-      const { data: updated, error } = await supabase
-        .from('deliverables')
-        .update({
+      const { data: updated, error } = await safeDeliverableUpdate(
+        supabase,
+        deliverableId,
+        {
           status: 'revision_requested',
           approval_status: 'revision_requested',
           rejection_reason: revisionComment.trim(),
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', deliverableId)
-        .eq('client_id', clientId)
-        .select()
-        .single();
+        },
+        { key: 'client_id', value: clientId }
+      );
 
       if (error || !updated) {
         return { success: false, error: 'Failed to request revision.' };
@@ -529,6 +529,12 @@ export const ClientDeliverableService = {
 
     // Demo mode
     if (isDemoModeActive()) {
+      FlowDeskStore.addDeliverableComment(deliverableId, {
+        author: authorName || 'Client',
+        authorRole: 'client',
+        isInternal: false,
+        content: content.trim(),
+      });
       return { success: true };
     }
 
@@ -559,9 +565,13 @@ export const ClientDeliverableService = {
         resolved: false,
       });
 
-      // Update comments count
-      const { count } = await supabase.from('deliverable_comments').select('*', { count: 'exact', head: true }).eq('deliverable_id', deliverableId);
-      await supabase.from('deliverables').update({ comments_count: count || 0, updated_at: new Date().toISOString() }).eq('id', deliverableId);
+      // Update comments count (non-critical, ignore if column absent)
+      try {
+        const { count } = await supabase.from('deliverable_comments').select('*', { count: 'exact', head: true }).eq('deliverable_id', deliverableId);
+        await supabase.from('deliverables').update({ comments_count: count || 0, updated_at: new Date().toISOString() }).eq('id', deliverableId);
+      } catch {
+        // Non-critical
+      }
 
       return { success: true };
     } catch (err) {

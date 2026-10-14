@@ -5,6 +5,7 @@ import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/
 import { parseJsonBody, CreateDeliverableSchema, uuidSchema } from '@/shared/validation';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
 import { Deliverable, DeliverableStatus } from '@/shared/types';
+import { safeDeliverableInsert, safeDeliverableFileInsert, deriveApprovalStatus } from '@/backend/utilities/deliverables-db';
 
 /**
  * Deliverables Collection Route Handler (Batch 2: Approvals & Deliverables)
@@ -57,9 +58,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // 4. Demo Mode Handler
   if (isDemoModeActive()) {
-    const mockId = `del-demo-${Date.now()}`;
-    const demoDeliverable: Deliverable = {
-      id: mockId,
+    const { FlowDeskStore } = await import('@/backend/store/storage-store');
+    const demoDeliverable = FlowDeskStore.addDeliverable({
       clientId: payload.clientId,
       clientName: payload.clientName || 'Demo Client',
       projectId: payload.projectId || '',
@@ -73,11 +73,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       internalNotes: payload.internalNotes || '',
       submissionMessage: payload.submissionMessage || '',
       approvalStatus: payload.approvalStatus || 'pending',
-      filesCount: payload.fileName || payload.fileUrl ? 1 : 0,
-      commentsCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      fileName: payload.fileName,
+      fileSize: payload.fileSize,
+      fileUrl: payload.fileUrl,
+    });
 
     return NextResponse.json(
       {
@@ -190,11 +189,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       approval_status: payload.approvalStatus || 'pending',
     };
 
-    const { data: deliverable, error: delError } = await supabaseAdmin
-      .from('deliverables')
-      .insert(insertPayload)
-      .select()
-      .single();
+    const { data: deliverable, error: delError } = await safeDeliverableInsert(supabaseAdmin, insertPayload);
 
     if (delError || !deliverable) {
       logger.error('Database error inserting deliverable', {
@@ -213,21 +208,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Optional: insert file record
     if (payload.fileName || payload.fileUrl) {
       try {
-        await supabaseAdmin.from('deliverable_files').insert({
+        await safeDeliverableFileInsert(supabaseAdmin, {
           deliverable_id: deliverable.id,
           file_name: payload.fileName || 'Deliverable Document',
           file_size: payload.fileSize || '',
           file_type: payload.fileUrl ? 'link' : 'application/pdf',
           file_url: payload.fileUrl || '',
           is_pinned: false,
-          uploaded_by: caller.userId,
-          uploaded_at: new Date().toISOString(),
         });
-
-        await supabaseAdmin
-          .from('deliverables')
-          .update({ files_count: 1, updated_at: new Date().toISOString() })
-          .eq('id', deliverable.id);
       } catch (fileErr) {
         logger.warn('Non-critical: file attachment notice', { error: String(fileErr) });
       }
@@ -242,7 +230,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         file_name: payload.fileName || '',
         file_size: payload.fileSize || '',
         note: 'Initial package creation',
-        uploaded_by: caller.userId ? `User-${caller.userId.slice(0, 8)}` : 'User',
+        uploaded_by: caller.userId || null,
       });
     } catch (verErr) {
       logger.warn('Non-critical: version record notice', { error: String(verErr) });
@@ -256,7 +244,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         project_id: validProjectId,
         user_name: caller.userId ? `User-${caller.userId.slice(0, 8)}` : 'Studio Lead',
         action: 'created_deliverable',
-        target: deliverable.title,
+        title: deliverable.title,
+        description: `Created deliverable package "${deliverable.title}"`,
         resource_type: 'deliverable',
       });
     } catch {
@@ -274,13 +263,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           title: deliverable.title,
           description: deliverable.description || '',
           status: deliverable.status || 'draft',
-          approvalStatus: deliverable.approval_status || 'pending',
-          priority: deliverable.priority || 'medium',
-          dueDate: deliverable.due_date || '',
-          reviewDeadline: deliverable.review_deadline || undefined,
-          version: deliverable.current_version || 'v1.0',
-          internalNotes: deliverable.internal_notes || '',
-          submissionMessage: deliverable.submission_message || '',
+          approvalStatus: deriveApprovalStatus(deliverable.status, deliverable.approval_status || payload.approvalStatus),
+          priority: deliverable.priority || payload.priority || 'medium',
+          dueDate: deliverable.due_date || payload.dueDate || '',
+          reviewDeadline: deliverable.review_deadline || payload.reviewDeadline || undefined,
+          version: deliverable.current_version || payload.version || 'v1.0',
+          internalNotes: deliverable.internal_notes || payload.internalNotes || '',
+          submissionMessage: deliverable.submission_message || payload.submissionMessage || '',
           filesCount: payload.fileName || payload.fileUrl ? 1 : 0,
           commentsCount: 0,
           createdAt: deliverable.created_at,
@@ -342,9 +331,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   if (isDemoModeActive()) {
+    const { FlowDeskStore } = await import('@/backend/store/storage-store');
     return NextResponse.json({
       success: true,
-      deliverables: [],
+      deliverables: FlowDeskStore.getDeliverables(),
       requestId,
     });
   }
@@ -392,7 +382,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           title: d.title,
           description: d.description || '',
           status: d.status || 'draft',
-          approvalStatus: d.approval_status || 'pending',
+          approvalStatus: deriveApprovalStatus(d.status, d.approval_status),
           priority: d.priority || 'medium',
           dueDate: d.due_date || '',
           reviewDeadline: d.review_deadline || undefined,
