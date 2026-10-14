@@ -965,5 +965,3 @@ export interface ClaimInvitationResult {
   message?: string;
 }
 
-export * from './database.types';
-
