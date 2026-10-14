@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Modal } from '@/frontend/shared/ui/modal';
 import { Input } from '@/frontend/shared/ui/input';
 import { Button } from '@/frontend/shared/ui/button';
@@ -26,7 +26,7 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [clientId, setClientId] = useState(defaultClientId || clients[0]?.id || '');
-  const [projectId, setProjectId] = useState(defaultProjectId || '');
+  const [projectId, setProjectId] = useState(defaultProjectId || projects[0]?.id || '');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
@@ -48,12 +48,9 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
   const [submissionMessage, setSubmissionMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Derive active client and project safely without cascading effects
-  const selectedClientId = clientId || defaultClientId || clients[0]?.id || '';
-  const availableProjects = projects.filter((p) => p.clientId === selectedClientId);
-  const selectedProjectId = projectId !== '' ? projectId : (defaultProjectId || availableProjects[0]?.id || '');
+  // Filter projects by selected client if needed
+  const availableProjects = projects.filter((p) => p.clientId === clientId);
 
   // Helper to format file size
   const formatFileSize = (bytes: number): string => {
@@ -68,31 +65,20 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
     e.preventDefault();
     if (!title.trim()) return;
 
-    const selectedClient = clients.find((c) => c.id === selectedClientId) || clients[0];
-    if (!selectedClient) {
-      setSubmitError('Please create a client account before creating deliverables.');
-      return;
-    }
-
     // Validate file size (50MB limit)
     if (selectedFile && selectedFile.size > 50 * 1024 * 1024) {
-      setFileError('File exceeds 50MB limit.');
-      return;
+      return; // File too large - UI should show error
     }
 
     setIsSubmitting(true);
-    setSubmitError(null);
     try {
-      const cleanProjectId = selectedProjectId && selectedProjectId !== 'proj-1' ? selectedProjectId : undefined;
-
       await onCreate({
-        clientId: selectedClient.id,
-        clientName: selectedClient.company || selectedClient.name,
-        projectId: cleanProjectId,
+        clientId: clientId || clients[0]?.id || 'cli-1',
+        projectId: projectId || availableProjects[0]?.id || projects[0]?.id || 'proj-1',
         title: title.trim(),
         description: description.trim(),
         dueDate,
-        reviewDeadline: reviewDeadline || undefined,
+        reviewDeadline,
         version: version || 'v1.0.0',
         priority,
         fileName: fileName || (selectedFile ? selectedFile.name : `${title.toLowerCase().replace(/\s+/g, '-')}-v1.pdf`),
@@ -106,10 +92,6 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
       });
       onClose();
       resetForm();
-    } catch (err: any) {
-      console.error('Create deliverable submit exception:', err);
-      const msg = err?.message || 'Unable to create deliverable package. Please try again.';
-      setSubmitError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -126,19 +108,11 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
     setInternalNotes('');
     setSubmissionMessage('');
     setFileError(null);
-    setSubmitError(null);
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Create Deliverable Package" size="lg">
       <form onSubmit={handleSubmit} className="space-y-5 select-none">
-        {submitError && (
-          <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-center gap-2.5">
-            <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-            <span>{submitError}</span>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             label="Deliverable Title *"
@@ -154,24 +128,19 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
               Client Account *
             </label>
             <select
-              value={selectedClientId}
+              value={clientId}
               onChange={(e) => {
-                const nextClientId = e.target.value;
-                setClientId(nextClientId);
-                const matched = projects.filter((p) => p.clientId === nextClientId);
-                setProjectId(matched[0]?.id || '');
+                setClientId(e.target.value);
+                const firstProj = projects.find((p) => p.clientId === e.target.value);
+                if (firstProj) setProjectId(firstProj.id);
               }}
               className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-sm text-white focus:outline-none focus:border-white/30"
             >
-              {clients.length === 0 ? (
-                <option value="">No clients available</option>
-              ) : (
-                clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.company || c.name}
-                  </option>
-                ))
-              )}
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.company || c.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -182,16 +151,21 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
               Project Link
             </label>
             <select
-              value={selectedProjectId}
+              value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-sm text-white focus:outline-none focus:border-white/30"
             >
-              <option value="">No Project (Independent Deliverable)</option>
-              {availableProjects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title}
-                </option>
-              ))}
+              {availableProjects.length > 0
+                ? availableProjects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))
+                : projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
             </select>
           </div>
 

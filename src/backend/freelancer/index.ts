@@ -669,81 +669,6 @@ export const FreelancerDeliverableService = {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.addDeliverable(delData as any);
     }
-
-    // 1. Preferred path: Secure Server Route Handler (Batch 2)
-    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
-      try {
-        const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
-        const cleanProjectId = delData.projectId && UUID_REGEX.test(delData.projectId) ? delData.projectId : undefined;
-
-        const res = await fetch('/api/deliverables', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            clientId: delData.clientId,
-            clientName: delData.clientName,
-            projectId: cleanProjectId,
-            title: delData.title,
-            description: delData.description || '',
-            dueDate: delData.dueDate,
-            reviewDeadline: delData.reviewDeadline,
-            version: delData.version || 'v1.0',
-            priority: delData.priority || 'medium',
-            fileName: delData.fileName,
-            fileSize: delData.fileSize,
-            fileUrl: delData.fileUrl,
-            internalNotes: delData.internalNotes || '',
-            submissionMessage: delData.submissionMessage || '',
-            status: delData.status || 'draft',
-            approvalStatus: delData.approvalStatus || 'pending',
-          }),
-        });
-
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          throw new Error(data.message || data.error || 'Failed to create deliverable');
-        }
-
-        // If file needs to be uploaded to storage, upload using StorageHelper
-        const fileToUpload = (delData as any).file as File | undefined;
-        if (fileToUpload && typeof StorageHelper !== 'undefined' && data.deliverable?.id) {
-          try {
-            const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-            if (wsId && fileToUpload.size <= 50 * 1024 * 1024) {
-              const fileResult = await StorageHelper.uploadFile(
-                'deliverables',
-                wsId,
-                `deliverables/${data.deliverable.id}`,
-                fileToUpload,
-                { clientId: data.deliverable.clientId }
-              );
-              if (fileResult.path) {
-                await supabase.from('deliverable_files').insert({
-                  deliverable_id: data.deliverable.id,
-                  file_name: fileToUpload.name,
-                  file_size: delData.fileSize || formatFileSize(fileToUpload.size),
-                  file_type: fileToUpload.type || 'application/pdf',
-                  file_url: fileResult.path,
-                  is_pinned: false,
-                });
-              }
-            }
-          } catch (uploadErr) {
-            console.warn('Storage file upload notice during deliverable creation:', uploadErr);
-          }
-        }
-
-        return data.deliverable;
-      } catch (serverErr: any) {
-        // If server returns validation/business error, throw it directly
-        if (serverErr.message && !serverErr.message.includes('Failed to fetch')) {
-          throw serverErr;
-        }
-        console.warn('Server mutation route failed, falling back to direct Supabase write:', serverErr);
-      }
-    }
-
-    // 2. Direct Supabase Fallback
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) throw new Error('No active workspace');
 
@@ -752,15 +677,12 @@ export const FreelancerDeliverableService = {
         data: { user },
       } = await supabase.auth.getUser();
 
-      const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
-      const validProjectId = delData.projectId && UUID_REGEX.test(delData.projectId) ? delData.projectId : null;
-
       const payload = {
         workspace_id: wsId,
         client_id: delData.clientId,
-        project_id: validProjectId,
+        project_id: delData.projectId || null,
         user_id: user?.id || null,
-        client_name: delData.clientName || 'Client Workspace',
+        client_name: delData.clientName,
         title: delData.title,
         description: delData.description,
         status: delData.status || 'draft',
@@ -774,9 +696,7 @@ export const FreelancerDeliverableService = {
       };
 
       const { data, error } = await supabase.from('deliverables').insert(payload).select().single();
-      if (error || !data) {
-        throw new Error(error?.message || 'Failed to create deliverable');
-      }
+      if (error || !data) throw new Error('Failed to create deliverable');
 
       logActivitySafe('created_deliverable', data.title, 'deliverable');
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { use, Suspense } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ClientPortalView } from '@/frontend/client/portal/client-portal-view';
 import { ClientAuthProvider, useClientAuth } from '@/frontend/client/auth/client-auth-context';
@@ -8,6 +8,7 @@ import { ToastProvider } from '@/frontend/shared/ui/toast';
 import { Card } from '@/frontend/shared/ui/card';
 import { Button } from '@/frontend/shared/ui/button';
 import { ShieldAlert, LogIn, Loader2 } from 'lucide-react';
+import { Suspense } from 'react';
 
 interface PageProps {
   params: Promise<{ clientId: string }>;
@@ -57,8 +58,27 @@ function PortalContent({ clientId }: { clientId: string }) {
   return <ClientPortalView clientId={resolvedClientId} />;
 }
 
-function PortalPageWrapper({ params }: PageProps) {
-  const { clientId } = use(params);
+export default function ClientPortalPage({ params }: PageProps) {
+  // Use a client component wrapper to resolve params
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
+          <Loader2 className="w-8 h-8 animate-spin text-white" />
+        </div>
+      }
+    >
+      <PortalPageWrapper params={params} />
+    </Suspense>
+  );
+}
+
+function PortalPageWrapper({ params }: { params: Promise<{ clientId: string }> }) {
+  const [clientId, setClientId] = useState<string | null>(null);
+
+  useEffect(() => {
+    params.then((resolved) => setClientId(resolved.clientId));
+  }, [params]);
 
   if (!clientId) {
     return (
@@ -74,19 +94,5 @@ function PortalPageWrapper({ params }: PageProps) {
         <PortalContent clientId={clientId} />
       </ClientAuthProvider>
     </ToastProvider>
-  );
-}
-
-export default function ClientPortalPage({ params }: PageProps) {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
-          <Loader2 className="w-8 h-8 animate-spin text-white" />
-        </div>
-      }
-    >
-      <PortalPageWrapper params={params} />
-    </Suspense>
   );
 }
