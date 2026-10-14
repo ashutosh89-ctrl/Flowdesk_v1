@@ -142,7 +142,21 @@ export const BillingPlanPanel: React.FC = () => {
     );
   }
 
-  const { planKey, planName, status, currentPeriodEnd, cancelAtPeriodEnd, limits, usage } = entitlements;
+  const { planKey, planName, status, currentPeriodEnd, cancelAtPeriodEnd } = entitlements;
+  const limits = {
+    activeClients: entitlements.limits?.activeClients ?? 0,
+    activeProjects: entitlements.limits?.activeProjects ?? 0,
+    invoicesPerMonth: entitlements.limits?.invoicesPerMonth ?? 0,
+    storageMb: entitlements.limits?.storageMb ?? 0,
+    brandedPortal: entitlements.limits?.brandedPortal ?? false,
+    emailReminders: entitlements.limits?.emailReminders ?? false,
+  };
+  const usage = {
+    activeClients: entitlements.usage?.activeClients ?? 0,
+    activeProjects: entitlements.usage?.activeProjects ?? 0,
+    invoicesPerMonth: entitlements.usage?.invoicesPerMonth ?? 0,
+    storageMb: entitlements.usage?.storageMb ?? 0,
+  };
 
   const renderStatusBanner = () => {
     if (status === 'grace') {
@@ -242,7 +256,7 @@ export const BillingPlanPanel: React.FC = () => {
     icon: React.ReactNode,
     unit: string = ''
   ) => {
-    const pct = Math.min(Math.round((current / limit) * 100), 100);
+    const pct = limit > 0 ? Math.min(Math.round((current / limit) * 100), 100) : 0;
     const isNearLimit = pct >= 80;
     const isAtLimit = pct >= 100;
 
