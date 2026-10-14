@@ -1,17 +1,22 @@
 -- ============================================================================
 -- FLOWDESK DATABASE MIGRATION — PHASE 43
--- Storage Buckets & RLS Repair for Studio Branding (Logos & Signatures)
+-- Storage Buckets Provisioning for Studio Branding (Logos & Signatures)
 -- ============================================================================
--- Problem addressed:
---   - "new row violates row-level security policy" when uploading logos or signatures
---   - Missing 'signatures' bucket in some environments
---   - Incomplete or overly restrictive policies on storage.objects that blocked
---     upsert or workspace-owner queries during branding asset upload.
+-- Note: 'storage.objects' is owned by 'supabase_storage_admin' in Supabase.
+-- Running 'ALTER TABLE storage.objects' or 'CREATE POLICY ON storage.objects'
+-- as the 'postgres' role in the Supabase SQL editor raises ERROR: 42501
+-- ("must be owner of table objects").
 --
--- This migration is idempotent and can be safely executed multiple times.
+-- In FlowDesk:
+-- 1. Storage uploads for logos & signatures are handled via the secure server
+--    route (/api/settings/upload), which uses SUPABASE_SERVICE_ROLE_KEY and
+--    bypasses storage RLS completely.
+-- 2. Once uploaded to public buckets ('logos', 'signatures'), files are
+--    publicly accessible via CDN URL without checking storage.objects RLS.
+--
+-- This script safely provisions and configures the storage buckets.
 -- ============================================================================
 
--- 1. Ensure storage buckets exist and are marked public
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
   ('avatars', 'avatars', true, 5242880, ARRAY['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp']),
@@ -24,49 +29,5 @@ ON CONFLICT (id) DO UPDATE SET
   file_size_limit = EXCLUDED.file_size_limit,
   allowed_mime_types = EXCLUDED.allowed_mime_types;
 
--- Enforce private visibility on documents and deliverables
-UPDATE storage.buckets SET public = false WHERE id IN ('documents', 'deliverables');
 UPDATE storage.buckets SET public = true WHERE id IN ('avatars', 'logos', 'signatures');
-
--- 2. Ensure RLS is enabled on storage.objects
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
--- 3. Clean up legacy conflicting policy names for logos and signatures
-DROP POLICY IF EXISTS "Anyone can view logos" ON storage.objects;
-DROP POLICY IF EXISTS "Anyone can view signatures" ON storage.objects;
-DROP POLICY IF EXISTS "Freelancer can upload workspace logos" ON storage.objects;
-DROP POLICY IF EXISTS "Freelancer can manage workspace logos" ON storage.objects;
-DROP POLICY IF EXISTS "Freelancer can manage workspace logos canonical" ON storage.objects;
-DROP POLICY IF EXISTS "Freelancer can upload signatures" ON storage.objects;
-DROP POLICY IF EXISTS "Freelancer can manage workspace signatures" ON storage.objects;
-DROP POLICY IF EXISTS "Freelancer can manage workspace signatures canonical" ON storage.objects;
-DROP POLICY IF EXISTS "fd_logos_public_read" ON storage.objects;
-DROP POLICY IF EXISTS "fd_logos_owner_write" ON storage.objects;
-DROP POLICY IF EXISTS "fd_signatures_public_read" ON storage.objects;
-DROP POLICY IF EXISTS "fd_signatures_owner_write" ON storage.objects;
-DROP POLICY IF EXISTS "fd_logos_authenticated_manage" ON storage.objects;
-DROP POLICY IF EXISTS "fd_signatures_authenticated_manage" ON storage.objects;
-
--- 4. Public SELECT policy: Anyone can view logos and signatures
--- (Required for displaying branding on invoice PDFs, client portals, and preview)
-CREATE POLICY "fd_logos_public_read"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'logos');
-
-CREATE POLICY "fd_signatures_public_read"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'signatures');
-
--- 5. Authenticated Manage policy: Authenticated users can upload and manage branding assets
--- Covers INSERT, UPDATE, DELETE, and SELECT for authenticated users
-CREATE POLICY "fd_logos_authenticated_manage"
-ON storage.objects FOR ALL
-TO authenticated
-USING (bucket_id = 'logos')
-WITH CHECK (bucket_id = 'logos');
-
-CREATE POLICY "fd_signatures_authenticated_manage"
-ON storage.objects FOR ALL
-TO authenticated
-USING (bucket_id = 'signatures')
-WITH CHECK (bucket_id = 'signatures');
+UPDATE storage.buckets SET public = false WHERE id IN ('documents', 'deliverables');
