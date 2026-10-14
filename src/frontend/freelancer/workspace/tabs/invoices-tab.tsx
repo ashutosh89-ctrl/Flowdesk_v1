@@ -186,10 +186,10 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({ summary, onRefresh }) 
 
             <div className="space-y-2">
               <span className="text-[10px] font-mono text-zinc-500 uppercase">Line Items</span>
-              {viewInvoice?.items.map((item, idx) => (
+              {(viewInvoice?.items ?? []).map((item, idx) => (
                 <div key={idx} className="flex justify-between text-xs py-1 border-b border-white/5 text-zinc-300">
                   <span>{item.description} (x{item.quantity})</span>
-                  <span className="font-mono text-white">${item.amount.toLocaleString()}</span>
+                  <span className="font-mono text-white">${(item.amount || 0).toLocaleString()}</span>
                 </div>
               ))}
             </div>
