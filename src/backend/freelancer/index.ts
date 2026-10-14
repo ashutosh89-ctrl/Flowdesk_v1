@@ -672,7 +672,6 @@ export const FreelancerDeliverableService = {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.addDeliverable(delData as any);
     }
-
     // 1. Preferred path: Secure Server Route Handler (Batch 2)
     if (typeof window !== 'undefined' && isServerMutationBatchEnabled(2)) {
       try {
@@ -753,15 +752,12 @@ export const FreelancerDeliverableService = {
         data: { user },
       } = await supabase.auth.getUser();
 
-      const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
-      const validProjectId = delData.projectId && UUID_REGEX.test(delData.projectId) ? delData.projectId : null;
-
       const payload = {
         workspace_id: wsId,
         client_id: delData.clientId,
-        project_id: validProjectId,
+        project_id: delData.projectId || null,
         user_id: user?.id || null,
-        client_name: delData.clientName || 'Client Workspace',
+        client_name: delData.clientName,
         title: delData.title,
         description: delData.description,
         status: delData.status || 'draft',

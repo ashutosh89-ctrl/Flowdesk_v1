@@ -212,13 +212,9 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
 
     try {
       const client = clients.find((c) => c.id === delivClient) || clients[0];
-      if (!client) {
-        setDeliverableError('Please create a client first before creating deliverables.');
-        return;
-      }
       await FreelancerDeliverableService.addDeliverable({
-        clientId: client.id,
-        clientName: (client as any).company || client.name || 'Client Workspace',
+        clientId: client ? client.id : 'cli-1',
+        clientName: client ? (client as any).company || client.name : 'Client Workspace',
         projectId: '',
         title: delivTitle.trim(),
         description: '',

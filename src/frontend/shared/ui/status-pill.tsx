@@ -21,7 +21,7 @@ export interface StatusPillProps {
 }
 
 export const StatusPill: React.FC<StatusPillProps> = ({ status, customLabel, className = '' }) => {
-  const normalized = (typeof status === 'string' && status ? status : 'draft').toLowerCase().replace('-', '_');
+  const normalized = status.toLowerCase().replace('-', '_');
 
   const getStatusConfig = (st: string) => {
     switch (st) {
