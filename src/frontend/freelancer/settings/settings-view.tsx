@@ -134,44 +134,30 @@ export const SettingsView: React.FC = () => {
     setDirty(true);
   };
 
-  const uploadBrandingAsset = async (file: File, type: 'logo' | 'signature'): Promise<string> => {
-    let wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId && user?.id) {
-      const { getCurrentWorkspace } = await import('@/backend/utilities/workspace');
-      const ws = await getCurrentWorkspace();
-      wsId = ws?.id || null;
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('type', type);
-    if (wsId) formData.append('workspaceId', wsId);
-    if (user?.id) formData.append('userId', user.id);
-
-    const response = await fetch('/api/settings/upload', {
-      method: 'POST',
-      body: formData,
-    });
-
-    const result = await response.json();
-    if (!response.ok || !result.url) {
-      throw new Error(result.error || `Failed to upload ${type}`);
-    }
-
-    return result.url;
-  };
-
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploadingLogo(true);
     try {
-      const url = await uploadBrandingAsset(file, 'logo');
-      handleProfileChange('logoUrl', url);
-      showToast('Logo Uploaded', 'Studio logo has been updated and linked to profile.', 'success');
+      let wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+      if (!wsId && user?.id) {
+        const { getCurrentWorkspace } = await import('@/backend/utilities/workspace');
+        const ws = await getCurrentWorkspace();
+        wsId = ws?.id || null;
+      }
+      if (!wsId) {
+        throw new Error('Could not identify active workspace. Please try reloading the page.');
+      }
+      const res = await StorageHelper.uploadFile('logos', wsId, 'branding', file);
+      if (res.url) {
+        handleProfileChange('logoUrl', res.url);
+        showToast('Logo Uploaded', 'Studio logo has been updated and linked to profile.', 'success');
+      } else {
+        showToast('Upload Failed', res.error || 'Could not upload logo to storage.', 'error');
+      }
     } catch (err) {
-      showToast('Upload Failed', err instanceof Error ? err.message : 'Logo upload failed.', 'error');
+      showToast('Error', err instanceof Error ? err.message : 'Logo upload failed.', 'error');
     } finally {
       setIsUploadingLogo(false);
       if (logoInputRef.current) logoInputRef.current.value = '';
@@ -184,11 +170,24 @@ export const SettingsView: React.FC = () => {
 
     setIsUploadingSignature(true);
     try {
-      const url = await uploadBrandingAsset(file, 'signature');
-      handleProfileChange('signatureUrl', url);
-      showToast('Signature Uploaded', 'Authorized signature updated for invoice PDFs.', 'success');
+      let wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+      if (!wsId && user?.id) {
+        const { getCurrentWorkspace } = await import('@/backend/utilities/workspace');
+        const ws = await getCurrentWorkspace();
+        wsId = ws?.id || null;
+      }
+      if (!wsId) {
+        throw new Error('Could not identify active workspace. Please try reloading the page.');
+      }
+      const res = await StorageHelper.uploadFile('signatures', wsId, 'branding', file);
+      if (res.url) {
+        handleProfileChange('signatureUrl', res.url);
+        showToast('Signature Uploaded', 'Authorized signature updated for invoice PDFs.', 'success');
+      } else {
+        showToast('Upload Failed', res.error || 'Could not upload signature to storage.', 'error');
+      }
     } catch (err) {
-      showToast('Upload Failed', err instanceof Error ? err.message : 'Signature upload failed.', 'error');
+      showToast('Error', err instanceof Error ? err.message : 'Signature upload failed.', 'error');
     } finally {
       setIsUploadingSignature(false);
       if (signatureInputRef.current) signatureInputRef.current.value = '';
