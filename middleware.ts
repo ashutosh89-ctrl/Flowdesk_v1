@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { validateAndFormatUrl, validateKey, isDemoMode } from '@/backend/utilities/supabase';
+import { validateAndFormatUrl, validateKey } from '@/backend/utilities/supabase';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -61,15 +61,6 @@ export async function middleware(request: NextRequest) {
 
   const supabaseUrl = validateAndFormatUrl(rawUrl) || rawUrl;
   const supabaseAnonKey = validateKey(rawKey) || rawKey;
-
-  // SECURITY (fail-closed): demo mode is ONLY active when explicitly configured
-  // via NEXT_PUBLIC_AUTH_MODE=demo. A production deployment with missing/broken
-  // Supabase env vars must NOT bypass the auth gate here — it fails closed via
-  // the redirect below instead of silently opening every route as demo.
-  // Browser state (cookies/localStorage) can NEVER activate demo mode.
-  if (isDemoMode) {
-    return response;
-  }
 
   if (supabaseUrl && supabaseAnonKey) {
     try {

@@ -11,6 +11,13 @@
     "clean": "next clean",
     "test": "npx tsx tests/razorpay-payment.test.ts",
     "test:all": "tsx scripts/test-all.ts",
+    "test:rls:local": "tsx tests/rls-isolation-local.test.ts",
+    "test:schema:local": "tsx tests/schema-conformance-local.test.ts",
+    "test:contract:local": "tsx tests/schema-contract-local.test.ts",
+    "test:workflows:local": "tsx tests/db-workflows-local.test.ts",
+    "test:db:local": "tsx tests/schema-conformance-local.test.ts && tsx tests/schema-contract-local.test.ts && tsx tests/rls-isolation-local.test.ts && tsx tests/db-workflows-local.test.ts",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --local > src/shared/types/database.types.ts",
     "check:secrets": "tsx scripts/check-secrets.ts"
   },
   "dependencies": {

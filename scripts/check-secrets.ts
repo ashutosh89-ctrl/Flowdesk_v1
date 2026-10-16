@@ -49,7 +49,28 @@ const SCANNABLE_EXTENSIONS = new Set([
 // Explicit placeholder words that are safe
 const SAFE_PLACEHOLDER_REGEX = /^(your_|placeholder|mock_|dummy_|test_|example|REDACTED|MY_|default_|sample_|<REDACTED)/i;
 
+/**
+ * Detects the fixed, publicly documented local-development credentials that the
+ * Supabase CLI generates for `supabase start`. They are signed by the local-only
+ * issuer "supabase-demo" and are worthless against any hosted project, so they
+ * are not secrets.
+ *
+ * Detection is by issuer claim rather than by literal value: a real project
+ * token carries the project URL as its `iss`, so it still fails the scan.
+ */
+function isLocalSupabaseDevToken(token: string): boolean {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return false;
+    const json = Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+    return /"iss"\s*:\s*"supabase-demo"/.test(json);
+  } catch {
+    return false;
+  }
+}
+
 function isSafeMatch(snippet: string): boolean {
+  if (isLocalSupabaseDevToken(snippet)) return true;
   return SAFE_PLACEHOLDER_REGEX.test(snippet) ||
     snippet.includes('REDACTED') ||
     snippet.includes('your_') ||

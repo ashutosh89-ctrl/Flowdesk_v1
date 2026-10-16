@@ -52,6 +52,17 @@ const logActivitySafe = async (action: string, target: string, category: string 
     });
   } catch { /* non-critical, silently skip */ }
 };
+
+/**
+ * Demo/local-store fallback guard.
+ *
+ * FlowDeskStore (mock/local data) exists ONLY to serve the explicitly
+ * configured demo experience. In production auth mode it must never be handed
+ * to a user, nor written to on their behalf: doing so presents fabricated
+ * records — or fabricated success — in place of a real database failure and
+ * hides broken writes.
+ */
+const demoFallbackAllowed = (): boolean => DemoDataProvider.isDemo() || isDemoModeActive();
 import { ClientRepository } from '@/backend/repositories/clients/client-service';
 import { FreelancerClientManagementService } from './client-management-service';
 import {
@@ -269,7 +280,9 @@ export const FreelancerProjectService = {
         start_date: project.startDate,
         due_date: project.dueDate,
         tags: project.tags || [],
-        milestones: JSON.stringify(project.milestones || []),
+        // JSONB column: pass the array itself. JSON.stringify() here would store a
+        // double-encoded JSON *string* instead of an array.
+        milestones: project.milestones || [],
       };
 
       const { data, error } = await supabase.from('projects').insert(payload).select().single();
@@ -311,7 +324,7 @@ export const FreelancerProjectService = {
       if (updates.status !== undefined) payload.status = updates.status;
       if (updates.budget !== undefined) payload.budget = updates.budget;
       if (updates.completionPercentage !== undefined) payload.completion_percentage = updates.completionPercentage;
-      if (updates.milestones !== undefined) payload.milestones = JSON.stringify(updates.milestones);
+      if (updates.milestones !== undefined) payload.milestones = updates.milestones;
       const { error } = await supabase.from('projects').update(payload).eq('id', id).eq('workspace_id', wsId);
       if (error) { console.warn('Supabase project update error:', error.message); return undefined; }
       const { data } = await supabase.from('projects').select('*').eq('id', id).single();
@@ -328,7 +341,7 @@ export const FreelancerProjectService = {
       if (!proj) return undefined;
       const milestones = Array.isArray(proj.milestones) ? proj.milestones : [];
       const updated = milestones.map((m: any) => (m.id === milestoneId ? { ...m, completed: !m.completed } : m));
-      await supabase.from('projects').update({ milestones: JSON.stringify(updated), updated_at: new Date().toISOString() }).eq('id', projectId).eq('workspace_id', wsId);
+      await supabase.from('projects').update({ milestones: updated, updated_at: new Date().toISOString() }).eq('id', projectId).eq('workspace_id', wsId);
       const { data: refreshed } = await supabase.from('projects').select('*').eq('id', projectId).single();
       if (!refreshed) return undefined;
       return { id: refreshed.id, clientId: refreshed.client_id, clientName: refreshed.client_name || 'Client Workspace', title: refreshed.title, description: refreshed.description || '', status: refreshed.status || 'in_progress', budget: Number(refreshed.budget) || 0, spent: Number(refreshed.spent) || 0, startDate: refreshed.start_date || '', dueDate: refreshed.due_date || '', completionPercentage: refreshed.completion_percentage || 0, tags: refreshed.tags || [], milestones: refreshed.milestones || [] };
@@ -344,7 +357,7 @@ export const FreelancerProjectService = {
       const milestones = Array.isArray(proj.milestones) ? proj.milestones : [];
       const newMilestone = { id: `ms-${Date.now()}`, title, dueDate, completed: false };
       milestones.push(newMilestone);
-      await supabase.from('projects').update({ milestones: JSON.stringify(milestones), updated_at: new Date().toISOString() }).eq('id', projectId).eq('workspace_id', wsId);
+      await supabase.from('projects').update({ milestones, updated_at: new Date().toISOString() }).eq('id', projectId).eq('workspace_id', wsId);
       const { data: refreshed } = await supabase.from('projects').select('*').eq('id', projectId).single();
       if (!refreshed) return undefined;
       return { id: refreshed.id, clientId: refreshed.client_id, clientName: refreshed.client_name || 'Client Workspace', title: refreshed.title, description: refreshed.description || '', status: refreshed.status || 'in_progress', budget: Number(refreshed.budget) || 0, spent: Number(refreshed.spent) || 0, startDate: refreshed.start_date || '', dueDate: refreshed.due_date || '', completionPercentage: refreshed.completion_percentage || 0, tags: refreshed.tags || [], milestones: refreshed.milestones || [] };
@@ -543,7 +556,7 @@ export const FreelancerDeliverableService = {
   getDeliverables: async (clientId?: string, includeArchived?: boolean): Promise<Deliverable[]> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getDeliverables(clientId, includeArchived);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return FlowDeskStore.getDeliverables(clientId, includeArchived);
+    if (!wsId) return demoFallbackAllowed() ? FlowDeskStore.getDeliverables(clientId, includeArchived) : [];
 
     try {
       let query = supabase.from('deliverables').select('*').eq('workspace_id', wsId);
@@ -551,7 +564,7 @@ export const FreelancerDeliverableService = {
       if (!includeArchived) query = query.neq('status', 'archived');
 
       const { data, error } = await query.order('created_at', { ascending: false });
-      if (error || !data) return FlowDeskStore.getDeliverables(clientId, includeArchived);
+      if (error || !data) return demoFallbackAllowed() ? FlowDeskStore.getDeliverables(clientId, includeArchived) : [];
 
       return data.map((d) => ({
         id: d.id,
@@ -576,16 +589,16 @@ export const FreelancerDeliverableService = {
       }));
     } catch (err) {
       console.warn('Error fetching deliverables:', err);
-      return FlowDeskStore.getDeliverables(clientId, includeArchived);
+      return demoFallbackAllowed() ? FlowDeskStore.getDeliverables(clientId, includeArchived) : [];
     }
   },
   getDeliverableById: async (id: string): Promise<Deliverable | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getDeliverableById(id);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return FlowDeskStore.getDeliverableById(id);
+    if (!wsId) return demoFallbackAllowed() ? FlowDeskStore.getDeliverableById(id) : undefined;
     try {
       const { data, error } = await supabase.from('deliverables').select('*').eq('id', id).single();
-      if (error || !data) return FlowDeskStore.getDeliverableById(id);
+      if (error || !data) return demoFallbackAllowed() ? FlowDeskStore.getDeliverableById(id) : undefined;
 
       // Fetch related data in parallel
       const [versionsResult, filesResult, commentsResult] = await Promise.all([
@@ -662,7 +675,7 @@ export const FreelancerDeliverableService = {
       };
     } catch (err) {
       console.warn('Error fetching deliverable by ID:', err);
-      return FlowDeskStore.getDeliverableById(id);
+      return demoFallbackAllowed() ? FlowDeskStore.getDeliverableById(id) : undefined;
     }
   },
   createDeliverable: async (delData: any): Promise<Deliverable> => {
@@ -744,7 +757,10 @@ export const FreelancerDeliverableService = {
     // 2. Direct Supabase Fallback
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) {
-      return FlowDeskStore.addDeliverable(delData as any);
+      if (demoFallbackAllowed()) {
+        return FlowDeskStore.addDeliverable(delData as any);
+      }
+      throw new Error('No active workspace. Please complete onboarding before creating deliverables.');
     }
 
     try {
@@ -854,8 +870,11 @@ export const FreelancerDeliverableService = {
         submissionMessage: data.submission_message || '',
       };
     } catch (err) {
-      console.warn('Direct Supabase write failed, falling back to local store:', err);
-      return FlowDeskStore.addDeliverable(delData as any);
+      console.warn('Direct Supabase write failed:', err);
+      if (demoFallbackAllowed()) {
+        return FlowDeskStore.addDeliverable(delData as any);
+      }
+      throw err instanceof Error ? err : new Error('Failed to create deliverable.');
     }
   },
   updateDeliverable: async (id: string, updates: Partial<Deliverable>): Promise<Deliverable | undefined> => {
@@ -948,6 +967,7 @@ export const FreelancerDeliverableService = {
 
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) {
+      if (!demoFallbackAllowed()) return undefined;
       return FlowDeskStore.replaceDeliverableVersion(id, {
         version: versionData.version || 'v2.0',
         note: versionData.note || '',
@@ -985,6 +1005,7 @@ export const FreelancerDeliverableService = {
 
       return FreelancerDeliverableService.getDeliverableById(id);
     } catch {
+      if (!demoFallbackAllowed()) return undefined;
       return FlowDeskStore.replaceDeliverableVersion(id, {
         version: versionData.version || 'v2.0',
         note: versionData.note || '',
@@ -1001,7 +1022,7 @@ export const FreelancerDeliverableService = {
   restoreDeliverableVersion: async (id: string, versionId: string): Promise<Deliverable | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.restoreDeliverableVersion(id, versionId);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return FlowDeskStore.restoreDeliverableVersion(id, versionId);
+    if (!wsId) return demoFallbackAllowed() ? FlowDeskStore.restoreDeliverableVersion(id, versionId) : undefined;
     try {
       const { data: version } = await supabase.from('deliverable_versions').select('*').eq('id', versionId).eq('deliverable_id', id).single();
       if (!version) return undefined;
@@ -1012,7 +1033,7 @@ export const FreelancerDeliverableService = {
   addDeliverableFile: async (id: string, fileData: any): Promise<Deliverable | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.addDeliverableFile(id, fileData);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return FlowDeskStore.addDeliverableFile(id, fileData);
+    if (!wsId) return demoFallbackAllowed() ? FlowDeskStore.addDeliverableFile(id, fileData) : undefined;
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -1046,7 +1067,7 @@ export const FreelancerDeliverableService = {
       return FreelancerDeliverableService.getDeliverableById(id);
     } catch (err) {
       console.warn('Error adding deliverable file:', err);
-      return FlowDeskStore.addDeliverableFile(id, fileData);
+      return demoFallbackAllowed() ? FlowDeskStore.addDeliverableFile(id, fileData) : undefined;
     }
   },
   renameDeliverableFile: async (id: string, fileId: string, newName: string): Promise<Deliverable | undefined> => {
@@ -1054,14 +1075,14 @@ export const FreelancerDeliverableService = {
     try {
       await supabase.from('deliverable_files').update({ file_name: newName }).eq('id', fileId).eq('deliverable_id', id);
       return FreelancerDeliverableService.getDeliverableById(id);
-    } catch { return FlowDeskStore.renameDeliverableFile(id, fileId, newName); }
+    } catch { return demoFallbackAllowed() ? FlowDeskStore.renameDeliverableFile(id, fileId, newName) : undefined; }
   },
   deleteDeliverableFile: async (id: string, fileId: string): Promise<Deliverable | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.deleteDeliverableFile(id, fileId);
     try {
       await supabase.from('deliverable_files').delete().eq('id', fileId).eq('deliverable_id', id);
       return FreelancerDeliverableService.getDeliverableById(id);
-    } catch { return FlowDeskStore.deleteDeliverableFile(id, fileId); }
+    } catch { return demoFallbackAllowed() ? FlowDeskStore.deleteDeliverableFile(id, fileId) : undefined; }
   },
   togglePinDeliverableFile: async (id: string, fileId: string): Promise<Deliverable | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.togglePinDeliverableFile(id, fileId);
@@ -1071,7 +1092,7 @@ export const FreelancerDeliverableService = {
       return FreelancerDeliverableService.getDeliverableById(id);
     } catch (err) {
       console.warn('Error toggling file pin:', err);
-      return FlowDeskStore.togglePinDeliverableFile(id, fileId);
+      return demoFallbackAllowed() ? FlowDeskStore.togglePinDeliverableFile(id, fileId) : undefined;
     }
   },
   addDeliverableComment: async (id: string, commentData: any): Promise<Deliverable | undefined> => {
@@ -1095,7 +1116,7 @@ export const FreelancerDeliverableService = {
       }
     }
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return FlowDeskStore.addDeliverableComment(id, commentData);
+    if (!wsId) return demoFallbackAllowed() ? FlowDeskStore.addDeliverableComment(id, commentData) : undefined;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const authorName = commentData.author || user?.email?.split('@')[0] || 'User';
@@ -1119,7 +1140,7 @@ export const FreelancerDeliverableService = {
       return FreelancerDeliverableService.getDeliverableById(id);
     } catch (err) {
       console.warn('Error adding deliverable comment:', err);
-      return FlowDeskStore.addDeliverableComment(id, commentData);
+      return demoFallbackAllowed() ? FlowDeskStore.addDeliverableComment(id, commentData) : undefined;
     }
   },
   toggleResolveDeliverableComment: async (id: string, commentId: string): Promise<Deliverable | undefined> => {
@@ -1128,7 +1149,7 @@ export const FreelancerDeliverableService = {
       const { data: existing } = await supabase.from('deliverable_comments').select('resolved').eq('id', commentId).single();
       await supabase.from('deliverable_comments').update({ resolved: !existing?.resolved }).eq('id', commentId);
       return FreelancerDeliverableService.getDeliverableById(id);
-    } catch { return FlowDeskStore.toggleResolveDeliverableComment(id, commentId); }
+    } catch { return demoFallbackAllowed() ? FlowDeskStore.toggleResolveDeliverableComment(id, commentId) : undefined; }
   },
   submitDeliverableClientReview: async (id: string, reviewData?: any): Promise<Deliverable | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.submitDeliverableForReview(id, reviewData);
@@ -1152,7 +1173,7 @@ export const FreelancerDeliverableService = {
       }
     }
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return FlowDeskStore.submitDeliverableForReview(id, reviewData);
+    if (!wsId) return demoFallbackAllowed() ? FlowDeskStore.submitDeliverableForReview(id, reviewData) : undefined;
     try {
       // Validate status transition
       const { data: current } = await supabase.from('deliverables').select('status').eq('id', id).single();
@@ -1216,7 +1237,7 @@ export const FreelancerDeliverableService = {
   approveDeliverable: async (id: string, note?: string): Promise<Deliverable | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.approveDeliverable(id, note);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return FlowDeskStore.approveDeliverable(id, note);
+    if (!wsId) return demoFallbackAllowed() ? FlowDeskStore.approveDeliverable(id, note) : undefined;
     try {
       // Security: Freelancer cannot approve their own deliverable
       // This method should only be called via ClientDeliverableService which verifies client identity
@@ -1240,13 +1261,13 @@ export const FreelancerDeliverableService = {
       return FreelancerDeliverableService.getDeliverableById(id);
     } catch (err) {
       console.warn('Error approving deliverable:', err);
-      return FlowDeskStore.approveDeliverable(id, note);
+      return demoFallbackAllowed() ? FlowDeskStore.approveDeliverable(id, note) : undefined;
     }
   },
   requestDeliverableRevision: async (id: string, revisionComment: string): Promise<Deliverable | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.requestDeliverableRevision(id, revisionComment);
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return FlowDeskStore.requestDeliverableRevision(id, revisionComment);
+    if (!wsId) return demoFallbackAllowed() ? FlowDeskStore.requestDeliverableRevision(id, revisionComment) : undefined;
     try {
       await safeDeliverableUpdate(supabase, id, {
         status: 'revision_requested',
@@ -1279,11 +1300,11 @@ export const FreelancerDeliverableService = {
   updateDeliverableInternalNotes: async (id: string, notes: string): Promise<Deliverable | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.updateDeliverable(id, { internalNotes: notes });
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return FlowDeskStore.updateDeliverable(id, { internalNotes: notes });
+    if (!wsId) return demoFallbackAllowed() ? FlowDeskStore.updateDeliverable(id, { internalNotes: notes }) : undefined;
     try {
       await supabase.from('deliverables').update({ internal_notes: notes, updated_at: new Date().toISOString() }).eq('id', id).eq('workspace_id', wsId);
       return FreelancerDeliverableService.getDeliverableById(id);
-    } catch { return FlowDeskStore.updateDeliverable(id, { internalNotes: notes }); }
+    } catch { return demoFallbackAllowed() ? FlowDeskStore.updateDeliverable(id, { internalNotes: notes }) : undefined; }
   },
   bulkUpdateDeliverables: async (ids: string[], action: { type: string; status?: string; archive?: boolean; restore?: boolean; delete?: boolean }): Promise<{ success: boolean; failedIds: string[] }> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
@@ -1362,7 +1383,9 @@ export const FreelancerInvoiceService = {
     if (!wsId) return [];
 
     try {
-      let query = supabase.from('invoices').select('*, invoice_items(*), invoice_payments(*)').eq('workspace_id', wsId);
+      // `receipts(*)` surfaces the durable receipt ledger produced by
+      // record_manual_payment / settle_razorpay_payment (see the mapping below).
+      let query = supabase.from('invoices').select('*, invoice_items(*), invoice_payments(*), receipts(*)').eq('workspace_id', wsId);
       if (clientId) query = query.eq('client_id', clientId);
 
       let { data, error } = await query.order('created_at', { ascending: false });
@@ -2013,7 +2036,10 @@ export const FreelancerInvoiceService = {
       // activity + notification — all in one transaction.
       // NULL p_amount settles the full remaining balance (RPC semantics); an
       // explicit positive amount records a partial settlement.
-      const settleAmount = amount !== undefined && amount > 0 ? amount : null;
+      // NULL means "settle the full remaining balance". An explicit non-positive
+      // amount is passed through untouched so the RPC rejects it instead of
+      // silently upgrading it to a full settlement.
+      const settleAmount = amount !== undefined && amount !== null ? amount : null;
       const { data, error } = await supabase.rpc('record_manual_payment', {
         p_invoice_id: id,
         p_amount: settleAmount,

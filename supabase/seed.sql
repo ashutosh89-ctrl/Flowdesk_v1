@@ -1,0 +1,7 @@
+-- ==============================================================================
+-- FLOWDESK LOCAL SEED
+-- ==============================================================================
+-- Intentionally empty. Seed/demo fixtures are NEVER stored as production
+-- migrations, and no customer data or credentials may appear here. Test
+-- fixtures for RLS isolation are created programmatically by the automated
+-- test suite (tests/), not by this file.

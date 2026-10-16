@@ -150,7 +150,10 @@ export async function POST(
     }
 
     // 7. Atomic DB Execution via RPC or transaction
-    const settleAmount = amount !== undefined && amount > 0 ? amount : null;
+    // NULL means "settle the full remaining balance". An explicit non-positive
+    // amount is passed through untouched so the RPC rejects it instead of
+    // silently upgrading it to a full settlement.
+    const settleAmount = amount !== undefined && amount !== null ? amount : null;
     const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('record_manual_payment', {
       p_invoice_id: invoiceId,
       p_amount: settleAmount,
