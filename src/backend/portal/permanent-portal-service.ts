@@ -202,7 +202,7 @@ export const PermanentPortalService = {
       // 1. Resolve workspace by portal_slug
       const { data: ws, error: wsError } = await client
         .from('workspaces')
-        .select('id, owner_id, name, is_accepting_connections')
+        .select('id, owner_id, name, is_accepting_connections, currency')
         .ilike('portal_slug', cleanSlug)
         .maybeSingle();
 
@@ -319,7 +319,7 @@ export const PermanentPortalService = {
               company: `${userName} Workspace`,
               email: userEmail || 'client@flowdesk.app',
               status: 'active',
-              currency: 'USD',
+              currency: ws.currency || 'USD',
             })
             .select('id')
             .single();

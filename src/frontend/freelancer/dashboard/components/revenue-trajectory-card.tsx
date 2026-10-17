@@ -1,5 +1,7 @@
 import React from 'react';
 import { TrendingUp, DollarSign, ArrowUpRight, Receipt, FileText } from 'lucide-react';
+import { useAuth } from '@/frontend/auth/auth-context';
+import { formatCurrency, getCurrencySymbol } from '@/shared/utils/currency';
 
 interface RevenueTrajectoryCardProps {
   totalRevenue: number;
@@ -7,6 +9,7 @@ interface RevenueTrajectoryCardProps {
   pendingInvoicesAmount: number;
   revenueHistory: { month: string; amount: number }[];
   onNavigate: (view: string) => void;
+  currency?: string;
 }
 
 export const RevenueTrajectoryCard: React.FC<RevenueTrajectoryCardProps> = ({
@@ -15,7 +18,11 @@ export const RevenueTrajectoryCard: React.FC<RevenueTrajectoryCardProps> = ({
   pendingInvoicesAmount,
   revenueHistory,
   onNavigate,
+  currency: propCurrency,
 }) => {
+  const { profile, userSettings } = useAuth();
+  const currency = propCurrency || userSettings?.currency || profile?.currency || 'USD';
+  const sym = getCurrencySymbol(currency);
   const maxVal = Math.max(...revenueHistory.map((r) => r.amount), 35000);
 
   return (
@@ -42,7 +49,7 @@ export const RevenueTrajectoryCard: React.FC<RevenueTrajectoryCardProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 p-4 rounded-xl bg-zinc-900/60 border border-white/10">
         <div>
           <p className="text-[11px] text-zinc-400 font-medium">Monthly Recurring Revenue</p>
-          <p className="text-xl font-extrabold text-white tracking-tight my-0.5">${monthlyRevenue.toLocaleString()}</p>
+          <p className="text-xl font-extrabold text-white tracking-tight my-0.5">{formatCurrency(monthlyRevenue, currency)}</p>
           <span className="text-[10px] text-emerald-400 flex items-center gap-0.5">
             <ArrowUpRight className="w-3 h-3" /> +18.4% growth
           </span>
@@ -50,13 +57,13 @@ export const RevenueTrajectoryCard: React.FC<RevenueTrajectoryCardProps> = ({
 
         <div>
           <p className="text-[11px] text-zinc-400 font-medium">Outstanding Balance</p>
-          <p className="text-xl font-extrabold text-amber-400 tracking-tight my-0.5">${pendingInvoicesAmount.toLocaleString()}</p>
+          <p className="text-xl font-extrabold text-amber-400 tracking-tight my-0.5">{formatCurrency(pendingInvoicesAmount, currency)}</p>
           <span className="text-[10px] text-zinc-400">Pending client clearance</span>
         </div>
 
         <div>
           <p className="text-[11px] text-zinc-400 font-medium">Total YTD Revenue</p>
-          <p className="text-xl font-extrabold text-white tracking-tight my-0.5">${totalRevenue.toLocaleString()}</p>
+          <p className="text-xl font-extrabold text-white tracking-tight my-0.5">{formatCurrency(totalRevenue, currency)}</p>
           <span className="text-[10px] text-purple-400">Settled &amp; Deposited</span>
         </div>
       </div>
@@ -64,8 +71,8 @@ export const RevenueTrajectoryCard: React.FC<RevenueTrajectoryCardProps> = ({
       {/* Trajectory Bar Chart */}
       <div className="space-y-2">
         <div className="flex justify-between items-center text-xs text-zinc-400 font-mono mb-2">
-          <span>Monthly Income ($)</span>
-          <span>Target: $30,000/mo</span>
+          <span>Monthly Income ({sym})</span>
+          <span>Target: {sym}30,000/mo</span>
         </div>
 
         <div className="h-44 flex items-end justify-between gap-3 pt-6 pb-2 px-2 border-b border-white/10">
@@ -75,7 +82,7 @@ export const RevenueTrajectoryCard: React.FC<RevenueTrajectoryCardProps> = ({
               <div key={idx} className="flex-1 flex flex-col items-center gap-2 group/bar relative h-full justify-end">
                 {/* Tooltip on hover */}
                 <div className="absolute -top-8 opacity-0 group-hover/bar:opacity-100 bg-zinc-900 border border-white/20 text-white text-[10px] font-mono px-2 py-0.5 rounded shadow-lg transition-opacity pointer-events-none z-20">
-                  ${item.amount.toLocaleString()}
+                  {formatCurrency(item.amount, currency)}
                 </div>
 
                 {/* Bar */}

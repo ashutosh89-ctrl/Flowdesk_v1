@@ -5,6 +5,7 @@ import { RecentFiles } from './recent-files';
 import { DeadlineCard } from './deadline-card';
 import { Card } from '@/frontend/shared/ui/card';
 import { FolderKanban, Layers, FileText, CheckCircle2 } from 'lucide-react';
+import { formatCurrency } from '@/shared/utils/currency';
 
 export interface OverviewCardsProps {
   summary: WorkspaceSummary;
@@ -40,7 +41,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({ summary }) => {
         <Card variant="crystal" className="p-4 border-white/10">
           <span className="text-[10px] uppercase font-mono text-zinc-400 block">Unpaid Invoices</span>
           <span className="text-xl font-bold text-amber-400 font-mono mt-1 block">
-            ${outstandingBalance.toLocaleString()}
+            {formatCurrency(outstandingBalance, client.currency || 'USD')}
           </span>
         </Card>
       </div>

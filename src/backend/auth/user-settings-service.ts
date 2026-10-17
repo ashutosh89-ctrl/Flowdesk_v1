@@ -176,7 +176,6 @@ export const UserSettingsService = {
           console.warn('Server settings sync notice:', err);
         }
       }
-      return mergedSettings;
     }
 
     // Sync to Supabase if valid user

@@ -8,6 +8,8 @@ import { Modal } from '@/frontend/shared/ui/modal';
 import { WorkspaceSummary, Project, ProjectMilestone } from '@/shared/types';
 import { ProjectService } from '@/backend/freelancer';
 import { useToast } from '@/frontend/shared/ui/toast';
+import { CreateProjectModal } from '@/frontend/freelancer/projects/components/create-project-modal';
+import { formatCurrency } from '@/shared/utils/currency';
 import {
   FolderKanban,
   Plus,
@@ -38,17 +40,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ summary, onRefresh }) 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
-  // New Project Form state
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [budget, setBudget] = useState(15000);
-  const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [dueDate, setDueDate] = useState(() =>
-    new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]
-  );
-  const [tagsStr, setTagsStr] = useState('Design, Development');
-
   // Milestone Form modal
   const [milestoneTitle, setMilestoneTitle] = useState('');
   const [milestoneDate, setMilestoneDate] = useState(() =>
@@ -56,33 +47,6 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ summary, onRefresh }) 
   );
   const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false);
 
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const tags = tagsStr.split(',').map((t) => t.trim()).filter(Boolean);
-    await ProjectService.createProject({
-      clientId: client.id,
-      clientName: client.company,
-      title,
-      description,
-      status: 'in_progress',
-      priority,
-      budget: Number(budget),
-      startDate,
-      dueDate,
-      tags,
-    });
-    showToast('Project Created', `Project "${title}" added to ${client.company} workspace.`, 'success');
-    setIsCreateModalOpen(false);
-    resetForm();
-    onRefresh();
-  };
-
-  const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setBudget(15000);
-    setPriority('medium');
-  };
 
   const handleToggleMilestone = async (projectId: string, milestoneId: string) => {
     await ProjectService.toggleMilestone(projectId, milestoneId);
@@ -243,7 +207,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ summary, onRefresh }) 
                 <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-zinc-400 pt-2 border-t border-white/10">
                   <span className="flex items-center gap-1">
                     <DollarSign className="w-3.5 h-3.5 text-zinc-500" />
-                    Budget: <strong className="text-white">${proj.budget.toLocaleString()}</strong>
+                    Budget: <strong className="text-white">{formatCurrency(proj.budget, client.currency || 'USD')}</strong>
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5 text-zinc-500" />
@@ -284,85 +248,13 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ summary, onRefresh }) 
         </div>
       )}
 
-      {/* New Project Modal */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Create New Client Project">
-        <form onSubmit={handleCreateProject} className="space-y-4">
-          <Input
-            label="Project Title"
-            placeholder="e.g. Brand Identity & Web System Overhaul"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-300">Description & Scope</label>
-            <textarea
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detailed description of deliverables and goals..."
-              className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-white/30"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Budget ($ USD)"
-              type="number"
-              value={budget}
-              onChange={(e) => setBudget(Number(e.target.value))}
-              required
-            />
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-300">Priority</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as any)}
-                className="w-full bg-zinc-900 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none"
-              >
-                <option value="high">High Priority</option>
-                <option value="medium">Medium Priority</option>
-                <option value="low">Low Priority</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Start Date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              required
-            />
-            <Input
-              label="Target Deadline"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              required
-            />
-          </div>
-
-          <Input
-            label="Tags (comma separated)"
-            placeholder="Branding, Web design, Framer"
-            value={tagsStr}
-            onChange={(e) => setTagsStr(e.target.value)}
-          />
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-            <Button variant="ghost" type="button" onClick={() => setIsCreateModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              Create Project
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      {/* Full Detailed Create Project Modal */}
+      <CreateProjectModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        defaultClientId={client.id}
+        onSuccess={() => onRefresh()}
+      />
 
       {/* Add Milestone Modal */}
       <Modal

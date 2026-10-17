@@ -11,7 +11,8 @@ interface InvoiceBuilderModalProps {
   isOpen: boolean;
   onClose: () => void;
   invoiceToEdit?: Invoice | null;
-  onSave: (invoiceData: any) => void;
+  onSave?: (invoiceData: any) => Promise<void> | void;
+  defaultClientId?: string;
 }
 
 export function InvoiceBuilderModal({
@@ -19,8 +20,9 @@ export function InvoiceBuilderModal({
   onClose,
   invoiceToEdit,
   onSave,
+  defaultClientId,
 }: InvoiceBuilderModalProps) {
-  const { user } = useAuth();
+  const { user, profile, userSettings } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -85,6 +87,7 @@ export function InvoiceBuilderModal({
           FreelancerInvoiceService.getInvoices(),
         ]);
 
+        const studioCurrency = settings?.currency || userSettings?.currency || profile?.currency || 'USD';
         const paymentTerms = settings?.default_payment_terms || 14;
         const dueDateMs = new Date(today).getTime() + paymentTerms * 86400000;
         const dueDateStr = new Date(dueDateMs).toISOString().split('T')[0];
@@ -98,29 +101,37 @@ export function InvoiceBuilderModal({
         setIssueDate(today);
         setDueDate(dueDateStr);
         setTaxPercentage(settings?.default_tax_rate ?? 0);
-        setTaxName(settings?.tax_name || 'Tax');
+        setTaxName(settings?.tax_name || 'GST');
+        setCurrency(studioCurrency);
 
-        if (allClients.length > 0) {
-          const firstClient = allClients[0];
-          setSelectedClientId(firstClient.id);
-          setCurrency(firstClient.currency || settings?.currency || 'USD');
-          FreelancerProjectService.getProjectsByClientId(firstClient.id).then(setProjects);
+        const targetClient = (defaultClientId && allClients.find((c) => c.id === defaultClientId)) || allClients[0];
+        if (targetClient) {
+          setSelectedClientId(targetClient.id);
+          if (targetClient.currency && targetClient.currency !== 'USD') {
+            setCurrency(targetClient.currency);
+          } else {
+            setCurrency(studioCurrency);
+          }
+          FreelancerProjectService.getProjectsByClientId(targetClient.id).then(setProjects);
         } else {
-          setCurrency(settings?.currency || 'USD');
+          setCurrency(studioCurrency);
           setProjects([]);
         }
         setItems([{ id: 'item-initial', description: '', quantity: 1, rate: 0, amount: 0 }]);
       }
     });
-  }, [isOpen, invoiceToEdit, user?.id]);
+  }, [isOpen, invoiceToEdit, user?.id, defaultClientId, profile?.currency, userSettings?.currency]);
 
   const handleClientSelectChange = (newClientId: string) => {
     setSelectedClientId(newClientId);
     FreelancerProjectService.getProjectsByClientId(newClientId).then(setProjects);
     setSelectedProjectId('');
     const selectedClient = clients.find((c) => c.id === newClientId);
-    if (selectedClient) {
-      setCurrency(selectedClient.currency || 'USD');
+    const studioCurrency = userSettings?.currency || profile?.currency || 'USD';
+    if (selectedClient && selectedClient.currency && selectedClient.currency !== 'USD') {
+      setCurrency(selectedClient.currency);
+    } else {
+      setCurrency(studioCurrency);
     }
   };
 
@@ -223,7 +234,15 @@ export function InvoiceBuilderModal({
         internalNotes,
       };
 
-      await onSave(payload);
+      if (onSave) {
+        await onSave(payload);
+      } else {
+        if (invoiceToEdit) {
+          await FreelancerInvoiceService.updateInvoice(invoiceToEdit.id, payload);
+        } else {
+          await FreelancerInvoiceService.createInvoice(payload);
+        }
+      }
       onClose();
     } catch (err) {
       setValidationErrors([err instanceof Error ? err.message : 'Failed to save invoice.']);

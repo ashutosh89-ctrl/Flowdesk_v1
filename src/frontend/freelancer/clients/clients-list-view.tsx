@@ -11,15 +11,19 @@ import { SearchBar } from './components/search-bar';
 import { FilterBar } from './components/filter-bar';
 import { ClientCard } from './components/client-card';
 import { ClientTable } from './components/client-table';
+import { CreateClientModal } from './components/create-client-modal';
 import { CountrySelect } from '@/frontend/shared/ui/country-select';
 import { PhoneInput } from '@/frontend/shared/ui/phone-input';
 import { switchCountryPrefix } from '@/shared/utils/countries';
+import { useAuth } from '@/frontend/auth/auth-context';
 
 export interface ClientsListViewProps {
   onOpenWorkspace: (clientId: string) => void;
 }
 
 export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspace }) => {
+  const { profile, userSettings } = useAuth();
+  const studioCurrency = userSettings?.currency || profile?.currency || 'USD';
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -45,7 +49,7 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
   const [phone, setPhone] = useState('');
   const [industry, setIndustry] = useState('');
   const [country, setCountry] = useState('India');
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState(studioCurrency);
   const [notes, setNotes] = useState('');
   const [tagsStr, setTagsStr] = useState('');
 
@@ -248,7 +252,7 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
     setPhone('');
     setIndustry('');
     setCountry('India');
-    setCurrency('USD');
+    setCurrency(studioCurrency);
     setNotes('');
     setTagsStr('');
   };
@@ -384,85 +388,15 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
         />
       )}
 
-      {/* Create Client Modal */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Add New Client Workspace">
-        <form onSubmit={handleCreateClient} className="space-y-4">
-          <Input
-            label="Client Primary Contact"
-            placeholder="e.g. Eleanor Vance"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-
-          <Input
-            label="Company / Studio Name"
-            placeholder="e.g. Apex Digital Labs"
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-            required
-          />
-
-          <Input
-            label="Email Address"
-            type="email"
-            placeholder="eleanor@apexdigital.io"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <PhoneInput
-              label="Phone"
-              value={phone}
-              country={country}
-              onChange={(newPhone) => setPhone(newPhone)}
-            />
-            <Input label="Industry" value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Fintech" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <CountrySelect
-              label="Country"
-              value={country}
-              onChange={(newCountry) => {
-                const updatedPhone = switchCountryPrefix(phone, country, newCountry);
-                setCountry(newCountry);
-                setPhone(updatedPhone);
-              }}
-            />
-            <Input label="Currency" value={currency} onChange={(e) => setCurrency(e.target.value)} />
-          </div>
-
-          <Input
-            label="Tags (comma separated)"
-            placeholder="Enterprise, VIP, Retainer"
-            value={tagsStr}
-            onChange={(e) => setTagsStr(e.target.value)}
-          />
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-300">Workspace Notes</label>
-            <textarea
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Internal project requirements or preferences..."
-              className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-white/30"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-            <Button variant="ghost" type="button" onClick={() => setIsCreateModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              Provision Client Workspace
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      {/* Full Detailed Create Client Modal */}
+      <CreateClientModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={(newClient) => {
+          loadClients();
+          onOpenWorkspace(newClient.id);
+        }}
+      />
 
       {/* Edit Client Modal */}
       <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Client Information">

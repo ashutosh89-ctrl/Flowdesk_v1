@@ -12,13 +12,18 @@ import {
   FileSearch,
 } from 'lucide-react';
 import { BusinessMetrics } from '@/shared/types';
+import { useAuth } from '@/frontend/auth/auth-context';
+import { formatCurrency } from '@/shared/utils/currency';
 
 interface BusinessSnapshotProps {
   metrics: BusinessMetrics;
   onNavigate: (view: string) => void;
+  currency?: string;
 }
 
-export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onNavigate }) => {
+export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onNavigate, currency: propCurrency }) => {
+  const { profile, userSettings } = useAuth();
+  const currency = propCurrency || userSettings?.currency || profile?.currency || 'USD';
   const safeMetrics = {
     activeClientsCount: metrics?.activeClientsCount ?? 0,
     activeProjectsCount: metrics?.activeProjectsCount ?? 0,
@@ -67,7 +72,7 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
     {
       id: 'pending_invoices',
       label: 'Pending Invoices',
-      value: `$${safeMetrics.pendingInvoicesAmount.toLocaleString()}`,
+      value: formatCurrency(safeMetrics.pendingInvoicesAmount, currency),
       subtext: `${safeMetrics.pendingInvoicesCount} invoices pending`,
       icon: <Receipt className="w-5 h-5 text-amber-400" />,
       color: 'from-amber-500/10 to-transparent',
@@ -77,7 +82,7 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
     {
       id: 'monthly_revenue',
       label: 'Monthly Revenue',
-      value: `$${safeMetrics.monthlyRevenue.toLocaleString()}`,
+      value: formatCurrency(safeMetrics.monthlyRevenue, currency),
       subtext: `+${safeMetrics.revenueGrowthPct}% vs last month`,
       icon: <TrendingUp className="w-5 h-5 text-emerald-400" />,
       color: 'from-emerald-500/10 to-transparent',
@@ -87,7 +92,7 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
     {
       id: 'total_revenue',
       label: 'Total Revenue (YTD)',
-      value: `$${safeMetrics.totalRevenue.toLocaleString()}`,
+      value: formatCurrency(safeMetrics.totalRevenue, currency),
       subtext: 'Settled & cleared',
       icon: <DollarSign className="w-5 h-5 text-amber-400" />,
       color: 'from-amber-500/10 to-transparent',

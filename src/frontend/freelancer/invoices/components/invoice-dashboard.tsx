@@ -14,13 +14,18 @@ import {
   FileText,
 } from 'lucide-react';
 
+import { useAuth } from '@/frontend/auth/auth-context';
+
 interface InvoiceDashboardProps {
   metrics: FinancialDashboardMetrics;
   onSelectInvoice: (invoice: Invoice) => void;
   onCreateInvoice: () => void;
+  currency?: string;
 }
 
-export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice }: InvoiceDashboardProps) {
+export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice, currency: propCurrency }: InvoiceDashboardProps) {
+  const { profile, userSettings } = useAuth();
+  const currency = propCurrency || userSettings?.currency || profile?.currency || 'USD';
   const safeMetrics: FinancialDashboardMetrics = {
     lifetimeRevenue: metrics?.lifetimeRevenue ?? 0,
     outstandingBalance: metrics?.outstandingBalance ?? 0,
@@ -56,10 +61,10 @@ export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice }: 
             </div>
           </div>
           <div className="text-2xl font-bold tracking-tight text-white">
-            {formatCurrency(safeMetrics.lifetimeRevenue, 'USD')}
+            {formatCurrency(safeMetrics.lifetimeRevenue, currency)}
           </div>
           <div className="flex items-center justify-between text-xs text-zinc-400">
-            <span>Avg: {formatCurrency(safeMetrics.averageInvoiceValue, 'USD')}</span>
+            <span>Avg: {formatCurrency(safeMetrics.averageInvoiceValue, currency)}</span>
             <span className="text-emerald-400 font-medium flex items-center gap-1">
               <TrendingUp className="w-3.5 h-3.5" /> Settled
             </span>
@@ -75,10 +80,10 @@ export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice }: 
             </div>
           </div>
           <div className="text-2xl font-bold tracking-tight text-white">
-            {formatCurrency(safeMetrics.outstandingBalance, 'USD')}
+            {formatCurrency(safeMetrics.outstandingBalance, currency)}
           </div>
           <div className="flex items-center justify-between text-xs text-zinc-400">
-            <span>Pending: {formatCurrency(safeMetrics.pendingPayments, 'USD')}</span>
+            <span>Pending: {formatCurrency(safeMetrics.pendingPayments, currency)}</span>
             <span className="text-amber-400 font-medium">Awaiting Payout</span>
           </div>
         </div>
@@ -92,7 +97,7 @@ export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice }: 
             </div>
           </div>
           <div className="text-2xl font-bold tracking-tight text-white">
-            {formatCurrency(safeMetrics.paidThisMonth, 'USD')}
+            {formatCurrency(safeMetrics.paidThisMonth, currency)}
           </div>
           <div className="flex items-center justify-between text-xs text-zinc-400">
             <span>Collection Rate</span>
@@ -109,7 +114,7 @@ export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice }: 
             </div>
           </div>
           <div className="text-2xl font-bold tracking-tight text-rose-400">
-            {formatCurrency(safeMetrics.overdueAmount, 'USD')}
+            {formatCurrency(safeMetrics.overdueAmount, currency)}
           </div>
           <div className="flex items-center justify-between text-xs text-zinc-400">
             <span>Action Required</span>
@@ -133,7 +138,7 @@ export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice }: 
               </p>
             </div>
             <span className="text-xs px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-zinc-300 font-mono">
-              Total: {formatCurrency(safeMetrics.outstandingBalance, 'USD')}
+              Total: {formatCurrency(safeMetrics.outstandingBalance, currency)}
             </span>
           </div>
 
@@ -148,7 +153,7 @@ export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice }: 
                   <span className="text-zinc-400 font-mono text-[11px]">{item.count} invoice{item.count === 1 ? '' : 's'}</span>
                 </div>
                 <div className="text-lg font-bold text-white">
-                  {formatCurrency(item.amount, 'USD')}
+                  {formatCurrency(item.amount, currency)}
                 </div>
                 <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
                   <div
@@ -178,10 +183,10 @@ export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice }: 
                 <div key={t.month} className="p-2.5 rounded-xl border border-white/10 bg-zinc-900/40 text-center">
                   <div className="text-xs text-zinc-400 mb-1">{t.month}</div>
                   <div className="text-xs font-bold text-emerald-400 font-mono">
-                    {formatCurrency(t.paid, 'USD')}
+                    {formatCurrency(t.paid, currency)}
                   </div>
                   <div className="text-[10px] text-amber-400 font-mono mt-0.5">
-                    {formatCurrency(t.pending, 'USD')} pending
+                    {formatCurrency(t.pending, currency)} pending
                   </div>
                 </div>
               ))}

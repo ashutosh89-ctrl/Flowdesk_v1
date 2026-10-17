@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Layers,
 } from 'lucide-react';
+import { formatCurrency } from '@/shared/utils/currency';
 
 export interface OverviewTabProps {
   summary: WorkspaceSummary;
@@ -72,7 +73,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ summary, onRefresh, on
         <Card variant="crystal">
           <span className="text-xs text-zinc-400 uppercase font-mono">Total Billed</span>
           <p className="text-2xl font-bold text-white mt-1">
-            ${client.totalBilled.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {formatCurrency(client.totalBilled, client.currency || 'USD')}
           </p>
           <p className="text-xs text-zinc-400 mt-1">{client.currency} Account</p>
         </Card>
@@ -80,7 +81,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ summary, onRefresh, on
         <Card variant="crystal">
           <span className="text-xs text-zinc-400 uppercase font-mono">Outstanding Balance</span>
           <p className="text-2xl font-bold text-white mt-1">
-            ${outstandingTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {formatCurrency(outstandingTotal, client.currency || 'USD')}
           </p>
           <p className="text-xs text-zinc-400 mt-1">Due invoices</p>
         </Card>

@@ -4,6 +4,7 @@ import { Button } from '@/frontend/shared/ui/button';
 import { StatusBadge } from '../../deliverables/components/status-badge';
 import { ApprovalBadge } from '../../deliverables/components/approval-badge';
 import { DeliverableWorkspaceModal } from '../../deliverables/components/deliverable-workspace-modal';
+import { CreateDeliverableModal } from '../../deliverables/components/create-deliverable-modal';
 import { Modal } from '@/frontend/shared/ui/modal';
 import { Input } from '@/frontend/shared/ui/input';
 import { DeliverableService } from '@/backend/freelancer';
@@ -40,47 +41,9 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
   const [revisionDeliv, setRevisionDeliv] = useState<Deliverable | null>(null);
   const [revisionNote, setRevisionNote] = useState('');
 
-  // Submit Deliverable state
-  const [title, setTitle] = useState('');
-  const [projectId, setProjectId] = useState(projects[0]?.id || '');
-  const [version, setVersion] = useState('v1.0.0');
-  const [dueDate, setDueDate] = useState('2026-08-30');
-  const [description, setDescription] = useState('');
-  const [fileSize, setFileSize] = useState('4.5 MB');
-
   // New Version state
   const [newVerTag, setNewVerTag] = useState('v1.1.0');
   const [newVerNote, setNewVerNote] = useState('');
-
-  const handleSubmitDeliverable = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-
-    const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
-    const chosenProj = projectId || projects[0]?.id;
-    const cleanProjId = chosenProj && (UUID_REGEX.test(chosenProj) || chosenProj.startsWith('proj-')) ? chosenProj : undefined;
-
-    DeliverableService.addDeliverable({
-      clientId: client.id,
-      projectId: cleanProjId || '',
-      title: title.trim(),
-      description: description.trim(),
-      status: 'submitted',
-      approvalStatus: 'pending',
-      dueDate,
-      version,
-      fileSize,
-      fileUrl: `https://flowdesk.app/assets/${title.trim().toLowerCase().replace(/\s+/g, '-')}`,
-    }).then(() => {
-      showToast('Deliverable Submitted', `Submitted "${title.trim()}" (${version}) for review.`, 'success');
-      setIsSubmitModalOpen(false);
-      resetForm();
-      onRefresh();
-    }).catch((err: any) => {
-      console.error('Submit deliverable error:', err);
-      showToast('Submit Failed', err?.message || 'Unable to submit deliverable.', 'error');
-    });
-  };
 
   const handleUploadNewVersion = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,11 +86,7 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
     }
   };
 
-  const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setVersion('v1.0.0');
-  };
+
 
   return (
     <div className="space-y-6 select-none">
@@ -247,71 +206,15 @@ export const DeliverablesTab: React.FC<DeliverablesTabProps> = ({ summary, onRef
         />
       )}
 
-      {/* Submit Deliverable Modal */}
-      <Modal isOpen={isSubmitModalOpen} onClose={() => setIsSubmitModalOpen(false)} title="Submit Deliverable for Client Review">
-        <form onSubmit={handleSubmitDeliverable} className="space-y-4">
-          <Input
-            label="Deliverable Title"
-            placeholder="e.g. Core UI Kit & Token Spec"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-300">Target Project</label>
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full bg-zinc-900 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-white/30"
-              >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <Input
-              label="Version Tag"
-              placeholder="e.g. v1.0.0 or v2.1-rc"
-              value={version}
-              onChange={(e) => setVersion(e.target.value)}
-              required
-            />
-          </div>
-
-          <Input
-            label="Due Date"
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            required
-          />
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-300">Submission Description & Notes</label>
-            <textarea
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Key updates, specs, or handover instructions..."
-              className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-white/30"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-            <Button variant="ghost" type="button" onClick={() => setIsSubmitModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              Submit Deliverable
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      {/* Full Detailed Create Deliverable Modal */}
+      <CreateDeliverableModal
+        isOpen={isSubmitModalOpen}
+        onClose={() => setIsSubmitModalOpen(false)}
+        clients={[client]}
+        projects={projects}
+        defaultClientId={client.id}
+        onSuccess={() => onRefresh()}
+      />
 
       {/* Upload New Version Modal */}
       <Modal isOpen={!!newVersionDeliv} onClose={() => setNewVersionDeliv(null)} title={`Upload New Version: ${newVersionDeliv?.title}`}>

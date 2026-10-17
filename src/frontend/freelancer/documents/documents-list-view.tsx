@@ -6,6 +6,7 @@ import { Button } from '@/frontend/shared/ui/button';
 import { Input } from '@/frontend/shared/ui/input';
 import { StatusPill } from '@/frontend/shared/ui/status-pill';
 import { Modal } from '@/frontend/shared/ui/modal';
+import { RequestDocumentModal } from './components/request-document-modal';
 import { DocumentService, ClientService, InvoiceService, SettingsService } from '@/backend/freelancer';
 import { DocumentItem, Client } from '@/shared/types';
 import { generateInvoicePDF, printInvoiceDocument } from '@/shared/utils/invoice-pdf';
@@ -42,13 +43,6 @@ export const DocumentsListView: React.FC = () => {
   const [verificationNotes, setVerificationNotes] = useState('');
 
   // Form states
-  const [docTitle, setDocTitle] = useState('');
-  const [docType, setDocType] = useState<DocumentItem['type']>('contract');
-  const [docDescription, setDocDescription] = useState('');
-  const [docClientId, setDocClientId] = useState('');
-  const [docDueDate, setDocDueDate] = useState('');
-  const [isRequired, setIsRequired] = useState(true);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { showToast } = useToast();
@@ -62,10 +56,6 @@ export const DocumentsListView: React.FC = () => {
       ]);
       setDocuments(docs);
       setClients(cls);
-      setDocClientId((prev) => {
-        if (prev || cls.length === 0) return prev;
-        return cls[0].id;
-      });
     } catch (err) {
       console.warn('Error loading documents:', err);
     } finally {
@@ -88,28 +78,7 @@ export const DocumentsListView: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const handleRequestDocument = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!docTitle.trim() || !docClientId || isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      await DocumentService.requestDocument(docClientId, {
-        title: docTitle,
-        type: docType,
-        isRequired,
-        dueDate: docDueDate,
-        description: docDescription,
-      });
-      showToast('Document Requested', `Requested "${docTitle}" successfully.`, 'success');
-      setIsRequestModalOpen(false);
-      resetForm();
-      loadData();
-    } catch (err) {
-      showToast('Request Failed', 'Unable to request document. Please try again.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+
 
   const handleVerifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,13 +174,6 @@ export const DocumentsListView: React.FC = () => {
     window.print();
   };
 
-  const resetForm = () => {
-    setDocTitle('');
-    setDocDescription('');
-    setDocType('contract');
-    setIsRequired(true);
-    setSelectedFile(null);
-  };
 
   const filteredDocs = documents.filter((doc) => {
     const matchesSearch =
@@ -367,81 +329,13 @@ export const DocumentsListView: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Request Document Modal */}
-      <Modal isOpen={isRequestModalOpen} onClose={() => { setIsRequestModalOpen(false); resetForm(); }} title="Request Document from Client">
-        <form onSubmit={handleRequestDocument} className="space-y-4">
-          <Input
-            label="Document Title"
-            placeholder="e.g. Master Services Agreement (MSA)"
-            value={docTitle}
-            onChange={(e) => setDocTitle(e.target.value)}
-            required
-          />
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-300">Target Client</label>
-            <select
-              value={docClientId}
-              onChange={(e) => setDocClientId(e.target.value)}
-              className="w-full bg-zinc-900 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-white/30"
-              required
-            >
-              {clients.map((c) => (
-                <option key={c.id} value={c.id} className="bg-zinc-900">
-                  {c.company} ({c.name})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-300">Category</label>
-              <select
-                value={docType}
-                onChange={(e) => setDocType(e.target.value as any)}
-                className="w-full bg-zinc-900 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-white/30"
-              >
-                <option value="contract">Contract / MSA</option>
-                <option value="proposal">Statement of Work (SOW)</option>
-                <option value="brief">Project Brief</option>
-                <option value="nda">NDA</option>
-                <option value="tax">Tax & Billing Form</option>
-                <option value="other">Brand Asset / Other</option>
-              </select>
-            </div>
-            <Input label="Due Date" type="date" value={docDueDate} onChange={(e) => setDocDueDate(e.target.value)} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-300">Instructions</label>
-            <textarea
-              rows={2}
-              value={docDescription}
-              onChange={(e) => setDocDescription(e.target.value)}
-              placeholder="e.g. Please sign on page 4 and upload the executed copy..."
-              className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-white/30"
-            />
-          </div>
-          <div className="flex items-center gap-2 pt-2">
-            <input
-              type="checkbox"
-              id="req-check-docs"
-              checked={isRequired}
-              onChange={(e) => setIsRequired(e.target.checked)}
-              className="rounded bg-zinc-900 border-white/20 text-white"
-            />
-            <label htmlFor="req-check-docs" className="text-xs text-zinc-300">
-              Mark as Required
-            </label>
-          </div>
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-            <Button variant="ghost" type="button" onClick={() => { setIsRequestModalOpen(false); resetForm(); }}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Sending...' : 'Send Request'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      {/* Full Detailed Request Document Modal */}
+      <RequestDocumentModal
+        isOpen={isRequestModalOpen}
+        onClose={() => setIsRequestModalOpen(false)}
+        clients={clients}
+        onSuccess={() => loadData()}
+      />
 
       {/* Verify Modal */}
       <Modal isOpen={!!verifyingDoc} onClose={() => setVerifyingDoc(null)} title="Verify & Accept Document">

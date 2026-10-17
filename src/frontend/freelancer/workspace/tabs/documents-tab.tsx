@@ -4,6 +4,7 @@ import { Button } from '@/frontend/shared/ui/button';
 import { StatusPill } from '@/frontend/shared/ui/status-pill';
 import { Modal } from '@/frontend/shared/ui/modal';
 import { Input } from '@/frontend/shared/ui/input';
+import { RequestDocumentModal } from '../../documents/components/request-document-modal';
 import { DocumentService, InvoiceService, SettingsService } from '@/backend/freelancer';
 import { WorkspaceSummary, DocumentItem } from '@/shared/types';
 import { generateInvoicePDF, printInvoiceDocument } from '@/shared/utils/invoice-pdf';
@@ -60,22 +61,7 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ summary, onRefresh }
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const handleRequestDocument = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!docTitle.trim()) return;
-    DocumentService.requestDocument(client.id, {
-      title: docTitle,
-      type: docType,
-      isRequired,
-      dueDate: docDueDate,
-      description: docDescription,
-    }).then(() => {
-      showToast('Document Requested', `Requested "${docTitle}" from client checklist.`, 'success');
-      setIsRequestModalOpen(false);
-      resetForm();
-      onRefresh();
-    });
-  };
+
 
   const handleUploadDocument = (e: React.FormEvent) => {
     e.preventDefault();
@@ -365,77 +351,14 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ summary, onRefresh }
         </CardContent>
       </Card>
 
-      {/* Request Document Modal */}
-      <Modal isOpen={isRequestModalOpen} onClose={() => setIsRequestModalOpen(false)} title="Request Document from Client">
-        <form onSubmit={handleRequestDocument} className="space-y-4">
-          <Input
-            label="Document Title"
-            placeholder="e.g. Master Services Agreement (MSA) or Tax W-9"
-            value={docTitle}
-            onChange={(e) => setDocTitle(e.target.value)}
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-zinc-300">Document Category</label>
-              <select
-                value={docType}
-                onChange={(e) => setDocType(e.target.value as any)}
-                className="w-full bg-zinc-900 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-white/30"
-              >
-                <option value="contract">Contract / MSA</option>
-                <option value="proposal">Statement of Work (SOW)</option>
-                <option value="brief">Project Brief</option>
-                <option value="nda">Non-Disclosure Agreement (NDA)</option>
-                <option value="tax">Tax & Billing Form</option>
-                <option value="other">Brand Asset / Other</option>
-              </select>
-            </div>
-
-            <Input
-              label="Due Date"
-              type="date"
-              value={docDueDate}
-              onChange={(e) => setDocDueDate(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-300">Instruction for Client</label>
-            <textarea
-              rows={2}
-              value={docDescription}
-              onChange={(e) => setDocDescription(e.target.value)}
-              placeholder="e.g. Please sign on page 4 and upload the executed PDF copy..."
-              className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-white/30"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 pt-2">
-            <input
-              type="checkbox"
-              id="req-check"
-              checked={isRequired}
-              onChange={(e) => setIsRequired(e.target.checked)}
-              className="rounded bg-zinc-900 border-white/20 text-white"
-            />
-            <label htmlFor="req-check" className="text-xs text-zinc-300">
-              Mark as Required (Blocks workspace health if missing)
-            </label>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-            <Button variant="ghost" type="button" onClick={() => setIsRequestModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              Send Request
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      {/* Full Detailed Request Document Modal */}
+      <RequestDocumentModal
+        isOpen={isRequestModalOpen}
+        onClose={() => setIsRequestModalOpen(false)}
+        defaultClientId={client.id}
+        clients={[client]}
+        onSuccess={() => onRefresh()}
+      />
 
       {/* Upload Document Modal */}
       <Modal isOpen={isUploadModalOpen} onClose={() => {

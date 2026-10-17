@@ -9,6 +9,7 @@ export interface Workspace {
   signatureUrl?: string;
   portalSlug?: string;
   isAcceptingConnections?: boolean;
+  currency?: string;
   createdAt: string;
 }
 
@@ -23,6 +24,7 @@ const DEMO_WORKSPACE: Workspace = {
   signatureUrl: '',
   portalSlug: 'fd_demo_studio',
   isAcceptingConnections: true,
+  currency: 'USD',
   createdAt: '2026-01-01T00:00:00Z',
 };
 
@@ -67,6 +69,7 @@ export async function getCurrentWorkspace(): Promise<Workspace | null> {
         signatureUrl: data[0].signature_url || '',
         portalSlug: data[0].portal_slug || ('fd_' + data[0].id.replace(/-/g, '').slice(0, 16)),
         isAcceptingConnections: data[0].is_accepting_connections !== false,
+        currency: data[0].currency || 'USD',
         createdAt: data[0].created_at,
       };
       workspaceCache = { userId: user.id, workspace: ws };
@@ -124,12 +127,13 @@ export async function getCurrentWorkspace(): Promise<Workspace | null> {
 
 export async function updateWorkspaceBranding(
   workspaceId: string,
-  branding: { logoUrl?: string; signatureUrl?: string; name?: string }
+  branding: { logoUrl?: string; signatureUrl?: string; name?: string; currency?: string }
 ): Promise<boolean> {
   if (isDemoModeActive()) {
     if (branding.logoUrl !== undefined) DEMO_WORKSPACE.logoUrl = branding.logoUrl;
     if (branding.signatureUrl !== undefined) DEMO_WORKSPACE.signatureUrl = branding.signatureUrl;
     if (branding.name !== undefined) DEMO_WORKSPACE.name = branding.name;
+    if (branding.currency !== undefined) (DEMO_WORKSPACE as any).currency = branding.currency;
     return true;
   }
 
@@ -138,6 +142,7 @@ export async function updateWorkspaceBranding(
     if (branding.logoUrl !== undefined) payload.logo_url = branding.logoUrl;
     if (branding.signatureUrl !== undefined) payload.signature_url = branding.signatureUrl;
     if (branding.name !== undefined) payload.name = branding.name;
+    if (branding.currency !== undefined) payload.currency = branding.currency;
 
     const { error } = await supabase
       .from('workspaces')

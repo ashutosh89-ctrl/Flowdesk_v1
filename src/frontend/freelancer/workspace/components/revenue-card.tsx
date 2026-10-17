@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from '@/frontend/shared/ui/card';
 import { DollarSign, ArrowUpRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { formatCurrency } from '@/shared/utils/currency';
 
 export interface RevenueCardProps {
   totalBilled: number;
@@ -27,13 +28,13 @@ export const RevenueCard: React.FC<RevenueCardProps> = ({
         <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-0.5">
           <span className="text-[10px] font-mono text-zinc-500 uppercase block">Lifetime Revenue</span>
           <span className="text-lg font-bold text-white font-mono">
-            ${totalBilled.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {formatCurrency(totalBilled, currency)}
           </span>
         </div>
         <div className="p-3 rounded-xl bg-amber-500/[0.03] border border-amber-500/20 space-y-0.5">
           <span className="text-[10px] font-mono text-amber-400/80 uppercase block">Pending Outstanding</span>
           <span className="text-lg font-bold text-amber-400 font-mono">
-            ${outstandingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {formatCurrency(outstandingBalance, currency)}
           </span>
         </div>
       </div>

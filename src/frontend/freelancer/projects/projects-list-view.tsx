@@ -5,6 +5,7 @@ import { Input } from '@/frontend/shared/ui/input';
 import { StatusPill } from '@/frontend/shared/ui/status-pill';
 import { Progress } from '@/frontend/shared/ui/progress';
 import { Modal } from '@/frontend/shared/ui/modal';
+import { CreateProjectModal } from './components/create-project-modal';
 import { ProjectService, ClientService } from '@/backend/freelancer';
 import { Project, Client, ProjectMilestone } from '@/shared/types';
 import {
@@ -21,12 +22,16 @@ import {
   Check,
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
+import { useAuth } from '@/frontend/auth/auth-context';
+import { getCurrencySymbol } from '@/shared/utils/currency';
 
 export interface ProjectsListViewProps {
   onOpenWorkspace?: (clientId: string) => void;
 }
 
 export const ProjectsListView: React.FC<ProjectsListViewProps> = ({ onOpenWorkspace }) => {
+  const { profile, userSettings } = useAuth();
+  const currencySymbol = getCurrencySymbol(userSettings?.currency || profile?.currency || 'USD');
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
@@ -39,46 +44,16 @@ export const ProjectsListView: React.FC<ProjectsListViewProps> = ({ onOpenWorksp
   const [newMilestoneTitle, setNewMilestoneTitle] = useState('');
   const { showToast } = useToast();
 
-  // Create Project Form
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [clientId, setClientId] = useState('');
-  const [budget, setBudget] = useState('15000');
-  const [dueDate, setDueDate] = useState('2026-09-30');
-
   const loadData = React.useCallback(() => {
     ProjectService.getProjects().then(setProjects);
     ClientService.getClients().then((cls) => {
       setClients(cls);
-      if (cls.length > 0 && !clientId) setClientId(cls[0].id);
     });
-  }, [clientId]);
+  }, []);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const handleCreateProject = (e: React.FormEvent) => {
-    e.preventDefault();
-    const targetClient = clients.find((c) => c.id === clientId);
-    ProjectService.createProject({
-      clientId: clientId || (clients[0]?.id ?? 'cli-1'),
-      clientName: targetClient ? targetClient.company : 'Client',
-      title,
-      description,
-      status: 'in_progress',
-      budget: parseFloat(budget) || 10000,
-      startDate: new Date().toISOString().split('T')[0],
-      dueDate,
-      tags: ['Design', 'Engineering'],
-    }).then(() => {
-      showToast('Project Created', `Project "${title}" added to pipeline.`, 'success');
-      setIsCreateModalOpen(false);
-      setTitle('');
-      setDescription('');
-      loadData();
-    });
-  };
 
   const handleToggleMilestone = (milestoneId: string) => {
     if (!detailProject) return;
@@ -254,71 +229,13 @@ export const ProjectsListView: React.FC<ProjectsListViewProps> = ({ onOpenWorksp
         )}
       </div>
 
-      {/* Create Project Modal */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Create New Project">
-        <form onSubmit={handleCreateProject} className="space-y-4">
-          <Input
-            label="Project Title"
-            placeholder="e.g. Design System v3 Architecture"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-300">Target Client Workspace</label>
-            <select
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              className="w-full bg-zinc-900 border border-white/10 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-white/30"
-            >
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.company} ({c.name})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Budget ($)"
-              type="number"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              required
-            />
-
-            <Input
-              label="Due Date"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-zinc-300">Project Description</label>
-            <textarea
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Scope details and key deliverables..."
-              className="w-full bg-zinc-900 border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-white/30"
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-            <Button variant="ghost" type="button" onClick={() => setIsCreateModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              Create Project
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      {/* Full Detailed Create Project Modal */}
+      <CreateProjectModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        clients={clients}
+        onSuccess={() => loadData()}
+      />
 
       {/* Project Detail & Milestones Modal */}
       <Modal isOpen={!!detailProject} onClose={() => setDetailProject(null)} title={detailProject?.title || 'Project Details'}>

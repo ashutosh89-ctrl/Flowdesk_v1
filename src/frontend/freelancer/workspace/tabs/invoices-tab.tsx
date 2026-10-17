@@ -8,6 +8,8 @@ import { InvoiceService } from '@/backend/freelancer';
 import { WorkspaceSummary, Invoice } from '@/shared/types';
 import { FileText, Plus, ExternalLink, Send, CheckCircle2, Eye, DollarSign } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
+import { InvoiceBuilderModal } from '@/frontend/freelancer/invoices/components/invoice-builder-modal';
+import { formatCurrency } from '@/shared/utils/currency';
 
 export interface InvoicesTabProps {
   summary: WorkspaceSummary;
@@ -20,34 +22,6 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({ summary, onRefresh }) 
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
-
-  // New Invoice Form
-  const [desc, setDesc] = useState('');
-  const [amount, setAmount] = useState('10000');
-  const [dueDate, setDueDate] = useState('2026-09-15');
-
-  const handleCreateInvoice = (e: React.FormEvent) => {
-    e.preventDefault();
-    const numericAmount = parseFloat(amount) || 5000;
-    InvoiceService.createInvoice({
-      clientId: client.id,
-      clientName: client.company,
-      clientEmail: client.email,
-      issueDate: new Date().toISOString().split('T')[0],
-      dueDate,
-      status: 'pending',
-      currency: client.currency || 'USD',
-      items: [{ description: desc || 'Professional Services', quantity: 1, rate: numericAmount, amount: numericAmount }],
-      subtotal: numericAmount,
-      tax: 0,
-      total: numericAmount,
-    }).then(() => {
-      showToast('Invoice Generated', `Invoice generated for ${client.company}.`, 'success');
-      setIsCreateModalOpen(false);
-      setDesc('');
-      onRefresh();
-    });
-  };
 
   const handleSendReminder = (inv: Invoice) => {
     InvoiceService.sendReminder(inv.id).then(() => {
@@ -133,44 +107,13 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({ summary, onRefresh }) 
         </CardContent>
       </Card>
 
-      {/* Create Invoice Modal */}
-      <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Generate Invoice for Client">
-        <form onSubmit={handleCreateInvoice} className="space-y-4">
-          <Input
-            label="Service / Deliverable Description"
-            placeholder="e.g. Design System Phase 2 Handover"
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Amount ($)"
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              required
-            />
-            <Input
-              label="Due Date"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
-            <Button variant="ghost" type="button" onClick={() => setIsCreateModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              Generate & Issue Invoice
-            </Button>
-          </div>
-        </form>
-      </Modal>
+      {/* Full Detailed Invoice Builder Modal */}
+      <InvoiceBuilderModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        defaultClientId={client.id}
+        onSave={() => onRefresh()}
+      />
 
       {/* View Invoice Modal */}
       <Modal isOpen={!!viewInvoice} onClose={() => setViewInvoice(null)} title={viewInvoice?.invoiceNumber || 'Invoice Details'}>
@@ -189,14 +132,14 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({ summary, onRefresh }) 
               {(viewInvoice?.items ?? []).map((item, idx) => (
                 <div key={idx} className="flex justify-between text-xs py-1 border-b border-white/5 text-zinc-300">
                   <span>{item.description} (x{item.quantity})</span>
-                  <span className="font-mono text-white">${(item.amount || 0).toLocaleString()}</span>
+                  <span className="font-mono text-white">{formatCurrency(item.amount || 0, viewInvoice?.currency || client.currency || 'USD')}</span>
                 </div>
               ))}
             </div>
 
             <div className="pt-2 flex justify-between text-sm font-bold text-white font-mono">
               <span>Total Amount</span>
-              <span>${(viewInvoice?.total || 0).toLocaleString()}</span>
+              <span>{formatCurrency(viewInvoice?.total || 0, viewInvoice?.currency || client.currency || 'USD')}</span>
             </div>
           </div>
 

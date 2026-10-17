@@ -5,28 +5,50 @@ import { Button } from '@/frontend/shared/ui/button';
 import { Client, Project, DeliverablePriority } from '@/shared/types';
 import { Layers, Calendar, FileText, Lock, MessageSquare, AlertCircle } from 'lucide-react';
 
+import { FreelancerClientService, FreelancerProjectService, FreelancerDeliverableService } from '@/backend/freelancer';
+import { useToast } from '@/frontend/shared/ui/toast';
+
 interface CreateDeliverableModalProps {
   isOpen: boolean;
   onClose: () => void;
-  clients: Client[];
-  projects: Project[];
+  clients?: Client[];
+  projects?: Project[];
   defaultClientId?: string;
   defaultProjectId?: string;
-  onCreate: (delData: any) => Promise<void>;
+  onCreate?: (delData: any) => Promise<void>;
+  onSuccess?: (created: any) => void;
 }
 
 export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
   isOpen,
   onClose,
-  clients,
-  projects,
+  clients: propClients,
+  projects: propProjects,
   defaultClientId,
   defaultProjectId,
   onCreate,
+  onSuccess,
 }) => {
+  const { showToast } = useToast();
+  const [fetchedClients, setFetchedClients] = useState<Client[]>([]);
+  const [fetchedProjects, setFetchedProjects] = useState<Project[]>([]);
+  const clients = propClients && propClients.length > 0 ? propClients : fetchedClients;
+  const projects = propProjects && propProjects.length > 0 ? propProjects : fetchedProjects;
+
   const [title, setTitle] = useState('');
-  const [clientId, setClientId] = useState(defaultClientId || clients[0]?.id || '');
-  const [projectId, setProjectId] = useState(defaultProjectId || projects[0]?.id || '');
+  const [clientId, setClientId] = useState(defaultClientId || '');
+  const [projectId, setProjectId] = useState(defaultProjectId || '');
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (!propClients || propClients.length === 0) {
+        FreelancerClientService.getClients().then(setFetchedClients);
+      }
+      if (!propProjects || propProjects.length === 0) {
+        FreelancerProjectService.getProjects().then(setFetchedProjects);
+      }
+    }
+  }, [isOpen, propClients, propProjects]);
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
@@ -49,8 +71,10 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
 
+  const effectiveClientId = clientId || defaultClientId || clients[0]?.id || '';
   // Filter projects by selected client if needed
-  const availableProjects = projects.filter((p) => p.clientId === clientId);
+  const availableProjects = projects.filter((p) => p.clientId === effectiveClientId);
+  const effectiveProjectId = projectId || defaultProjectId || availableProjects[0]?.id || projects[0]?.id || '';
 
   // Helper to format file size
   const formatFileSize = (bytes: number): string => {
@@ -72,9 +96,9 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onCreate({
-        clientId: clientId || clients[0]?.id || 'cli-1',
-        projectId: projectId || availableProjects[0]?.id || projects[0]?.id || 'proj-1',
+      const payload = {
+        clientId: effectiveClientId || 'cli-1',
+        projectId: effectiveProjectId || 'proj-1',
         title: title.trim(),
         description: description.trim(),
         dueDate,
@@ -87,11 +111,22 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
         file: selectedFile || undefined,
         internalNotes: internalNotes.trim(),
         submissionMessage: submissionMessage.trim(),
-        status: 'draft',
-        approvalStatus: 'pending',
-      });
+        status: 'draft' as const,
+        approvalStatus: 'pending' as const,
+      };
+
+      if (onCreate) {
+        await onCreate(payload);
+      } else {
+        const created = await FreelancerDeliverableService.addDeliverable(payload);
+        showToast('Deliverable Package Created', `"${title.trim()}" is ready for client review.`, 'success');
+        if (onSuccess) onSuccess(created);
+      }
       onClose();
       resetForm();
+    } catch (err: any) {
+      console.error('Create deliverable error:', err);
+      setFileError(err?.message || 'Failed to create deliverable package.');
     } finally {
       setIsSubmitting(false);
     }
@@ -128,7 +163,7 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
               Client Account *
             </label>
             <select
-              value={clientId}
+              value={effectiveClientId}
               onChange={(e) => {
                 setClientId(e.target.value);
                 const firstProj = projects.find((p) => p.clientId === e.target.value);
@@ -151,7 +186,7 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
               Project Link
             </label>
             <select
-              value={projectId}
+              value={effectiveProjectId}
               onChange={(e) => setProjectId(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-sm text-white focus:outline-none focus:border-white/30"
             >

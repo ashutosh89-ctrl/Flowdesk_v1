@@ -245,14 +245,26 @@ export const SettingsView: React.FC = () => {
         user?.id
       );
 
-      // 2. Sync workspace branding in parallel
+      // 2. Sync workspace branding and currency in parallel
       const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
       if (wsId) {
         await updateWorkspaceBranding(wsId, {
           name: profile.companyName,
           logoUrl: profile.logoUrl,
           signatureUrl: profile.signatureUrl,
+          currency: profile.currency,
         });
+
+        // Propagate studio currency to clients in this workspace so new and existing client operations stay in sync
+        try {
+          const { supabase } = await import('@/backend/utilities/supabase');
+          await supabase
+            .from('clients')
+            .update({ currency: profile.currency, updated_at: new Date().toISOString() })
+            .eq('workspace_id', wsId);
+        } catch (clientSyncErr) {
+          console.warn('Workspace client currency sync notice:', clientSyncErr);
+        }
       }
 
       // 3. Save user settings (tax, currency, prefix, terms, notifications)

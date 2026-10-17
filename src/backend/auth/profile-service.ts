@@ -109,6 +109,8 @@ export const ProfileService = {
     if (profileData.phone !== undefined) supabasePayload.phone = profileData.phone;
     if (profileData.logoUrl !== undefined) supabasePayload.logo_url = profileData.logoUrl;
     if (profileData.signatureUrl !== undefined) supabasePayload.signature_url = profileData.signatureUrl;
+    if (profileData.currency !== undefined) supabasePayload.currency = profileData.currency;
+    if (profileData.hourlyRate !== undefined) supabasePayload.hourly_rate = profileData.hourlyRate;
 
     const { error } = await supabase.from('profiles').upsert(supabasePayload, { onConflict: 'id' });
     if (error) {
