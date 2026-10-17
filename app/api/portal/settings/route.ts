@@ -29,6 +29,7 @@ export async function PATCH(request: NextRequest) {
       {
         isAcceptingConnections: body.isAcceptingConnections,
         portalSlug: body.portalSlug,
+        portalMode: body.portalMode,
       },
       caller.userId || undefined,
       caller.workspaceId || undefined

@@ -16,7 +16,7 @@ export interface Client {
   industry?: string;
   avatarUrl?: string;
   logoUrl?: string;
-  status: 'active' | 'inactive' | 'lead' | 'archived' | 'pending_deletion';
+  status: 'active' | 'inactive' | 'lead' | 'archived' | 'pending_deletion' | 'pending' | 'rejected';
   healthBadge?: 'excellent' | 'healthy' | 'attention' | 'critical' | 'risk';
   totalBilled: number;
   outstandingBalance?: number;
@@ -969,6 +969,7 @@ export interface PermanentPortalDetails {
   valid: boolean;
   slug?: string;
   isAcceptingConnections?: boolean;
+  portalMode?: 'public' | 'private';
   freelancerName?: string;
   studioName?: string;
   profession?: string;
@@ -983,9 +984,37 @@ export interface PermanentPortalConnectResult {
   clientId?: string;
   workspaceId?: string;
   studioName?: string;
+  status?: 'active' | 'pending' | 'rejected';
+  requiresApproval?: boolean;
   alreadyConnected?: boolean;
   reconnected?: boolean;
   error?: string;
+}
+
+export interface ClientConnectionRequest {
+  id: string;
+  clientId: string;
+  clientUserId: string;
+  workspaceId: string;
+  clientName: string;
+  company: string;
+  email: string;
+  avatarUrl?: string;
+  status: 'pending' | 'active' | 'rejected';
+  requestedAt: string;
+}
+
+export interface ConnectedClientItem {
+  id: string;
+  clientId: string;
+  clientUserId: string;
+  workspaceId: string;
+  clientName: string;
+  company: string;
+  email: string;
+  avatarUrl?: string;
+  status: 'active' | 'disconnected' | 'pending';
+  connectedAt: string;
 }
 
 export interface ConnectedFreelancerWorkspace {

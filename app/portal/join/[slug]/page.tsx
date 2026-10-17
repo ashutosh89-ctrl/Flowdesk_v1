@@ -21,6 +21,9 @@ import {
   AlertCircle,
   Briefcase,
   ArrowLeft,
+  Clock,
+  RefreshCw,
+  Mail,
 } from 'lucide-react';
 import { PermanentPortalDetails } from '@/shared/types';
 import { Avatar } from '@/frontend/shared/ui/avatar';
@@ -83,6 +86,7 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
   const [currentUser, setCurrentUser] = useState<{ id: string; email?: string } | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<{
     isConnected: boolean;
+    isPending?: boolean;
     isOwner: boolean;
     clientId?: string;
     studioName?: string;
@@ -99,6 +103,11 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
   const [connectionSuccess, setConnectionSuccess] = useState(false);
   const [connectedClientId, setConnectedClientId] = useState<string | null>(null);
 
+  // Private Mode Approval States
+  const [isPendingApproval, setIsPendingApproval] = useState(false);
+  const [isCheckingPendingStatus, setIsCheckingPendingStatus] = useState(false);
+  const [pendingDetails, setPendingDetails] = useState<{ clientName?: string; company?: string; email?: string } | null>(null);
+
   // Automatic redirect effect whenever connectionSuccess becomes true
   useEffect(() => {
     if (connectionSuccess) {
@@ -109,6 +118,47 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
       return () => clearTimeout(timer);
     }
   }, [connectionSuccess, connectedClientId]);
+
+  // Periodic poll for pending client approval in Private Mode
+  useEffect(() => {
+    if (!isPendingApproval) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/portal/status?slug=${encodeURIComponent(slug)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.isConnected && data.clientId) {
+            setConnectedClientId(data.clientId);
+            setIsPendingApproval(false);
+            setConnectionSuccess(true);
+          }
+        }
+      } catch {
+        // ignore background poll errors
+      }
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [isPendingApproval, slug]);
+
+  const checkApprovalStatus = async () => {
+    setIsCheckingPendingStatus(true);
+    try {
+      const res = await fetch(`/api/portal/status?slug=${encodeURIComponent(slug)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.isConnected && data.clientId) {
+          setConnectedClientId(data.clientId);
+          setIsPendingApproval(false);
+          setConnectionSuccess(true);
+          return;
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsCheckingPendingStatus(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -154,6 +204,17 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
             if (isMounted) {
               setConnectionStatus(statusData);
 
+              // If client request is pending approval in Private Mode, show waiting view
+              if (statusData.isPending) {
+                setIsPendingApproval(true);
+                setPendingDetails({
+                  clientName: user.user_metadata?.full_name || user.email?.split('@')[0],
+                  company: user.user_metadata?.company_name || 'Client Workspace',
+                  email: user.email,
+                });
+                return;
+              }
+
               // If already connected, auto-open client workspace immediately
               if (statusData.isConnected && statusData.clientId) {
                 setConnectedClientId(statusData.clientId);
@@ -162,7 +223,7 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
               }
 
               // If authenticated client (not owner) and not yet connected, auto-connect
-              if (!statusData.isOwner && !statusData.isConnected) {
+              if (!statusData.isOwner && !statusData.isConnected && !statusData.isPending) {
                 const connectRes = await fetch('/api/portal/connect', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -170,6 +231,16 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
                 });
                 const connectResult = await connectRes.json();
                 if (connectResult.success) {
+                  if (connectResult.requiresApproval || connectResult.status === 'pending') {
+                    setIsPendingApproval(true);
+                    setPendingDetails({
+                      clientName: user.user_metadata?.full_name || user.email?.split('@')[0],
+                      company: user.user_metadata?.company_name || 'Client Workspace',
+                      email: user.email,
+                    });
+                    return;
+                  }
+
                   const targetClientId = connectResult.clientId;
                   const targetWorkspaceId = connectResult.workspaceId;
 
@@ -235,6 +306,16 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
         return;
       }
 
+      if (result.requiresApproval || result.status === 'pending') {
+        setIsPendingApproval(true);
+        setPendingDetails({
+          clientName: currentUser.email?.split('@')[0],
+          company: 'Client Workspace',
+          email: currentUser.email,
+        });
+        return;
+      }
+
       const targetClientId = result.clientId;
       const targetWorkspaceId = result.workspaceId;
 
@@ -277,6 +358,15 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
           body: JSON.stringify({ slug }),
         });
         const result = await res.json();
+        if (result.requiresApproval || result.status === 'pending') {
+          setIsPendingApproval(true);
+          setPendingDetails({
+            clientName: email.split('@')[0],
+            company: 'Client Workspace',
+            email: email.trim().toLowerCase(),
+          });
+          return;
+        }
         const targetClientId = result.clientId || 'cli-demo-001';
         setConnectedClientId(targetClientId);
         setConnectionSuccess(true);
@@ -309,6 +399,16 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
 
       if (!res.ok || !result.success) {
         setAuthError(result.error || 'Failed to establish connection.');
+        return;
+      }
+
+      if (result.requiresApproval || result.status === 'pending') {
+        setIsPendingApproval(true);
+        setPendingDetails({
+          clientName: authData.user.user_metadata?.full_name || email.split('@')[0],
+          company: authData.user.user_metadata?.company_name || 'Client Workspace',
+          email: email.trim().toLowerCase(),
+        });
         return;
       }
 
@@ -362,6 +462,15 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
           body: JSON.stringify({ slug }),
         });
         const result = await res.json();
+        if (result.requiresApproval || result.status === 'pending') {
+          setIsPendingApproval(true);
+          setPendingDetails({
+            clientName: fullName.trim(),
+            company: companyName.trim() || `${fullName.trim()} Workspace`,
+            email: email.trim().toLowerCase(),
+          });
+          return;
+        }
         const targetClientId = result.clientId || 'cli-demo-001';
         setConnectedClientId(targetClientId);
         setConnectionSuccess(true);
@@ -414,6 +523,16 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
 
       if (!connectRes.ok || !connectResult.success) {
         throw new Error(connectResult.error || 'Failed to link account to freelancer workspace.');
+      }
+
+      if (connectResult.requiresApproval || connectResult.status === 'pending') {
+        setIsPendingApproval(true);
+        setPendingDetails({
+          clientName: fullName.trim(),
+          company: companyName.trim() || `${fullName.trim()} Workspace`,
+          email: email.trim().toLowerCase(),
+        });
+        return;
       }
 
       const targetClientId = connectResult.clientId;
@@ -491,6 +610,72 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
             <Button variant="secondary" className="w-full justify-center" onClick={() => router.push('/login')}>
               Sign In to Existing Account <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // 3b. Pending Approval State (Private Mode Verification Queue)
+  if (isPendingApproval) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4 sm:p-6 selection:bg-amber-500/30">
+        <Card variant="crystal" className="max-w-lg w-full p-8 text-center space-y-6 border-amber-500/30 shadow-2xl backdrop-blur-xl">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center mx-auto text-amber-400">
+            <Clock className="w-8 h-8 animate-pulse" />
+          </div>
+
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs font-mono">
+              <ShieldCheck className="w-3.5 h-3.5" /> Studio Private Mode
+            </div>
+            <h2 className="text-xl font-bold text-white tracking-tight">Connection Request Submitted</h2>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Your request to connect with <strong>{details.studioName || details.freelancerName}</strong> has been received. In Private Mode, the freelancer reviews and approves each client before granting workspace access.
+            </p>
+          </div>
+
+          {/* Client Details Preview Card */}
+          <div className="p-4 rounded-xl bg-zinc-900/60 border border-white/10 text-left space-y-3">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-zinc-400">
+              Submitted Client Details
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex justify-between items-center text-zinc-300">
+                <span className="text-zinc-500">Full Name</span>
+                <span className="font-medium text-white">{pendingDetails?.clientName || fullName || currentUser?.email || 'Client'}</span>
+              </div>
+              <div className="flex justify-between items-center text-zinc-300">
+                <span className="text-zinc-500">Company / Workspace</span>
+                <span className="font-medium text-white">{pendingDetails?.company || companyName || 'Client Organization'}</span>
+              </div>
+              <div className="flex justify-between items-center text-zinc-300">
+                <span className="text-zinc-500">Email Address</span>
+                <span className="font-mono text-zinc-300">{pendingDetails?.email || email || currentUser?.email}</span>
+              </div>
+              <div className="flex justify-between items-center text-zinc-300">
+                <span className="text-zinc-500">Status</span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  Pending Verification
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              className="w-full justify-center gap-2"
+              isLoading={isCheckingPendingStatus}
+              onClick={checkApprovalStatus}
+            >
+              <RefreshCw className="w-4 h-4" /> Check Approval Status
+            </Button>
+            <p className="text-[11px] text-zinc-500">
+              This page automatically checks for updates in the background. Once the freelancer approves your connection, your workspace will open automatically.
+            </p>
           </div>
         </Card>
       </div>

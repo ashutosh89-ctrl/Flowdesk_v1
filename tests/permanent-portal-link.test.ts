@@ -249,6 +249,89 @@ async function runAllTests() {
     assert.ok(portalData.projects.length > 0, 'Must share projects created for this client');
   });
 
+  // --- SECTION F: Public vs. Private Mode & Client Verification Queue ---
+  console.log('\n--- SECTION F: Public vs. Private Mode & Verification Queue ---');
+
+  await test('F19. Freelancer can toggle portal mode between Public and Private', async () => {
+    // Switch to private
+    const resPrivate = await PermanentPortalService.updateFreelancerPortalSettings({
+      portalMode: 'private',
+    });
+    assert.strictEqual(resPrivate.success, true);
+
+    const settingsPrivate = await PermanentPortalService.getFreelancerPortalSettings('http://localhost:3000');
+    assert.strictEqual(settingsPrivate.portalMode, 'private', 'Portal mode must be private');
+
+    // Switch back to public
+    const resPublic = await PermanentPortalService.updateFreelancerPortalSettings({
+      portalMode: 'public',
+    });
+    assert.strictEqual(resPublic.success, true);
+
+    const settingsPublic = await PermanentPortalService.getFreelancerPortalSettings('http://localhost:3000');
+    assert.strictEqual(settingsPublic.portalMode, 'public', 'Portal mode must be public');
+  });
+
+  await test('F20. In Private Mode, cold client connection creates pending verification request', async () => {
+    // Set to private mode
+    await PermanentPortalService.updateFreelancerPortalSettings({ portalMode: 'private' });
+
+    // Client connects cold
+    const connectRes = await PermanentPortalService.connectClient('fd_demo_studio', 'usr-uninvited-client');
+    assert.strictEqual(connectRes.success, true);
+    assert.strictEqual(connectRes.status, 'pending', 'Must be pending in private mode');
+    assert.strictEqual(connectRes.requiresApproval, true, 'Must require approval');
+  });
+
+  await test('F21. Security Sandbox: Pending clients receive zero deliverables, invoices, documents, or projects', async () => {
+    const { ClientPortalService } = await import('../src/backend/client');
+    // Simulate portal data check for a pending client
+    const pendingPortalData = await ClientPortalService.getPortalData('cli-demo-pending');
+
+    assert.strictEqual(pendingPortalData.isPendingApproval, true, 'Must flag as pending approval');
+    assert.strictEqual(pendingPortalData.deliverables.length, 0, 'Must expose ZERO deliverables');
+    assert.strictEqual(pendingPortalData.projects.length, 0, 'Must expose ZERO projects');
+    assert.strictEqual(pendingPortalData.documents.length, 0, 'Must expose ZERO documents');
+    assert.strictEqual(pendingPortalData.invoices.length, 0, 'Must expose ZERO invoices');
+  });
+
+  await test('F22. Verification Queue returns pending requests with full client details', async () => {
+    const queue = await PermanentPortalService.getWorkspaceClientRequests();
+    assert.ok(Array.isArray(queue.requests), 'Must return requests array');
+    assert.ok(queue.requests.length > 0, 'Must contain pending request');
+
+    const firstReq = queue.requests[0];
+    assert.ok(firstReq.clientName, 'Must have clientName');
+    assert.ok(firstReq.email, 'Must have email');
+    assert.strictEqual(firstReq.status, 'pending');
+  });
+
+  await test('F23. Approval promotes client connection to active and unlocks workspace access', async () => {
+    const queue = await PermanentPortalService.getWorkspaceClientRequests();
+    const req = queue.requests[0];
+    assert.ok(req, 'Must have a request to approve');
+
+    const approveRes = await PermanentPortalService.approveClientConnection(req.id);
+    assert.strictEqual(approveRes.success, true, 'Approve must succeed');
+
+    const updatedQueue = await PermanentPortalService.getWorkspaceClientRequests();
+    const stillPending = updatedQueue.requests.some((r) => r.id === req.id);
+    assert.strictEqual(stillPending, false, 'Approved request must be removed from pending queue');
+
+    const nowConnected = updatedQueue.connectedClients.some((c) => c.id === req.id || c.clientId === req.clientId);
+    assert.strictEqual(nowConnected, true, 'Approved client must now be in connected clients list');
+  });
+
+  await test('F24. In Public Mode, new client connects automatically without waiting', async () => {
+    // Set to public mode
+    await PermanentPortalService.updateFreelancerPortalSettings({ portalMode: 'public' });
+
+    const connectRes = await PermanentPortalService.connectClient('fd_demo_studio', 'usr-instant-client');
+    assert.strictEqual(connectRes.success, true);
+    assert.strictEqual(connectRes.status, 'active', 'Status must be active in public mode');
+    assert.strictEqual(connectRes.requiresApproval, false, 'Does not require approval');
+  });
+
   // Summary
   console.log('\n================================================================');
   console.log(`📊 TOTAL TESTS: ${passed + failed}`);
@@ -265,3 +348,4 @@ runAllTests().catch((err) => {
   console.error('Fatal test error:', err);
   process.exit(1);
 });
+

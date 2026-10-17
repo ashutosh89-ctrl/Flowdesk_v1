@@ -7,7 +7,7 @@ import { ClientAuthProvider, useClientAuth } from '@/frontend/client/auth/client
 import { ToastProvider } from '@/frontend/shared/ui/toast';
 import { Card } from '@/frontend/shared/ui/card';
 import { Button } from '@/frontend/shared/ui/button';
-import { ShieldAlert, LogIn, Loader2 } from 'lucide-react';
+import { ShieldAlert, LogIn, Loader2, Clock } from 'lucide-react';
 
 interface PageProps {
   params: Promise<{ clientId: string }>;
@@ -34,6 +34,11 @@ function PortalContent({ clientId }: { clientId: string }) {
   const resolvedClientId = client?.id === clientId
     ? client.id
     : workspaces.find((w) => w.clientId === clientId)?.clientId || client?.id || null;
+
+  const isPending = Boolean(
+    client?.status === 'pending' ||
+    workspaces.find((w) => w.clientId === clientId || w.clientId === resolvedClientId)?.status === 'pending'
+  );
 
   if (isLoading) {
     return (
@@ -64,6 +69,44 @@ function PortalContent({ clientId }: { clientId: string }) {
           >
             <LogIn className="w-4 h-4" /> Go to FlowDesk Login
           </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isPending) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6 selection:bg-amber-500/30">
+        <Card variant="crystal" className="max-w-md w-full p-8 text-center space-y-5 border-amber-500/30 shadow-2xl backdrop-blur-xl">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
+            <Clock className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-400 text-xs font-mono">
+              Pending Freelancer Verification
+            </div>
+            <h2 className="text-lg font-bold text-white tracking-tight">Access Pending Approval</h2>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Your connection request is awaiting review by the workspace owner. Workspace deliverables, projects, and invoices are strictly secured until approval.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col gap-2">
+            <Button
+              variant="secondary"
+              className="w-full justify-center gap-2"
+              onClick={() => window.location.reload()}
+            >
+              Refresh Status
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-zinc-400 hover:text-white"
+              onClick={() => router.push('/client/dashboard')}
+            >
+              Go to Client Dashboard
+            </Button>
+          </div>
         </Card>
       </div>
     );

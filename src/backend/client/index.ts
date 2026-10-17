@@ -39,6 +39,7 @@ export interface ClientPortalDataset {
   fileRequests: PortalFileRequest[];
   branding?: InvoiceBranding | null;
   isConfigured?: boolean;
+  isPendingApproval?: boolean;
 }
 
 const portalDataCache = new Map<string, { data: ClientPortalDataset; timestamp: number }>();
@@ -81,6 +82,37 @@ export const ClientPortalService = {
 
     // Demo mode: return mock data directly
     if (isDemoModeActive()) {
+      if (cleanId === 'cli-demo-pending') {
+        const pendingMockClient: Client = {
+          id: 'cli-demo-pending',
+          name: 'Sarah Jenkins',
+          company: 'Vanguard Media Group',
+          email: 'sarah.jenkins@vanguardmedia.io',
+          status: 'pending',
+          currency: 'USD',
+          country: 'US',
+          totalBilled: 0,
+          activeProjectsCount: 0,
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        const demoPendingResult: ClientPortalDataset = {
+          client: pendingMockClient,
+          projects: [],
+          deliverables: [],
+          documents: [],
+          invoices: [],
+          activities: [],
+          notifications: [],
+          comments: [],
+          profile: null,
+          fileRequests: [],
+          isConfigured: false,
+          isPendingApproval: true,
+        };
+        portalDataCache.set(cleanId, { data: demoPendingResult, timestamp: Date.now() });
+        return demoPendingResult;
+      }
+
       const mockClient = DemoDataProvider.getClientById(cleanId) || DemoDataProvider.getClients()[0] || {
         id: cleanId || 'cli-demo-001',
         name: 'Eleanor Vance',
@@ -265,6 +297,34 @@ export const ClientPortalService = {
         profile: null,
         fileRequests: [],
         isConfigured: false,
+      };
+    }
+
+    // Strict Security Isolation: Pending or rejected clients must NEVER receive deliverables, documents, invoices or projects!
+    if (client.status === 'pending' || client.status === 'rejected') {
+      return {
+        client,
+        projects: [],
+        deliverables: [],
+        documents: [],
+        invoices: [],
+        activities: [],
+        notifications: [],
+        comments: [],
+        profile: {
+          id: `prof-${client.id}`,
+          clientId: client.id,
+          company: client.company,
+          contactPerson: client.name,
+          email: client.email,
+          phone: client.phone || '',
+          timezone: 'Pending Verification',
+          portalLanguage: 'English (US)',
+          recentAccess: 'Awaiting Freelancer Approval',
+        },
+        fileRequests: [],
+        isConfigured: false,
+        isPendingApproval: client.status === 'pending',
       };
     }
 

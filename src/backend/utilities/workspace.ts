@@ -9,6 +9,7 @@ export interface Workspace {
   signatureUrl?: string;
   portalSlug?: string;
   isAcceptingConnections?: boolean;
+  portalMode?: 'public' | 'private';
   currency?: string;
   createdAt: string;
 }
@@ -24,6 +25,7 @@ const DEMO_WORKSPACE: Workspace = {
   signatureUrl: '',
   portalSlug: 'fd_demo_studio',
   isAcceptingConnections: true,
+  portalMode: 'public',
   currency: 'USD',
   createdAt: '2026-01-01T00:00:00Z',
 };
@@ -69,6 +71,7 @@ export async function getCurrentWorkspace(): Promise<Workspace | null> {
         signatureUrl: data[0].signature_url || '',
         portalSlug: data[0].portal_slug || ('fd_' + data[0].id.replace(/-/g, '').slice(0, 16)),
         isAcceptingConnections: data[0].is_accepting_connections !== false,
+        portalMode: data[0].portal_mode === 'private' ? 'private' : 'public',
         currency: data[0].currency || 'USD',
         createdAt: data[0].created_at,
       };
@@ -99,6 +102,7 @@ export async function getCurrentWorkspace(): Promise<Workspace | null> {
         name: 'My Workspace',
         portal_slug: autoSlug,
         is_accepting_connections: true,
+        portal_mode: 'public',
       })
       .select()
       .single();
@@ -112,6 +116,7 @@ export async function getCurrentWorkspace(): Promise<Workspace | null> {
         signatureUrl: newWs.signature_url || '',
         portalSlug: newWs.portal_slug || autoSlug,
         isAcceptingConnections: newWs.is_accepting_connections !== false,
+        portalMode: newWs.portal_mode === 'private' ? 'private' : 'public',
         createdAt: newWs.created_at,
       };
       workspaceCache = { userId: user.id, workspace: ws };
@@ -162,11 +167,12 @@ export async function updateWorkspaceBranding(
 
 export async function updateWorkspacePortalSettings(
   workspaceId: string,
-  settings: { isAcceptingConnections?: boolean; portalSlug?: string }
+  settings: { isAcceptingConnections?: boolean; portalSlug?: string; portalMode?: 'public' | 'private' }
 ): Promise<boolean> {
   if (isDemoModeActive()) {
     if (settings.isAcceptingConnections !== undefined) DEMO_WORKSPACE.isAcceptingConnections = settings.isAcceptingConnections;
     if (settings.portalSlug !== undefined) DEMO_WORKSPACE.portalSlug = settings.portalSlug;
+    if (settings.portalMode !== undefined) DEMO_WORKSPACE.portalMode = settings.portalMode;
     return true;
   }
 
@@ -174,6 +180,7 @@ export async function updateWorkspacePortalSettings(
     const payload: any = { updated_at: new Date().toISOString() };
     if (settings.isAcceptingConnections !== undefined) payload.is_accepting_connections = settings.isAcceptingConnections;
     if (settings.portalSlug !== undefined) payload.portal_slug = settings.portalSlug.trim().toLowerCase();
+    if (settings.portalMode !== undefined) payload.portal_mode = settings.portalMode;
 
     const { error } = await supabase
       .from('workspaces')
