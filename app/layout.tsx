@@ -164,11 +164,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark">
       <head>
-        <link rel="preconnect" href="https://fonts.cdnfonts.com" crossOrigin="anonymous" />
-        <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/quincy" />
-        <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/quincy-2" />
-        <link rel="preload" href="/fonts/quincy/QuincyRegular.woff" as="font" type="font/woff" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/quincy/QuincyBold.woff" as="font" type="font/woff" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://db.onlinewebfonts.com/c/18a1fbec715281e463d36f92179d0b17?family=Decour+W00+Regular" />
+        <link rel="stylesheet" href="https://db.onlinewebfonts.com/c/fb22b07b36b5f0a6a032aaa00cc962c4?family=Decour+Soft+W00+Semibold" />
+        <link rel="preload" href="/fonts/decour/Decour-Regular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/decour/Decour-Bold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         {process.env.NEXT_PUBLIC_TYPEKIT_ID && (
           <link rel="stylesheet" href={`https://use.typekit.net/${process.env.NEXT_PUBLIC_TYPEKIT_ID}.css`} />
         )}
