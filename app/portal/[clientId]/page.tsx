@@ -16,10 +16,25 @@ interface PageProps {
 
 function PortalContent({ clientId }: { clientId: string }) {
   const router = useRouter();
-  const { client, isLoading, isAuthenticated } = useClientAuth();
+  const { client, workspaces, switchWorkspace, isLoading, isAuthenticated } = useClientAuth();
 
-  // Verify the authenticated client matches the requested clientId (derived — no effect needed)
-  const resolvedClientId = client && client.id === clientId ? client.id : null;
+  // If clientId matches an authorized workspace that isn't active yet, switch to it
+  useEffect(() => {
+    if (client && client.id !== clientId && workspaces.length > 0) {
+      const match = workspaces.find((w) => w.clientId === clientId);
+      if (match) {
+        switchWorkspace(match.workspaceId);
+      }
+    }
+  }, [client, clientId, workspaces, switchWorkspace]);
+
+  const isAuthorized = Boolean(
+    client && (client.id === clientId || workspaces.some((w) => w.clientId === clientId))
+  );
+
+  const resolvedClientId = client?.id === clientId
+    ? client.id
+    : workspaces.find((w) => w.clientId === clientId)?.clientId || client?.id || null;
 
   if (isLoading) {
     return (
@@ -32,7 +47,7 @@ function PortalContent({ clientId }: { clientId: string }) {
     );
   }
 
-  if (!isAuthenticated || !resolvedClientId) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
         <Card variant="crystal" className="max-w-md p-8 text-center space-y-5 border-white/20">
@@ -46,9 +61,32 @@ function PortalContent({ clientId }: { clientId: string }) {
           <Button
             variant="primary"
             className="w-full justify-center gap-2"
-            onClick={() => router.push('/client/login')}
+            onClick={() => router.push(`/login?next=${encodeURIComponent('/portal/' + clientId)}`)}
           >
-            <LogIn className="w-4 h-4" /> Go to Client Login
+            <LogIn className="w-4 h-4" /> Go to FlowDesk Login
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!isAuthorized || !resolvedClientId) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
+        <Card variant="crystal" className="max-w-md p-8 text-center space-y-5 border-rose-500/20">
+          <ShieldAlert className="w-12 h-12 text-rose-400 mx-auto" />
+          <div className="space-y-2">
+            <h2 className="text-lg font-bold text-white">Unauthorized Workspace Access</h2>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Your authenticated account is not connected to this freelancer workspace.
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            className="w-full justify-center gap-2"
+            onClick={() => router.push('/client/dashboard')}
+          >
+            Go to Your Authorized Workspace
           </Button>
         </Card>
       </div>

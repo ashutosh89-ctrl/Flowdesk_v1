@@ -965,5 +965,42 @@ export interface ClaimInvitationResult {
   message?: string;
 }
 
+export interface PermanentPortalDetails {
+  valid: boolean;
+  slug?: string;
+  isAcceptingConnections?: boolean;
+  freelancerName?: string;
+  studioName?: string;
+  profession?: string;
+  avatarUrl?: string;
+  logoUrl?: string;
+  currency?: string;
+  error?: string;
+}
+
+export interface PermanentPortalConnectResult {
+  success: boolean;
+  clientId?: string;
+  workspaceId?: string;
+  studioName?: string;
+  alreadyConnected?: boolean;
+  reconnected?: boolean;
+  error?: string;
+}
+
+export interface ConnectedFreelancerWorkspace {
+  id: string;
+  clientId: string;
+  workspaceId: string;
+  freelancerUserId?: string;
+  freelancerName: string;
+  studioName: string;
+  logoUrl?: string;
+  avatarUrl?: string;
+  currency: string;
+  status: 'active' | 'disconnected' | 'pending';
+  connectedAt: string;
+}
+
 export * from './database.types';
 

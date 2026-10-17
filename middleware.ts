@@ -39,21 +39,24 @@ export async function middleware(request: NextRequest) {
     path.startsWith('/reset-password') ||
     path.startsWith('/forgot-password');
 
-  // SEC-MED-01: Set strict privacy headers on invitation connection routes
-  if (path.startsWith('/connect')) {
+  // SEC-MED-01: Set strict privacy headers on invitation and portal connection routes
+  if (path.startsWith('/connect') || path.startsWith('/portal/join')) {
     response.headers.set('Referrer-Policy', 'no-referrer');
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
   }
 
   // 2. Client Portal Public Routes
+  const isPortalJoinRoute = path.startsWith('/portal/join');
+
   const isClientPublicRoute =
     path === '/client' ||
     path.startsWith('/client/login') ||
-    path.startsWith('/connect');
+    path.startsWith('/connect') ||
+    isPortalJoinRoute;
 
-  // 3. Client Portal Protected Routes (requiring client token / session)
+  // 3. Client Portal Protected Routes (requiring authenticated client session)
   const isClientProtectedRoute =
-    path.startsWith('/portal') ||
+    (path.startsWith('/portal') && !isPortalJoinRoute) ||
     path.startsWith('/client/dashboard');
 
   const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';

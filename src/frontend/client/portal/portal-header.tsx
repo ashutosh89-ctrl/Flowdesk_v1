@@ -3,6 +3,7 @@
 import React from 'react';
 import { Search, Bell, Menu, Sparkles, Plus, Eye, Lock, ShieldCheck } from 'lucide-react';
 import { PortalNotification } from '@/shared/types';
+import { ClientWorkspaceSwitcher } from './client-workspace-switcher';
 
 interface PortalHeaderProps {
   companyName: string;
@@ -76,8 +77,11 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
           )}
         </div>
 
-        {/* Right: Actions, Notifications, Security Badge */}
+        {/* Right: Workspace Switcher, Actions, Notifications, Security Badge */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Workspace Switcher */}
+          <ClientWorkspaceSwitcher />
+
           {/* Quick Actions Button */}
           <button
             onClick={onOpenQuickActions}

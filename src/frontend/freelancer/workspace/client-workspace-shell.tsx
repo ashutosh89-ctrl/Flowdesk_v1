@@ -84,9 +84,10 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
   ];
 
   const handleCopyPortalLink = () => {
-    const portalUrl = `https://flowdesk.app/portal/${portalConfig.magicKey}`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://flowdesk.app';
+    const portalUrl = `${origin}/portal/${client.id}`;
     navigator.clipboard?.writeText(portalUrl);
-    showToast('Link Copied', 'Magic portal link copied to clipboard.', 'success');
+    showToast('Link Copied', 'Client workspace portal link copied to clipboard.', 'success');
   };
 
   return (

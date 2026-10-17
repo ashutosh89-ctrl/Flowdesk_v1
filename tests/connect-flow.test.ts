@@ -49,13 +49,16 @@ function classifyRoute(path: string): {
     path.startsWith('/reset-password') ||
     path.startsWith('/forgot-password');
 
+  const isPortalJoinRoute = path.startsWith('/portal/join');
+
   const isClientPublic =
     path === '/client' ||
     path.startsWith('/client/login') ||
-    path.startsWith('/connect');
+    path.startsWith('/connect') ||
+    isPortalJoinRoute;
 
   const isClientProtected =
-    path.startsWith('/portal') ||
+    (path.startsWith('/portal') && !isPortalJoinRoute) ||
     path.startsWith('/client/dashboard');
 
   const requiresAuth = !isFreelancerPublic && !isClientPublic;
@@ -65,6 +68,13 @@ function classifyRoute(path: string): {
 
 // --- SECTION 1: Route Classification in Middleware ---
 console.log('--- SECTION 1: Route Classification in Middleware ---');
+
+test('/portal/join/[slug] is classified as a public client route (unauthenticated access permitted)', () => {
+  const result = classifyRoute('/portal/join/fd_7a8b9c0d1e2f');
+  assert.strictEqual(result.isClientPublic, true, '/portal/join/[slug] must be isClientPublic');
+  assert.strictEqual(result.requiresAuth, false, 'Permanent portal link must be open to visitors');
+  assert.strictEqual(result.isClientProtected, false, 'Must not be classified as protected portal route');
+});
 
 test('/connect/<token> is classified as a public client route (unauthenticated access permitted)', () => {
   const result = classifyRoute('/connect/7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c');

@@ -33,6 +33,7 @@ import {
   Layers,
   LogOut,
   RefreshCw,
+  Link2,
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import { SUPPORTED_CURRENCIES } from '@/shared/utils/currency';
@@ -44,8 +45,9 @@ import { PhoneInput } from '@/frontend/shared/ui/phone-input';
 import { switchCountryPrefix } from '@/shared/utils/countries';
 import { BillingPlanPanel } from './billing-plan-panel';
 import { AutomationsPanel } from './automations-panel';
+import { PortalSettingsPanel } from './portal-settings-panel';
 
-type SettingsTab = 'profile' | 'billing' | 'automations' | 'notifications' | 'security';
+type SettingsTab = 'profile' | 'portal' | 'billing' | 'automations' | 'notifications' | 'security';
 
 export const SettingsView: React.FC = () => {
   const { user, profile: authProfile, refreshProfile, signOut } = useAuth();
@@ -476,6 +478,19 @@ export const SettingsView: React.FC = () => {
 
         <button
           type="button"
+          onClick={() => setActiveTab('portal')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
+            activeTab === 'portal'
+              ? 'bg-white/10 text-white shadow-sm border border-white/15'
+              : 'text-zinc-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <Link2 className="w-4 h-4 text-emerald-400" />
+          <span>Client Portal & Link</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('billing')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
             activeTab === 'billing'
@@ -526,6 +541,9 @@ export const SettingsView: React.FC = () => {
           <span>Security & Danger Zone</span>
         </button>
       </div>
+
+      {/* TAB: PERMANENT CLIENT PORTAL LINK */}
+      {activeTab === 'portal' && <PortalSettingsPanel />}
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* TAB 1: STUDIO PROFILE & BRANDING */}

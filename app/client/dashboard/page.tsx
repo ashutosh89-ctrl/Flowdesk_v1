@@ -13,10 +13,10 @@ import { Suspense } from 'react';
 
 function ClientDashboardContent() {
   const router = useRouter();
-  const { client, isLoading, isAuthenticated } = useClientAuth();
+  const { client, activeWorkspace, isLoading, isAuthenticated } = useClientAuth();
 
-  // Resolve client ID from authenticated context only (derived — no effect needed)
-  const resolvedClientId = client?.id ?? null;
+  // Resolve client ID from authenticated context
+  const resolvedClientId = client?.id ?? activeWorkspace?.clientId ?? null;
 
   if (isLoading) {
     return (
@@ -29,7 +29,7 @@ function ClientDashboardContent() {
     );
   }
 
-  if (!isAuthenticated || !resolvedClientId) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
         <Card variant="crystal" className="max-w-md p-8 text-center space-y-5 border-white/20">
@@ -37,15 +37,41 @@ function ClientDashboardContent() {
           <div className="space-y-2">
             <h2 className="text-lg font-bold text-white">Client Portal Authentication Required</h2>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              No authenticated client session was found. Please log in using your client credentials or access key.
+              No authenticated client session was found. Please log in using your client credentials.
             </p>
           </div>
           <Button
             variant="primary"
             className="w-full justify-center gap-2"
-            onClick={() => router.push('/client/login')}
+            onClick={() => router.push('/login')}
           >
-            <LogIn className="w-4 h-4" /> Go to Client Login
+            <LogIn className="w-4 h-4" /> Go to Login
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!resolvedClientId) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
+        <Card variant="crystal" className="max-w-md p-8 text-center space-y-5 border-white/20">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400">
+            <ShieldAlert className="w-7 h-7" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-lg font-bold text-white">No Connected Workspaces Yet</h2>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Your FlowDesk account is ready, but you have not connected to any freelancer workspaces yet.
+              Ask your freelancer for their permanent portal link to connect your account.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            className="w-full justify-center gap-2"
+            onClick={() => router.push('/')}
+          >
+            Return to Home
           </Button>
         </Card>
       </div>

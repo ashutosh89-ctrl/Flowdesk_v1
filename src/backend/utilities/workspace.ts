@@ -7,6 +7,8 @@ export interface Workspace {
   name: string;
   logoUrl?: string;
   signatureUrl?: string;
+  portalSlug?: string;
+  isAcceptingConnections?: boolean;
   createdAt: string;
 }
 
@@ -19,6 +21,8 @@ const DEMO_WORKSPACE: Workspace = {
   name: 'My Workspace',
   logoUrl: '',
   signatureUrl: '',
+  portalSlug: 'fd_demo_studio',
+  isAcceptingConnections: true,
   createdAt: '2026-01-01T00:00:00Z',
 };
 
@@ -61,6 +65,8 @@ export async function getCurrentWorkspace(): Promise<Workspace | null> {
         name: data[0].name,
         logoUrl: data[0].logo_url || '',
         signatureUrl: data[0].signature_url || '',
+        portalSlug: data[0].portal_slug || ('fd_' + data[0].id.replace(/-/g, '').slice(0, 16)),
+        isAcceptingConnections: data[0].is_accepting_connections !== false,
         createdAt: data[0].created_at,
       };
       workspaceCache = { userId: user.id, workspace: ws };
@@ -68,11 +74,14 @@ export async function getCurrentWorkspace(): Promise<Workspace | null> {
     }
 
     // Auto-initialize workspace if missing for authenticated user
+    const autoSlug = 'fd_' + (user.id.replace(/-/g, '').slice(0, 12) + Math.random().toString(36).slice(2, 6));
     const { data: newWs, error: createError } = await supabase
       .from('workspaces')
       .insert({
         owner_id: user.id,
         name: 'My Workspace',
+        portal_slug: autoSlug,
+        is_accepting_connections: true,
       })
       .select()
       .single();
@@ -84,6 +93,8 @@ export async function getCurrentWorkspace(): Promise<Workspace | null> {
         name: newWs.name,
         logoUrl: newWs.logo_url || '',
         signatureUrl: newWs.signature_url || '',
+        portalSlug: newWs.portal_slug || autoSlug,
+        isAcceptingConnections: newWs.is_accepting_connections !== false,
         createdAt: newWs.created_at,
       };
       workspaceCache = { userId: user.id, workspace: ws };
@@ -126,6 +137,37 @@ export async function updateWorkspaceBranding(
     return false;
   } catch (err) {
     console.warn('Error updating workspace branding:', err);
+    return false;
+  }
+}
+
+export async function updateWorkspacePortalSettings(
+  workspaceId: string,
+  settings: { isAcceptingConnections?: boolean; portalSlug?: string }
+): Promise<boolean> {
+  if (isDemoModeActive()) {
+    if (settings.isAcceptingConnections !== undefined) DEMO_WORKSPACE.isAcceptingConnections = settings.isAcceptingConnections;
+    if (settings.portalSlug !== undefined) DEMO_WORKSPACE.portalSlug = settings.portalSlug;
+    return true;
+  }
+
+  try {
+    const payload: any = { updated_at: new Date().toISOString() };
+    if (settings.isAcceptingConnections !== undefined) payload.is_accepting_connections = settings.isAcceptingConnections;
+    if (settings.portalSlug !== undefined) payload.portal_slug = settings.portalSlug.trim().toLowerCase();
+
+    const { error } = await supabase
+      .from('workspaces')
+      .update(payload)
+      .eq('id', workspaceId);
+
+    if (!error) {
+      clearWorkspaceCache();
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.warn('Error updating workspace portal settings:', err);
     return false;
   }
 }

@@ -192,10 +192,63 @@ export const ClientAuthService = {
     }
   },
 
-  resolveClientByUserIdOrEmail: async (userId: string, email?: string): Promise<Client | null> => {
+  resolveClientByUserIdOrEmail: async (
+    userId: string,
+    email?: string,
+    preferredWorkspaceId?: string,
+    preferredClientId?: string
+  ): Promise<Client | null> => {
     try {
       // 1. Identity is bound to the authenticated Supabase user.
-      const { data } = await supabase.from('clients').select('*').eq('user_id', userId).maybeSingle();
+      // Do not use maybeSingle() because one user can be connected as a client to multiple workspaces!
+      const { data: clientsList } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', userId)
+        .neq('status', 'pending_deletion')
+        .order('created_at', { ascending: false });
+
+      let data: any = null;
+      if (clientsList && clientsList.length > 0) {
+        if (preferredClientId) {
+          data = clientsList.find((c) => c.id === preferredClientId) || clientsList[0];
+        } else if (preferredWorkspaceId) {
+          data = clientsList.find((c) => c.workspace_id === preferredWorkspaceId) || clientsList[0];
+        } else {
+          data = clientsList[0];
+        }
+      }
+
+      // Check client_connections table if no direct client record was found
+      if (!data) {
+        const { data: conns } = await supabase
+          .from('client_connections')
+          .select('client_id, workspace_id')
+          .eq('client_user_id', userId)
+          .eq('status', 'active')
+          .order('connected_at', { ascending: false });
+
+        if (conns && conns.length > 0) {
+          const targetConn = preferredClientId
+            ? conns.find((c) => c.client_id === preferredClientId) || conns[0]
+            : preferredWorkspaceId
+            ? conns.find((c) => c.workspace_id === preferredWorkspaceId) || conns[0]
+            : conns[0];
+
+          if (targetConn) {
+            const { data: clientRow } = await supabase
+              .from('clients')
+              .select('*')
+              .eq('id', targetConn.client_id)
+              .neq('status', 'pending_deletion')
+              .maybeSingle();
+
+            if (clientRow) {
+              data = clientRow;
+            }
+          }
+        }
+      }
 
       // 2. First-login fallback: bind by email ONLY when:
       //    a) The authenticated user's email is confirmed (SEC-HIGH-01)
@@ -273,7 +326,6 @@ export const ClientAuthService = {
             deletedAt: match.deleted_at?.split('T')[0] || undefined,
           };
         }
-        // Ambiguous (multiple workspaces share this email) or none: no access.
         return null;
       }
 
@@ -302,6 +354,22 @@ export const ClientAuthService = {
     } catch (err) {
       console.warn('Error resolving client record:', err);
       return null;
+    }
+  },
+
+  /**
+   * Returns all connected freelancer workspaces for the authenticated client.
+   */
+  getConnectedWorkspaces: async (): Promise<any[]> => {
+    try {
+      const { PermanentPortalService } = await import('@/backend/portal/permanent-portal-service');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user && !isDemoModeActive()) return [];
+      const userId = user?.id || 'usr-demo-client';
+      return PermanentPortalService.getClientConnectedWorkspaces(userId);
+    } catch (err) {
+      console.warn('Error fetching connected client workspaces:', err);
+      return [];
     }
   },
 

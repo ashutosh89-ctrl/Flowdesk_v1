@@ -41,6 +41,7 @@ const SUITES: Step[] = [
   { name: 'Invitation Claim Security', command: 'npx', args: ['tsx', 'tests/invitation-claim-security.test.ts'] },
   { name: 'Webhook HMAC Authentication', command: 'npx', args: ['tsx', 'tests/email-webhooks-auth.test.ts'] },
   { name: 'Deliverable Approval Pilot (Task 9)', command: 'npx', args: ['tsx', 'tests/deliverable-approval.test.ts'] },
+  { name: 'Permanent Portal Link & Multi-Freelancer (Task 10)', command: 'npx', args: ['tsx', 'tests/permanent-portal-link.test.ts'] },
 
   // 3. Server-Boundary Migration Test Suites (Phase 5A)
   { name: 'Pure Business Rules (Phase 5A Task 1)', command: 'npx', args: ['tsx', '--test', 'tests/shared-rules.test.ts'] },
