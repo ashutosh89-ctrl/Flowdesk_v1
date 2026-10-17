@@ -90,28 +90,35 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     // 5. Verify Workspace Ownership
-    const { data: workspace } = await supabaseAdmin
-      .from('workspaces')
-      .select('id, owner_id')
-      .eq('owner_id', caller.userId)
-      .limit(1)
-      .maybeSingle();
+    let workspaceId = caller.workspaceId;
 
-    if (!workspace) {
-      return createApiErrorResponse({
-        message: 'No active workspace found for this account.',
-        code: 'FORBIDDEN',
-        status: 403,
-        requestId,
-      });
+    if (!workspaceId) {
+      const { data: ws } = await supabaseAdmin
+        .from('workspaces')
+        .select('id')
+        .eq('owner_id', caller.userId)
+        .limit(1)
+        .maybeSingle();
+
+      if (!ws) {
+        return createApiErrorResponse({
+          message: 'No active workspace found for this account.',
+          code: 'FORBIDDEN',
+          status: 403,
+          requestId,
+        });
+      }
+      workspaceId = ws.id;
     }
+
+    const effectiveWorkspaceId: string = workspaceId!;
 
     // 6. Verify Client Affiliation
     const { data: client } = await supabaseAdmin
       .from('clients')
       .select('id, name, email')
       .eq('id', payload.clientId)
-      .eq('workspace_id', workspace.id)
+      .eq('workspace_id', effectiveWorkspaceId)
       .maybeSingle();
 
     if (!client) {
@@ -123,9 +130,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    // 6a. Quota Enforcement: Verify within plan limit for invoices per month
+    // 6a. Quota Enforcement: Verify within plan limit for invoices per month (cached)
     try {
-      await assertWithinLimit(workspace.id, 'invoicesPerMonth', 1);
+      await assertWithinLimit(effectiveWorkspaceId, 'invoicesPerMonth', 1);
     } catch (limitErr: any) {
       if (limitErr instanceof PlanLimitError) {
         return createApiErrorResponse({
@@ -151,7 +158,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const { data: existingInvs } = await supabaseAdmin
         .from('invoices')
         .select('invoice_number')
-        .eq('workspace_id', workspace.id);
+        .eq('workspace_id', effectiveWorkspaceId);
 
       const existingNumbers = (existingInvs || []).map((i) => i.invoice_number);
       const year = new Date().getFullYear();
@@ -172,7 +179,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { data: insertedInvoice, error: insertError } = await supabaseAdmin
       .from('invoices')
       .insert({
-        workspace_id: workspace.id,
+        workspace_id: workspaceId,
         client_id: payload.clientId,
         user_id: caller.userId,
         client_name: client.name || 'Client',
@@ -222,18 +229,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       await supabaseAdmin.from('invoice_items').insert(itemsPayload);
     }
 
-    // 11. Activity Log
-    try {
-      await supabaseAdmin.from('activities').insert({
-        workspace_id: workspace.id,
-        client_id: payload.clientId,
-        action: 'created_invoice',
-        title: `Created Invoice #${invoiceNumber}`,
-        description: `Created invoice #${invoiceNumber} for ${client.name}`,
-        resource_type: 'invoice',
-        resource_id: insertedInvoice.id,
-      });
-    } catch { /* non-critical */ }
+    // 11. Activity Log (NON-BLOCKING)
+    (async () => {
+      try {
+        await supabaseAdmin.from('activities').insert({
+          workspace_id: workspaceId,
+          client_id: payload.clientId,
+          action: 'created_invoice',
+          title: `Created Invoice #${invoiceNumber}`,
+          description: `Created invoice #${invoiceNumber} for ${client.name}`,
+          resource_type: 'invoice',
+          resource_id: insertedInvoice.id,
+        });
+      } catch { /* non-critical */ }
+    })();
 
     logger.security('INVOICE_CREATED', {
       requestId,
@@ -241,7 +250,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       invoiceId: insertedInvoice.id,
       invoiceNumber,
       total: calc.total,
-      workspaceId: workspace.id,
+      workspaceId,
     });
 
     return NextResponse.json(

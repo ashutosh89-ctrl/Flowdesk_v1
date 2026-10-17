@@ -97,20 +97,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // 5. Production DB Execution & Authorization
   try {
     // Verify Workspace Ownership
-    const { data: workspace } = await supabaseAdmin
-      .from('workspaces')
-      .select('id, owner_id')
-      .eq('owner_id', caller.userId)
-      .limit(1)
-      .maybeSingle();
+    let workspaceId = caller.workspaceId;
 
-    if (!workspace) {
-      return createApiErrorResponse({
-        message: 'No active workspace found for this account.',
-        code: 'FORBIDDEN',
-        status: 403,
-        requestId,
-      });
+    if (!workspaceId) {
+      const { data: ws } = await supabaseAdmin
+        .from('workspaces')
+        .select('id')
+        .eq('owner_id', caller.userId)
+        .limit(1)
+        .maybeSingle();
+
+      if (!ws) {
+        return createApiErrorResponse({
+          message: 'No active workspace found for this account.',
+          code: 'FORBIDDEN',
+          status: 403,
+          requestId,
+        });
+      }
+      workspaceId = ws.id;
     }
 
     // Verify / Resolve Client
@@ -123,7 +128,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .from('clients')
         .select('id, name, company')
         .eq('id', payload.clientId)
-        .eq('workspace_id', workspace.id)
+        .eq('workspace_id', workspaceId)
         .maybeSingle();
 
       if (client) {
@@ -135,7 +140,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const { data: client } = await supabaseAdmin
         .from('clients')
         .select('id, name, company')
-        .eq('workspace_id', workspace.id)
+        .eq('workspace_id', workspaceId)
         .limit(1)
         .maybeSingle();
 
@@ -161,7 +166,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           .from('projects')
           .select('id')
           .eq('id', payload.projectId)
-          .eq('workspace_id', workspace.id)
+          .eq('workspace_id', workspaceId)
           .maybeSingle();
 
         if (proj) {
@@ -172,7 +177,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Prepare Deliverable Record
     const insertPayload = {
-      workspace_id: workspace.id,
+      workspace_id: workspaceId,
       client_id: clientId,
       project_id: validProjectId,
       user_id: caller.userId,
@@ -221,36 +226,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Insert initial version record
-    try {
-      await supabaseAdmin.from('deliverable_versions').insert({
-        deliverable_id: deliverable.id,
-        version_number: deliverable.current_version || payload.version || 'v1.0',
-        file_url: payload.fileUrl || '',
-        file_name: payload.fileName || '',
-        file_size: payload.fileSize || '',
-        note: 'Initial package creation',
-        uploaded_by: caller.userId || null,
-      });
-    } catch (verErr) {
-      logger.warn('Non-critical: version record notice', { error: String(verErr) });
-    }
-
-    // Log Activity Feed
-    try {
-      await supabaseAdmin.from('activities').insert({
-        workspace_id: workspace.id,
-        client_id: clientId,
-        project_id: validProjectId,
-        user_name: caller.userId ? `User-${caller.userId.slice(0, 8)}` : 'Studio Lead',
-        action: 'created_deliverable',
-        title: deliverable.title,
-        description: `Created deliverable package "${deliverable.title}"`,
-        resource_type: 'deliverable',
-      });
-    } catch {
-      // Activity logging non-blocking
-    }
+    // Insert initial version record and activity log (non-blocking)
+    (async () => {
+      try {
+        await Promise.all([
+          supabaseAdmin.from('deliverable_versions').insert({
+            deliverable_id: deliverable.id,
+            version_number: deliverable.current_version || payload.version || 'v1.0',
+            file_url: payload.fileUrl || '',
+            file_name: payload.fileName || '',
+            file_size: payload.fileSize || '',
+            note: 'Initial package creation',
+            uploaded_by: caller.userId || null,
+          }),
+          supabaseAdmin.from('activities').insert({
+            workspace_id: workspaceId,
+            client_id: clientId,
+            project_id: validProjectId,
+            user_name: caller.userId ? `User-${caller.userId.slice(0, 8)}` : 'Studio Lead',
+            action: 'created_deliverable',
+            title: deliverable.title,
+            description: `Created deliverable package "${deliverable.title}"`,
+            resource_type: 'deliverable',
+          }),
+        ]);
+      } catch (postErr) {
+        logger.warn('Non-critical: post-deliverable metadata notice', { error: String(postErr) });
+      }
+    })();
 
     return NextResponse.json(
       {

@@ -49,33 +49,31 @@ export async function resolveApiCaller(): Promise<ApiCallerIdentity> {
       return { userId: null, clientId: null, workspaceId: null, isDemo: false };
     }
 
-    // Resolve client identity using user-scoped server client (RLS enforced)
+    // Resolve client identity and workspace identity in parallel using user-scoped server client (RLS enforced)
     let clientId: string | null = null;
-    try {
-      const { data: clientData } = await supabaseServer
-        .from('clients')
-        .select('id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .maybeSingle();
-      clientId = clientData?.id || null;
-    } catch {
-      clientId = null;
-    }
-
-    // Resolve freelancer workspace identity using user-scoped server client (RLS enforced)
     let workspaceId: string | null = null;
+
     try {
-      const { data: wsData } = await supabaseServer
-        .from('workspaces')
-        .select('id')
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      workspaceId = wsData?.id || null;
+      const [clientRes, wsRes] = await Promise.all([
+        supabaseServer
+          .from('clients')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle(),
+        supabaseServer
+          .from('workspaces')
+          .select('id')
+          .eq('owner_id', user.id)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      clientId = clientRes?.data?.id || null;
+      workspaceId = wsRes?.data?.id || null;
     } catch {
-      workspaceId = null;
+      // Fall through to null identities
     }
 
     return { userId: user.id, clientId, workspaceId, isDemo: false };

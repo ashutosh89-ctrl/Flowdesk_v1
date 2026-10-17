@@ -85,25 +85,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // 5. Production DB Execution & Authorization
   try {
-    const { data: workspace } = await supabaseAdmin
-      .from('workspaces')
-      .select('id, owner_id, name')
-      .eq('owner_id', caller.userId)
-      .limit(1)
-      .maybeSingle();
+    let workspaceId = caller.workspaceId;
+    let workspaceName = 'FlowDesk Studio';
 
-    if (!workspace) {
-      return createApiErrorResponse({
-        message: 'No active workspace found for this account.',
-        code: 'FORBIDDEN',
-        status: 403,
-        requestId,
-      });
+    if (!workspaceId) {
+      const { data: ws } = await supabaseAdmin
+        .from('workspaces')
+        .select('id, name')
+        .eq('owner_id', caller.userId)
+        .limit(1)
+        .maybeSingle();
+
+      if (!ws) {
+        return createApiErrorResponse({
+          message: 'No active workspace found for this account.',
+          code: 'FORBIDDEN',
+          status: 403,
+          requestId,
+        });
+      }
+      workspaceId = ws.id;
+      workspaceName = ws.name || workspaceName;
     }
 
-    // 5a. Quota Enforcement: Verify within plan limit for active clients
+    const effectiveWorkspaceId: string = workspaceId!;
+
+    // 5a. Quota Enforcement: Verify within plan limit for active clients (fast cached check)
     try {
-      await assertWithinLimit(workspace.id, 'activeClients', 1);
+      await assertWithinLimit(effectiveWorkspaceId, 'activeClients', 1);
     } catch (limitErr: any) {
       if (limitErr instanceof PlanLimitError) {
         return createApiErrorResponse({
@@ -120,7 +129,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { data: insertedClient, error: insertError } = await supabaseAdmin
       .from('clients')
       .insert({
-        workspace_id: workspace.id,
+        workspace_id: effectiveWorkspaceId,
         name: payload.name,
         email: payload.email.toLowerCase().trim(),
         company: payload.company || '',
@@ -145,34 +154,41 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    // 6. Automatically generate connection link & dispatch invitation email
+    // 6. Fast invitation link generation
     let inviteUrl: string | undefined;
     try {
       const inviteResult = await InvitationService.createOrGetInvitation(insertedClient.id, {
         recipientEmail: insertedClient.email,
-        workspaceId: workspace.id || undefined,
+        workspaceId: effectiveWorkspaceId,
         freelancerId: caller.userId || undefined,
       });
       inviteUrl = inviteResult.url;
 
+      // 6a. Dispatches transactional invitation email to client (NON-BLOCKING)
       if (insertedClient.email) {
-        const { EmailService } = await import('@/backend/email/email-service');
-        const { data: profile } = await supabaseAdmin
-          .from('profiles')
-          .select('business_name, full_name')
-          .eq('id', caller.userId)
-          .maybeSingle();
+        (async () => {
+          try {
+            const { EmailService } = await import('@/backend/email/email-service');
+            const { data: profile } = await supabaseAdmin
+              .from('profiles')
+              .select('business_name, full_name')
+              .eq('id', caller.userId)
+              .maybeSingle();
 
-        const studioName = profile?.business_name || profile?.full_name || workspace.name || 'FlowDesk Studio';
-        await EmailService.sendClientInvitation(
-          insertedClient.email,
-          {
-            clientName: insertedClient.name,
-            freelancerName: studioName,
-            portalUrl: inviteResult.url,
-          },
-          { workspaceId: workspace.id || undefined, clientId: insertedClient.id }
-        );
+            const studioName = profile?.business_name || profile?.full_name || workspaceName;
+            await EmailService.sendClientInvitation(
+              insertedClient.email,
+              {
+                clientName: insertedClient.name,
+                freelancerName: studioName,
+                portalUrl: inviteResult.url,
+              },
+              { workspaceId: effectiveWorkspaceId, clientId: insertedClient.id }
+            );
+          } catch (emailErr) {
+            logger.warn('Non-critical async invitation email error', { error: String(emailErr) });
+          }
+        })();
       }
     } catch (inviteErr) {
       logger.warn('Non-critical auto-invitation notice for new client', {
@@ -181,24 +197,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    // 7. Activity Log
-    try {
-      await supabaseAdmin.from('activities').insert({
-        workspace_id: workspace.id,
-        client_id: insertedClient.id,
-        action: 'created_client',
-        title: `Created Client "${insertedClient.name}"`,
-        description: `Created client ${insertedClient.name} (${insertedClient.company || 'No Company'}).`,
-        resource_type: 'client',
-        resource_id: insertedClient.id,
-      });
-    } catch { /* non-critical */ }
+    // 7. Activity Log (NON-BLOCKING background execution)
+    (async () => {
+      try {
+        await supabaseAdmin.from('activities').insert({
+          workspace_id: effectiveWorkspaceId,
+          client_id: insertedClient.id,
+          action: 'created_client',
+          title: `Created Client "${insertedClient.name}"`,
+          description: `Created client ${insertedClient.name} (${insertedClient.company || 'No Company'}).`,
+          resource_type: 'client',
+          resource_id: insertedClient.id,
+        });
+      } catch { /* non-critical */ }
+    })();
 
     logger.security('CLIENT_CREATED', {
       requestId,
       status: 'SUCCESS',
       clientId: insertedClient.id,
-      workspaceId: workspace.id,
+      workspaceId,
     });
 
     return NextResponse.json(

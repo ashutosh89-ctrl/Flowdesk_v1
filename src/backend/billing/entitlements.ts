@@ -44,11 +44,25 @@ export interface WorkspaceEntitlements {
   isWriteAllowed: boolean;
 }
 
+// In-memory cache for fast repeated quota checks across API routes (60s TTL)
+const entitlementsMemoryCache = new Map<string, { data: WorkspaceEntitlements; timestamp: number }>();
+const CACHE_TTL_MS = 60 * 1000;
+
+export function invalidateWorkspaceEntitlements(workspaceId: string): void {
+  entitlementsMemoryCache.delete(workspaceId);
+}
+
 /**
  * Request-scoped resolution of workspace subscription and active overrides.
  */
 export const getWorkspaceEntitlements = cache(
   async (workspaceId: string): Promise<WorkspaceEntitlements> => {
+    // 0. Check in-memory cache first
+    const cached = entitlementsMemoryCache.get(workspaceId);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.data;
+    }
+
     // 1. In demo mode or if workspaceId is missing, return generous Pro entitlements
     if (isDemoModeActive() || !workspaceId || workspaceId.startsWith('demo-')) {
       const demoPlan = BILLING_PLANS.pro;
@@ -168,7 +182,7 @@ export const getWorkspaceEntitlements = cache(
     const limits = resolveEffectiveLimits(planKey, overrides);
     const plan = getBillingPlan(planKey);
 
-    return {
+    const result: WorkspaceEntitlements = {
       workspaceId,
       planKey,
       planName: plan.name,
@@ -188,6 +202,9 @@ export const getWorkspaceEntitlements = cache(
       isTrialing: status === 'trialing',
       isWriteAllowed: isWriteAllowedInStatus(status),
     };
+
+    entitlementsMemoryCache.set(workspaceId, { data: result, timestamp: Date.now() });
+    return result;
   }
 );
 

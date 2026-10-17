@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/frontend/shared/ui/card';
 import { WorkspaceSummary } from '@/shared/types';
-import { CheckCircle2, Circle, Clock, FileText, DollarSign, MessageSquare, Users, Activity } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, FileText, DollarSign, MessageSquare, Activity, FolderKanban } from 'lucide-react';
 
 export interface TimelineTabProps {
   summary: WorkspaceSummary;
@@ -9,22 +9,119 @@ export interface TimelineTabProps {
 
 export const TimelineTab: React.FC<TimelineTabProps> = ({ summary }) => {
   const [filter, setFilter] = useState<string>('all');
-  const { activities, client } = summary;
+  const { activities = [], client, projects = [], deliverables = [], invoices = [], documents = [] } = summary;
 
-  const defaultTimelineEvents = [
-    { date: 'Jul 10, 2026', title: 'Core UI Kit & Token Spec Delivered', category: 'deliverable', status: 'completed', desc: 'Figma tokens, glass buttons, and typography scales.' },
-    { date: 'Jul 28, 2026', title: 'Command Palette Integration', category: 'project', status: 'completed', desc: 'Fuzzy search component for desktop dashboard.' },
-    { date: 'Aug 01, 2026', title: 'Invoice INV-2026-001 Settlement ($15,000.00)', category: 'invoice', status: 'completed', desc: 'Direct wire payment confirmed.' },
-    { date: 'Aug 08, 2026', title: 'Analytics Dashboard Milestone 2', category: 'project', status: 'in_progress', desc: 'Executive reporting suite with real-time streaming widgets.' },
-    { date: 'Aug 25, 2026', title: 'Final System Sign-off & Handover', category: 'milestone', status: 'upcoming', desc: 'Production bundle build & documentation package.' },
-  ];
+  // Build unified, real chronological timeline items from the client's actual workspace data
+  const timelineItems = useMemo(() => {
+    const items: Array<{
+      id: string;
+      date: string;
+      rawDate: number;
+      title: string;
+      desc?: string;
+      category: 'milestone' | 'deliverable' | 'invoice' | 'document' | 'activity';
+      status?: 'completed' | 'in_progress' | 'upcoming' | 'pending';
+      user?: string;
+    }> = [];
+
+    // 1. Real activities
+    activities.forEach((act) => {
+      const rawDate = act.timestamp ? new Date(act.timestamp).getTime() : 0;
+      let cat: 'milestone' | 'deliverable' | 'invoice' | 'document' | 'activity' = 'activity';
+      if (act.category === 'invoice' || act.action.includes('invoice') || act.action.includes('payment')) cat = 'invoice';
+      else if (act.category === 'deliverable' || act.action.includes('deliverable')) cat = 'deliverable';
+      else if (act.category === 'document' || act.action.includes('document')) cat = 'document';
+      else if (act.category === 'project' || act.action.includes('project') || act.action.includes('milestone')) cat = 'milestone';
+
+      items.push({
+        id: `act-${act.id}`,
+        date: act.timestamp || 'Recent',
+        rawDate,
+        title: act.target || act.action,
+        desc: act.metadata || act.action,
+        category: cat,
+        status: act.action.includes('paid') || act.action.includes('approved') || act.action.includes('completed') ? 'completed' : 'in_progress',
+        user: act.user,
+      });
+    });
+
+    // 2. Real project milestones
+    projects.forEach((proj) => {
+      (proj.milestones || []).forEach((m, idx) => {
+        const rawDate = m.dueDate ? new Date(m.dueDate).getTime() : 0;
+        items.push({
+          id: `m-${proj.id}-${idx}`,
+          date: m.dueDate ? new Date(m.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No due date',
+          rawDate,
+          title: `${proj.title}: ${m.title}`,
+          desc: m.desc || `Milestone for project "${proj.title}"`,
+          category: 'milestone',
+          status: m.completed ? 'completed' : 'upcoming',
+        });
+      });
+    });
+
+    // 3. Real deliverables
+    deliverables.forEach((del) => {
+      const dateStr = del.dueDate || del.createdAt;
+      const rawDate = dateStr ? new Date(dateStr).getTime() : 0;
+      items.push({
+        id: `del-${del.id}`,
+        date: dateStr ? new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent',
+        rawDate,
+        title: del.title,
+        desc: del.description || `Status: ${del.status}`,
+        category: 'deliverable',
+        status: del.status === 'approved' || del.status === 'completed' ? 'completed' : del.status === 'preparing' ? 'in_progress' : 'pending',
+      });
+    });
+
+    // 4. Real invoices
+    invoices.forEach((inv) => {
+      const dateStr = inv.dueDate || inv.issueDate || inv.createdAt;
+      const rawDate = dateStr ? new Date(dateStr).getTime() : 0;
+      items.push({
+        id: `inv-${inv.id}`,
+        date: dateStr ? new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent',
+        rawDate,
+        title: `Invoice ${inv.invoiceNumber} (${inv.currency} ${Number(inv.total || 0).toLocaleString()})`,
+        desc: `Status: ${(inv.status || inv.paymentStatus || 'draft').toUpperCase()} • Paid: ${inv.currency} ${Number(inv.paidAmount || 0).toLocaleString()}`,
+        category: 'invoice',
+        status: inv.status === 'paid' ? 'completed' : 'in_progress',
+      });
+    });
+
+    // 5. Real documents
+    documents.forEach((doc) => {
+      const dateStr = doc.uploadedAt || doc.updatedAt;
+      const rawDate = dateStr ? new Date(dateStr).getTime() : 0;
+      items.push({
+        id: `doc-${doc.id}`,
+        date: dateStr ? new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent',
+        rawDate,
+        title: doc.title,
+        desc: `${doc.type?.toUpperCase() || 'FILE'} • ${doc.fileName || doc.category || 'Document'}`,
+        category: 'document',
+        status: doc.status === 'verified' || doc.status === 'uploaded' ? 'completed' : 'pending',
+      });
+    });
+
+    // Sort descending (latest event first)
+    return items.sort((a, b) => b.rawDate - a.rawDate);
+  }, [activities, projects, deliverables, invoices, documents]);
+
+  // Filter items by selected tab
+  const filteredEvents = useMemo(() => {
+    if (filter === 'all') return timelineItems;
+    return timelineItems.filter((item) => item.category === filter);
+  }, [timelineItems, filter]);
 
   const getIcon = (cat: string) => {
     switch (cat) {
       case 'deliverable': return <CheckCircle2 className="w-3.5 h-3.5 text-white" />;
       case 'document': return <FileText className="w-3.5 h-3.5 text-white" />;
       case 'invoice': return <DollarSign className="w-3.5 h-3.5 text-white" />;
-      case 'comment': return <MessageSquare className="w-3.5 h-3.5 text-white" />;
+      case 'milestone': return <FolderKanban className="w-3.5 h-3.5 text-white" />;
       default: return <Activity className="w-3.5 h-3.5 text-white" />;
     }
   };
@@ -34,7 +131,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ summary }) => {
       <CardHeader>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <CardTitle>{client.company} Timeline & Event Feed</CardTitle>
+            <CardTitle>{client.company || client.name} Timeline & Event Feed</CardTitle>
             <CardDescription>Chronological event log and upcoming project milestones</CardDescription>
           </div>
 
@@ -54,60 +151,58 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({ summary }) => {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-white/10">
-          {/* Combine activity logs and static milestones */}
-          {activities.map((act) => (
-            <div key={act.id} className="relative flex items-start gap-4 group">
-              <div className="absolute -left-6 top-1 w-5 h-5 rounded-full bg-zinc-900 border border-white/20 flex items-center justify-center shrink-0">
-                {getIcon(act.category)}
-              </div>
+        {filteredEvents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-500">
+            <Clock className="w-10 h-10 mb-3 text-zinc-600" />
+            <h4 className="text-sm font-semibold text-zinc-300">No timeline events found</h4>
+            <p className="text-xs text-zinc-500 max-w-sm mt-1">
+              {filter === 'all'
+                ? `No activities, milestones, deliverables, or invoices have been recorded yet for ${client.company || client.name}.`
+                : `No ${filter} events recorded yet for this client.`}
+            </p>
+          </div>
+        ) : (
+          <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-white/10">
+            {filteredEvents.map((item) => (
+              <div key={item.id} className="relative flex items-start gap-4 group">
+                <div
+                  className={`absolute -left-6 top-1 w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
+                    item.status === 'completed'
+                      ? 'bg-emerald-500 text-zinc-950 border-emerald-400'
+                      : item.status === 'in_progress'
+                      ? 'bg-zinc-800 text-white border-white/40'
+                      : 'bg-zinc-900 text-zinc-600 border-zinc-700'
+                  }`}
+                >
+                  {item.status === 'completed' ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-zinc-950" />
+                  ) : item.status === 'in_progress' ? (
+                    <Circle className="w-2 h-2 fill-current" />
+                  ) : (
+                    getIcon(item.category)
+                  )}
+                </div>
 
-              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 w-full hover:border-white/20 transition-all">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-white">{act.user}</span>
-                    <span className="text-xs text-zinc-400">{act.action}</span>
-                    <span className="text-xs font-bold text-white font-mono">{act.target}</span>
+                <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 w-full group-hover:border-white/20 transition-all">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      {item.user && (
+                        <span className="text-xs font-bold text-white">{item.user}</span>
+                      )}
+                      <h4 className="text-sm font-bold text-white">{item.title}</h4>
+                    </div>
+                    <span className="text-[10px] font-mono text-zinc-500 shrink-0">{item.date}</span>
                   </div>
-                  <span className="text-[10px] font-mono text-zinc-500">{act.timestamp}</span>
+                  {item.desc && (
+                    <p className="text-xs text-zinc-400 mt-1">
+                      {item.desc}
+                    </p>
+                  )}
                 </div>
-                {act.metadata && (
-                  <p className="text-xs text-zinc-400 mt-1 pl-2 border-l-2 border-white/10 italic">
-                    {act.metadata}
-                  </p>
-                )}
               </div>
-            </div>
-          ))}
-
-          {defaultTimelineEvents.map((item, idx) => (
-            <div key={`static-${idx}`} className="relative flex items-start gap-4 group">
-              <div
-                className={`absolute -left-6 top-1 w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
-                  item.status === 'completed'
-                    ? 'bg-white text-zinc-950 border-white'
-                    : item.status === 'in_progress'
-                    ? 'bg-zinc-800 text-white border-white/40'
-                    : 'bg-zinc-900 text-zinc-600 border-zinc-700'
-                }`}
-              >
-                {item.status === 'completed' ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-zinc-950" />
-                ) : (
-                  <Circle className="w-2 h-2 fill-current" />
-                )}
-              </div>
-
-              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 w-full group-hover:border-white/20 transition-all">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-white">{item.title}</h4>
-                  <span className="text-[10px] font-mono text-zinc-400">{item.date}</span>
-                </div>
-                <p className="text-xs text-zinc-400 mt-1">{item.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

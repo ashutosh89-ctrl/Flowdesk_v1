@@ -94,14 +94,15 @@ export const FreelancerWorkspaceService = {
     try {
       const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
       if (!wsId) return null;
-      const [clients, projects, deliverables, documents, invoices] = await Promise.all([
-        FreelancerClientService.getClients(),
+      const [client, projects, deliverables, documents, invoices, comments, activities] = await Promise.all([
+        FreelancerClientService.getClientById(clientId),
         FreelancerProjectService.getProjectsByClientId(clientId),
         FreelancerDeliverableService.getDeliverables(clientId),
         FreelancerDocumentService.getDocuments(clientId),
         FreelancerInvoiceService.getInvoices(clientId),
+        CommentService.getComments(clientId),
+        FreelancerActivityService.getActivitiesByClientId(clientId),
       ]);
-      const client = clients.find(c => c.id === clientId);
       if (!client) return null;
       return {
         clientId,
@@ -110,11 +111,11 @@ export const FreelancerWorkspaceService = {
         deliverables,
         documents,
         invoices,
-        comments: [],
-        activities: [],
-        portalConfig: { clientId, enabled: false, magicKey: '' },
-        healthScore: 0,
-        health: { score: 0, status: 'Healthy' as const, reasons: [] },
+        comments,
+        activities,
+        portalConfig: { clientId, enabled: true, magicKey: client.portalToken || '' },
+        healthScore: client.healthBadge === 'healthy' ? 95 : client.healthBadge === 'risk' ? 50 : 80,
+        health: { score: 90, status: 'Healthy' as const, reasons: [] },
       };
     } catch { return null; }
   },
@@ -2274,6 +2275,37 @@ export const FreelancerActivityService = {
         action: a.action,
         target: a.title,
         category: (a.resource_type as any) || 'client',
+      }));
+    } catch {
+      return [];
+    }
+  },
+  getActivitiesByClientId: async (clientId: string): Promise<ActivityLog[]> => {
+    if (DemoDataProvider.isDemo()) {
+      return DemoDataProvider.getActivities().slice(0, 10);
+    }
+    const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+    if (!wsId) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('activities')
+        .select('*')
+        .eq('workspace_id', wsId)
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error || !data) return [];
+
+      return data.map((a) => ({
+        id: a.id,
+        timestamp: a.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        user: a.user_name || 'Member',
+        action: a.action,
+        target: a.title,
+        category: (a.resource_type as any) || 'client',
+        metadata: a.description || undefined,
       }));
     } catch {
       return [];

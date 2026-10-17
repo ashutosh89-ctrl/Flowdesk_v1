@@ -190,18 +190,12 @@ export function validateUploadFile(
           error: `File signature mismatch: expected image bytes for ".${finalExt}", but file contents do not match image format.`,
         };
       }
-      // Specific format cross-check
-      if ((finalExt === 'jpg' || finalExt === 'jpeg') && detected !== 'image/jpeg') {
-        return { valid: false, error: 'File signature mismatch: expected JPEG header.' };
-      }
-      if (finalExt === 'png' && detected !== 'image/png') {
-        return { valid: false, error: 'File signature mismatch: expected PNG header.' };
-      }
-      if (finalExt === 'gif' && detected !== 'image/gif') {
-        return { valid: false, error: 'File signature mismatch: expected GIF header.' };
-      }
-      if (finalExt === 'webp' && detected !== 'image/webp') {
-        return { valid: false, error: 'File signature mismatch: expected WebP header.' };
+      // Verify that the detected image MIME type is permitted by this bucket
+      if (!bucketRule.allowedMimeTypes.includes(detected)) {
+        return {
+          valid: false,
+          error: `Detected image format (${detected}) is not supported for bucket "${bucket}".`,
+        };
       }
       sniffedMime = detected;
     } else if (isPdfExt) {
