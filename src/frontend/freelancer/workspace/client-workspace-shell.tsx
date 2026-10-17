@@ -83,11 +83,37 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
     { id: 'history', label: 'History', icon: <Clock className="w-4 h-4" /> },
   ];
 
+  const [permanentPortalUrl, setPermanentPortalUrl] = useState<string>('');
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/portal/settings')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (isMounted && data?.portalUrl) {
+          setPermanentPortalUrl(data.portalUrl);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleCopyPortalLink = () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://flowdesk.app';
-    const portalUrl = `${origin}/portal/${client.id}`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    // Prefer the permanent connection link; fallback to client workspace route
+    const portalUrl =
+      permanentPortalUrl ||
+      (client?.id ? `${origin}/portal/${client.id}` : `${origin}/portal/join/fd_demo_studio`);
+
+    if (!portalUrl) return;
     navigator.clipboard?.writeText(portalUrl);
-    showToast('Link Copied', 'Client workspace portal link copied to clipboard.', 'success');
+    showToast(
+      'Permanent Portal Link Copied',
+      'Share this permanent link with your client to connect their FlowDesk account.',
+      'success'
+    );
   };
 
   return (

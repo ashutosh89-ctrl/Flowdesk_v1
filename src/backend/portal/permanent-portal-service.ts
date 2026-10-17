@@ -6,6 +6,7 @@ import {
   ConnectedFreelancerWorkspace,
 } from '@/shared/types';
 import { getCurrentWorkspace, updateWorkspacePortalSettings } from '@/backend/utilities/workspace';
+import { getAppBaseUrl } from '@/shared/utils/url';
 
 const SLUG_REGEX = /^[a-zA-Z0-9_-]{3,64}$/;
 
@@ -471,10 +472,39 @@ export const PermanentPortalService = {
    * Retrieves permanent portal settings for the freelancer's active workspace.
    */
   getFreelancerPortalSettings: async (
-    customOrigin?: string
+    customOrigin?: string,
+    callerUserId?: string,
+    callerWorkspaceId?: string
   ): Promise<{ portalSlug: string; isAcceptingConnections: boolean; portalUrl: string; connectedClientsCount: number }> => {
-    const ws = await getCurrentWorkspace();
-    const origin = customOrigin || (typeof window !== 'undefined' ? window.location.origin : 'https://flowdesk.app');
+    const origin = customOrigin || (typeof window !== 'undefined' ? window.location.origin : getAppBaseUrl());
+    let ws: any = null;
+
+    if (isDemoModeActive()) {
+      ws = await getCurrentWorkspace();
+    } else {
+      const db = supabaseAdmin || supabase;
+      if (callerWorkspaceId) {
+        const { data } = await db
+          .from('workspaces')
+          .select('id, owner_id, name, portal_slug, is_accepting_connections')
+          .eq('id', callerWorkspaceId)
+          .maybeSingle();
+        ws = data;
+      }
+      if (!ws && callerUserId) {
+        const { data } = await db
+          .from('workspaces')
+          .select('id, owner_id, name, portal_slug, is_accepting_connections')
+          .eq('owner_id', callerUserId)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        ws = data;
+      }
+      if (!ws) {
+        ws = await getCurrentWorkspace();
+      }
+    }
 
     if (!ws) {
       return {
@@ -485,14 +515,15 @@ export const PermanentPortalService = {
       };
     }
 
-    const slug = ws.portalSlug || `fd_${ws.id.replace(/-/g, '').slice(0, 16)}`;
-    const isAccepting = ws.isAcceptingConnections !== false;
+    const slug = ws.portal_slug || ws.portalSlug || `fd_${(ws.id || 'studio').replace(/-/g, '').slice(0, 16)}`;
+    const isAccepting = ws.is_accepting_connections !== false && ws.isAcceptingConnections !== false;
     const portalUrl = `${origin}/portal/join/${slug}`;
 
     let clientCount = 0;
     try {
-      if (!isDemoModeActive()) {
-        const { count } = await supabase
+      if (!isDemoModeActive() && ws.id) {
+        const db = supabaseAdmin || supabase;
+        const { count } = await db
           .from('clients')
           .select('id', { count: 'exact', head: true })
           .eq('workspace_id', ws.id)
@@ -516,20 +547,66 @@ export const PermanentPortalService = {
   /**
    * Updates permanent portal settings (toggle accepting connections or slug customization).
    */
-  updateFreelancerPortalSettings: async (settings: {
-    isAcceptingConnections?: boolean;
-    portalSlug?: string;
-  }): Promise<{ success: boolean; error?: string }> => {
-    const ws = await getCurrentWorkspace();
-    if (!ws) {
-      return { success: false, error: 'Workspace not found.' };
-    }
-
+  updateFreelancerPortalSettings: async (
+    settings: {
+      isAcceptingConnections?: boolean;
+      portalSlug?: string;
+    },
+    callerUserId?: string,
+    callerWorkspaceId?: string
+  ): Promise<{ success: boolean; error?: string }> => {
     if (settings.portalSlug && !SLUG_REGEX.test(settings.portalSlug.trim())) {
       return { success: false, error: 'Portal slug must be 3-64 alphanumeric characters (letters, numbers, hyphens, underscores).' };
     }
 
-    const updated = await updateWorkspacePortalSettings(ws.id, settings);
-    return { success: updated, error: updated ? undefined : 'Failed to update portal settings.' };
+    if (isDemoModeActive()) {
+      const ws = await getCurrentWorkspace();
+      if (!ws) return { success: false, error: 'Workspace not found.' };
+      const updated = await updateWorkspacePortalSettings(ws.id, settings);
+      return { success: updated, error: updated ? undefined : 'Failed to update portal settings.' };
+    }
+
+    try {
+      const db = supabaseAdmin || supabase;
+      let targetWsId = callerWorkspaceId;
+
+      if (!targetWsId && callerUserId) {
+        const { data: ws } = await db
+          .from('workspaces')
+          .select('id')
+          .eq('owner_id', callerUserId)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        targetWsId = ws?.id;
+      }
+
+      if (!targetWsId) {
+        const ws = await getCurrentWorkspace();
+        targetWsId = ws?.id;
+      }
+
+      if (!targetWsId) {
+        return { success: false, error: 'Workspace not found.' };
+      }
+
+      const payload: any = { updated_at: new Date().toISOString() };
+      if (settings.isAcceptingConnections !== undefined) {
+        payload.is_accepting_connections = settings.isAcceptingConnections;
+      }
+      if (settings.portalSlug !== undefined) {
+        payload.portal_slug = settings.portalSlug.trim().toLowerCase();
+      }
+
+      const { error } = await db.from('workspaces').update(payload).eq('id', targetWsId);
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      await updateWorkspacePortalSettings(targetWsId, settings);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to update portal settings.' };
+    }
   },
 };

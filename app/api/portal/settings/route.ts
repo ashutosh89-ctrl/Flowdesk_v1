@@ -9,7 +9,11 @@ export async function GET(request: NextRequest) {
   }
 
   const origin = request.nextUrl.origin;
-  const settings = await PermanentPortalService.getFreelancerPortalSettings(origin);
+  const settings = await PermanentPortalService.getFreelancerPortalSettings(
+    origin,
+    caller.userId || undefined,
+    caller.workspaceId || undefined
+  );
   return NextResponse.json(settings);
 }
 
@@ -21,10 +25,14 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const result = await PermanentPortalService.updateFreelancerPortalSettings({
-      isAcceptingConnections: body.isAcceptingConnections,
-      portalSlug: body.portalSlug,
-    });
+    const result = await PermanentPortalService.updateFreelancerPortalSettings(
+      {
+        isAcceptingConnections: body.isAcceptingConnections,
+        portalSlug: body.portalSlug,
+      },
+      caller.userId || undefined,
+      caller.workspaceId || undefined
+    );
 
     return NextResponse.json(result, { status: result.success ? 200 : 400 });
   } catch (err: any) {

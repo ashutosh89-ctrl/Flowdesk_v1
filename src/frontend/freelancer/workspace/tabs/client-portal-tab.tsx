@@ -7,10 +7,11 @@ import { WorkspaceService } from '@/backend/freelancer';
 import { WorkspaceSummary } from '@/shared/types';
 import { QRCode } from '@/frontend/shared/ui/qr-code';
 import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
-import { Globe, Copy, CheckCircle2, ShieldCheck, RefreshCw, Power, Eye, QrCode as QrIcon, Mail } from 'lucide-react';
+import { Globe, Copy, CheckCircle2, ShieldCheck, RefreshCw, Power, Eye, QrCode as QrIcon, Mail, Link2 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import { FreelancerClientManagementService } from '@/backend/freelancer/client-management-service';
 import { getCurrentWorkspace } from '@/backend/utilities/workspace';
+import { getAppBaseUrl } from '@/shared/utils/url';
 
 export interface ClientPortalTabProps {
   summary: WorkspaceSummary;
@@ -40,6 +41,7 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
   const [showQrModal, setShowQrModal] = useState(false);
   const [isSendingInvite, setIsSendingInvite] = useState(false);
   const [connectionUrl, setConnectionUrl] = useState<string>('');
+  const [permanentPortalUrl, setPermanentPortalUrl] = useState<string>('');
 
   React.useEffect(() => {
     let mounted = true;
@@ -56,9 +58,27 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
     };
   }, [client.id]);
 
-  const displayedUrl = connectionUrl || (typeof window !== 'undefined'
-    ? `${window.location.origin}/portal/${client.id}`
-    : `https://flowdesk-v1.vercel.app/portal/${client.id}`);
+  React.useEffect(() => {
+    let mounted = true;
+    fetch('/api/portal/settings')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (mounted && data?.portalUrl) {
+          setPermanentPortalUrl(data.portalUrl);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const effectiveOrigin = typeof window !== 'undefined' ? window.location.origin : getAppBaseUrl();
+  const displayedUrl =
+    connectionUrl ||
+    (client?.id ? `${effectiveOrigin}/portal/${client.id}` : `${effectiveOrigin}/portal`);
+  const effectivePermanentUrl =
+    permanentPortalUrl || `${effectiveOrigin}/portal/join/fd_demo_studio`;
 
   const handleCopyLink = async () => {
     try {
@@ -116,6 +136,50 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
 
   return (
     <div className="space-y-6">
+      {/* Permanent Freelancer Connection Link Card */}
+      <Card variant="crystal" className="border-emerald-500/25 bg-emerald-950/10">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+          <div className="space-y-3 max-w-xl">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono uppercase text-emerald-400 font-semibold">Permanent Studio Portal Link</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                Stable Identifier
+              </span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">Permanent Freelancer Connection Link</h3>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Share this stable, permanent link with {client.company} or any client over WhatsApp, email, or social media. Visitors can create an account or sign in to connect directly to your studio.
+              </p>
+            </div>
+            <p className="text-xs text-emerald-300 font-mono select-all bg-zinc-900/90 p-2.5 rounded-xl border border-emerald-500/20 break-all">
+              {effectivePermanentUrl}
+            </p>
+            <div className="pt-1 flex items-center gap-2">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard?.writeText(effectivePermanentUrl);
+                  showToast('Permanent Link Copied', 'Permanent portal link copied to clipboard.', 'success');
+                }}
+                leftIcon={<Copy className="w-3.5 h-3.5" />}
+              >
+                Copy Permanent Link
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => window.open(effectivePermanentUrl, '_blank')}
+                leftIcon={<Eye className="w-3.5 h-3.5" />}
+              >
+                Open Join Page
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Magic Link & QR Code Management Box */}
       <Card variant="crystal" className="border-white/20">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">

@@ -62,9 +62,14 @@ export const PortalSettingsPanel: React.FC = () => {
     };
   }, []);
 
+  const effectiveOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const effectivePortalUrl =
+    portalUrl ||
+    (portalSlug ? `${effectiveOrigin}/portal/join/${portalSlug}` : `${effectiveOrigin}/portal/join/fd_demo_studio`);
+
   const handleCopyLink = () => {
-    if (!portalUrl) return;
-    navigator.clipboard?.writeText(portalUrl);
+    if (!effectivePortalUrl) return;
+    navigator.clipboard?.writeText(effectivePortalUrl);
     setCopied(true);
     showToast('Permanent Link Copied', 'Your permanent freelancer portal link was copied to clipboard.', 'success');
     setTimeout(() => setCopied(false), 2500);
@@ -139,7 +144,7 @@ export const PortalSettingsPanel: React.FC = () => {
             </label>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <div className="flex-1 px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/15 text-xs font-mono text-zinc-200 select-all overflow-x-auto whitespace-nowrap">
-                {portalUrl || `https://flowdesk.app/portal/join/${portalSlug}`}
+                {effectivePortalUrl}
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -156,7 +161,7 @@ export const PortalSettingsPanel: React.FC = () => {
                   type="button"
                   variant="secondary"
                   size="sm"
-                  onClick={() => window.open(portalUrl, '_blank')}
+                  onClick={() => window.open(effectivePortalUrl, '_blank')}
                   className="px-3"
                   title="Open connection page in new tab"
                 >
