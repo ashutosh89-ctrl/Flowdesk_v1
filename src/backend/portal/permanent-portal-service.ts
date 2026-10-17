@@ -218,56 +218,98 @@ export const PermanentPortalService = {
         return { success: false, error: 'You cannot connect to your own workspace as a client.' };
       }
 
-      // 2. Check existing connection in client_connections
-      const { data: existingConn } = await client
-        .from('client_connections')
-        .select('id, client_id, status')
-        .eq('workspace_id', ws.id)
-        .eq('client_user_id', userId)
-        .maybeSingle();
+      // Resolve user email and full name from auth (or profiles)
+      let userEmail = '';
+      let userName = 'Client';
 
-      if (existingConn && existingConn.status === 'active' && existingConn.client_id) {
-        return {
-          success: true,
-          clientId: existingConn.client_id,
-          workspaceId: ws.id,
-          studioName: ws.name,
-          alreadyConnected: true,
-        };
+      if (client.auth?.admin?.getUserById) {
+        try {
+          const { data: userData } = await client.auth.admin.getUserById(userId);
+          if (userData?.user) {
+            userEmail = userData.user.email?.trim().toLowerCase() || '';
+            const meta = userData.user.user_metadata || {};
+            userName = meta.full_name || userEmail.split('@')[0] || 'Client';
+          }
+        } catch {
+          // ignore
+        }
       }
 
-      // Check or create client record
-      let resolvedClientId: string = existingConn?.client_id || '';
-
-      if (!resolvedClientId) {
-        const { data: existingClient } = await client
-          .from('clients')
-          .select('id')
-          .eq('workspace_id', ws.id)
-          .eq('user_id', userId)
-          .neq('status', 'pending_deletion')
-          .maybeSingle();
-
-        if (existingClient) {
-          resolvedClientId = existingClient.id;
-        } else {
-          // Resolve user info from auth
-          let userEmail = 'client@flowdesk.app';
-          let userName = 'Client';
-
-          if (client.auth?.admin?.getUserById) {
-            try {
-              const { data: userData } = await client.auth.admin.getUserById(userId);
-              if (userData?.user) {
-                userEmail = userData.user.email || userEmail;
-                const meta = userData.user.user_metadata || {};
-                userName = meta.full_name || userEmail.split('@')[0];
-              }
-            } catch {
-              // ignore
-            }
+      if (!userEmail) {
+        try {
+          const { data: prof } = await client
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', userId)
+            .maybeSingle();
+          if (prof?.email) {
+            userEmail = prof.email.trim().toLowerCase();
+            userName = prof.full_name || userName;
           }
+        } catch {
+          // ignore
+        }
+      }
 
+      // 2. Fetch all existing clients in this workspace to link canonically
+      const { data: wsClients } = await client
+        .from('clients')
+        .select('id, user_id, email, name, company, status')
+        .eq('workspace_id', ws.id)
+        .neq('status', 'pending_deletion');
+
+      const allClients = wsClients || [];
+
+      // Match by email first: This is the client record created by the freelancer
+      // which already holds projects, deliverables, invoices, and documents!
+      const emailMatchedClient = userEmail
+        ? allClients.find((c) => c.email && c.email.trim().toLowerCase() === userEmail)
+        : null;
+
+      let resolvedClientId: string = '';
+
+      if (emailMatchedClient) {
+        resolvedClientId = emailMatchedClient.id;
+
+        // Ensure this client record is bound to userId and active
+        await client
+          .from('clients')
+          .update({
+            user_id: userId,
+            status: 'active',
+            ...(userName && (!emailMatchedClient.name || emailMatchedClient.name === 'Client') ? { name: userName } : {}),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', emailMatchedClient.id);
+
+        // Reconcile and clean up any empty duplicate client rows previously created for this user in this workspace
+        const duplicateClients = allClients.filter(
+          (c) => c.user_id === userId && c.id !== emailMatchedClient.id
+        );
+        for (const dup of duplicateClients) {
+          try {
+            await Promise.all([
+              client.from('projects').update({ client_id: emailMatchedClient.id }).eq('client_id', dup.id),
+              client.from('deliverables').update({ client_id: emailMatchedClient.id }).eq('client_id', dup.id),
+              client.from('documents').update({ client_id: emailMatchedClient.id }).eq('client_id', dup.id),
+              client.from('invoices').update({ client_id: emailMatchedClient.id }).eq('client_id', dup.id),
+              client.from('activities').update({ client_id: emailMatchedClient.id }).eq('client_id', dup.id),
+            ]);
+            await client.from('clients').delete().eq('id', dup.id);
+          } catch (dupCleanupErr) {
+            console.warn('[connectClient] Duplicate reconciliation notice:', dupCleanupErr);
+          }
+        }
+      } else {
+        // Fallback: check if a client record in this workspace already has user_id = userId
+        const userMatchedClient = allClients.find((c) => c.user_id === userId);
+        if (userMatchedClient) {
+          resolvedClientId = userMatchedClient.id;
+          if (!userMatchedClient.email && userEmail) {
+            await client.from('clients').update({ email: userEmail, updated_at: new Date().toISOString() }).eq('id', userMatchedClient.id);
+          }
+        } else {
+          // If neither email nor user_id matched, initialize a new client record
           const { data: newClient, error: clientCreateErr } = await client
             .from('clients')
             .insert({
@@ -275,7 +317,7 @@ export const PermanentPortalService = {
               user_id: userId,
               name: userName,
               company: `${userName} Workspace`,
-              email: userEmail,
+              email: userEmail || 'client@flowdesk.app',
               status: 'active',
               currency: 'USD',
             })
@@ -289,7 +331,19 @@ export const PermanentPortalService = {
         }
       }
 
-      // Upsert client_connections
+      // Check if client_connections was already pointing to this resolved client
+      const { data: existingConn } = await client
+        .from('client_connections')
+        .select('id, client_id, status')
+        .eq('workspace_id', ws.id)
+        .eq('client_user_id', userId)
+        .maybeSingle();
+
+      const alreadyConnected = Boolean(
+        existingConn && existingConn.status === 'active' && existingConn.client_id === resolvedClientId
+      );
+
+      // Upsert client_connections with canonical client_id
       await client.from('client_connections').upsert(
         {
           workspace_id: ws.id,
@@ -301,6 +355,15 @@ export const PermanentPortalService = {
         },
         { onConflict: 'client_user_id,workspace_id' }
       );
+
+      // Invalidate caches
+      try {
+        const { invalidatePortalCache } = await import('@/backend/client');
+        invalidatePortalCache(resolvedClientId);
+        invalidatePortalCache(ws.id);
+      } catch {
+        // ignore
+      }
 
       logger.info('CLIENT_PORTAL_CONNECTED', {
         userId,
@@ -314,7 +377,7 @@ export const PermanentPortalService = {
         clientId: resolvedClientId,
         workspaceId: ws.id,
         studioName: ws.name,
-        alreadyConnected: false,
+        alreadyConnected,
       };
     } catch (err: any) {
       logger.error('Failed to connect client to workspace', { error: err.message, slug, userId });
@@ -362,6 +425,56 @@ export const PermanentPortalService = {
       const client = supabaseAdmin || supabase;
       const results: ConnectedFreelancerWorkspace[] = [];
       const seenWorkspaceIds = new Set<string>();
+
+      // Resolve user email to ensure any freelancer-created client records with matching email are auto-bound
+      let userEmail = '';
+      if (client.auth?.admin?.getUserById) {
+        try {
+          const { data: userData } = await client.auth.admin.getUserById(userId);
+          userEmail = userData?.user?.email?.trim().toLowerCase() || '';
+        } catch {
+          // ignore
+        }
+      }
+
+      if (userEmail) {
+        try {
+          const { data: unboundEmailMatches } = await client
+            .from('clients')
+            .select('id, workspace_id, user_id, email')
+            .ilike('email', userEmail)
+            .neq('status', 'pending_deletion');
+
+          for (const match of (unboundEmailMatches || [])) {
+            if (!match.user_id) {
+              await client
+                .from('clients')
+                .update({ user_id: userId, status: 'active', updated_at: new Date().toISOString() })
+                .eq('id', match.id);
+
+              const { data: wsData } = await client
+                .from('workspaces')
+                .select('owner_id')
+                .eq('id', match.workspace_id)
+                .maybeSingle();
+
+              await client.from('client_connections').upsert(
+                {
+                  workspace_id: match.workspace_id,
+                  freelancer_user_id: wsData?.owner_id || null,
+                  client_user_id: userId,
+                  client_id: match.id,
+                  status: 'active',
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: 'client_user_id,workspace_id' }
+              );
+            }
+          }
+        } catch (autoBindErr) {
+          console.warn('[getClientConnectedWorkspaces] email auto-bind notice:', autoBindErr);
+        }
+      }
 
       // 1. Query client_connections table and direct clients in parallel
       const [connsRes, directClientsRes] = await Promise.all([

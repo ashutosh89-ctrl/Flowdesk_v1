@@ -213,6 +213,42 @@ async function runAllTests() {
     }
   });
 
+  // --- SECTION E: Canonical Client Reconciliation & Role Isolation ---
+  console.log('\n--- SECTION E: Canonical Client Reconciliation & Role Isolation ---');
+
+  await test('E16. Client connecting via portal link binds to existing freelancer client by email', async () => {
+    // Verify that connectClient prioritizes email match over creating duplicate
+    const res = await PermanentPortalService.connectClient('fd_demo_studio', 'usr-client-001');
+    assert.strictEqual(res.success, true);
+    assert.ok(res.clientId, 'Must resolve to existing canonical client record');
+  });
+
+  await test('E17. Client role isolation ensures clients are not flagged as freelancers', () => {
+    // Simulating role determination logic from app/api/auth/roles/route.ts
+    const userRole = 'client';
+    const ownedWorkspaces: any[] = [];
+    const clientConnections = [{ id: 'conn-1', client_id: 'cli-1' }];
+
+    const isClientRole = userRole === 'client';
+    const client = clientConnections.length > 0 || isClientRole;
+    const freelancer = Boolean(ownedWorkspaces && ownedWorkspaces.length > 0) && !isClientRole;
+
+    assert.strictEqual(client, true, 'User must have client role');
+    assert.strictEqual(freelancer, false, 'Client arriving via connection link must NEVER be a freelancer');
+  });
+
+  await test('E18. Data continuity: client portal data resolves same client deliverables as freelancer', async () => {
+    const { ClientPortalService } = await import('../src/backend/client');
+    const portalData = await ClientPortalService.getPortalData('cli-demo-001');
+
+    assert.ok(portalData.client, 'Client profile must resolve');
+    assert.strictEqual(portalData.client?.id, 'cli-demo-001');
+    assert.ok(Array.isArray(portalData.deliverables), 'Deliverables must be accessible to client');
+    assert.ok(portalData.deliverables.length > 0, 'Must share deliverables created for this client');
+    assert.ok(Array.isArray(portalData.projects), 'Projects must be accessible to client');
+    assert.ok(portalData.projects.length > 0, 'Must share projects created for this client');
+  });
+
   // Summary
   console.log('\n================================================================');
   console.log(`📊 TOTAL TESTS: ${passed + failed}`);

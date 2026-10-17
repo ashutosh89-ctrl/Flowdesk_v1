@@ -67,19 +67,20 @@ export async function GET(request: NextRequest) {
       .eq('owner_id', user.id)
       .limit(1);
 
-    if ((!ownedWorkspaces || ownedWorkspaces.length === 0) && supabaseAdmin) {
-      try {
-        const { data: newWs } = await supabaseAdmin
-          .from('workspaces')
-          .insert({ owner_id: user.id, name: 'My Workspace' })
-          .select('id')
-          .maybeSingle();
-        if (newWs) {
-          ownedWorkspaces = [newWs];
-        }
-      } catch (wsErr) {
-        console.warn('[auth/roles] workspace auto-creation notice:', wsErr);
+    // Check if user has active connections in client_connections
+    let hasClientConnections = false;
+    try {
+      const { data: conns } = await supabase
+        .from('client_connections')
+        .select('id')
+        .eq('client_user_id', user.id)
+        .eq('status', 'active')
+        .limit(1);
+      if (conns && conns.length > 0) {
+        hasClientConnections = true;
       }
+    } catch {
+      // non-critical
     }
 
     // Client role is represented by an authenticated client record. RLS exposes
@@ -160,18 +161,25 @@ export async function GET(request: NextRequest) {
     if (workspaceError) console.warn('[auth/roles] workspace role check:', workspaceError.message);
     if (clientError) console.warn('[auth/roles] client role check:', clientError.message);
 
-    const freelancer = true; // Every authenticated user has access to their freelancer workspace
+    const isClientRole = user.user_metadata?.role === 'client';
     const clients = (clientRows || []).filter((client) => client.status !== 'pending_deletion');
-    const client = clients.length > 0;
+    const client = clients.length > 0 || hasClientConnections || isClientRole;
+
+    // A user is a freelancer ONLY if they have created/own a workspace and their role is not client-only.
+    // Client accounts joining via portal links MUST NEVER be given a freelancer workspace.
+    const hasOwnedWorkspace = Boolean(ownedWorkspaces && ownedWorkspaces.length > 0);
+    const freelancer = hasOwnedWorkspace && !isClientRole;
 
     let onboardingCompleted = true;
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('onboarding_completed')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (profile) {
-      onboardingCompleted = profile.onboarding_completed ?? true;
+    if (freelancer) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarding_completed')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (profile) {
+        onboardingCompleted = profile.onboarding_completed ?? true;
+      }
     }
 
     const response = NextResponse.json({

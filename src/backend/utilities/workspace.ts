@@ -73,7 +73,21 @@ export async function getCurrentWorkspace(): Promise<Workspace | null> {
       return ws;
     }
 
-    // Auto-initialize workspace if missing for authenticated user
+    // NEVER auto-create a freelancer workspace for clients or accounts with client connections
+    if (user.user_metadata?.role === 'client') {
+      return null;
+    }
+
+    // Check if user has active client connections or client records
+    const [connsRes, clientsRes] = await Promise.all([
+      supabase.from('client_connections').select('id').eq('client_user_id', user.id).limit(1),
+      supabase.from('clients').select('id').eq('user_id', user.id).limit(1),
+    ]);
+    if ((connsRes.data && connsRes.data.length > 0) || (clientsRes.data && clientsRes.data.length > 0)) {
+      return null;
+    }
+
+    // Auto-initialize workspace if missing for authenticated freelancer user
     const autoSlug = 'fd_' + (user.id.replace(/-/g, '').slice(0, 12) + Math.random().toString(36).slice(2, 6));
     const { data: newWs, error: createError } = await supabase
       .from('workspaces')

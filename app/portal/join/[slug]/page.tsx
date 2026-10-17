@@ -48,8 +48,8 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
     studioName?: string;
   } | null>(null);
 
-  // Inline sign-up form state
-  const [showSignUpForm, setShowSignUpForm] = useState(false);
+  // Inline authentication mode ('options' | 'signin' | 'signup')
+  const [formMode, setFormMode] = useState<'options' | 'signin' | 'signup'>('options');
   const [fullName, setFullName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
@@ -166,6 +166,88 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
     }
   };
 
+  // Handle existing client login directly on this connection page
+  const handleSignInAndConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setAuthError('Email and password are required.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setAuthError(null);
+
+    try {
+      if (isDemoModeActive()) {
+        const res = await fetch('/api/portal/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug }),
+        });
+        const result = await res.json();
+        const targetClientId = result.clientId || 'cli-demo-001';
+        setConnectedClientId(targetClientId);
+        setConnectionSuccess(true);
+        setTimeout(() => {
+          window.location.href = `/portal/${targetClientId}`;
+        }, 350);
+        return;
+      }
+
+      // Authenticate directly through Supabase
+      const { data: authData, error: signInErr } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      if (signInErr) {
+        throw signInErr;
+      }
+
+      if (!authData.user) {
+        throw new Error('Sign in failed.');
+      }
+
+      setCurrentUser({ id: authData.user.id, email: authData.user.email });
+
+      // Directly connect client to this freelancer workspace
+      const res = await fetch('/api/portal/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug }),
+      });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setAuthError(result.error || 'Failed to establish connection.');
+        return;
+      }
+
+      const targetClientId = result.clientId;
+      const targetWorkspaceId = result.workspaceId;
+
+      if (typeof window !== 'undefined' && targetWorkspaceId) {
+        try {
+          localStorage.setItem('flowdesk_active_client_workspace', targetWorkspaceId);
+        } catch {
+          // ignore
+        }
+      }
+
+      setConnectedClientId(targetClientId);
+      setConnectionSuccess(true);
+
+      const destUrl = targetClientId ? `/portal/${targetClientId}` : '/client/dashboard';
+      setTimeout(() => {
+        window.location.href = destUrl;
+      }, 350);
+    } catch (err: any) {
+      setAuthError(err.message || 'An error occurred during sign in.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Handle new client registration & connection
   const handleSignUpAndConnect = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,7 +280,7 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
         return;
       }
 
-      // Supabase signup with next destination preserved
+      // Supabase signup strictly with role: 'client'
       const { data: authData, error: signUpErr } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
@@ -216,7 +298,8 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
 
       if (signUpErr) {
         if (signUpErr.message.toLowerCase().includes('already registered')) {
-          router.replace(`/login?next=${encodeURIComponent('/portal/join/' + slug)}`);
+          setFormMode('signin');
+          setAuthError('An account with this email is already registered. Please enter your password to connect.');
           return;
         }
         throw signUpErr;
@@ -229,8 +312,38 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
       // Check if session was granted immediately (email confirmation disabled)
       if (authData.session) {
         setCurrentUser({ id: authData.user.id, email: authData.user.email });
-        // Automatically proceed to explicit confirmation view
-        setShowSignUpForm(false);
+
+        // Connect client directly to this freelancer
+        const res = await fetch('/api/portal/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug }),
+        });
+        const result = await res.json();
+
+        if (res.ok && result.success) {
+          const targetClientId = result.clientId;
+          const targetWorkspaceId = result.workspaceId;
+
+          if (typeof window !== 'undefined' && targetWorkspaceId) {
+            try {
+              localStorage.setItem('flowdesk_active_client_workspace', targetWorkspaceId);
+            } catch {
+              // ignore
+            }
+          }
+
+          setConnectedClientId(targetClientId);
+          setConnectionSuccess(true);
+
+          const destUrl = targetClientId ? `/portal/${targetClientId}` : '/client/dashboard';
+          setTimeout(() => {
+            window.location.href = destUrl;
+          }, 350);
+          return;
+        } else {
+          setFormMode('options');
+        }
       } else {
         // Email verification required
         setConnectionSuccess(true);
@@ -475,13 +588,79 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
                 </button>
               </div>
             </div>
-          ) : showSignUpForm ? (
-            /* Branch B: Inline Sign Up Form for New Clients */
+          ) : formMode === 'signin' ? (
+            /* Branch B: Inline Sign In Form for Clients */
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-sm font-semibold text-white">Sign In to Your Client Account</h2>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Sign in with your email and password to connect with {details.studioName || details.freelancerName}.
+                </p>
+              </div>
+
+              <form onSubmit={handleSignInAndConnect} className="space-y-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-zinc-300">Work Email</label>
+                  <Input
+                    type="email"
+                    required
+                    placeholder="you@company.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-zinc-300">Password</label>
+                  <Input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="w-full justify-center gap-2 mt-2 py-2.5"
+                  isLoading={isSubmitting}
+                >
+                  Sign In & Connect <ArrowRight className="w-4 h-4" />
+                </Button>
+              </form>
+
+              <div className="pt-2 flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthError(null);
+                    setFormMode('options');
+                  }}
+                  className="text-zinc-400 hover:text-white inline-flex items-center gap-1 transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" /> Back to options
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthError(null);
+                    setFormMode('signup');
+                  }}
+                  className="text-emerald-400 hover:text-emerald-300 transition-colors"
+                >
+                  New Client? Create Account
+                </button>
+              </div>
+            </div>
+          ) : formMode === 'signup' ? (
+            /* Branch C: Inline Sign Up Form for New Clients */
             <div className="space-y-4">
               <div>
                 <h2 className="text-sm font-semibold text-white">Create your FlowDesk client account</h2>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Connect with multiple freelancers using one unified client account.
+                  Connect with {details.studioName || details.freelancerName} using one unified client account.
                 </p>
               </div>
 
@@ -535,18 +714,32 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
                 </Button>
               </form>
 
-              <div className="pt-2 text-center">
+              <div className="pt-2 flex items-center justify-between text-xs">
                 <button
                   type="button"
-                  onClick={() => setShowSignUpForm(false)}
-                  className="text-xs text-zinc-400 hover:text-white inline-flex items-center gap-1 transition-colors"
+                  onClick={() => {
+                    setAuthError(null);
+                    setFormMode('options');
+                  }}
+                  className="text-zinc-400 hover:text-white inline-flex items-center gap-1 transition-colors"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" /> Back to options
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthError(null);
+                    setFormMode('signin');
+                  }}
+                  className="text-emerald-400 hover:text-emerald-300 transition-colors"
+                >
+                  Existing User? Sign In
                 </button>
               </div>
             </div>
           ) : (
-            /* Branch C: Unauthenticated Landing (Options: Sign In or Register) */
+            /* Branch D: Unauthenticated Landing (Options: Sign In or Register) */
             <div className="space-y-4">
               <div className="text-center space-y-1">
                 <h2 className="text-base font-bold text-white">Connect with {details.studioName}</h2>
@@ -559,7 +752,10 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
                 <Button
                   variant="primary"
                   className="w-full justify-center gap-2 py-3"
-                  onClick={() => router.push(`/login?next=${encodeURIComponent('/portal/join/' + slug)}`)}
+                  onClick={() => {
+                    setAuthError(null);
+                    setFormMode('signin');
+                  }}
                 >
                   Sign In with Existing Account <ArrowRight className="w-4 h-4" />
                 </Button>
@@ -567,7 +763,10 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
                 <Button
                   variant="secondary"
                   className="w-full justify-center gap-2 py-3"
-                  onClick={() => setShowSignUpForm(true)}
+                  onClick={() => {
+                    setAuthError(null);
+                    setFormMode('signup');
+                  }}
                 >
                   <User className="w-4 h-4" /> New Client? Create Free Account
                 </Button>

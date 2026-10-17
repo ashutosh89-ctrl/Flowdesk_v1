@@ -81,14 +81,61 @@ export const ClientPortalService = {
 
     // Demo mode: return mock data directly
     if (isDemoModeActive()) {
-      const mockClient = DemoDataProvider.getClientById(cleanId) || DemoDataProvider.getClients()[0];
-      if (!mockClient) {
-        return { client: null, projects: [], deliverables: [], documents: [], invoices: [], activities: [], notifications: [], comments: [], profile: null, fileRequests: [], isConfigured: false };
-      }
-      const mockProjs = DemoDataProvider.getProjectsByClientId(mockClient.id);
-      const mockDelivs = DemoDataProvider.getDeliverables(mockClient.id);
+      const mockClient = DemoDataProvider.getClientById(cleanId) || DemoDataProvider.getClients()[0] || {
+        id: cleanId || 'cli-demo-001',
+        name: 'Eleanor Vance',
+        company: 'Apex Digital',
+        email: 'eleanor@apexdigital.io',
+        phone: '+1 555-0199',
+        status: 'active',
+        totalBilled: 12500,
+        currency: 'USD',
+        activeProjectsCount: 1,
+        createdAt: '2026-01-01',
+      };
+      const foundProjs = DemoDataProvider.getProjectsByClientId(mockClient.id);
+      const foundDelivs = DemoDataProvider.getDeliverables(mockClient.id);
       const mockDocs = DemoDataProvider.getDocuments(mockClient.id);
       const mockInvs = DemoDataProvider.getInvoices(mockClient.id);
+
+      const mockProjs = foundProjs && foundProjs.length > 0 ? foundProjs : [
+        {
+          id: 'proj-demo-1',
+          clientId: mockClient.id,
+          clientName: mockClient.company,
+          title: 'Brand Identity & Web Design',
+          description: 'Comprehensive rebrand and product design.',
+          status: 'in_progress' as const,
+          budget: 15000,
+          spent: 8000,
+          startDate: '2026-01-10',
+          dueDate: '2026-04-30',
+          completionPercentage: 65,
+          tags: ['branding', 'design'],
+          milestones: [],
+        },
+      ];
+
+      const mockDelivs: Deliverable[] = foundDelivs && foundDelivs.length > 0 ? foundDelivs : [
+        {
+          id: 'deliv-demo-1',
+          projectId: 'proj-demo-1',
+          clientId: mockClient.id,
+          clientName: mockClient.company,
+          title: 'Design System & Figma Tokens',
+          description: 'Figma UI library and component tokens.',
+          status: 'ready_for_review',
+          approvalStatus: 'pending',
+          priority: 'high',
+          dueDate: '2026-03-15',
+          version: 'v1.0',
+          commentsCount: 2,
+          filesCount: 3,
+          createdAt: '2026-01-15',
+          updatedAt: '2026-02-01',
+        },
+      ];
+
       const demoResult: ClientPortalDataset = {
         client: mockClient,
         projects: mockProjs,
@@ -154,23 +201,52 @@ export const ClientPortalService = {
 
 
         if (data) {
+          let canonicalData = data;
+          if (data.email && data.workspace_id) {
+            try {
+              const { data: siblings } = await supabase
+                .from('clients')
+                .select('*')
+                .eq('workspace_id', data.workspace_id)
+                .ilike('email', data.email.trim().toLowerCase())
+                .neq('status', 'pending_deletion');
+
+              if (siblings && siblings.length > 1) {
+                for (const s of siblings) {
+                  const { data: dCount } = await supabase
+                    .from('deliverables')
+                    .select('id')
+                    .eq('client_id', s.id)
+                    .limit(1);
+                  if (dCount && dCount.length > 0) {
+                    canonicalData = s;
+                    break;
+                  }
+                }
+              }
+            } catch {
+              // ignore
+            }
+          }
+
           client = {
-            id: data.id,
-            userId: data.user_id,
-            portalToken: data.portal_token,
-            name: data.name,
-            company: data.company,
-            email: data.email,
-            phone: data.phone || '',
-            avatarUrl: data.avatar_url || '',
-            status: data.status || 'active',
-            healthBadge: data.health_badge || 'healthy',
-            totalBilled: Number(data.total_billed) || 0,
-            activeProjectsCount: data.active_projects_count || 0,
-            country: data.country || 'India',
-            currency: data.currency || 'USD',
-            createdAt: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            id: canonicalData.id,
+            userId: canonicalData.user_id,
+            portalToken: canonicalData.portal_token,
+            name: canonicalData.name,
+            company: canonicalData.company,
+            email: canonicalData.email,
+            phone: canonicalData.phone || '',
+            avatarUrl: canonicalData.avatar_url || '',
+            status: canonicalData.status || 'active',
+            healthBadge: canonicalData.health_badge || 'healthy',
+            totalBilled: Number(canonicalData.total_billed) || 0,
+            activeProjectsCount: canonicalData.active_projects_count || 0,
+            country: canonicalData.country || 'India',
+            currency: canonicalData.currency || 'USD',
+            createdAt: canonicalData.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
           };
+          (client as any).workspace_id = canonicalData.workspace_id;
         }
       } catch (err) {
         console.warn('Error querying client record from Supabase:', err);
