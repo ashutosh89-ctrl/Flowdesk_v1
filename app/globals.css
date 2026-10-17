@@ -1,13 +1,13 @@
 @import "tailwindcss";
+@import url('https://fonts.cdnfonts.com/css/quincy');
+@import url('https://fonts.cdnfonts.com/css/quincy-2');
 
-/* Quincy Typeface Definitions */
+/* Quincy Typeface Definitions - Local WOFF & CDN Fallback */
 @font-face {
   font-family: 'Quincy';
-  src: local('Quincy CF'), local('Quincy CF Regular'), local('Quincy'),
-       url('/fonts/quincy/QuincyCF-Regular.woff2') format('woff2'),
-       url('/fonts/quincy/QuincyCF-Regular.woff') format('woff'),
-       url('/fonts/quincy/QuincyCF-Regular.otf') format('opentype'),
-       url('/fonts/quincy/QuincyCF-Regular.ttf') format('truetype');
+  src: local('Quincy'), local('Quincy Regular'),
+       url('/fonts/quincy/QuincyRegular.woff') format('woff'),
+       url('https://fonts.cdnfonts.com/s/99344/QuincyRegular-OV678.woff') format('woff');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -15,11 +15,9 @@
 
 @font-face {
   font-family: 'Quincy';
-  src: local('Quincy CF Medium'), local('Quincy Medium'),
-       url('/fonts/quincy/QuincyCF-Medium.woff2') format('woff2'),
-       url('/fonts/quincy/QuincyCF-Medium.woff') format('woff'),
-       url('/fonts/quincy/QuincyCF-Medium.otf') format('opentype'),
-       url('/fonts/quincy/QuincyCF-Medium.ttf') format('truetype');
+  src: local('Quincy'), local('Quincy Regular'),
+       url('/fonts/quincy/QuincyRegular.woff') format('woff'),
+       url('https://fonts.cdnfonts.com/s/99344/QuincyRegular-OV678.woff') format('woff');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -27,11 +25,9 @@
 
 @font-face {
   font-family: 'Quincy';
-  src: local('Quincy CF Demi Bold'), local('Quincy CF SemiBold'), local('Quincy SemiBold'),
-       url('/fonts/quincy/QuincyCF-DemiBold.woff2') format('woff2'),
-       url('/fonts/quincy/QuincyCF-DemiBold.woff') format('woff'),
-       url('/fonts/quincy/QuincyCF-DemiBold.otf') format('opentype'),
-       url('/fonts/quincy/QuincyCF-DemiBold.ttf') format('truetype');
+  src: local('Quincy Bold'), local('Quincy'),
+       url('/fonts/quincy/QuincyBold.woff') format('woff'),
+       url('https://fonts.cdnfonts.com/s/2680/QUINB___.woff') format('woff');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -39,11 +35,9 @@
 
 @font-face {
   font-family: 'Quincy';
-  src: local('Quincy CF Bold'), local('Quincy Bold'),
-       url('/fonts/quincy/QuincyCF-Bold.woff2') format('woff2'),
-       url('/fonts/quincy/QuincyCF-Bold.woff') format('woff'),
-       url('/fonts/quincy/QuincyCF-Bold.otf') format('opentype'),
-       url('/fonts/quincy/QuincyCF-Bold.ttf') format('truetype');
+  src: local('Quincy Bold'), local('Quincy'),
+       url('/fonts/quincy/QuincyBold.woff') format('woff'),
+       url('https://fonts.cdnfonts.com/s/2680/QUINB___.woff') format('woff');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -51,11 +45,9 @@
 
 @font-face {
   font-family: 'Quincy';
-  src: local('Quincy CF Extra Bold'), local('Quincy Extra Bold'),
-       url('/fonts/quincy/QuincyCF-ExtraBold.woff2') format('woff2'),
-       url('/fonts/quincy/QuincyCF-ExtraBold.woff') format('woff'),
-       url('/fonts/quincy/QuincyCF-ExtraBold.otf') format('opentype'),
-       url('/fonts/quincy/QuincyCF-ExtraBold.ttf') format('truetype');
+  src: local('Quincy Bold'), local('Quincy'),
+       url('/fonts/quincy/QuincyBold.woff') format('woff'),
+       url('https://fonts.cdnfonts.com/s/2680/QUINB___.woff') format('woff');
   font-weight: 800;
   font-style: normal;
   font-display: swap;
@@ -63,20 +55,10 @@
 
 @font-face {
   font-family: 'Quincy';
-  src: local('Quincy CF Italic'), local('Quincy Italic'),
-       url('/fonts/quincy/QuincyCF-RegularItalic.woff2') format('woff2'),
-       url('/fonts/quincy/QuincyCF-RegularItalic.woff') format('woff');
+  src: local('Quincy Italic'),
+       url('/fonts/quincy/QuincyItalic.woff') format('woff'),
+       url('https://fonts.cdnfonts.com/s/99344/QuincyItalic-Ea3Rz.woff') format('woff');
   font-weight: 400;
-  font-style: italic;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Quincy';
-  src: local('Quincy CF Bold Italic'), local('Quincy Bold Italic'),
-       url('/fonts/quincy/QuincyCF-BoldItalic.woff2') format('woff2'),
-       url('/fonts/quincy/QuincyCF-BoldItalic.woff') format('woff');
-  font-weight: 700;
   font-style: italic;
   font-display: swap;
 }
@@ -84,11 +66,9 @@
 /* Also register under 'Quincy CF' and 'quincy-cf' for full cross-system compatibility */
 @font-face {
   font-family: 'Quincy CF';
-  src: local('Quincy CF'), local('Quincy CF Regular'), local('Quincy'),
-       url('/fonts/quincy/QuincyCF-Regular.woff2') format('woff2'),
-       url('/fonts/quincy/QuincyCF-Regular.woff') format('woff'),
-       url('/fonts/quincy/QuincyCF-Regular.otf') format('opentype'),
-       url('/fonts/quincy/QuincyCF-Regular.ttf') format('truetype');
+  src: local('Quincy CF'), local('Quincy'),
+       url('/fonts/quincy/QuincyRegular.woff') format('woff'),
+       url('https://fonts.cdnfonts.com/s/99344/QuincyRegular-OV678.woff') format('woff');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -96,47 +76,17 @@
 
 @font-face {
   font-family: 'Quincy CF';
-  src: local('Quincy CF Medium'), local('Quincy Medium'),
-       url('/fonts/quincy/QuincyCF-Medium.woff2') format('woff2'),
-       url('/fonts/quincy/QuincyCF-Medium.woff') format('woff');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Quincy CF';
-  src: local('Quincy CF Demi Bold'), local('Quincy CF SemiBold'), local('Quincy SemiBold'),
-       url('/fonts/quincy/QuincyCF-DemiBold.woff2') format('woff2'),
-       url('/fonts/quincy/QuincyCF-DemiBold.woff') format('woff');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Quincy CF';
   src: local('Quincy CF Bold'), local('Quincy Bold'),
-       url('/fonts/quincy/QuincyCF-Bold.woff2') format('woff2'),
-       url('/fonts/quincy/QuincyCF-Bold.woff') format('woff');
+       url('/fonts/quincy/QuincyBold.woff') format('woff'),
+       url('https://fonts.cdnfonts.com/s/2680/QUINB___.woff') format('woff');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 
-@font-face {
-  font-family: 'Quincy CF';
-  src: local('Quincy CF Extra Bold'), local('Quincy Extra Bold'),
-       url('/fonts/quincy/QuincyCF-ExtraBold.woff2') format('woff2'),
-       url('/fonts/quincy/QuincyCF-ExtraBold.woff') format('woff');
-  font-weight: 800;
-  font-style: normal;
-  font-display: swap;
-}
-
 @theme {
-  --font-sans: 'Quincy', 'Quincy CF', 'quincy-cf', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, serif;
-  --font-serif: 'Quincy', 'Quincy CF', 'quincy-cf', Georgia, Cambria, 'Times New Roman', serif;
+  --font-sans: 'Quincy', 'Quincy CF', Georgia, serif;
+  --font-serif: 'Quincy', 'Quincy CF', Georgia, serif;
 }
 
 @layer base {
@@ -146,16 +96,28 @@
     --border-soft: rgba(255, 255, 255, 0.08);
   }
 
-  body {
+  html, body {
     background-color: var(--bg-ultra-charcoal);
     color: #f4f4f5;
-    font-family: 'Quincy', 'Quincy CF', 'quincy-cf', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, serif;
+    font-family: 'Quincy', 'Quincy CF', Georgia, serif !important;
     overflow-x: hidden;
     color-scheme: dark;
   }
 
   button, input, optgroup, select, textarea {
-    font-family: inherit;
+    font-family: 'Quincy', 'Quincy CF', Georgia, serif;
+  }
+
+  .font-sans {
+    font-family: 'Quincy', 'Quincy CF', Georgia, serif !important;
+  }
+
+  .font-serif {
+    font-family: 'Quincy', 'Quincy CF', Georgia, serif !important;
+  }
+
+  .font-mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
   }
 }
 
