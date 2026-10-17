@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Button } from '@/frontend/shared/ui/button';
 import { ArrowRight, CheckCircle2, Terminal } from 'lucide-react';
-import { MonochromeFluidCanvas } from './monochrome-fluid-canvas';
+import GlowCursor from './GlowCursor';
 
 export interface HeroProps {
   onLaunchApp: () => void;
@@ -32,10 +32,19 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
     <section
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative pt-32 pb-28 px-6 lg:px-12 overflow-hidden flex flex-col items-center text-center select-none min-h-[90vh]"
+      className="relative w-full overflow-hidden"
     >
-      {/* Living Monochrome Fluid Canvas Layer */}
-      <MonochromeFluidCanvas />
+      <GlowCursor
+        color="#ffffff"
+        intensity={0.9}
+        trailWidth={3}
+        linger={3.4}
+        glow={1.8}
+        clickBurst
+        theme="dark"
+        className="w-full min-h-[90vh] pt-32 pb-28 px-6 lg:px-12 flex flex-col items-center text-center select-none"
+      >
+        <div className="w-full flex flex-col items-center text-center">
 
       {/* Subtle Premium Badge */}
       <motion.div
@@ -171,6 +180,8 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
           </div>
         </div>
       </motion.div>
-    </section>
+      </div>
+    </GlowCursor>
+  </section>
   );
 };
