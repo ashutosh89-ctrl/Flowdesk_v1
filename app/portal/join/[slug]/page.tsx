@@ -20,7 +20,6 @@ import {
   ExternalLink,
   AlertCircle,
   Briefcase,
-  Layers,
   ArrowLeft,
 } from 'lucide-react';
 import { PermanentPortalDetails } from '@/shared/types';
@@ -29,6 +28,47 @@ import { Avatar } from '@/frontend/shared/ui/avatar';
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
+
+const GoogleButton = ({
+  onClick,
+  isLoading,
+  label = 'Continue with Google',
+}: {
+  onClick: () => void;
+  isLoading?: boolean;
+  label?: string;
+}) => (
+  <Button
+    type="button"
+    variant="outline"
+    size="md"
+    className="w-full h-11 min-h-[44px] justify-center bg-zinc-900/90 hover:bg-zinc-800 text-zinc-100 hover:text-white font-medium text-xs rounded-xl border-white/10 hover:border-white/25 transition-all shadow-sm"
+    isLoading={isLoading}
+    onClick={onClick}
+    leftIcon={
+      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          fill="#4285F4"
+          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        />
+        <path
+          fill="#34A853"
+          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        />
+        <path
+          fill="#FBBC05"
+          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+        />
+        <path
+          fill="#EA4335"
+          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+        />
+      </svg>
+    }
+  >
+    {label}
+  </Button>
+);
 
 export default function PermanentPortalJoinPage({ params }: PageProps) {
   const router = useRouter();
@@ -59,6 +99,17 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
   const [connectionSuccess, setConnectionSuccess] = useState(false);
   const [connectedClientId, setConnectedClientId] = useState<string | null>(null);
 
+  // Automatic redirect effect whenever connectionSuccess becomes true
+  useEffect(() => {
+    if (connectionSuccess) {
+      const destUrl = connectedClientId ? `/portal/${connectedClientId}` : '/client/dashboard';
+      const timer = setTimeout(() => {
+        window.location.href = destUrl;
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [connectionSuccess, connectedClientId]);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -84,7 +135,6 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
         // 2. Check authenticated user session
         let user = null;
         if (isDemoModeActive()) {
-          // Check demo cookie/session
           const hasDemoClient = typeof document !== 'undefined' && document.cookie.includes('flowdesk_client_demo');
           if (hasDemoClient) {
             user = { id: 'usr-demo-client', email: 'eleanor@apexdigital.io' };
@@ -101,7 +151,45 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
           const statusRes = await fetch(`/api/portal/status?slug=${encodeURIComponent(slug)}`);
           if (statusRes.ok) {
             const statusData = await statusRes.json();
-            if (isMounted) setConnectionStatus(statusData);
+            if (isMounted) {
+              setConnectionStatus(statusData);
+
+              // If already connected, auto-open client workspace immediately
+              if (statusData.isConnected && statusData.clientId) {
+                setConnectedClientId(statusData.clientId);
+                setConnectionSuccess(true);
+                return;
+              }
+
+              // If authenticated client (not owner) and not yet connected, auto-connect
+              if (!statusData.isOwner && !statusData.isConnected) {
+                const connectRes = await fetch('/api/portal/connect', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ slug }),
+                });
+                const connectResult = await connectRes.json();
+                if (connectResult.success) {
+                  const targetClientId = connectResult.clientId;
+                  const targetWorkspaceId = connectResult.workspaceId;
+
+                  if (typeof window !== 'undefined') {
+                    try {
+                      if (targetWorkspaceId) {
+                        localStorage.setItem('flowdesk_active_client_workspace', targetWorkspaceId);
+                      }
+                      sessionStorage.setItem('flowdesk_workspace_mode', 'client');
+                    } catch {
+                      // ignore
+                    }
+                  }
+
+                  setConnectedClientId(targetClientId);
+                  setConnectionSuccess(true);
+                  return;
+                }
+              }
+            }
           }
         }
       } catch (err: any) {
@@ -119,6 +207,14 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
       isMounted = false;
     };
   }, [slug]);
+
+  // Initiate Google OAuth for client
+  const handleGoogleLogin = () => {
+    setIsSubmitting(true);
+    setAuthError(null);
+    const returnUrl = `/portal/join/${encodeURIComponent(slug)}`;
+    window.location.assign(`/api/auth/oauth/google?next=${encodeURIComponent(returnUrl)}`);
+  };
 
   // Handle explicit confirmation to connect for authenticated client
   const handleConfirmConnection = async () => {
@@ -142,9 +238,12 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
       const targetClientId = result.clientId;
       const targetWorkspaceId = result.workspaceId;
 
-      if (typeof window !== 'undefined' && targetWorkspaceId) {
+      if (typeof window !== 'undefined') {
         try {
-          localStorage.setItem('flowdesk_active_client_workspace', targetWorkspaceId);
+          if (targetWorkspaceId) {
+            localStorage.setItem('flowdesk_active_client_workspace', targetWorkspaceId);
+          }
+          sessionStorage.setItem('flowdesk_workspace_mode', 'client');
         } catch {
           // ignore
         }
@@ -152,13 +251,6 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
 
       setConnectedClientId(targetClientId);
       setConnectionSuccess(true);
-
-      const destUrl = targetClientId ? `/portal/${targetClientId}` : '/client/dashboard';
-
-      // Fast transition: navigate immediately using window.location.href to avoid stalled client transitions
-      setTimeout(() => {
-        window.location.href = destUrl;
-      }, 350);
     } catch (err: any) {
       setAuthError(err.message || 'An unexpected error occurred.');
     } finally {
@@ -188,9 +280,6 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
         const targetClientId = result.clientId || 'cli-demo-001';
         setConnectedClientId(targetClientId);
         setConnectionSuccess(true);
-        setTimeout(() => {
-          window.location.href = `/portal/${targetClientId}`;
-        }, 350);
         return;
       }
 
@@ -226,9 +315,12 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
       const targetClientId = result.clientId;
       const targetWorkspaceId = result.workspaceId;
 
-      if (typeof window !== 'undefined' && targetWorkspaceId) {
+      if (typeof window !== 'undefined') {
         try {
-          localStorage.setItem('flowdesk_active_client_workspace', targetWorkspaceId);
+          if (targetWorkspaceId) {
+            localStorage.setItem('flowdesk_active_client_workspace', targetWorkspaceId);
+          }
+          sessionStorage.setItem('flowdesk_workspace_mode', 'client');
         } catch {
           // ignore
         }
@@ -236,11 +328,6 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
 
       setConnectedClientId(targetClientId);
       setConnectionSuccess(true);
-
-      const destUrl = targetClientId ? `/portal/${targetClientId}` : '/client/dashboard';
-      setTimeout(() => {
-        window.location.href = destUrl;
-      }, 350);
     } catch (err: any) {
       setAuthError(err.message || 'An error occurred during sign in.');
     } finally {
@@ -259,6 +346,10 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
       setAuthError('Password must be at least 6 characters.');
       return;
     }
+    if (!fullName.trim()) {
+      setAuthError('Full name is required.');
+      return;
+    }
 
     setIsSubmitting(true);
     setAuthError(null);
@@ -274,80 +365,73 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
         const targetClientId = result.clientId || 'cli-demo-001';
         setConnectedClientId(targetClientId);
         setConnectionSuccess(true);
-        setTimeout(() => {
-          window.location.href = `/portal/${targetClientId}`;
-        }, 350);
         return;
       }
 
-      // Supabase signup strictly with role: 'client'
-      const { data: authData, error: signUpErr } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
-        password,
-        options: {
-          data: {
-            full_name: fullName.trim(),
-            company_name: companyName.trim(),
-            role: 'client',
-          },
-          emailRedirectTo: typeof window !== 'undefined'
-            ? `${window.location.origin}/portal/join/${encodeURIComponent(slug)}`
-            : undefined,
-        },
+      // 1. Create client account via server endpoint with email_confirm: true
+      const registerRes = await fetch('/api/portal/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug,
+          fullName: fullName.trim(),
+          companyName: companyName.trim() || `${fullName.trim()} Organization`,
+          email: email.trim().toLowerCase(),
+          password,
+        }),
       });
 
-      if (signUpErr) {
-        if (signUpErr.message.toLowerCase().includes('already registered')) {
+      const registerData = await registerRes.json();
+
+      if (!registerRes.ok || !registerData.success) {
+        if (registerData.code === 'USER_EXISTS') {
           setFormMode('signin');
-          setAuthError('An account with this email is already registered. Please enter your password to connect.');
+          setAuthError('An account with this email is already registered. Please sign in with your password to connect.');
           return;
         }
-        throw signUpErr;
+        throw new Error(registerData.error || 'Failed to create account.');
       }
 
-      if (!authData.user) {
-        throw new Error('Sign up failed.');
+      // 2. Sign in immediately to establish session and cookies
+      const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      if (signInErr || !signInData.user) {
+        throw new Error(signInErr?.message || 'Account created, but sign in failed. Please sign in.');
       }
 
-      // Check if session was granted immediately (email confirmation disabled)
-      if (authData.session) {
-        setCurrentUser({ id: authData.user.id, email: authData.user.email });
+      setCurrentUser({ id: signInData.user.id, email: signInData.user.email });
 
-        // Connect client directly to this freelancer
-        const res = await fetch('/api/portal/connect', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slug }),
-        });
-        const result = await res.json();
+      // 3. Connect client to this freelancer workspace
+      const connectRes = await fetch('/api/portal/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug }),
+      });
+      const connectResult = await connectRes.json();
 
-        if (res.ok && result.success) {
-          const targetClientId = result.clientId;
-          const targetWorkspaceId = result.workspaceId;
+      if (!connectRes.ok || !connectResult.success) {
+        throw new Error(connectResult.error || 'Failed to link account to freelancer workspace.');
+      }
 
-          if (typeof window !== 'undefined' && targetWorkspaceId) {
-            try {
-              localStorage.setItem('flowdesk_active_client_workspace', targetWorkspaceId);
-            } catch {
-              // ignore
-            }
+      const targetClientId = connectResult.clientId;
+      const targetWorkspaceId = connectResult.workspaceId;
+
+      if (typeof window !== 'undefined') {
+        try {
+          if (targetWorkspaceId) {
+            localStorage.setItem('flowdesk_active_client_workspace', targetWorkspaceId);
           }
-
-          setConnectedClientId(targetClientId);
-          setConnectionSuccess(true);
-
-          const destUrl = targetClientId ? `/portal/${targetClientId}` : '/client/dashboard';
-          setTimeout(() => {
-            window.location.href = destUrl;
-          }, 350);
-          return;
-        } else {
-          setFormMode('options');
+          sessionStorage.setItem('flowdesk_workspace_mode', 'client');
+        } catch {
+          // ignore
         }
-      } else {
-        // Email verification required
-        setConnectionSuccess(true);
       }
+
+      setConnectedClientId(targetClientId);
+      setConnectionSuccess(true);
     } catch (err: any) {
       setAuthError(err.message || 'An error occurred during registration.');
     } finally {
@@ -413,12 +497,11 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
     );
   }
 
-  // 4. Success state
+  // 4. Success state (Direct auto-transition, Open Workspace button removed)
   if (connectionSuccess) {
-    const destUrl = connectedClientId ? `/portal/${connectedClientId}` : '/client/dashboard';
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4 sm:p-6 selection:bg-emerald-500/30">
-        <Card variant="crystal" className="max-w-md w-full p-8 text-center space-y-5 border-emerald-500/40 shadow-2xl backdrop-blur-xl">
+        <Card variant="crystal" className="max-w-md w-full p-8 text-center space-y-6 border-emerald-500/40 shadow-2xl backdrop-blur-xl">
           <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
             <CheckCircle2 className="w-8 h-8" />
           </div>
@@ -428,18 +511,9 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
               Your FlowDesk client account is now connected to <strong>{details.studioName || details.freelancerName}</strong>. Opening your workspace...
             </p>
           </div>
-          <Button
-            variant="primary"
-            className="w-full justify-center gap-2 mt-2 py-3"
-            onClick={() => {
-              window.location.href = destUrl;
-            }}
-          >
-            Open Workspace Now <ArrowRight className="w-4 h-4 ml-1" />
-          </Button>
-          <div className="flex items-center justify-center gap-2 text-xs text-zinc-400 pt-1">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-            <span>Redirecting automatically...</span>
+          <div className="flex items-center justify-center gap-2 text-xs text-zinc-400 py-3">
+            <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+            <span>Opening your client workspace...</span>
           </div>
         </Card>
       </div>
@@ -594,8 +668,22 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
               <div>
                 <h2 className="text-sm font-semibold text-white">Sign In to Your Client Account</h2>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Sign in with your email and password to connect with {details.studioName || details.freelancerName}.
+                  Sign in to connect with {details.studioName || details.freelancerName}.
                 </p>
+              </div>
+
+              {/* Google OAuth Option */}
+              <div className="space-y-3 pt-1">
+                <GoogleButton onClick={handleGoogleLogin} isLoading={isSubmitting} />
+
+                <div className="relative my-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/10" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase font-mono tracking-wider">
+                    <span className="bg-[#121215] px-2 text-zinc-500">OR SIGN IN WITH EMAIL</span>
+                  </div>
+                </div>
               </div>
 
               <form onSubmit={handleSignInAndConnect} className="space-y-3.5">
@@ -664,12 +752,26 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
                 </p>
               </div>
 
+              {/* Google OAuth Option */}
+              <div className="space-y-3 pt-1">
+                <GoogleButton onClick={handleGoogleLogin} isLoading={isSubmitting} label="Sign up with Google" />
+
+                <div className="relative my-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/10" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase font-mono tracking-wider">
+                    <span className="bg-[#121215] px-2 text-zinc-500">OR REGISTER WITH EMAIL</span>
+                  </div>
+                </div>
+              </div>
+
               <form onSubmit={handleSignUpAndConnect} className="space-y-3.5">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-zinc-300">Full Name</label>
                   <Input
                     required
-                    placeholder="e.g. Eleanor Vance"
+                    placeholder="e.g. Sunil Yadav"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                   />
@@ -677,7 +779,7 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-zinc-300">Company / Organization</label>
                   <Input
-                    placeholder="e.g. Apex Digital"
+                    placeholder="e.g. Nex Mind"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                   />
@@ -687,7 +789,7 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
                   <Input
                     type="email"
                     required
-                    placeholder="eleanor@company.com"
+                    placeholder="nexmind0921@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
@@ -739,7 +841,7 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
               </div>
             </div>
           ) : (
-            /* Branch D: Unauthenticated Landing (Options: Sign In or Register) */
+            /* Branch D: Unauthenticated Landing (Options: Google, Sign In or Register) */
             <div className="space-y-4">
               <div className="text-center space-y-1">
                 <h2 className="text-base font-bold text-white">Connect with {details.studioName}</h2>
@@ -749,6 +851,17 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
               </div>
 
               <div className="space-y-2.5 pt-2">
+                <GoogleButton onClick={handleGoogleLogin} isLoading={isSubmitting} />
+
+                <div className="relative my-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/10" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase font-mono tracking-wider">
+                    <span className="bg-[#121215] px-2 text-zinc-500">OR USE EMAIL</span>
+                  </div>
+                </div>
+
                 <Button
                   variant="primary"
                   className="w-full justify-center gap-2 py-3"
