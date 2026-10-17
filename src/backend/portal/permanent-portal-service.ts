@@ -7,7 +7,7 @@ import {
   ClientConnectionRequest,
   ConnectedClientItem,
 } from '@/shared/types';
-import { getCurrentWorkspace, updateWorkspacePortalSettings } from '@/backend/utilities/workspace';
+import { getCurrentWorkspace, updateWorkspacePortalSettings, workspacePortalModeFallback } from '@/backend/utilities/workspace';
 import { getAppBaseUrl } from '@/shared/utils/url';
 
 const SLUG_REGEX = /^[a-zA-Z0-9_-]{3,64}$/;
@@ -111,14 +111,26 @@ export const PermanentPortalService = {
         };
       }
 
-      // 2. Direct fallback query via Supabase
-      const { data: wsData, error: wsErr } = await supabase
+      // 2. Direct query via Supabase
+      let wsData: any = null;
+      const { data: wsRaw, error: wsErr } = await supabase
         .from('workspaces')
-        .select('id, owner_id, name, logo_url, currency, is_accepting_connections, portal_slug, portal_mode')
+        .select('*')
         .ilike('portal_slug', cleanSlug)
         .maybeSingle();
 
-      if (wsErr || !wsData) {
+      if (!wsErr && wsRaw) {
+        wsData = wsRaw;
+      } else {
+        const { data: fallbackWs } = await supabase
+          .from('workspaces')
+          .select('id, owner_id, name, logo_url, currency, is_accepting_connections, portal_slug')
+          .ilike('portal_slug', cleanSlug)
+          .maybeSingle();
+        wsData = fallbackWs;
+      }
+
+      if (!wsData) {
         return {
           valid: false,
           error: 'This connection link does not exist or has been disabled.',
@@ -131,11 +143,13 @@ export const PermanentPortalService = {
         .eq('id', wsData.owner_id)
         .maybeSingle();
 
+      const resolvedMode = (wsData.portal_mode === 'private' || workspacePortalModeFallback.get(wsData.id) === 'private') ? 'private' : 'public';
+
       return {
         valid: true,
         slug: cleanSlug,
         isAcceptingConnections: wsData.is_accepting_connections !== false,
-        portalMode: wsData.portal_mode === 'private' ? 'private' : 'public',
+        portalMode: resolvedMode,
         freelancerName: profData?.full_name || 'FlowDesk Freelancer',
         studioName: wsData.name || profData?.business_name || 'Studio Workspace',
         profession: profData?.profession || 'Independent Professional',
@@ -289,13 +303,25 @@ export const PermanentPortalService = {
       const client = supabaseAdmin || supabase;
 
       // 1. Resolve workspace by portal_slug
-      const { data: ws, error: wsError } = await client
+      let ws: any = null;
+      const { data: wsRaw, error: wsError } = await client
         .from('workspaces')
-        .select('id, owner_id, name, is_accepting_connections, currency, portal_mode')
+        .select('*')
         .ilike('portal_slug', cleanSlug)
         .maybeSingle();
 
-      if (wsError || !ws) {
+      if (!wsError && wsRaw) {
+        ws = wsRaw;
+      } else {
+        const { data: fallbackWs } = await client
+          .from('workspaces')
+          .select('id, owner_id, name, is_accepting_connections, currency')
+          .ilike('portal_slug', cleanSlug)
+          .maybeSingle();
+        ws = fallbackWs;
+      }
+
+      if (!ws) {
         return { success: false, error: 'Freelancer portal link does not exist.' };
       }
 
@@ -356,7 +382,7 @@ export const PermanentPortalService = {
         : null;
 
       let resolvedClientId: string = '';
-      const isPrivate = ws.portal_mode === 'private';
+      const isPrivate = (ws.portal_mode === 'private' || workspacePortalModeFallback.get(ws.id) === 'private');
       let targetStatus: 'active' | 'pending' = 'active';
       let requiresApproval = false;
 
@@ -722,7 +748,7 @@ export const PermanentPortalService = {
       if (callerWorkspaceId) {
         const { data } = await db
           .from('workspaces')
-          .select('id, owner_id, name, portal_slug, is_accepting_connections, portal_mode')
+          .select('*')
           .eq('id', callerWorkspaceId)
           .maybeSingle();
         ws = data;
@@ -730,7 +756,7 @@ export const PermanentPortalService = {
       if (!ws && callerUserId) {
         const { data } = await db
           .from('workspaces')
-          .select('id, owner_id, name, portal_slug, is_accepting_connections, portal_mode')
+          .select('*')
           .eq('owner_id', callerUserId)
           .order('created_at', { ascending: true })
           .limit(1)
@@ -748,14 +774,14 @@ export const PermanentPortalService = {
         isAcceptingConnections: true,
         portalMode: 'public',
         portalUrl: `${origin}/portal/join/fd_demo_studio`,
-        connectedClientsCount: 1,
+        connectedClientsCount: 0,
         pendingRequestsCount: 0,
       };
     }
 
     const slug = ws.portal_slug || ws.portalSlug || `fd_${(ws.id || 'studio').replace(/-/g, '').slice(0, 16)}`;
     const isAccepting = ws.is_accepting_connections !== false && ws.isAcceptingConnections !== false;
-    const portalMode: 'public' | 'private' = (ws.portal_mode || ws.portalMode) === 'private' ? 'private' : 'public';
+    const portalMode: 'public' | 'private' = (ws.portal_mode === 'private' || ws.portalMode === 'private' || workspacePortalModeFallback.get(ws.id) === 'private') ? 'private' : 'public';
     const portalUrl = `${origin}/portal/join/${slug}`;
 
     let clientCount = 0;
@@ -764,7 +790,12 @@ export const PermanentPortalService = {
     try {
       if (!isDemoModeActive() && ws.id) {
         const db = supabaseAdmin || supabase;
-        const [activeClientsRes, pendingConnsRes] = await Promise.all([
+        const [activeConnsRes, activeClientsRes, pendingConnsRes] = await Promise.all([
+          db
+            .from('client_connections')
+            .select('id', { count: 'exact', head: true })
+            .eq('workspace_id', ws.id)
+            .eq('status', 'active'),
           db
             .from('clients')
             .select('id', { count: 'exact', head: true })
@@ -776,7 +807,7 @@ export const PermanentPortalService = {
             .eq('workspace_id', ws.id)
             .eq('status', 'pending'),
         ]);
-        clientCount = activeClientsRes.count || 0;
+        clientCount = Math.max(activeConnsRes.count || 0, activeClientsRes.count || 0);
         pendingCount = pendingConnsRes.count || 0;
       } else {
         clientCount = demoConnectedClientsState.length;
@@ -844,6 +875,10 @@ export const PermanentPortalService = {
         return { success: false, error: 'Workspace not found.' };
       }
 
+      if (settings.portalMode !== undefined) {
+        workspacePortalModeFallback.set(targetWsId, settings.portalMode);
+      }
+
       const payload: any = { updated_at: new Date().toISOString() };
       if (settings.isAcceptingConnections !== undefined) {
         payload.is_accepting_connections = settings.isAcceptingConnections;
@@ -855,7 +890,17 @@ export const PermanentPortalService = {
         payload.portal_mode = settings.portalMode;
       }
 
-      const { error } = await db.from('workspaces').update(payload).eq('id', targetWsId);
+      let { error } = await db.from('workspaces').update(payload).eq('id', targetWsId);
+      if (error && error.message && error.message.includes('portal_mode')) {
+        logger.warn('portal_mode column not in PostgREST schema cache, retrying without it and using fallback', {
+          error: error.message,
+          workspaceId: targetWsId,
+        });
+        delete payload.portal_mode;
+        const retryRes = await db.from('workspaces').update(payload).eq('id', targetWsId);
+        error = retryRes.error;
+      }
+
       if (error) {
         return { success: false, error: error.message };
       }

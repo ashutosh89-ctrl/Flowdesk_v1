@@ -65,8 +65,10 @@ export const PortalSettingsPanel: React.FC = () => {
 
       if (requestsRes.ok) {
         const rData = await requestsRes.json();
+        const connList = rData.connectedClients || [];
         setPendingRequests(rData.requests || []);
-        setConnectedClients(rData.connectedClients || []);
+        setConnectedClients(connList);
+        setConnectedClientsCount(connList.length);
       }
     } catch (err) {
       console.warn('Error refreshing portal requests:', err);
@@ -85,19 +87,24 @@ export const PortalSettingsPanel: React.FC = () => {
 
         if (!isMounted) return;
 
+        let initialCount = 0;
         if (settingsRes.ok) {
           const sData = await settingsRes.json();
           setPortalSlug(sData.portalSlug || '');
           setPortalUrl(sData.portalUrl || '');
           setPortalMode(sData.portalMode === 'private' ? 'private' : 'public');
           setIsAcceptingConnections(sData.isAcceptingConnections !== false);
-          setConnectedClientsCount(sData.connectedClientsCount || 0);
+          initialCount = sData.connectedClientsCount || 0;
+          setConnectedClientsCount(initialCount);
         }
 
         if (requestsRes.ok) {
           const rData = await requestsRes.json();
+          const connList = rData.connectedClients || [];
           setPendingRequests(rData.requests || []);
-          setConnectedClients(rData.connectedClients || []);
+          setConnectedClients(connList);
+          // Prioritize accurate resolved connections count
+          setConnectedClientsCount(Math.max(connList.length, initialCount));
         }
       } catch (err) {
         console.warn('Error loading portal settings and requests:', err);

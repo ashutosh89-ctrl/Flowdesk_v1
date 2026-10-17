@@ -30,6 +30,8 @@ const DEMO_WORKSPACE: Workspace = {
   createdAt: '2026-01-01T00:00:00Z',
 };
 
+export const workspacePortalModeFallback = new Map<string, 'public' | 'private'>();
+
 export async function getCurrentWorkspace(): Promise<Workspace | null> {
   // Demo mode: return mock workspace immediately without querying Supabase
   if (isDemoModeActive()) {
@@ -71,7 +73,7 @@ export async function getCurrentWorkspace(): Promise<Workspace | null> {
         signatureUrl: data[0].signature_url || '',
         portalSlug: data[0].portal_slug || ('fd_' + data[0].id.replace(/-/g, '').slice(0, 16)),
         isAcceptingConnections: data[0].is_accepting_connections !== false,
-        portalMode: data[0].portal_mode === 'private' ? 'private' : 'public',
+        portalMode: (data[0].portal_mode === 'private' || workspacePortalModeFallback.get(data[0].id) === 'private') ? 'private' : 'public',
         currency: data[0].currency || 'USD',
         createdAt: data[0].created_at,
       };
@@ -169,6 +171,10 @@ export async function updateWorkspacePortalSettings(
   workspaceId: string,
   settings: { isAcceptingConnections?: boolean; portalSlug?: string; portalMode?: 'public' | 'private' }
 ): Promise<boolean> {
+  if (settings.portalMode !== undefined) {
+    workspacePortalModeFallback.set(workspaceId, settings.portalMode);
+  }
+
   if (isDemoModeActive()) {
     if (settings.isAcceptingConnections !== undefined) DEMO_WORKSPACE.isAcceptingConnections = settings.isAcceptingConnections;
     if (settings.portalSlug !== undefined) DEMO_WORKSPACE.portalSlug = settings.portalSlug;
@@ -182,10 +188,17 @@ export async function updateWorkspacePortalSettings(
     if (settings.portalSlug !== undefined) payload.portal_slug = settings.portalSlug.trim().toLowerCase();
     if (settings.portalMode !== undefined) payload.portal_mode = settings.portalMode;
 
-    const { error } = await supabase
+    let { error } = await supabase
       .from('workspaces')
       .update(payload)
       .eq('id', workspaceId);
+
+    // If PostgREST schema cache does not have portal_mode yet, strip it and update remaining fields
+    if (error && error.message && error.message.includes('portal_mode')) {
+      delete payload.portal_mode;
+      const retry = await supabase.from('workspaces').update(payload).eq('id', workspaceId);
+      error = retry.error;
+    }
 
     if (!error) {
       clearWorkspaceCache();

@@ -1029,17 +1029,17 @@ export const SettingsView: React.FC = () => {
         {/* TAB 3: NOTIFICATIONS & EMAIL PREFERENCES */}
         {activeTab === 'notifications' && (
           <div className="space-y-6">
-            {/* Resend Infrastructure Status */}
+            {/* Brevo Infrastructure Status */}
             <Card variant="crystal">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Mail className="w-5 h-5 text-emerald-400" />
-                    <CardTitle>Transactional Email Delivery (Resend)</CardTitle>
+                    <CardTitle>Transactional Email Delivery (Brevo)</CardTitle>
                   </div>
                   <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Resend API Active
+                    Brevo API Active
                   </span>
                 </div>
                 <CardDescription>
