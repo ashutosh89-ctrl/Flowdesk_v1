@@ -16,7 +16,7 @@ export interface Client {
   industry?: string;
   avatarUrl?: string;
   logoUrl?: string;
-  status: 'active' | 'inactive' | 'lead' | 'archived' | 'pending_deletion' | 'pending' | 'rejected';
+  status: 'active' | 'inactive' | 'lead' | 'archived' | 'pending_deletion' | 'pending' | 'rejected' | 'invited';
   healthBadge?: 'excellent' | 'healthy' | 'attention' | 'critical' | 'risk';
   totalBilled: number;
   outstandingBalance?: number;

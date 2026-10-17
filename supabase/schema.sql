@@ -477,7 +477,7 @@ CREATE INDEX IF NOT EXISTS idx_clients_status ON public.clients(status);
 
 ALTER TABLE public.clients DROP CONSTRAINT IF EXISTS chk_clients_status;
 ALTER TABLE public.clients ADD CONSTRAINT chk_clients_status
-  CHECK (status IN ('active', 'inactive', 'lead', 'archived', 'pending_deletion', 'invited'));
+  CHECK (status IN ('active', 'inactive', 'lead', 'archived', 'pending_deletion', 'invited', 'pending', 'rejected'));
 
 ALTER TABLE public.clients DROP CONSTRAINT IF EXISTS chk_clients_total_billed;
 ALTER TABLE public.clients ADD CONSTRAINT chk_clients_total_billed

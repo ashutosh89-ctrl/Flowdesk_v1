@@ -427,8 +427,14 @@ export const PermanentPortalService = {
         if (userMatchedClient) {
           resolvedClientId = userMatchedClient.id;
           // If already active, remain active; if pending in private mode, stay pending
-          targetStatus = userMatchedClient.status === 'active' ? 'active' : isPrivate ? 'pending' : 'active';
+          const isAlreadyActive = userMatchedClient.status === 'active';
+          targetStatus = isAlreadyActive ? 'active' : isPrivate ? 'pending' : 'active';
           requiresApproval = targetStatus === 'pending';
+
+          // In Public Mode, promote client row from 'invited' to 'active'
+          if (!isPrivate && userMatchedClient.status !== 'active') {
+            await client.from('clients').update({ status: 'active', updated_at: new Date().toISOString() }).eq('id', userMatchedClient.id);
+          }
 
           if (!userMatchedClient.email && userEmail) {
             await client.from('clients').update({ email: userEmail, updated_at: new Date().toISOString() }).eq('id', userMatchedClient.id);
@@ -444,6 +450,13 @@ export const PermanentPortalService = {
             requiresApproval = false;
           }
 
+          // Production Database Constraint Compliance:
+          // Table 'clients' has check constraint chk_clients_status:
+          // CHECK (status IN ('active', 'inactive', 'lead', 'archived', 'pending_deletion', 'invited'))
+          // Using 'invited' on the clients table for pending verification in Private Mode satisfies
+          // the database check constraint while client_connections tracks the 'pending' status.
+          const clientRowStatus = isPrivate ? 'invited' : 'active';
+
           const { data: newClient, error: clientCreateErr } = await client
             .from('clients')
             .insert({
@@ -452,7 +465,7 @@ export const PermanentPortalService = {
               name: userName,
               company: `${userName} Workspace`,
               email: userEmail || 'client@flowdesk.app',
-              status: targetStatus,
+              status: clientRowStatus,
               currency: ws.currency || 'USD',
             })
             .select('id')
@@ -478,7 +491,7 @@ export const PermanentPortalService = {
       );
 
       // Upsert client_connections with canonical client_id & appropriate status
-      await client.from('client_connections').upsert(
+      const { error: upsertErr } = await client.from('client_connections').upsert(
         {
           workspace_id: ws.id,
           freelancer_user_id: ws.owner_id,
@@ -489,6 +502,24 @@ export const PermanentPortalService = {
         },
         { onConflict: 'client_user_id,workspace_id' }
       );
+
+      if (upsertErr) {
+        console.warn('[connectClient] client_connections upsert error:', upsertErr);
+        // Fallback for strict database check constraints if 'pending' was not supported
+        if (targetStatus === 'pending') {
+          await client.from('client_connections').upsert(
+            {
+              workspace_id: ws.id,
+              freelancer_user_id: ws.owner_id,
+              client_user_id: userId,
+              client_id: resolvedClientId,
+              status: 'disconnected',
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'client_user_id,workspace_id' }
+          );
+        }
+      }
 
       // Invalidate caches
       try {
@@ -957,7 +988,7 @@ export const PermanentPortalService = {
           .order('created_at', { ascending: false }),
         db
           .from('clients')
-          .select('id, name, company, email, avatar_url, status, created_at')
+          .select('id, user_id, name, company, email, avatar_url, status, created_at')
           .eq('workspace_id', targetWsId)
           .neq('status', 'pending_deletion'),
       ]);
@@ -969,6 +1000,7 @@ export const PermanentPortalService = {
 
       const requests: ClientConnectionRequest[] = [];
       const connectedClients: ConnectedClientItem[] = [];
+      const seenClientIds = new Set<string>();
 
       for (const conn of conns) {
         const c = clientMap.get(conn.client_id);
@@ -977,7 +1009,11 @@ export const PermanentPortalService = {
         const email = c?.email || 'client@flowdesk.app';
         const avatarUrl = c?.avatar_url || '';
 
-        if (conn.status === 'pending') {
+        const isPending = conn.status === 'pending' || c?.status === 'invited';
+        const isActive = conn.status === 'active' && c?.status === 'active';
+
+        if (isPending) {
+          seenClientIds.add(conn.client_id);
           requests.push({
             id: conn.id,
             clientId: conn.client_id,
@@ -990,7 +1026,8 @@ export const PermanentPortalService = {
             status: 'pending',
             requestedAt: conn.created_at,
           });
-        } else if (conn.status === 'active') {
+        } else if (isActive) {
+          seenClientIds.add(conn.client_id);
           connectedClients.push({
             id: conn.id,
             clientId: conn.client_id,
@@ -1002,6 +1039,24 @@ export const PermanentPortalService = {
             avatarUrl,
             status: 'active',
             connectedAt: conn.connected_at || conn.created_at,
+          });
+        }
+      }
+
+      // Also include any clients with status 'invited' that don't have a matching connection row yet
+      for (const c of clientsList) {
+        if (c.status === 'invited' && !seenClientIds.has(c.id)) {
+          requests.push({
+            id: c.id,
+            clientId: c.id,
+            clientUserId: c.user_id || '',
+            workspaceId: targetWsId,
+            clientName: c.name || 'Client Partner',
+            company: c.company || 'Client Organization',
+            email: c.email || 'client@flowdesk.app',
+            avatarUrl: c.avatar_url || '',
+            status: 'pending',
+            requestedAt: c.created_at || new Date().toISOString(),
           });
         }
       }
@@ -1184,30 +1239,59 @@ export const PermanentPortalService = {
       const targetConnId = conn?.id;
 
       if (targetConnId) {
-        await db
+        const { error: rejConnErr } = await db
           .from('client_connections')
           .update({
             status: 'rejected',
             updated_at: now,
           })
           .eq('id', targetConnId);
+        if (rejConnErr) {
+          await db
+            .from('client_connections')
+            .update({
+              status: 'disconnected',
+              updated_at: now,
+            })
+            .eq('id', targetConnId);
+        }
       } else {
-        await db
+        const { error: rejConnErr } = await db
           .from('client_connections')
           .update({
             status: 'rejected',
             updated_at: now,
           })
           .eq('client_id', targetClientId);
+        if (rejConnErr) {
+          await db
+            .from('client_connections')
+            .update({
+              status: 'disconnected',
+              updated_at: now,
+            })
+            .eq('client_id', targetClientId);
+        }
       }
 
-      await db
+      const { error: rejClientErr } = await db
         .from('clients')
         .update({
           status: 'rejected',
           updated_at: now,
         })
         .eq('id', targetClientId);
+
+      if (rejClientErr) {
+        // Fallback to 'inactive' which satisfies existing chk_clients_status constraint
+        await db
+          .from('clients')
+          .update({
+            status: 'inactive',
+            updated_at: now,
+          })
+          .eq('id', targetClientId);
+      }
 
       try {
         const { invalidatePortalCache } = await import('@/backend/client');

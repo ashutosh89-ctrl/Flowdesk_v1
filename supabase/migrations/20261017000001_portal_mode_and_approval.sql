@@ -37,6 +37,14 @@ ALTER TABLE public.client_connections
   ADD CONSTRAINT client_connections_status_check
   CHECK (status IN ('active', 'disconnected', 'pending', 'rejected'));
 
+-- 2b. UPDATE CLIENTS STATUS CHECK CONSTRAINT
+ALTER TABLE public.clients
+  DROP CONSTRAINT IF EXISTS chk_clients_status;
+
+ALTER TABLE public.clients
+  ADD CONSTRAINT chk_clients_status
+  CHECK (status IN ('active', 'inactive', 'lead', 'archived', 'pending_deletion', 'invited', 'pending', 'rejected'));
+
 -- 3. STRICT RLS ISOLATION FOR PENDING/REJECTED CLIENTS
 CREATE OR REPLACE FUNCTION public.get_auth_client_ids()
 RETURNS SETOF UUID

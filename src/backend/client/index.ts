@@ -300,8 +300,29 @@ export const ClientPortalService = {
       };
     }
 
-    // Strict Security Isolation: Pending or rejected clients must NEVER receive deliverables, documents, invoices or projects!
-    if (client.status === 'pending' || client.status === 'rejected') {
+    // Strict Security Isolation: Pending, invited, or rejected clients must NEVER receive deliverables, documents, invoices or projects!
+    let isPending = client.status === 'pending' || client.status === 'invited';
+    let isRejected = client.status === 'rejected';
+
+    // Verify active connection state if client is associated with a workspace
+    if (client.userId && (client as any).workspace_id) {
+      try {
+        const { data: conn } = await supabase
+          .from('client_connections')
+          .select('status')
+          .eq('workspace_id', (client as any).workspace_id)
+          .eq('client_user_id', client.userId)
+          .maybeSingle();
+        if (conn) {
+          if (conn.status === 'pending') isPending = true;
+          if (conn.status === 'rejected') isRejected = true;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (isPending || isRejected) {
       return {
         client,
         projects: [],
@@ -324,7 +345,7 @@ export const ClientPortalService = {
         },
         fileRequests: [],
         isConfigured: false,
-        isPendingApproval: client.status === 'pending',
+        isPendingApproval: isPending,
       };
     }
 
