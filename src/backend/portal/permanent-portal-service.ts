@@ -197,28 +197,9 @@ export const PermanentPortalService = {
     }
 
     try {
-      // 1. Try atomic database RPC
-      const { data: rpcResult, error: rpcErr } = await supabase.rpc('connect_client_to_workspace', {
-        p_slug: cleanSlug,
-      });
-
-      if (!rpcErr && rpcResult && typeof rpcResult === 'object') {
-        const res = rpcResult as any;
-        if (!res.success) {
-          return { success: false, error: res.error || 'Connection failed.' };
-        }
-        return {
-          success: true,
-          clientId: res.client_id,
-          workspaceId: res.workspace_id,
-          studioName: res.studio_name,
-          alreadyConnected: Boolean(res.already_connected),
-          reconnected: Boolean(res.reconnected),
-        };
-      }
-
-      // 2. Direct server fallback if RPC not installed yet
       const client = supabaseAdmin || supabase;
+
+      // 1. Resolve workspace by portal_slug
       const { data: ws, error: wsError } = await client
         .from('workspaces')
         .select('id, owner_id, name, is_accepting_connections')
@@ -237,15 +218,15 @@ export const PermanentPortalService = {
         return { success: false, error: 'You cannot connect to your own workspace as a client.' };
       }
 
-      // Check existing connection in client_connections
+      // 2. Check existing connection in client_connections
       const { data: existingConn } = await client
         .from('client_connections')
-        .select('*')
+        .select('id, client_id, status')
         .eq('workspace_id', ws.id)
         .eq('client_user_id', userId)
         .maybeSingle();
 
-      if (existingConn && existingConn.status === 'active') {
+      if (existingConn && existingConn.status === 'active' && existingConn.client_id) {
         return {
           success: true,
           clientId: existingConn.client_id,
@@ -271,10 +252,21 @@ export const PermanentPortalService = {
           resolvedClientId = existingClient.id;
         } else {
           // Resolve user info from auth
-          const { data: userData } = await client.auth.admin?.getUserById(userId) || { data: { user: null } };
-          const userMeta = userData?.user?.user_metadata || {};
-          const userEmail = userData?.user?.email || 'client@flowdesk.app';
-          const userName = userMeta.full_name || userEmail.split('@')[0];
+          let userEmail = 'client@flowdesk.app';
+          let userName = 'Client';
+
+          if (client.auth?.admin?.getUserById) {
+            try {
+              const { data: userData } = await client.auth.admin.getUserById(userId);
+              if (userData?.user) {
+                userEmail = userData.user.email || userEmail;
+                const meta = userData.user.user_metadata || {};
+                userName = meta.full_name || userEmail.split('@')[0];
+              }
+            } catch {
+              // ignore
+            }
+          }
 
           const { data: newClient, error: clientCreateErr } = await client
             .from('clients')
@@ -367,98 +359,110 @@ export const PermanentPortalService = {
     }
 
     try {
+      const client = supabaseAdmin || supabase;
       const results: ConnectedFreelancerWorkspace[] = [];
       const seenWorkspaceIds = new Set<string>();
 
-      // 1. Query client_connections table
-      const { data: conns } = await supabase
-        .from('client_connections')
-        .select(`
-          id,
-          client_id,
-          workspace_id,
-          freelancer_user_id,
-          status,
-          connected_at
-        `)
-        .eq('client_user_id', userId)
-        .eq('status', 'active');
+      // 1. Query client_connections table and direct clients in parallel
+      const [connsRes, directClientsRes] = await Promise.all([
+        client
+          .from('client_connections')
+          .select('id, client_id, workspace_id, freelancer_user_id, status, connected_at')
+          .eq('client_user_id', userId)
+          .eq('status', 'active'),
+        client
+          .from('clients')
+          .select('id, workspace_id, created_at')
+          .eq('user_id', userId)
+          .neq('status', 'pending_deletion'),
+      ]);
 
-      if (conns && conns.length > 0) {
-        for (const conn of conns) {
-          if (seenWorkspaceIds.has(conn.workspace_id)) continue;
-          seenWorkspaceIds.add(conn.workspace_id);
+      const conns = connsRes.data || [];
+      const directClients = directClientsRes.data || [];
 
-          // Get workspace metadata
-          const { data: ws } = await supabase
-            .from('workspaces')
-            .select('id, name, logo_url, currency')
-            .eq('id', conn.workspace_id)
-            .maybeSingle();
+      // Collect all unique workspace IDs and freelancer IDs
+      const allWsIds = new Set<string>();
+      const allFreelancerIds = new Set<string>();
 
-          // Get freelancer profile
-          const { data: prof } = await supabase
+      conns.forEach((c) => {
+        allWsIds.add(c.workspace_id);
+        if (c.freelancer_user_id) allFreelancerIds.add(c.freelancer_user_id);
+      });
+      directClients.forEach((dc) => {
+        allWsIds.add(dc.workspace_id);
+      });
+
+      if (allWsIds.size === 0) return [];
+
+      // 2. Fetch all workspaces in a single batch query
+      const { data: workspacesList } = await client
+        .from('workspaces')
+        .select('id, owner_id, name, logo_url, currency')
+        .in('id', Array.from(allWsIds));
+
+      const wsMap = new Map<string, any>();
+      workspacesList?.forEach((w) => {
+        wsMap.set(w.id, w);
+        if (w.owner_id) allFreelancerIds.add(w.owner_id);
+      });
+
+      // 3. Fetch all freelancer profiles in a single batch query
+      const { data: profilesList } = allFreelancerIds.size > 0
+        ? await client
             .from('profiles')
-            .select('full_name, business_name, avatar_url, logo_url')
-            .eq('id', conn.freelancer_user_id)
-            .maybeSingle();
+            .select('id, full_name, business_name, avatar_url, logo_url')
+            .in('id', Array.from(allFreelancerIds))
+        : { data: [] };
 
-          results.push({
-            id: conn.id,
-            clientId: conn.client_id,
-            workspaceId: conn.workspace_id,
-            freelancerUserId: conn.freelancer_user_id,
-            freelancerName: prof?.full_name || 'Freelancer',
-            studioName: ws?.name || prof?.business_name || 'Studio Workspace',
-            logoUrl: ws?.logo_url || prof?.logo_url || '',
-            avatarUrl: prof?.avatar_url || '',
-            currency: ws?.currency || 'USD',
-            status: 'active',
-            connectedAt: conn.connected_at,
-          });
-        }
+      const profMap = new Map<string, any>();
+      profilesList?.forEach((p) => {
+        profMap.set(p.id, p);
+      });
+
+      // 4. Assemble connections in-memory
+      for (const conn of conns) {
+        if (seenWorkspaceIds.has(conn.workspace_id)) continue;
+        seenWorkspaceIds.add(conn.workspace_id);
+
+        const ws = wsMap.get(conn.workspace_id);
+        const prof = profMap.get(conn.freelancer_user_id) || (ws?.owner_id ? profMap.get(ws.owner_id) : null);
+
+        results.push({
+          id: conn.id,
+          clientId: conn.client_id,
+          workspaceId: conn.workspace_id,
+          freelancerUserId: conn.freelancer_user_id,
+          freelancerName: prof?.full_name || 'Freelancer',
+          studioName: ws?.name || prof?.business_name || 'Studio Workspace',
+          logoUrl: ws?.logo_url || prof?.logo_url || '',
+          avatarUrl: prof?.avatar_url || '',
+          currency: ws?.currency || 'USD',
+          status: 'active',
+          connectedAt: conn.connected_at,
+        });
       }
 
-      // 2. Direct clients fallback (backwards compatibility for unbound connections)
-      const { data: directClients } = await supabase
-        .from('clients')
-        .select('id, workspace_id, created_at')
-        .eq('user_id', userId)
-        .neq('status', 'pending_deletion');
+      // 5. Assemble direct clients fallback
+      for (const dc of directClients) {
+        if (seenWorkspaceIds.has(dc.workspace_id)) continue;
+        seenWorkspaceIds.add(dc.workspace_id);
 
-      if (directClients && directClients.length > 0) {
-        for (const dc of directClients) {
-          if (seenWorkspaceIds.has(dc.workspace_id)) continue;
-          seenWorkspaceIds.add(dc.workspace_id);
+        const ws = wsMap.get(dc.workspace_id);
+        const prof = ws?.owner_id ? profMap.get(ws.owner_id) : null;
 
-          const { data: ws } = await supabase
-            .from('workspaces')
-            .select('id, owner_id, name, logo_url, currency')
-            .eq('id', dc.workspace_id)
-            .maybeSingle();
-
-          const { data: prof } = ws
-            ? await supabase
-                .from('profiles')
-                .select('full_name, business_name, avatar_url, logo_url')
-                .eq('id', ws.owner_id)
-                .maybeSingle()
-            : { data: null };
-
-          results.push({
-            id: dc.id,
-            clientId: dc.id,
-            workspaceId: dc.workspace_id,
-            freelancerUserId: ws?.owner_id,
-            freelancerName: prof?.full_name || 'Freelancer',
-            studioName: ws?.name || prof?.business_name || 'Studio Workspace',
-            logoUrl: ws?.logo_url || prof?.logo_url || '',
-            avatarUrl: prof?.avatar_url || '',
-            currency: ws?.currency || 'USD',
-            status: 'active',
-            connectedAt: dc.created_at,
-          });
-        }
+        results.push({
+          id: dc.id,
+          clientId: dc.id,
+          workspaceId: dc.workspace_id,
+          freelancerUserId: ws?.owner_id || '',
+          freelancerName: prof?.full_name || 'Freelancer',
+          studioName: ws?.name || prof?.business_name || 'Studio Workspace',
+          logoUrl: ws?.logo_url || prof?.logo_url || '',
+          avatarUrl: prof?.avatar_url || '',
+          currency: ws?.currency || 'USD',
+          status: 'active',
+          connectedAt: dc.created_at,
+        });
       }
 
       return results;

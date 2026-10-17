@@ -41,6 +41,17 @@ export interface ClientPortalDataset {
   isConfigured?: boolean;
 }
 
+const portalDataCache = new Map<string, { data: ClientPortalDataset; timestamp: number }>();
+const PORTAL_CACHE_TTL_MS = 25000;
+
+export const invalidatePortalCache = (clientId?: string) => {
+  if (clientId) {
+    portalDataCache.delete(clientId);
+  } else {
+    portalDataCache.clear();
+  }
+};
+
 export const ClientPortalService = {
   /**
    * Resolves full dataset for authenticated Client Portal session
@@ -62,10 +73,15 @@ export const ClientPortalService = {
       };
     }
 
+    const cleanId = clientIdOrToken.trim();
+    const cached = portalDataCache.get(cleanId);
+    if (cached && Date.now() - cached.timestamp < PORTAL_CACHE_TTL_MS && cached.data.client) {
+      return cached.data;
+    }
+
     // Demo mode: return mock data directly
     if (isDemoModeActive()) {
-      const cleanDemoId = clientIdOrToken.trim();
-      const mockClient = DemoDataProvider.getClientById(cleanDemoId) || DemoDataProvider.getClients()[0];
+      const mockClient = DemoDataProvider.getClientById(cleanId) || DemoDataProvider.getClients()[0];
       if (!mockClient) {
         return { client: null, projects: [], deliverables: [], documents: [], invoices: [], activities: [], notifications: [], comments: [], profile: null, fileRequests: [], isConfigured: false };
       }
@@ -73,7 +89,7 @@ export const ClientPortalService = {
       const mockDelivs = DemoDataProvider.getDeliverables(mockClient.id);
       const mockDocs = DemoDataProvider.getDocuments(mockClient.id);
       const mockInvs = DemoDataProvider.getInvoices(mockClient.id);
-      return {
+      const demoResult: ClientPortalDataset = {
         client: mockClient,
         projects: mockProjs,
         deliverables: mockDelivs,
@@ -108,9 +124,9 @@ export const ClientPortalService = {
         })),
         isConfigured: true,
       };
+      portalDataCache.set(cleanId, { data: demoResult, timestamp: Date.now() });
+      return demoResult;
     }
-
-    const cleanId = clientIdOrToken.trim();
 
     // 1. Resolve client record safely without filter injection
     let client: Client | null = null;
@@ -351,7 +367,7 @@ export const ClientPortalService = {
       // safe fallback
     }
 
-    return {
+    const result: ClientPortalDataset = {
       client,
       projects,
       deliverables,
@@ -365,14 +381,23 @@ export const ClientPortalService = {
       fileRequests,
       isConfigured: true,
     };
+
+    portalDataCache.set(cleanId, { data: result, timestamp: Date.now() });
+    if (client.id && client.id !== cleanId) {
+      portalDataCache.set(client.id, { data: result, timestamp: Date.now() });
+    }
+
+    return result;
   },
 
   // Action proxies delegating to domain client services
   approveDeliverable: async (clientId: string, deliverableId: string, notes?: string) => {
+    invalidatePortalCache(clientId);
     return ClientDeliverableService.approveDeliverable(clientId, deliverableId, notes);
   },
 
   requestRevision: async (clientId: string, deliverableId: string, revisionComment: string, attachmentFile?: File) => {
+    invalidatePortalCache(clientId);
     return ClientDeliverableService.requestRevision(clientId, deliverableId, revisionComment, attachmentFile);
   },
 
@@ -381,6 +406,7 @@ export const ClientPortalService = {
     docId: string,
     fileData: { fileName: string; size: string; downloadUrl?: string; file?: File; workspaceId?: string }
   ) => {
+    invalidatePortalCache(clientId);
     return ClientDocumentService.uploadDocumentFile(clientId, docId, fileData);
   },
 
@@ -395,10 +421,12 @@ export const ClientPortalService = {
       workspaceId?: string;
     }
   ) => {
+    invalidatePortalCache(clientId);
     return ClientDocumentService.uploadDirectDocument(clientId, payload);
   },
 
   initiatePayment: async (clientId: string, invoiceId: string) => {
+    invalidatePortalCache(clientId);
     return ClientInvoiceService.initiatePayment(clientId, invoiceId);
   },
 
@@ -406,6 +434,7 @@ export const ClientPortalService = {
     clientId: string,
     commentData: { text: string; author: string; avatar?: string; replyToId?: string }
   ) => {
+    invalidatePortalCache(clientId);
     return ClientCommentService.postComment(clientId, commentData);
   },
 };

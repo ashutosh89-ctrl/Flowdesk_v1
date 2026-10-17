@@ -139,13 +139,26 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
         return;
       }
 
-      setConnectedClientId(result.clientId);
+      const targetClientId = result.clientId;
+      const targetWorkspaceId = result.workspaceId;
+
+      if (typeof window !== 'undefined' && targetWorkspaceId) {
+        try {
+          localStorage.setItem('flowdesk_active_client_workspace', targetWorkspaceId);
+        } catch {
+          // ignore
+        }
+      }
+
+      setConnectedClientId(targetClientId);
       setConnectionSuccess(true);
 
-      // Redirect after showing positive confirmation
+      const destUrl = targetClientId ? `/portal/${targetClientId}` : '/client/dashboard';
+
+      // Fast transition: navigate immediately using window.location.href to avoid stalled client transitions
       setTimeout(() => {
-        router.replace(result.clientId ? `/portal/${result.clientId}` : '/client/dashboard');
-      }, 1100);
+        window.location.href = destUrl;
+      }, 350);
     } catch (err: any) {
       setAuthError(err.message || 'An unexpected error occurred.');
     } finally {
@@ -176,9 +189,12 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
           body: JSON.stringify({ slug }),
         });
         const result = await res.json();
-        setConnectedClientId(result.clientId || 'cli-demo-001');
+        const targetClientId = result.clientId || 'cli-demo-001';
+        setConnectedClientId(targetClientId);
         setConnectionSuccess(true);
-        setTimeout(() => router.replace(`/portal/${result.clientId || 'cli-demo-001'}`), 1000);
+        setTimeout(() => {
+          window.location.href = `/portal/${targetClientId}`;
+        }, 350);
         return;
       }
 
@@ -286,6 +302,7 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
 
   // 4. Success state
   if (connectionSuccess) {
+    const destUrl = connectedClientId ? `/portal/${connectedClientId}` : '/client/dashboard';
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4 sm:p-6 selection:bg-emerald-500/30">
         <Card variant="crystal" className="max-w-md w-full p-8 text-center space-y-5 border-emerald-500/40 shadow-2xl backdrop-blur-xl">
@@ -298,7 +315,19 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
               Your FlowDesk client account is now connected to <strong>{details.studioName || details.freelancerName}</strong>. Opening your workspace...
             </p>
           </div>
-          <Loader2 className="w-6 h-6 animate-spin text-emerald-400 mx-auto mt-2" />
+          <Button
+            variant="primary"
+            className="w-full justify-center gap-2 mt-2 py-3"
+            onClick={() => {
+              window.location.href = destUrl;
+            }}
+          >
+            Open Workspace Now <ArrowRight className="w-4 h-4 ml-1" />
+          </Button>
+          <div className="flex items-center justify-center gap-2 text-xs text-zinc-400 pt-1">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+            <span>Redirecting automatically...</span>
+          </div>
         </Card>
       </div>
     );

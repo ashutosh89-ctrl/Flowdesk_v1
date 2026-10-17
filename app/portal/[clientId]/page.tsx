@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { ClientPortalView } from '@/frontend/client/portal/client-portal-view';
 import { ClientAuthProvider, useClientAuth } from '@/frontend/client/auth/client-auth-context';
@@ -8,7 +8,6 @@ import { ToastProvider } from '@/frontend/shared/ui/toast';
 import { Card } from '@/frontend/shared/ui/card';
 import { Button } from '@/frontend/shared/ui/button';
 import { ShieldAlert, LogIn, Loader2 } from 'lucide-react';
-import { Suspense } from 'react';
 
 interface PageProps {
   params: Promise<{ clientId: string }>;
@@ -97,7 +96,6 @@ function PortalContent({ clientId }: { clientId: string }) {
 }
 
 export default function ClientPortalPage({ params }: PageProps) {
-  // Use a client component wrapper to resolve params
   return (
     <Suspense
       fallback={
@@ -112,11 +110,8 @@ export default function ClientPortalPage({ params }: PageProps) {
 }
 
 function PortalPageWrapper({ params }: { params: Promise<{ clientId: string }> }) {
-  const [clientId, setClientId] = useState<string | null>(null);
-
-  useEffect(() => {
-    params.then((resolved) => setClientId(resolved.clientId));
-  }, [params]);
+  const resolved = use(params);
+  const clientId = resolved.clientId;
 
   if (!clientId) {
     return (

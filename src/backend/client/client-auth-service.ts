@@ -362,6 +362,13 @@ export const ClientAuthService = {
    */
   getConnectedWorkspaces: async (): Promise<any[]> => {
     try {
+      if (typeof window !== 'undefined') {
+        const res = await fetch('/api/portal/workspaces');
+        if (res.ok) {
+          const json = await res.json();
+          if (Array.isArray(json.workspaces)) return json.workspaces;
+        }
+      }
       const { PermanentPortalService } = await import('@/backend/portal/permanent-portal-service');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user && !isDemoModeActive()) return [];
