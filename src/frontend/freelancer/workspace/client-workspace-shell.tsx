@@ -45,6 +45,7 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
   const [summary, setSummary] = useState<WorkspaceSummary | null>(null);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [historyView, setHistoryView] = useState<'timeline' | 'activity'>('timeline');
+  const [permanentPortalUrl, setPermanentPortalUrl] = useState<string>('');
   const { showToast } = useToast();
 
   const loadSummary = React.useCallback(() => {
@@ -56,6 +57,21 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
   useEffect(() => {
     loadSummary();
   }, [loadSummary]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/portal/settings')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (isMounted && data?.portalUrl) {
+          setPermanentPortalUrl(data.portalUrl);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   if (!summary) {
     return (
@@ -82,23 +98,6 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
     { id: 'comments', label: 'Messages', count: summary.comments.length, icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'history', label: 'History', icon: <Clock className="w-4 h-4" /> },
   ];
-
-  const [permanentPortalUrl, setPermanentPortalUrl] = useState<string>('');
-
-  useEffect(() => {
-    let isMounted = true;
-    fetch('/api/portal/settings')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (isMounted && data?.portalUrl) {
-          setPermanentPortalUrl(data.portalUrl);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const handleCopyPortalLink = () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';

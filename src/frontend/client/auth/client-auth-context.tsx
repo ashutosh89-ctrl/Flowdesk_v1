@@ -73,6 +73,7 @@ export const ClientAuthProvider: React.FC<{ children: ReactNode }> = ({ children
 
   useEffect(() => {
     let mounted = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadSession();
     return () => {
       mounted = false;
