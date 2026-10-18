@@ -44,7 +44,7 @@ export const SignUpForm: React.FC<SignupFormProps> = ({
       setErrorMessage(res.error);
       showToast('Signup Error', res.error, 'error');
     } else {
-      showToast('Account Created', res.message || 'Complete onboarding to initialize OS.', 'info');
+      showToast('Account Created', res.message || 'Complete onboarding to set up your workspace.', 'info');
       onGoToVerifyEmail(email);
     }
   };
@@ -52,8 +52,8 @@ export const SignUpForm: React.FC<SignupFormProps> = ({
   return (
     <div className="space-y-4">
       <div className="text-center mb-4">
-        <h3 className="text-xl font-bold text-white tracking-tight">Create your FlowDesk OS</h3>
-        <p className="text-xs text-zinc-400 mt-1">Join independent freelancers managing world-class business.</p>
+        <h3 className="text-xl font-bold text-white tracking-tight">Create your FlowDesk Workspace</h3>
+        <p className="text-xs text-zinc-400 mt-1">Join independent professionals managing projects, deliverables, and client invoices in one place.</p>
       </div>
 
       {errorMessage && (

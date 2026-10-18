@@ -200,9 +200,9 @@ export const DocumentsListView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Documents Repository</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Documents</h1>
           <p className="text-sm text-zinc-400 mt-1">
-            Request, upload, verify, and manage client documents.
+            Request, upload, verify, and organize client agreements and project files.
           </p>
         </div>
         <Button variant="primary" onClick={() => setIsRequestModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />}>

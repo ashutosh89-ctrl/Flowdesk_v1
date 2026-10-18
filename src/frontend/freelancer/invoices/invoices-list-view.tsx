@@ -275,7 +275,7 @@ export const InvoicesListView: React.FC = () => {
             Invoice & Financial Workspace
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
-            FlowDesk Financial Engine • Lightweight, modern settlements for freelancers
+            FlowDesk Financial Overview • Streamlined billing and settlement tracking for freelancers
           </p>
         </div>
 

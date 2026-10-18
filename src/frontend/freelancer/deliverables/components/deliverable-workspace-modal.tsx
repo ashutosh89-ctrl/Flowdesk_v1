@@ -948,7 +948,7 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
               <div>
                 <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
                   <GitCommit className="w-4 h-4 text-blue-400" />
-                  <span>Version History & Diff Engine</span>
+                  <span>Version History & Iterations</span>
                 </h3>
                 <p className="text-xs text-zinc-400 mt-0.5">
                   Every version iteration is preserved with metadata, notes, and file packages.
@@ -1050,7 +1050,7 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
                 <div>
                   <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
                     <FileCheck className="w-5 h-5 text-emerald-400" />
-                    <span>Client Review & Formal Sign-Off Engine</span>
+                    <span>Client Review & Formal Sign-Off</span>
                   </h3>
                   <p className="text-xs text-zinc-400 mt-1">
                     Record client approval status, sign-off notes, or formal change requests.

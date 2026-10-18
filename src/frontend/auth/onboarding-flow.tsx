@@ -378,7 +378,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
           </div>
 
           <div>
-            <h3 className="text-2xl font-bold text-white tracking-tight">FlowDesk OS Configured</h3>
+            <h3 className="text-2xl font-bold text-white tracking-tight">FlowDesk Workspace Configured</h3>
             <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
               Your identity, default currency ({currency}), tax rate ({taxRate}%), and first client ({clientCompany}) are ready.
             </p>
@@ -398,8 +398,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
               <span className="text-white font-medium">{clientCompany}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-zinc-400">Row Level Security:</span>
-              <span className="text-emerald-400 font-mono text-[10px]">Active & Enforced</span>
+              <span className="text-zinc-400">Workspace Privacy:</span>
+              <span className="text-emerald-400 text-xs font-medium">Protected & Isolated</span>
             </div>
           </div>
         </div>

@@ -64,9 +64,9 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
         transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white max-w-4xl leading-[1.08]"
       >
-        The Freelancer Operating System
-        <span className="block text-zinc-400 font-normal mt-3 text-3xl sm:text-5xl lg:text-6xl tracking-tight">
-          Manage client work from kickoff to payment.
+        Your freelance business.
+        <span className="block text-zinc-400 font-normal mt-2 text-3xl sm:text-5xl lg:text-6xl tracking-tight">
+          One workspace.
         </span>
       </motion.h1>
 
@@ -77,7 +77,7 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
         transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         className="text-base sm:text-lg text-zinc-300 max-w-2xl mt-6 leading-relaxed font-normal"
       >
-        Manage clients, projects, deliverables, approvals, documents, invoices, and payment tracking from one organized workspace.
+        Manage clients, projects, deliverables, approvals, documents, invoices, and payments from one unified platform designed for independent professionals.
       </motion.p>
 
       {/* CTAs */}
@@ -142,7 +142,7 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
               <div className="w-3 h-3 rounded-full bg-zinc-700/80 border border-white/10" />
               <div className="w-3 h-3 rounded-full bg-zinc-700/80 border border-white/10" />
               <span className="ml-3 font-mono text-[11px] text-zinc-400 flex items-center gap-1.5">
-                <Terminal className="w-3 h-3 text-zinc-400" /> flowdesk.app/workspace/northstar-studio
+                <Terminal className="w-3 h-3 text-zinc-400" /> flowdesk.app/workspace/rivera-studio
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -157,23 +157,23 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left relative z-10">
             {/* Stat Card 1 */}
             <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 backdrop-blur-md hover:border-white/30 hover:bg-white/[0.08] transition-all duration-300 shadow-sm">
-              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold">Active Projects</span>
-              <p className="text-2xl font-bold text-white mt-1">04</p>
+              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold">Active Clients</span>
+              <p className="text-2xl font-bold text-white mt-1">04 Accounts</p>
               <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-white" /> Northstar Studio • Apex Labs
+                <CheckCircle2 className="w-3.5 h-3.5 text-white" /> Acme Corp • Stellar Labs
               </p>
             </div>
 
             {/* Stat Card 2 */}
             <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 backdrop-blur-md hover:border-white/30 hover:bg-white/[0.08] transition-all duration-300 shadow-sm">
-              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold">Pending Reviews</span>
-              <p className="text-2xl font-bold text-white mt-1">03 Deliverables</p>
-              <p className="text-xs text-zinc-400 mt-1 truncate">Website Design v2 • Brand Guide</p>
+              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold">Deliverables For Review</span>
+              <p className="text-2xl font-bold text-white mt-1">03 Awaiting Sign-off</p>
+              <p className="text-xs text-zinc-400 mt-1 truncate">Brand Identity v2 • Web Platform</p>
             </div>
 
             {/* Stat Card 3 */}
             <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 backdrop-blur-md hover:border-white/30 hover:bg-white/[0.08] transition-all duration-300 shadow-sm">
-              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold">Outstanding Invoices</span>
+              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold">Tracked Settlements</span>
               <p className="text-2xl font-bold text-white mt-1">₹1,84,500</p>
               <p className="text-xs text-zinc-400 mt-1">INV-2026-0042 • Due in 5 days</p>
             </div>

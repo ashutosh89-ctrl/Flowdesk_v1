@@ -96,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
           <span className="text-[10px] text-zinc-500 font-mono">v1.0.0</span>
         </div>
-        <p className="text-[10px] text-zinc-500 mt-1">FlowDesk Phase 1 Shell</p>
+        <p className="text-[10px] text-zinc-500 mt-1">Freelancer Workspace</p>
       </div>
     </aside>
   );

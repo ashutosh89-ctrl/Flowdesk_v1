@@ -164,10 +164,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark">
       <head>
-        <link rel="stylesheet" href="https://db.onlinewebfonts.com/c/18a1fbec715281e463d36f92179d0b17?family=Decour+W00+Regular" />
-        <link rel="stylesheet" href="https://db.onlinewebfonts.com/c/fb22b07b36b5f0a6a032aaa00cc962c4?family=Decour+Soft+W00+Semibold" />
-        <link rel="preload" href="/fonts/decour/Decour-Regular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/decour/Decour-Bold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" />
+        <link rel="preload" href="/fonts/instrument-serif/InstrumentSerif-Regular.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/instrument-serif/InstrumentSerif-Italic.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
         {process.env.NEXT_PUBLIC_TYPEKIT_ID && (
           <link rel="stylesheet" href={`https://use.typekit.net/${process.env.NEXT_PUBLIC_TYPEKIT_ID}.css`} />
         )}

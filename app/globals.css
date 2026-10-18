@@ -1,86 +1,55 @@
 @import "tailwindcss";
-@import url('https://db.onlinewebfonts.com/c/18a1fbec715281e463d36f92179d0b17?family=Decour+W00+Regular');
-@import url('https://db.onlinewebfonts.com/c/fb22b07b36b5f0a6a032aaa00cc962c4?family=Decour+Soft+W00+Semibold');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
 
-/* Decour Selvals / Decour Typeface Definitions */
+/* Instrument Serif Typeface Definitions (Local primary + remote Google Font fallback) */
 @font-face {
-  font-family: 'Decour';
-  src: local('Decour Selvals'), local('Decour'), local('Decour W00 Regular'),
-       url('/fonts/decour/Decour-Regular.woff2') format('woff2'),
-       url('/fonts/decour/Decour-Regular.woff') format('woff'),
-       url('https://db.onlinewebfonts.com/t/18a1fbec715281e463d36f92179d0b17.woff2') format('woff2');
+  font-family: 'Instrument Serif';
+  src: local('Instrument Serif'),
+       local('InstrumentSerif-Regular'),
+       url('/fonts/instrument-serif/InstrumentSerif-Regular.ttf') format('truetype'),
+       url('https://fonts.gstatic.com/s/instrumentserif/v5/jizBRFtNs2ka5fXjeivQ4LroWlx-2zI.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Decour';
-  src: local('Decour Selvals'), local('Decour'), local('Decour W00 Regular'),
-       url('/fonts/decour/Decour-Regular.woff2') format('woff2'),
-       url('/fonts/decour/Decour-Regular.woff') format('woff'),
-       url('https://db.onlinewebfonts.com/t/18a1fbec715281e463d36f92179d0b17.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
+  font-family: 'Instrument Serif';
+  src: local('Instrument Serif Italic'),
+       local('InstrumentSerif-Italic'),
+       url('/fonts/instrument-serif/InstrumentSerif-Italic.ttf') format('truetype'),
+       url('https://fonts.gstatic.com/s/instrumentserif/v5/jizHRFtNs2ka5fXjeivQ4LroWlx-6zATiw.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
   font-display: swap;
 }
 
+/* Bold fallback mapped cleanly to Instrument Serif with appropriate letter-spacing */
 @font-face {
-  font-family: 'Decour';
-  src: local('Decour Selvals Bold'), local('Decour Bold'), local('Decour Soft W00 Semibold'),
-       url('/fonts/decour/Decour-Bold.woff2') format('woff2'),
-       url('/fonts/decour/Decour-Bold.woff') format('woff'),
-       url('https://db.onlinewebfonts.com/t/fb22b07b36b5f0a6a032aaa00cc962c4.woff2') format('woff2');
+  font-family: 'Instrument Serif';
+  src: local('Instrument Serif'),
+       local('InstrumentSerif-Regular'),
+       url('/fonts/instrument-serif/InstrumentSerif-Regular.ttf') format('truetype'),
+       url('https://fonts.gstatic.com/s/instrumentserif/v5/jizBRFtNs2ka5fXjeivQ4LroWlx-2zI.ttf') format('truetype');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Decour';
-  src: local('Decour Selvals Bold'), local('Decour Bold'), local('Decour Soft W00 Semibold'),
-       url('/fonts/decour/Decour-Bold.woff2') format('woff2'),
-       url('/fonts/decour/Decour-Bold.woff') format('woff'),
-       url('https://db.onlinewebfonts.com/t/fb22b07b36b5f0a6a032aaa00cc962c4.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Decour';
-  src: local('Decour Selvals Bold'), local('Decour Bold'), local('Decour Soft W00 Semibold'),
-       url('/fonts/decour/Decour-Bold.woff2') format('woff2'),
-       url('/fonts/decour/Decour-Bold.woff') format('woff');
-  font-weight: 800;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* Also register exact alias 'Decour Selvals' */
-@font-face {
-  font-family: 'Decour Selvals';
-  src: local('Decour Selvals'), local('Decour'),
-       url('/fonts/decour/Decour-Regular.woff2') format('woff2'),
-       url('/fonts/decour/Decour-Regular.woff') format('woff');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Decour Selvals';
-  src: local('Decour Selvals Bold'), local('Decour Bold'),
-       url('/fonts/decour/Decour-Bold.woff2') format('woff2'),
-       url('/fonts/decour/Decour-Bold.woff') format('woff');
+  font-family: 'Instrument Serif';
+  src: local('Instrument Serif'),
+       local('InstrumentSerif-Regular'),
+       url('/fonts/instrument-serif/InstrumentSerif-Regular.ttf') format('truetype'),
+       url('https://fonts.gstatic.com/s/instrumentserif/v5/jizBRFtNs2ka5fXjeivQ4LroWlx-2zI.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 
 @theme {
-  --font-sans: 'Decour Selvals', 'Decour', 'Decour Soft', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: 'Decour Selvals', 'Decour', 'Decour Soft', Georgia, serif;
+  --font-sans: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
 }
 
 @layer base {
@@ -93,21 +62,22 @@
   html, body {
     background-color: var(--bg-ultra-charcoal);
     color: #f4f4f5;
-    font-family: 'Decour Selvals', 'Decour', 'Decour Soft', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif !important;
     overflow-x: hidden;
     color-scheme: dark;
+    letter-spacing: -0.01em;
   }
 
   button, input, optgroup, select, textarea {
-    font-family: 'Decour Selvals', 'Decour', 'Decour Soft', inherit;
+    font-family: 'Instrument Serif', Georgia, inherit;
   }
 
   .font-sans {
-    font-family: 'Decour Selvals', 'Decour', 'Decour Soft', system-ui, sans-serif !important;
+    font-family: 'Instrument Serif', Georgia, serif !important;
   }
 
   .font-serif {
-    font-family: 'Decour Selvals', 'Decour', 'Decour Soft', Georgia, serif !important;
+    font-family: 'Instrument Serif', Georgia, serif !important;
   }
 
   .font-mono {

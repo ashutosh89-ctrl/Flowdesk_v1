@@ -4,7 +4,6 @@ import { Hero } from './hero';
 import { FeatureShowcase } from './feature-showcase';
 import { WorkflowSection } from './workflow';
 import { BenefitsSection } from './benefits';
-import { TestimonialsSection } from './testimonials';
 import { PricingPreview } from './pricing-preview';
 import { FAQSection } from './faq';
 import { LandingFooter } from './landing-footer';
@@ -23,7 +22,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchApp, onOpenAut
         <FeatureShowcase />
         <WorkflowSection />
         <BenefitsSection />
-        <TestimonialsSection />
         <PricingPreview onOpenAuth={onOpenAuth} onLaunchApp={onLaunchApp} />
         <FAQSection />
       </main>

@@ -330,7 +330,7 @@ export const SettingsView: React.FC = () => {
       if (error) {
         showToast('Error', error.message, 'error');
       } else {
-        // Phase 17 — profile email consistency: once the change is CONFIRMED
+        // Profile email consistency: once the change is CONFIRMED
         // (via the email link), Supabase Auth email becomes authoritative.
         // Sync profiles.email optimistically now; if confirmation never happens,
         // Supabase leaves auth email unchanged and the next verified login
@@ -1029,17 +1029,17 @@ export const SettingsView: React.FC = () => {
         {/* TAB 3: NOTIFICATIONS & EMAIL PREFERENCES */}
         {activeTab === 'notifications' && (
           <div className="space-y-6">
-            {/* Brevo Infrastructure Status */}
+            {/* Email Delivery Status */}
             <Card variant="crystal">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Mail className="w-5 h-5 text-emerald-400" />
-                    <CardTitle>Transactional Email Delivery (Brevo)</CardTitle>
+                    <CardTitle>Transactional Email Delivery</CardTitle>
                   </div>
                   <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Brevo API Active
+                    Email Service Active
                   </span>
                 </div>
                 <CardDescription>
@@ -1396,7 +1396,7 @@ export const SettingsView: React.FC = () => {
         >
           <form onSubmit={handleChangeLoginEmail} className="space-y-4">
             <p className="text-xs text-zinc-300">
-              Enter your new email address. Supabase Auth will send a confirmation link to verify ownership before the change takes effect.
+              Enter your new email address. A confirmation link will be sent to verify ownership before the change takes effect.
             </p>
             <div>
               <label className="block text-xs font-medium text-zinc-400 mb-1">New Login Email</label>

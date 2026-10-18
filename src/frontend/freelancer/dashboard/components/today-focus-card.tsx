@@ -95,11 +95,11 @@ export const TodayFocusCard: React.FC<TodayFocusCardProps> = ({ items, onAction,
             <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
               <Sparkles className="w-4 h-4" />
             </div>
-            <h2 className="text-lg font-bold text-white tracking-tight">Today&apos;s Focus & Decision Engine</h2>
+            <h2 className="text-lg font-bold text-white tracking-tight">Today&apos;s Focus & Priorities</h2>
           </div>
           <p className="text-xs text-zinc-400">
             {activeItems.length === 0
-              ? 'All critical decisions resolved! FlowDesk is on schedule.'
+              ? 'All critical priorities resolved! Your workspace is on schedule.'
               : `${activeItems.length} action item${activeItems.length === 1 ? '' : 's'} requiring attention today.`}
           </p>
         </div>

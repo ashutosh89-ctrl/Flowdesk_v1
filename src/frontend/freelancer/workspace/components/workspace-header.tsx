@@ -70,7 +70,7 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
 
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={onRefresh} leftIcon={<RefreshCw className="w-3.5 h-3.5" />}>
-            Sync Engine
+            Refresh
           </Button>
         </div>
       </div>

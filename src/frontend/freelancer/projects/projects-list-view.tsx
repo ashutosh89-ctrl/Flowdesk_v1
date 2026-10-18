@@ -107,7 +107,7 @@ export const ProjectsListView: React.FC<ProjectsListViewProps> = ({ onOpenWorksp
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Projects Engine</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Projects</h1>
           <p className="text-sm text-zinc-400 mt-1">
             Track active project budgets, completion percentages, and client milestones.
           </p>

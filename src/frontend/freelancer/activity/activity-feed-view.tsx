@@ -35,9 +35,9 @@ export const ActivityFeedView: React.FC = () => {
     <div className="space-y-6">
       {/* Top Header */}
       <div className="pb-6 border-b border-white/10">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Audit & Activity Trail</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Activity Feed</h1>
         <p className="text-sm text-zinc-400 mt-1">
-          Real-time chronological feed of client interactions, payments, and approvals.
+          Chronological timeline of client interactions, deliverable updates, approvals, and invoice payments.
         </p>
       </div>
 

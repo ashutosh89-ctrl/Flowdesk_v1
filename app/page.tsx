@@ -92,9 +92,9 @@ function FlowDeskAppContent() {
             <h3 className="text-lg font-bold text-white tracking-tight">FlowDesk OS</h3>
             <p className="text-xs text-zinc-400 mt-1">Verifying identity & restoring persistent session...</p>
           </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-mono text-zinc-400">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] text-zinc-400">
             <ShieldCheck className="w-3 h-3 text-emerald-400" />
-            <span>Supabase Auth & RLS Guard Active</span>
+            <span>Secure Workspace Session Active</span>
           </div>
         </div>
       </div>

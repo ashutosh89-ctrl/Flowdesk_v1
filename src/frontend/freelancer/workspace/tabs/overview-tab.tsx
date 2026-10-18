@@ -101,12 +101,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ summary, onRefresh, on
         </Card>
       )}
 
-      {/* Weighted Progress Engine Breakdown */}
+      {/* Workspace Progress Breakdown */}
       <Card variant="crystal">
         <CardHeader>
           <CardTitle className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
             <Layers className="w-4 h-4 text-white" />
-            Weighted Workspace Progress Engine
+            Workspace Progress Breakdown
           </CardTitle>
           <CardDescription>
             Documents (20%), Project Milestones (30%), Deliverables (30%), Sign-Off Approvals (20%)

@@ -188,8 +188,8 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-white/10 bg-zinc-950 text-center text-[11px] text-zinc-500 font-mono">
-              FlowDesk Notification Engine v2.4 Active
+            <div className="p-4 border-t border-white/10 bg-zinc-950 text-center text-[11px] text-zinc-500">
+              All notifications up to date
             </div>
           </motion.div>
         </div>

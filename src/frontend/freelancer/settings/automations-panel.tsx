@@ -610,55 +610,55 @@ export const AutomationsPanel: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-cyan-400" />
-            Background Job Engine Health
+            Automated Tasks & Delivery Health
           </CardTitle>
           <CardDescription>
-            Serverless queue execution telemetry and dead-letter queue (DLQ) status.
+            Real-time execution status for recurring tasks, payment reminders, and notification queues.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
-              <div className="text-[11px] text-zinc-400 font-mono">Engine Status</div>
+              <div className="text-[11px] text-zinc-400">Queue Status</div>
               <div className="text-base font-bold text-emerald-400 flex items-center gap-1.5 mt-1">
                 <CheckCircle2 className="w-4 h-4" /> Healthy & Active
               </div>
             </div>
 
             <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
-              <div className="text-[11px] text-zinc-400 font-mono">Processed (7 Days)</div>
+              <div className="text-[11px] text-zinc-400">Processed (7 Days)</div>
               <div className="text-base font-bold text-white mt-1">
-                {jobHealth?.jobsProcessedLast7Days ?? 0} jobs
+                {jobHealth?.jobsProcessedLast7Days ?? 0} tasks
               </div>
             </div>
 
             <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02]">
-              <div className="text-[11px] text-zinc-400 font-mono">Dead Letters (DLQ)</div>
+              <div className="text-[11px] text-zinc-400">Delivery Exceptions</div>
               <div className="text-base font-bold text-white mt-1 flex items-center gap-1.5">
                 {(jobHealth?.deadJobsCount ?? 0) > 0 ? (
                   <span className="text-rose-400 flex items-center gap-1">
-                    <AlertTriangle className="w-4 h-4" /> {jobHealth?.deadJobsCount} Dead
+                    <AlertTriangle className="w-4 h-4" /> {jobHealth?.deadJobsCount} Failed
                   </span>
                 ) : (
                   <span className="text-emerald-400 flex items-center gap-1">
-                    <ShieldCheck className="w-4 h-4" /> 0 Dead
+                    <ShieldCheck className="w-4 h-4" /> 0 Failed
                   </span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Dead Jobs Table */}
+          {/* Delivery Exceptions Table */}
           {jobHealth && jobHealth.recentDeadJobs && jobHealth.recentDeadJobs.length > 0 && (
             <div className="space-y-3 pt-2">
               <h4 className="text-xs font-semibold text-white uppercase tracking-wider">
-                Unresolved Dead Letters
+                Unresolved Failed Tasks
               </h4>
               <div className="overflow-x-auto border border-rose-500/20 rounded-xl bg-rose-500/[0.03]">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-rose-500/10 text-zinc-400 font-mono">
-                      <th className="p-3 font-medium">Job Type</th>
+                    <tr className="border-b border-rose-500/10 text-zinc-400">
+                      <th className="p-3 font-medium">Task Type</th>
                       <th className="p-3 font-medium">Last Error</th>
                       <th className="p-3 font-medium">Attempts</th>
                       <th className="p-3 font-medium text-right">Action</th>

@@ -292,8 +292,8 @@ export const DeliverablesListView: React.FC<DeliverablesListViewProps> = ({
             <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">
               Deliverables & Client Approvals
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono font-bold text-emerald-400">
-              Phase 7 Engine
+            <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-zinc-300">
+              Deliverables
             </span>
           </div>
           <p className="text-xs text-zinc-400 mt-1">

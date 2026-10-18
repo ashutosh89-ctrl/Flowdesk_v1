@@ -219,7 +219,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
         <div className="relative z-10 mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-400 gap-3">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Client data is protected by PostgreSQL Row Level Security and never deleted on payment failure.</span>
+            <span>Client data is protected by strict workspace isolation and never deleted on payment failure.</span>
           </div>
           <span className="font-mono text-[11px] text-zinc-400">FlowDesk v1.0</span>
         </div>

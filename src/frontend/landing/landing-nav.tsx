@@ -16,7 +16,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onOpenAuth, onLaunchApp 
     { label: 'Features', href: '#features' },
     { label: 'Workflow', href: '#workflow' },
     { label: 'Benefits', href: '#benefits' },
-    { label: 'Capabilities', href: '#capabilities' },
+    { label: 'Pricing', href: '#pricing' },
     { label: 'FAQ', href: '#faq' },
   ];
 

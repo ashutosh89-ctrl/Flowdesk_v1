@@ -75,7 +75,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
       },
       {
         id: 'cmd-projects',
-        title: 'Projects Engineering',
+        title: 'Projects',
         subtitle: 'Milestones, budgets & deliverables',
         category: 'Navigation',
         icon: <FolderKanban className="w-4 h-4" />,

@@ -76,7 +76,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onLaunchApp, onOpe
 
           {/* Product Column */}
           <div>
-            <h5 className="text-[11px] font-mono font-semibold text-white uppercase tracking-widest mb-4">Architecture</h5>
+            <h5 className="text-[11px] font-mono font-semibold text-white uppercase tracking-widest mb-4">Features</h5>
             <ul className="space-y-2.5 text-xs">
               <li><a href="#features" className="hover:text-white transition-colors">Client Workspaces</a></li>
               <li><a href="#features" className="hover:text-white transition-colors">Deliverables & Approvals</a></li>
@@ -92,7 +92,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onLaunchApp, onOpe
             <ul className="space-y-2.5 text-xs">
               <li><a href="#workflow" className="hover:text-white transition-colors">Freelance Workflow</a></li>
               <li><a href="#benefits" className="hover:text-white transition-colors">Benefits</a></li>
-              <li><a href="#capabilities" className="hover:text-white transition-colors">Capabilities</a></li>
+              <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
               <li><a href="#faq" className="hover:text-white transition-colors">FAQ</a></li>
             </ul>
           </div>

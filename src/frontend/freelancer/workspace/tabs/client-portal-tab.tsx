@@ -123,7 +123,7 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
       const res = await FreelancerClientManagementService.sendClientInvitationEmail(client.id);
       if (res.success) {
         if (res.inviteUrl) setConnectionUrl(res.inviteUrl);
-        showToast('Invitation Dispatched', res.message || `Invitation email sent via Brevo to ${client.email}`, 'success');
+        showToast('Invitation Dispatched', res.message || `Invitation email sent to ${client.email}`, 'success');
       } else {
         showToast('Delivery Notice', res.error || 'Failed to dispatch email', 'error');
       }
@@ -199,7 +199,7 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
             <div>
               <h3 className="text-lg font-bold text-white tracking-tight">Client Connection Link & Email</h3>
               <p className="text-xs text-zinc-400 mt-0.5">
-                Invite {client.name} via Brevo email or copy the cryptographically secure one-time connection link to send over WhatsApp, Telegram, or SMS.
+                Send an email invitation to {client.name} or copy a secure one-time connection link to share directly.
               </p>
             </div>
             <p className="text-xs text-zinc-300 font-mono select-all bg-zinc-900/90 p-2.5 rounded-xl border border-white/10 break-all">
