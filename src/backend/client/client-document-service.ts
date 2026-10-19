@@ -251,6 +251,7 @@ export const ClientDocumentService = {
         fileName: payload.file.name,
         size: formattedSize,
         projectId: payload.projectId,
+        file: payload.file,
       });
       return { success: true, document: demoDoc };
     }

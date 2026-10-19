@@ -5,9 +5,11 @@ import { StatusPill } from '@/frontend/shared/ui/status-pill';
 import { Modal } from '@/frontend/shared/ui/modal';
 import { Input } from '@/frontend/shared/ui/input';
 import { RequestDocumentModal } from '../../documents/components/request-document-modal';
+import { DocumentPreviewModal } from '../../documents/components/document-preview-modal';
 import { DocumentService, InvoiceService, SettingsService } from '@/backend/freelancer';
 import { WorkspaceSummary, DocumentItem } from '@/shared/types';
 import { generateInvoicePDF, printInvoiceDocument } from '@/shared/utils/invoice-pdf';
+import { getDocumentPreviewUrl } from '@/shared/utils/document-preview';
 import {
   FileText,
   Download,
@@ -142,6 +144,22 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ summary, onRefresh }
       document.body.removeChild(link);
       showToast('Download Started', `Downloading "${doc.title}"...`, 'info');
     } else {
+      try {
+        const preview = await getDocumentPreviewUrl(doc);
+        if (preview?.url) {
+          const link = document.createElement('a');
+          link.href = preview.url;
+          link.download = doc.fileName || `${doc.title.toLowerCase().replace(/\s+/g, '-')}.pdf`;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          showToast('Download Started', `Downloading "${doc.title}"...`, 'info');
+          return;
+        }
+      } catch {
+        // fallback
+      }
       showToast('No File', `"${doc.title}" has no uploaded file yet.`, 'error');
     }
   };
@@ -294,12 +312,12 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ summary, onRefresh }
                     <StatusPill status={doc.status} />
 
                     <Button
-                      variant="ghost"
+                      variant={doc.status === 'uploaded' ? 'secondary' : 'ghost'}
                       size="sm"
                       onClick={() => setPreviewDoc(doc)}
                       leftIcon={<Eye className="w-3.5 h-3.5" />}
                     >
-                      Preview
+                      {doc.status === 'uploaded' ? 'Review Document' : 'Preview'}
                     </Button>
 
                     <Button
@@ -490,58 +508,22 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ summary, onRefresh }
         </form>
       </Modal>
 
-      {/* Document Preview Modal */}
-      <Modal isOpen={!!previewDoc} onClose={() => setPreviewDoc(null)} title={previewDoc?.title || 'Document Preview'}>
-        <div className="space-y-4">
-          <div className="p-6 rounded-2xl bg-zinc-950 border border-white/10 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-white" />
-                <span className="text-sm font-bold text-white">{previewDoc?.title}</span>
-              </div>
-              <StatusPill status={previewDoc?.status || 'signed'} />
-            </div>
-
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-zinc-300 space-y-2 font-mono">
-              <p><strong>Type:</strong> {previewDoc?.type.toUpperCase()}</p>
-              <p><strong>File Size:</strong> {previewDoc?.size}</p>
-              <p><strong>Last Updated:</strong> {previewDoc?.updatedAt}</p>
-              <p><strong>Requirement:</strong> {previewDoc?.isRequired ? 'Mandatory' : 'Optional'}</p>
-            </div>
-
-            <div className="p-8 border border-white/10 rounded-xl bg-zinc-900 text-center text-xs text-zinc-400 font-mono">
-              [ PDF / Document Preview Container ]
-              <br />
-              Digital signature checksum verified.
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <Button variant="ghost" onClick={() => setPreviewDoc(null)}>
-              Close
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                if (previewDoc) handlePrintDoc(previewDoc);
-              }}
-              leftIcon={<Printer className="w-3.5 h-3.5" />}
-            >
-              Print
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                if (previewDoc) handleDownload(previewDoc);
-                setPreviewDoc(null);
-              }}
-              leftIcon={<Download className="w-3.5 h-3.5" />}
-            >
-              Download PDF
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      {/* High-Fidelity In-Browser Document Preview Modal */}
+      <DocumentPreviewModal
+        isOpen={!!previewDoc}
+        onClose={() => setPreviewDoc(null)}
+        document={previewDoc}
+        onVerify={(doc) => {
+          setPreviewDoc(null);
+          setVerifyingDoc(doc);
+        }}
+        onReject={(doc) => {
+          setPreviewDoc(null);
+          setRejectingDoc(doc);
+        }}
+        onDownload={handleDownload}
+        onPrint={handlePrintDoc}
+      />
     </div>
   );
 };
