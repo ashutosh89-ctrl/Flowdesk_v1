@@ -59,13 +59,13 @@ export const FeatureShowcase: React.FC = () => {
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         className="text-center max-w-3xl mx-auto mb-16 space-y-4"
       >
-        <span className="text-[12px] font-mono uppercase tracking-widest text-[#E8F0FF] bg-[#0047AB]/20 px-3.5 py-1 rounded-full border border-[#2563EB]/30">
+        <span className="text-xs sm:text-[13px] font-mono uppercase tracking-widest text-[#E8F0FF] bg-[#0047AB]/20 px-4 py-1.5 rounded-full border border-[#2563EB]/30 font-semibold">
           Complete Workspace Features
         </span>
-        <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold text-white tracking-tight leading-tight">
+        <h2 className="text-4xl sm:text-5xl lg:text-[50px] font-extrabold text-white tracking-tight leading-tight">
           Everything You Need to Run Your Freelance Business
         </h2>
-        <p className="text-base sm:text-lg text-zinc-300 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-lg sm:text-xl lg:text-[22px] text-zinc-300 max-w-3xl mx-auto leading-relaxed font-normal">
           One connected workspace for managing clients, delivering great work, collecting approvals, and getting paid on time.
         </p>
       </motion.div>
@@ -96,13 +96,13 @@ export const FeatureShowcase: React.FC = () => {
                 />
               )}
               <CardHeader className="mb-3">
-                <div className="w-11 h-11 rounded-xl bg-[#0047AB]/10 border border-[#2563EB]/25 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-[#0047AB] group-hover:text-white transition-all duration-300">
+                <div className="w-12 h-12 rounded-xl bg-[#0047AB]/10 border border-[#2563EB]/25 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-[#0047AB] group-hover:text-white transition-all duration-300">
                   {feat.icon}
                 </div>
-                <CardTitle className="text-xl font-bold text-white tracking-tight">{feat.title}</CardTitle>
+                <CardTitle className="text-2xl font-bold text-white tracking-tight">{feat.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-[15px] text-zinc-300 leading-relaxed font-normal">{feat.description}</CardDescription>
+                <CardDescription className="text-base sm:text-lg text-zinc-300 leading-relaxed font-normal">{feat.description}</CardDescription>
               </CardContent>
             </Card>
           </motion.div>

@@ -110,13 +110,13 @@ export const WorkflowSection: React.FC = () => {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="text-center max-w-3xl mx-auto mb-16 space-y-4"
         >
-          <span className="text-[12px] font-mono uppercase tracking-widest text-[#E8F0FF] bg-[#0047AB]/20 px-3.5 py-1 rounded-full border border-[#2563EB]/30">
+          <span className="text-xs sm:text-[13px] font-mono uppercase tracking-widest text-[#E8F0FF] bg-[#0047AB]/20 px-4 py-1.5 rounded-full border border-[#2563EB]/30 font-semibold">
             Lifecycle Blueprint
           </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold text-white tracking-tight leading-tight">
+          <h2 className="text-4xl sm:text-5xl lg:text-[50px] font-extrabold text-white tracking-tight leading-tight">
             From Client Onboarding to Payment — One Connected Workflow
           </h2>
-          <p className="text-base sm:text-lg text-zinc-300 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg sm:text-xl lg:text-[22px] text-zinc-300 max-w-3xl mx-auto leading-relaxed font-normal">
             Move every project forward with a structured process that keeps you and your clients aligned at every stage.
           </p>
         </motion.div>
@@ -150,7 +150,7 @@ export const WorkflowSection: React.FC = () => {
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <div
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs transition-colors ${
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition-colors ${
                           isActive
                             ? 'bg-[#0047AB] text-white shadow-[0_0_16px_rgba(37,99,235,0.7)]'
                             : 'bg-[#181818] text-zinc-300 border border-[#2A2A2A]'
@@ -158,16 +158,16 @@ export const WorkflowSection: React.FC = () => {
                       >
                         {step.icon}
                       </div>
-                      <span className="text-[11px] font-mono text-zinc-400 font-semibold">0{idx + 1}</span>
+                      <span className="text-xs font-mono text-zinc-300 font-bold">0{idx + 1}</span>
                     </div>
 
-                    <h4 className="text-sm font-bold text-white tracking-tight mb-1">{step.label}</h4>
-                    <p className="text-[11px] sm:text-xs text-zinc-300 leading-normal line-clamp-2">{step.desc}</p>
+                    <h4 className="text-base sm:text-[17px] font-bold text-white tracking-tight mb-1">{step.label}</h4>
+                    <p className="text-xs sm:text-sm text-zinc-300 leading-normal line-clamp-2">{step.desc}</p>
                   </div>
 
                   <div className="mt-4 pt-2 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-[10px] font-mono uppercase text-zinc-400">{step.stage}</span>
-                    {isActive && <ArrowRight className="w-3.5 h-3.5 text-white" />}
+                    <span className="text-[11px] font-mono uppercase text-zinc-400 font-semibold">{step.stage}</span>
+                    {isActive && <ArrowRight className="w-4 h-4 text-white" />}
                   </div>
                 </button>
               );
@@ -183,42 +183,42 @@ export const WorkflowSection: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25 }}
-            className="p-6 sm:p-8 rounded-2xl bg-[#111111]/90 border border-[#2A2A2A] backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
+            className="p-6 sm:p-9 rounded-2xl bg-[#111111]/90 border border-[#2A2A2A] backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
           >
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-[#0047AB] text-white flex items-center justify-center font-bold shrink-0 shadow-lg shadow-[#0047AB]/25">
+              <div className="w-14 h-14 rounded-2xl bg-[#0047AB] text-white flex items-center justify-center font-bold shrink-0 shadow-lg shadow-[#0047AB]/25">
                 {steps[activeStep].icon}
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] font-mono uppercase text-[#E8F0FF] bg-[#0047AB]/20 px-3 py-0.5 rounded-full border border-[#2563EB]/30 font-semibold">
+                  <span className="text-xs font-mono uppercase text-[#E8F0FF] bg-[#0047AB]/20 px-3.5 py-1 rounded-full border border-[#2563EB]/30 font-semibold">
                     {steps[activeStep].stage}
                   </span>
-                  <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-3 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1 font-semibold">
-                    <ShieldCheck className="w-3.5 h-3.5" />
+                  <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3.5 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1 font-semibold">
+                    <ShieldCheck className="w-4 h-4" />
                     {steps[activeStep].featureTag}
                   </span>
-                  <span className="text-xs text-zinc-400 font-mono">Stage {activeStep + 1} of 7</span>
+                  <span className="text-xs sm:text-sm text-zinc-400 font-mono">Stage {activeStep + 1} of 7</span>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{steps[activeStep].title}</h3>
-                <p className="text-sm sm:text-base text-zinc-300 max-w-2xl leading-relaxed">
+                <h3 className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-white tracking-tight">{steps[activeStep].title}</h3>
+                <p className="text-base sm:text-lg lg:text-xl text-zinc-300 max-w-3xl leading-relaxed">
                   {steps[activeStep].detail}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 self-end md:self-center shrink-0">
+            <div className="flex items-center gap-3 self-end md:self-center shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveStep((prev) => (prev > 0 ? prev - 1 : steps.length - 1))}
-                className="px-4 py-2.5 rounded-xl bg-[#181818] border border-[#2A2A2A] text-sm text-zinc-300 hover:text-white hover:border-[#0047AB]/40 transition-colors flex items-center gap-1.5 font-medium"
+                className="px-5 py-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-base text-zinc-300 hover:text-white hover:border-[#0047AB]/40 transition-colors flex items-center gap-2 font-medium"
               >
                 <ArrowLeft className="w-4 h-4" /> Previous
               </button>
               <button
                 type="button"
                 onClick={() => setActiveStep((prev) => (prev < steps.length - 1 ? prev + 1 : 0))}
-                className="px-4 py-2.5 rounded-xl bg-[#0047AB] hover:bg-[#003A8C] text-white font-semibold text-sm transition-colors shadow-md shadow-[#0047AB]/25 flex items-center gap-1.5"
+                className="px-5 py-3 rounded-xl bg-[#0047AB] hover:bg-[#003A8C] text-white font-semibold text-base transition-colors shadow-md shadow-[#0047AB]/25 flex items-center gap-2"
               >
                 Next <ArrowRight className="w-4 h-4" />
               </button>

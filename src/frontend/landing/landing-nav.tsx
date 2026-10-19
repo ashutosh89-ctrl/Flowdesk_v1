@@ -62,7 +62,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onOpenAuth, onLaunchApp 
       </div>
 
       {/* Desktop Nav Links with Illumination Underline Micro-Motion */}
-      <nav className="hidden md:flex items-center gap-8 text-[15px] font-medium text-zinc-300">
+      <nav className="hidden md:flex items-center gap-8 text-[17px] font-medium text-zinc-300">
         {navItems.map((item) => (
           <a
             key={item.label}
@@ -77,13 +77,13 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onOpenAuth, onLaunchApp 
 
       {/* Auth & CTA Actions (Desktop) */}
       <div className="hidden md:flex items-center gap-3">
-        <Button variant="ghost" size="md" className="text-[15px] font-medium text-zinc-300 hover:text-white" onClick={() => onOpenAuth('login')}>
+        <Button variant="ghost" size="md" className="text-base font-medium text-zinc-300 hover:text-white" onClick={() => onOpenAuth('login')}>
           Sign In
         </Button>
         <Button
           variant="primary"
           size="md"
-          className="text-[15px] font-semibold shadow-md shadow-[#0047AB]/25"
+          className="text-base font-semibold px-5 py-2.5 shadow-md shadow-[#0047AB]/25"
           onClick={() => onOpenAuth('signup')}
           rightIcon={<ArrowRight className="w-4 h-4" />}
         >
@@ -97,7 +97,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onOpenAuth, onLaunchApp 
           variant="ghost"
           size="sm"
           onClick={() => onOpenAuth('login')}
-          className="text-xs px-2.5 py-1"
+          className="text-sm px-2.5 py-1"
         >
           Sign In
         </Button>
@@ -127,7 +127,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onOpenAuth, onLaunchApp 
                 <button
                   key={item.label}
                   onClick={() => handleNavClick(item.href)}
-                  className="flex items-center justify-between py-2.5 px-3 rounded-xl text-left text-[15px] font-medium text-zinc-300 hover:text-white hover:bg-white/5 transition-colors border border-transparent hover:border-[#2A2A2A]"
+                  className="flex items-center justify-between py-2.5 px-3 rounded-xl text-left text-base font-medium text-zinc-300 hover:text-white hover:bg-white/5 transition-colors border border-transparent hover:border-[#2A2A2A]"
                 >
                   <span>{item.label}</span>
                   <ArrowRight className="w-3.5 h-3.5 text-zinc-500" />
@@ -138,7 +138,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onOpenAuth, onLaunchApp 
             <div className="pt-4 border-t border-[#2A2A2A] flex flex-col gap-2.5">
               <Button
                 variant="primary"
-                className="w-full justify-center py-2.5 text-sm font-semibold"
+                className="w-full justify-center py-3 text-base font-semibold"
                 onClick={() => {
                   setMobileMenuOpen(false);
                   onOpenAuth('signup');
@@ -149,7 +149,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onOpenAuth, onLaunchApp 
               </Button>
               <Button
                 variant="secondary"
-                className="w-full justify-center py-2.5 text-xs font-semibold"
+                className="w-full justify-center py-3 text-sm font-semibold"
                 onClick={() => {
                   setMobileMenuOpen(false);
                   onOpenAuth('login');
