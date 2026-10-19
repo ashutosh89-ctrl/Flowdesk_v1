@@ -27,10 +27,10 @@ export const Tabs: React.FC<TabsProps> = ({
     <div
       className={`flex items-center gap-1 p-1 overflow-x-auto no-scrollbar rounded-xl ${
         variant === 'glass'
-          ? 'bg-zinc-900/60 backdrop-blur-md border border-white/10'
+          ? 'bg-[#111111]/80 backdrop-blur-md border border-[#2A2A2A]'
           : variant === 'pills'
-          ? 'bg-zinc-900/40 border border-zinc-800'
-          : 'border-b border-white/10 p-0 rounded-none bg-transparent gap-6'
+          ? 'bg-[#111111]/60 border border-[#2A2A2A]'
+          : 'border-b border-[#2A2A2A] p-0 rounded-none bg-transparent gap-6'
       } ${className}`}
     >
       {items.map((tab) => {
@@ -41,8 +41,8 @@ export const Tabs: React.FC<TabsProps> = ({
             onClick={() => onChange(tab.id)}
             className={`relative flex items-center gap-2 px-3.5 py-2 text-sm font-medium transition-colors duration-200 whitespace-nowrap rounded-lg select-none z-10 ${
               isActive
-                ? 'text-white'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'text-white font-semibold'
+                : 'text-zinc-400 hover:text-white'
             }`}
           >
             {tab.icon && <span className="w-4 h-4 shrink-0">{tab.icon}</span>}
@@ -50,7 +50,7 @@ export const Tabs: React.FC<TabsProps> = ({
             {tab.count !== undefined && (
               <span
                 className={`text-xs px-1.5 py-0.2 rounded-full font-semibold ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-zinc-800 text-zinc-400'
+                  isActive ? 'bg-[#0047AB] text-white border border-[#2563EB]/40' : 'bg-[#181818] text-zinc-400 border border-[#2A2A2A]'
                 }`}
               >
                 {tab.count}
@@ -61,7 +61,7 @@ export const Tabs: React.FC<TabsProps> = ({
             {isActive && variant !== 'underline' && (
               <motion.div
                 layoutId="activeTabIndicator"
-                className="absolute inset-0 bg-white/10 border border-white/15 backdrop-blur-md rounded-lg -z-10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)]"
+                className="absolute inset-0 bg-[#0047AB] border border-[#2563EB]/60 backdrop-blur-md rounded-lg -z-10 shadow-[0_2px_12px_rgba(0,71,171,0.4),inset_0_1px_0_0_rgba(255,255,255,0.25)]"
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />
             )}
@@ -69,7 +69,7 @@ export const Tabs: React.FC<TabsProps> = ({
             {isActive && variant === 'underline' && (
               <motion.div
                 layoutId="activeUnderlineIndicator"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0047AB] shadow-[0_0_10px_rgba(37,99,235,0.9)]"
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />
             )}

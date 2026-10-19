@@ -50,18 +50,58 @@
 @theme {
   --font-sans: 'Instrument Serif', Georgia, 'Times New Roman', serif;
   --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+
+  --color-primary-black: #000000;
+  --color-near-black: #0A0A0A;
+  --color-dark-surface: #111111;
+  --color-elevated-dark: #181818;
+
+  --color-primary-white: #FFFFFF;
+  --color-soft-white: #F5F7FA;
+
+  --color-cobalt: #0047AB;
+  --color-cobalt-hover: #003A8C;
+  --color-cobalt-bright: #2563EB;
+  --color-cobalt-tint: #E8F0FF;
+
+  --color-border-light: #D9DEE8;
+  --color-border-dark: #2A2A2A;
+
+  --color-focus: #2563EB;
 }
 
 @layer base {
   :root {
-    --bg-ultra-charcoal: #09090b;
-    --bg-graphite: #121217;
-    --border-soft: rgba(255, 255, 255, 0.08);
+    --color-black: #000000;
+    --color-near-black: #0A0A0A;
+    --color-dark-surface: #111111;
+    --color-elevated-dark: #181818;
+
+    --color-white: #FFFFFF;
+    --color-soft-white: #F5F7FA;
+
+    --color-cobalt: #0047AB;
+    --color-cobalt-hover: #003A8C;
+    --color-cobalt-bright: #2563EB;
+    --color-cobalt-tint: #E8F0FF;
+
+    --color-border-light: #D9DEE8;
+    --color-border-dark: #2A2A2A;
+
+    --color-text-primary: #FFFFFF;
+    --color-text-secondary: #A1A1AA;
+    --color-text-inverse: #0A0A0A;
+
+    --color-focus: #2563EB;
+
+    --bg-ultra-charcoal: #0A0A0A;
+    --bg-graphite: #111111;
+    --border-soft: #2A2A2A;
   }
 
   html, body {
-    background-color: var(--bg-ultra-charcoal);
-    color: #f4f4f5;
+    background-color: var(--color-near-black);
+    color: var(--color-soft-white);
     font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif !important;
     overflow-x: hidden;
     color-scheme: dark;
@@ -87,79 +127,80 @@
 
 /* Crystal Glass Utility Classes */
 .crystal-card {
-  background: rgba(18, 18, 23, 0.65);
+  background: rgba(17, 17, 17, 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid #2A2A2A;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
 }
 
 .crystal-card-interactive {
-  background: rgba(18, 18, 23, 0.65);
+  background: rgba(17, 17, 17, 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid #2A2A2A;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crystal-card-interactive:hover {
-  background: rgba(26, 26, 33, 0.8);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+  background: rgba(24, 24, 24, 0.9);
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: 0 16px 40px -10px rgba(0, 71, 171, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
   transform: translateY(-2px);
 }
 
 .crystal-btn-primary {
-  background: rgba(255, 255, 255, 0.95);
-  color: #09090b;
-  font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 1);
+  background: #0047AB;
+  color: #FFFFFF;
+  font-weight: 600;
+  border: 1px solid rgba(37, 99, 235, 0.7);
+  box-shadow: 0 4px 20px rgba(0, 71, 171, 0.35), inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crystal-btn-primary:hover {
-  background: #ffffff;
-  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 1);
+  background: #003A8C;
+  border-color: #2563EB;
+  box-shadow: 0 8px 28px rgba(0, 71, 171, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
   transform: translateY(-1px);
 }
 
 .crystal-btn-primary:active {
   transform: translateY(0);
-  background: rgba(240, 240, 240, 0.9);
+  background: #002D6E;
 }
 
 .crystal-btn-secondary {
-  background: rgba(255, 255, 255, 0.06);
-  color: #f4f4f5;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #181818;
+  color: #F5F7FA;
+  border: 1px solid #2A2A2A;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crystal-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: #222222;
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.3);
   transform: translateY(-1px);
 }
 
 .crystal-input {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #ffffff;
+  background: rgba(17, 17, 17, 0.7);
+  border: 1px solid #2A2A2A;
+  color: #FFFFFF;
   backdrop-filter: blur(8px);
   transition: all 0.2s ease;
 }
 
 .crystal-input:focus {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(24, 24, 24, 0.85);
+  border-color: #2563EB;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
 }
 
 /* Custom scrollbars */
@@ -169,16 +210,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(9, 9, 11, 0.8);
+  background: #0A0A0A;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: #2A2A2A;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: #0047AB;
 }
 
 /* ============================================================

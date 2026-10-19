@@ -25,23 +25,39 @@ export const StatusPill: React.FC<StatusPillProps> = ({ status, customLabel, cla
 
   const getStatusConfig = (st: string) => {
     switch (st) {
-      case 'active':
       case 'completed':
       case 'approved':
       case 'paid':
       case 'signed':
         return {
           label: customLabel || st.replace('_', ' '),
-          dot: 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]',
-          container: 'bg-white/10 text-white border-white/20',
+          dot: 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]',
+          container: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25',
+        };
+      case 'active':
+        return {
+          label: customLabel || st.replace('_', ' '),
+          dot: 'bg-[#2563EB] shadow-[0_0_8px_rgba(37,99,235,0.8)]',
+          container: 'bg-[#0047AB]/15 text-[#E8F0FF] border-[#2563EB]/40',
         };
       case 'in_progress':
       case 'in_review':
+        return {
+          label: customLabel || st.replace('_', ' '),
+          dot: 'bg-[#2563EB]',
+          container: 'bg-[#0047AB]/15 text-[#E8F0FF] border-[#2563EB]/35',
+        };
       case 'pending':
         return {
           label: customLabel || st.replace('_', ' '),
-          dot: 'bg-zinc-300',
-          container: 'bg-zinc-800/80 text-zinc-200 border-zinc-700',
+          dot: 'bg-amber-400',
+          container: 'bg-amber-500/10 text-amber-300 border-amber-500/25',
+        };
+      case 'overdue':
+        return {
+          label: customLabel || 'Overdue',
+          dot: 'bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.6)]',
+          container: 'bg-rose-950/40 text-rose-300 border-rose-500/35',
         };
       case 'draft':
       case 'todo':
@@ -49,13 +65,7 @@ export const StatusPill: React.FC<StatusPillProps> = ({ status, customLabel, cla
         return {
           label: customLabel || st.replace('_', ' '),
           dot: 'bg-zinc-500',
-          container: 'bg-zinc-900/90 text-zinc-400 border-zinc-800',
-        };
-      case 'overdue':
-        return {
-          label: customLabel || 'Overdue',
-          dot: 'bg-zinc-100',
-          container: 'bg-zinc-900 text-zinc-200 border-zinc-600',
+          container: 'bg-[#181818] text-zinc-400 border-[#2A2A2A]',
         };
       case 'pending_deletion':
         return {
@@ -67,7 +77,7 @@ export const StatusPill: React.FC<StatusPillProps> = ({ status, customLabel, cla
         return {
           label: customLabel || st.replace('_', ' '),
           dot: 'bg-zinc-400',
-          container: 'bg-zinc-800/60 text-zinc-300 border-zinc-700/60',
+          container: 'bg-[#181818] text-zinc-300 border-[#2A2A2A]',
         };
     }
   };

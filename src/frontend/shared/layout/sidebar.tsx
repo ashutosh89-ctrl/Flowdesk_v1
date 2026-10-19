@@ -42,11 +42,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const content = (
     <aside
-      className={`w-64 h-full bg-zinc-950/90 border-r border-white/10 backdrop-blur-2xl flex flex-col justify-between p-4 z-40 select-none ${className}`}
+      className={`w-64 h-full bg-[#0A0A0A]/95 border-r border-[#2A2A2A] backdrop-blur-2xl flex flex-col justify-between p-4 z-40 select-none ${className}`}
     >
       <div>
         {/* Logo Branding */}
-        <div className="flex items-center justify-between px-3 py-4 mb-6 border-b border-white/10">
+        <div className="flex items-center justify-between px-3 py-4 mb-6 border-b border-[#2A2A2A]">
           <FlowDeskLogo variant="full" size={26} priority />
           <span className="text-[10px] text-zinc-400 font-mono uppercase tracking-wider font-semibold">
             OS
@@ -66,20 +66,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative group ${
                   isActive
-                    ? 'bg-white/10 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] border border-white/15'
+                    ? 'bg-[#0047AB]/15 text-white shadow-[inset_0_1px_0_0_rgba(37,99,235,0.25)] border border-[#2563EB]/40'
                     : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
                 }`}
               >
                 <span
                   className={`transition-colors ${
-                    isActive ? 'text-white' : 'text-zinc-400 group-hover:text-white'
+                    isActive ? 'text-[#2563EB]' : 'text-zinc-400 group-hover:text-white'
                   }`}
                 >
                   {item.icon}
                 </span>
                 <span>{item.label}</span>
                 {isActive && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
+                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2563EB] shadow-[0_0_8px_rgba(37,99,235,0.9)]" />
                 )}
               </button>
             );
@@ -88,10 +88,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer / System Status */}
-      <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 backdrop-blur-md">
+      <div className="p-3 rounded-xl bg-[#111111] border border-[#2A2A2A] backdrop-blur-md">
         <div className="flex items-center justify-between text-xs text-zinc-400">
           <span className="flex items-center gap-1.5 font-medium text-white">
-            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             System Live
           </span>
           <span className="text-[10px] text-zinc-500 font-mono">v1.0.0</span>

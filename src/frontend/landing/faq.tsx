@@ -7,28 +7,28 @@ export const FAQSection: React.FC = () => {
 
   const faqs = [
     {
-      q: 'How is FlowDesk different from a project management tool?',
-      a: 'FlowDesk is designed around the complete freelancer-client workflow, connecting client work, projects, deliverables, approvals, documents, invoices, and payment tracking in one workspace.',
+      q: 'How is FlowDesk different from a generic project management tool?',
+      a: 'FlowDesk is purpose-built for the freelance-client relationship. Instead of just task lists, it unifies client onboarding, project scoping, deliverable version control, structured client approval sign-offs, document vaults, itemized invoicing, and payment tracking in one connected workspace.',
     },
     {
-      q: 'Do clients need an account?',
-      a: 'Clients use the dedicated client portal to access the work shared with them. The exact access flow depends on the portal setup for their workspace.',
+      q: 'Do my clients need an account to review work or access invoices?',
+      a: 'No. Clients never need to create a FlowDesk account or remember passwords. They access their work via a dedicated, secure client portal using a direct magic link to review deliverables, submit revision requests, download documents, and view invoices.',
     },
     {
-      q: 'Can I create professional invoices?',
-      a: 'Yes. FlowDesk lets you create itemized invoices with configurable taxes, supported currencies, payment terms, discounts where available, and professional PDF and print output.',
+      q: 'Can I generate professional, itemized invoices?',
+      a: 'Yes. FlowDesk allows you to create itemized invoices with configurable tax rates (including GST), discounts, multi-currency support (USD, INR, EUR, GBP), flexible payment terms, and instant print/PDF export.',
     },
     {
-      q: 'Can I accept payments through FlowDesk?',
-      a: 'FlowDesk currently focuses on invoice creation and payment tracking. You can record payments received and keep outstanding balances organized.',
+      q: 'How does payment tracking and reconciliation work?',
+      a: 'FlowDesk keeps your financial pipeline organized. You can record payments received, track pending balances and overdue amounts, view aging breakdowns, and maintain a clear audit trail of completed settlements.',
     },
     {
-      q: 'Can clients request revisions?',
-      a: 'Yes. Clients can review deliverables and submit structured revision requests so feedback stays connected to the work being reviewed.',
+      q: 'How do clients submit revision requests and feedback?',
+      a: 'Clients review deliverables directly in their dedicated portal and can approve work with a single click or submit structured revision requests with detailed change notes, ensuring feedback stays connected to specific deliverable versions.',
     },
     {
-      q: 'How is my client work protected?',
-      a: 'FlowDesk keeps client work organized within the appropriate workspace and controls access to information based on the user’s role and workspace.',
+      q: 'How is my client work and data protected?',
+      a: 'FlowDesk protects client information through strict workspace isolation, encrypted tokens, and secure database access controls. Clients can only access the workspaces, deliverables, and documents explicitly shared with them.',
     },
   ];
 
@@ -39,10 +39,17 @@ export const FAQSection: React.FC = () => {
         whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
         viewport={{ once: false, amount: 0.2 }}
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        className="text-center mb-16 space-y-3"
+        className="text-center mb-16 space-y-4"
       >
-        <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">Questions & Answers</span>
-        <h2 className="text-3xl font-bold text-white tracking-tight">Frequently Asked Questions</h2>
+        <span className="text-xs sm:text-[13px] font-mono uppercase tracking-widest text-[#E8F0FF] bg-[#0047AB]/20 px-4 py-1.5 rounded-full border border-[#2563EB]/30 font-semibold">
+          Got Questions? We&apos;ve Got Answers.
+        </span>
+        <h2 className="text-4xl sm:text-5xl lg:text-[50px] font-extrabold text-white tracking-tight leading-tight">
+          Frequently Asked Questions
+        </h2>
+        <p className="text-lg sm:text-xl lg:text-[22px] text-zinc-300 max-w-2xl mx-auto leading-relaxed font-normal">
+          Find everything you need to know about managing your freelance workflow with FlowDesk.
+        </p>
       </motion.div>
 
       <div className="space-y-4">
@@ -56,19 +63,23 @@ export const FAQSection: React.FC = () => {
               whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
               viewport={{ once: false, amount: 0.15 }}
               transition={{ duration: 0.5, delay: idx * 0.08 }}
-              className="rounded-2xl bg-zinc-900/60 border border-white/10 backdrop-blur-xl overflow-hidden transition-all duration-300 hover:border-white/25"
+              className={`rounded-2xl border backdrop-blur-xl overflow-hidden transition-all duration-300 ${
+                isOpen
+                  ? 'bg-[#111111] border-[#0047AB]/50 shadow-[0_4px_24px_rgba(0,71,171,0.15)]'
+                  : 'bg-[#111111]/70 border-[#2A2A2A] hover:border-[#0047AB]/30'
+              }`}
             >
               <button
                 type="button"
                 aria-expanded={isOpen}
                 aria-controls={answerId}
                 onClick={() => setOpenIdx(isOpen ? null : idx)}
-                className="w-full flex items-center justify-between p-6 text-left font-semibold text-white text-base focus:outline-none focus:ring-1 focus:ring-white/20"
+                className="w-full flex items-center justify-between p-6 sm:p-7 text-left font-bold text-white text-lg sm:text-xl lg:text-[22px] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/50"
               >
-                <span>{faq.q}</span>
+                <span className="pr-4">{faq.q}</span>
                 <ChevronDown
-                  className={`w-5 h-5 text-zinc-400 transition-transform duration-300 ${
-                    isOpen ? 'rotate-180 text-white' : ''
+                  className={`w-6 h-6 shrink-0 transition-transform duration-300 ${
+                    isOpen ? 'rotate-180 text-[#2563EB]' : 'text-zinc-400'
                   }`}
                 />
               </button>
@@ -81,7 +92,7 @@ export const FAQSection: React.FC = () => {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.3, ease: 'easeInOut' }}
-                    className="px-6 pb-6 text-sm text-zinc-300 border-t border-white/5 pt-4 leading-relaxed overflow-hidden"
+                    className="px-6 sm:px-7 pb-6 sm:pb-7 text-base sm:text-lg lg:text-[19px] text-zinc-300 border-t border-[#2A2A2A] pt-4 sm:pt-5 leading-relaxed overflow-hidden font-normal"
                   >
                     {faq.a}
                   </motion.div>

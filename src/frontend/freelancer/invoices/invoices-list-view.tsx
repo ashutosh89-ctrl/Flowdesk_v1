@@ -269,7 +269,7 @@ export const InvoicesListView: React.FC = () => {
   return (
     <div className="space-y-6 select-none">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#2A2A2A]">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
             Invoice & Financial Workspace
@@ -281,12 +281,12 @@ export const InvoicesListView: React.FC = () => {
 
         <div className="flex items-center gap-3 self-stretch sm:self-auto">
           {/* View Mode Toggle */}
-          <div className="inline-flex items-center p-1 bg-zinc-950/80 border border-white/10 rounded-xl text-xs">
+          <div className="inline-flex items-center p-1 bg-[#111111] border border-[#2A2A2A] rounded-xl text-xs">
             <button
               onClick={() => setViewMode('dashboard')}
               className={`px-3.5 py-1.5 font-bold rounded-lg flex items-center gap-1.5 transition-all ${
                 viewMode === 'dashboard'
-                  ? 'bg-white text-zinc-950 shadow-md'
+                  ? 'bg-[#0047AB] text-white shadow-md shadow-[#0047AB]/25'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -296,7 +296,7 @@ export const InvoicesListView: React.FC = () => {
               onClick={() => setViewMode('directory')}
               className={`px-3.5 py-1.5 font-bold rounded-lg flex items-center gap-1.5 transition-all ${
                 viewMode === 'directory'
-                  ? 'bg-white text-zinc-950 shadow-md'
+                  ? 'bg-[#0047AB] text-white shadow-md shadow-[#0047AB]/25'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -306,7 +306,7 @@ export const InvoicesListView: React.FC = () => {
 
           <button
             onClick={handleOpenCreate}
-            className="px-4 py-2 rounded-xl bg-white hover:bg-amber-400 text-zinc-950 text-xs font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-[#0047AB] hover:bg-[#003A8C] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#0047AB]/25 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Create Invoice
           </button>
@@ -343,7 +343,7 @@ export const InvoicesListView: React.FC = () => {
                   placeholder="Search invoice #, client, or project..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 border border-white/10 rounded-xl bg-zinc-900/80 text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 transition-colors text-xs"
+                  className="w-full pl-10 pr-3.5 py-2.5 border border-[#2A2A2A] rounded-xl bg-[#111111] text-white placeholder-zinc-500 focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]/40 transition-colors text-xs"
                 />
               </div>
 
@@ -353,7 +353,7 @@ export const InvoicesListView: React.FC = () => {
                 <select
                   value={workflowFilter}
                   onChange={(e) => setWorkflowFilter(e.target.value)}
-                  className="px-3 py-2.5 border border-white/10 rounded-xl bg-zinc-900/80 text-zinc-200 focus:outline-none focus:border-white/30 transition-colors text-xs"
+                  className="px-3 py-2.5 border border-[#2A2A2A] rounded-xl bg-[#111111] text-zinc-200 focus:outline-none focus:border-[#2563EB] transition-colors text-xs"
                 >
                   <option value="all">Workflow: All</option>
                   <option value="draft">Draft</option>
@@ -366,7 +366,7 @@ export const InvoicesListView: React.FC = () => {
                 <select
                   value={paymentFilter}
                   onChange={(e) => setPaymentFilter(e.target.value)}
-                  className="px-3 py-2.5 border border-white/10 rounded-xl bg-zinc-900/80 text-zinc-200 focus:outline-none focus:border-white/30 transition-colors text-xs"
+                  className="px-3 py-2.5 border border-[#2A2A2A] rounded-xl bg-[#111111] text-zinc-200 focus:outline-none focus:border-[#2563EB] transition-colors text-xs"
                 >
                   <option value="all">Payment: All</option>
                   <option value="pending">Pending</option>
@@ -377,7 +377,7 @@ export const InvoicesListView: React.FC = () => {
                 <select
                   value={currencyFilter}
                   onChange={(e) => setCurrencyFilter(e.target.value)}
-                  className="px-3 py-2.5 border border-white/10 rounded-xl bg-zinc-900/80 text-zinc-200 focus:outline-none focus:border-white/30 transition-colors text-xs"
+                  className="px-3 py-2.5 border border-[#2A2A2A] rounded-xl bg-[#111111] text-zinc-200 focus:outline-none focus:border-[#2563EB] transition-colors text-xs"
                 >
                   <option value="all">Currency: All</option>
                   <option value="USD">USD ($)</option>
@@ -390,7 +390,7 @@ export const InvoicesListView: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-3 py-2.5 border border-white/10 rounded-xl bg-zinc-900/80 text-zinc-200 focus:outline-none focus:border-white/30 transition-colors text-xs"
+                  className="px-3 py-2.5 border border-[#2A2A2A] rounded-xl bg-[#111111] text-zinc-200 focus:outline-none focus:border-[#2563EB] transition-colors text-xs"
                 >
                   <option value="newest">Sort: Newest First</option>
                   <option value="oldest">Sort: Oldest First</option>
@@ -402,7 +402,7 @@ export const InvoicesListView: React.FC = () => {
 
             {/* Bulk Selection Bar */}
             {selectedIds.length > 0 && (
-              <div className="p-3 rounded-xl bg-zinc-900 border border-white/15 text-white flex items-center justify-between text-xs animate-in fade-in">
+              <div className="p-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-white flex items-center justify-between text-xs animate-in fade-in">
                 <span className="font-bold font-mono pl-2">
                   {selectedIds.length} invoice(s) selected
                 </span>
@@ -425,16 +425,16 @@ export const InvoicesListView: React.FC = () => {
           </div>
 
           {/* Directory Table */}
-          <div className="border border-white/10 rounded-2xl overflow-hidden bg-zinc-950/80 shadow-2xl backdrop-blur-xl">
+          <div className="border border-[#2A2A2A] rounded-2xl overflow-hidden bg-[#111111] shadow-2xl backdrop-blur-xl">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-white/[0.02] border-b border-white/10 font-bold text-zinc-400">
+                <tr className="bg-[#181818] border-b border-[#2A2A2A] font-bold text-zinc-400">
                   <th className="p-4 w-10 text-center">
                     <input
                       type="checkbox"
                       checked={selectedIds.length === filteredInvoices.length && filteredInvoices.length > 0}
                       onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="rounded border-white/20 bg-zinc-900 text-white focus:ring-0"
+                      className="rounded border-[#2A2A2A] bg-[#181818] text-[#0047AB] focus:ring-[#2563EB]/40 accent-[#0047AB]"
                     />
                   </th>
                   <th className="p-4">Invoice # & Client</th>
@@ -446,7 +446,7 @@ export const InvoicesListView: React.FC = () => {
                   <th className="p-4 text-center">Quick Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[#2A2A2A]">
                 {sortedInvoices.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="p-14 text-center text-zinc-500">
@@ -460,8 +460,8 @@ export const InvoicesListView: React.FC = () => {
                       <tr
                         key={inv.id}
                         onClick={() => handleOpenDetails(inv)}
-                        className={`hover:bg-white/[0.03] cursor-pointer transition-colors ${
-                          isSelected ? 'bg-white/[0.06]' : ''
+                        className={`hover:bg-[#0047AB]/5 cursor-pointer transition-colors ${
+                          isSelected ? 'bg-[#0047AB]/10' : ''
                         }`}
                       >
                         <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>

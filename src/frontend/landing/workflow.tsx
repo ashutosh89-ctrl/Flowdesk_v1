@@ -98,9 +98,9 @@ export const WorkflowSection: React.FC = () => {
   ];
 
   return (
-    <section id="workflow" className="py-24 px-6 lg:px-12 bg-zinc-950/70 border-y border-white/10 relative z-10 overflow-hidden">
+    <section id="workflow" className="py-24 px-6 lg:px-12 bg-[#0A0A0A] border-y border-[#2A2A2A] relative z-10 overflow-hidden">
       {/* Background Flowing Light Effect */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-white/[0.02] rounded-full blur-[160px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-[#0047AB]/[0.04] rounded-full blur-[160px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto relative z-10">
         <motion.div
@@ -108,25 +108,25 @@ export const WorkflowSection: React.FC = () => {
           whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           viewport={{ once: false, amount: 0.2 }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center max-w-2xl mx-auto mb-16 space-y-4"
+          className="text-center max-w-3xl mx-auto mb-16 space-y-4"
         >
-          <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-            The Freelance Lifecycle
+          <span className="text-xs sm:text-[13px] font-mono uppercase tracking-widest text-[#E8F0FF] bg-[#0047AB]/20 px-4 py-1.5 rounded-full border border-[#2563EB]/30 font-semibold">
+            Lifecycle Blueprint
           </span>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-            A structured workflow from kickoff to payment.
+          <h2 className="text-4xl sm:text-5xl lg:text-[50px] font-extrabold text-white tracking-tight leading-tight">
+            From Client Onboarding to Payment — One Connected Workflow
           </h2>
-          <p className="text-sm text-zinc-400 max-w-xl mx-auto leading-relaxed">
-            Move projects smoothly through an intuitive sequence designed specifically for independent client work.
+          <p className="text-lg sm:text-xl lg:text-[22px] text-zinc-300 max-w-3xl mx-auto leading-relaxed font-normal">
+            Move every project forward with a structured process that keeps you and your clients aligned at every stage.
           </p>
         </motion.div>
 
         {/* Step Tabs Row */}
         <div className="relative mb-10">
           {/* Progress Connecting Line on Desktop */}
-          <div className="hidden lg:block absolute top-[44px] left-8 right-8 h-0.5 bg-white/10 -z-0">
+          <div className="hidden lg:block absolute top-[44px] left-8 right-8 h-0.5 bg-[#181818] -z-0">
             <motion.div
-              className="h-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)]"
+              className="h-full bg-gradient-to-r from-[#0047AB] to-[#2563EB] shadow-[0_0_12px_rgba(37,99,235,0.8)]"
               initial={{ width: '0%' }}
               animate={{ width: `${(activeStep / (steps.length - 1)) * 100}%` }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
@@ -143,31 +143,31 @@ export const WorkflowSection: React.FC = () => {
                   onClick={() => setActiveStep(idx)}
                   className={`p-4 rounded-2xl border transition-all duration-300 text-left flex flex-col justify-between ${
                     isActive
-                      ? 'bg-zinc-900 border-white/40 shadow-[0_10px_30px_rgba(255,255,255,0.1)] ring-1 ring-white/20'
-                      : 'bg-zinc-950/80 border-white/10 hover:border-white/20 hover:bg-zinc-900/40'
+                      ? 'bg-[#181818] border-[#2563EB]/50 shadow-[0_10px_30px_rgba(0,71,171,0.25)] ring-1 ring-[#2563EB]/40'
+                      : 'bg-[#111111]/70 border-[#2A2A2A] hover:border-[#2563EB]/30 hover:bg-[#181818]'
                   }`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <div
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs transition-colors ${
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition-colors ${
                           isActive
-                            ? 'bg-white text-zinc-950 shadow-[0_0_16px_rgba(255,255,255,0.5)]'
-                            : 'bg-white/10 text-white border border-white/10'
+                            ? 'bg-[#0047AB] text-white shadow-[0_0_16px_rgba(37,99,235,0.7)]'
+                            : 'bg-[#181818] text-zinc-300 border border-[#2A2A2A]'
                         }`}
                       >
                         {step.icon}
                       </div>
-                      <span className="text-[10px] font-mono text-zinc-500">0{idx + 1}</span>
+                      <span className="text-xs font-mono text-zinc-300 font-bold">0{idx + 1}</span>
                     </div>
 
-                    <h4 className="text-xs font-bold text-white tracking-tight mb-1">{step.label}</h4>
-                    <p className="text-[10px] text-zinc-400 leading-normal line-clamp-2">{step.desc}</p>
+                    <h4 className="text-base sm:text-[17px] font-bold text-white tracking-tight mb-1">{step.label}</h4>
+                    <p className="text-xs sm:text-sm text-zinc-300 leading-normal line-clamp-2">{step.desc}</p>
                   </div>
 
                   <div className="mt-4 pt-2 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-[9px] font-mono text-zinc-400">{step.stage}</span>
-                    {isActive && <ArrowRight className="w-3 h-3 text-white" />}
+                    <span className="text-[11px] font-mono uppercase text-zinc-400 font-semibold">{step.stage}</span>
+                    {isActive && <ArrowRight className="w-4 h-4 text-white" />}
                   </div>
                 </button>
               );
@@ -183,44 +183,44 @@ export const WorkflowSection: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25 }}
-            className="p-6 sm:p-8 rounded-2xl bg-zinc-900/80 border border-white/15 backdrop-blur-2xl shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
+            className="p-6 sm:p-9 rounded-2xl bg-[#111111]/90 border border-[#2A2A2A] backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
           >
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-white text-zinc-950 flex items-center justify-center font-bold shrink-0 shadow-lg">
+              <div className="w-14 h-14 rounded-2xl bg-[#0047AB] text-white flex items-center justify-center font-bold shrink-0 shadow-lg shadow-[#0047AB]/25">
                 {steps[activeStep].icon}
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-mono uppercase text-zinc-300 bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">
+                  <span className="text-xs font-mono uppercase text-[#E8F0FF] bg-[#0047AB]/20 px-3.5 py-1 rounded-full border border-[#2563EB]/30 font-semibold">
                     {steps[activeStep].stage}
                   </span>
-                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3" />
+                  <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3.5 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1 font-semibold">
+                    <ShieldCheck className="w-4 h-4" />
                     {steps[activeStep].featureTag}
                   </span>
-                  <span className="text-xs text-zinc-400 font-mono">Step {activeStep + 1} of 7</span>
+                  <span className="text-xs sm:text-sm text-zinc-400 font-mono">Stage {activeStep + 1} of 7</span>
                 </div>
-                <h3 className="text-xl font-bold text-white tracking-tight">{steps[activeStep].title}</h3>
-                <p className="text-xs sm:text-sm text-zinc-300 max-w-2xl leading-relaxed">
+                <h3 className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-white tracking-tight">{steps[activeStep].title}</h3>
+                <p className="text-base sm:text-lg lg:text-xl text-zinc-300 max-w-3xl leading-relaxed">
                   {steps[activeStep].detail}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+            <div className="flex items-center gap-3 self-end md:self-center shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveStep((prev) => (prev > 0 ? prev - 1 : steps.length - 1))}
-                className="px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-zinc-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5"
+                className="px-5 py-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-base text-zinc-300 hover:text-white hover:border-[#0047AB]/40 transition-colors flex items-center gap-2 font-medium"
               >
-                <ArrowLeft className="w-3.5 h-3.5" /> Previous
+                <ArrowLeft className="w-4 h-4" /> Previous
               </button>
               <button
                 type="button"
                 onClick={() => setActiveStep((prev) => (prev < steps.length - 1 ? prev + 1 : 0))}
-                className="px-4 py-2 rounded-xl bg-white text-zinc-950 font-semibold text-xs hover:bg-zinc-200 transition-colors shadow-md flex items-center gap-1.5"
+                className="px-5 py-3 rounded-xl bg-[#0047AB] hover:bg-[#003A8C] text-white font-semibold text-base transition-colors shadow-md shadow-[#0047AB]/25 flex items-center gap-2"
               >
-                Next <ArrowRight className="w-3.5 h-3.5" />
+                Next <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </motion.div>

@@ -45,7 +45,7 @@ export const Drawer: React.FC<DrawerProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
           />
 
           {/* Drawer Window */}
@@ -54,12 +54,12 @@ export const Drawer: React.FC<DrawerProps> = ({
             animate={{ x: 0 }}
             exit={slideDirection}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className={`relative w-full ${sizeWidths[size]} h-full bg-zinc-950/95 border-l border-white/10 backdrop-blur-2xl shadow-2xl flex flex-col z-10 ${
-              side === 'right' ? 'ml-auto' : 'mr-auto border-r border-l-0'
+            className={`relative w-full ${sizeWidths[size]} h-full bg-[#0A0A0A]/95 border-l border-[#2A2A2A] backdrop-blur-2xl shadow-2xl flex flex-col z-10 ${
+              side === 'right' ? 'ml-auto' : 'mr-auto border-r border-l-0 border-[#2A2A2A]'
             }`}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/10 shrink-0">
+            <div className="flex items-center justify-between p-6 border-b border-[#2A2A2A] shrink-0">
               <h3 className="text-lg font-semibold text-white">{title || 'Details'}</h3>
               <button
                 onClick={onClose}

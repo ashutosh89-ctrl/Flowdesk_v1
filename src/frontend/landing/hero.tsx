@@ -35,7 +35,7 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
       className="relative w-full overflow-hidden"
     >
       <GlowCursor
-        color="#ffffff"
+        color="#2563EB"
         intensity={0.9}
         trailWidth={3}
         linger={3.4}
@@ -51,10 +51,10 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-950/80 border border-white/20 backdrop-blur-2xl text-xs font-medium text-zinc-200 mb-8 shadow-[0_8px_32px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.25)]"
+        className="inline-flex items-center gap-2.5 px-4.5 py-2 rounded-full bg-[#0A0A0A]/90 border border-[#2563EB]/40 backdrop-blur-2xl text-sm sm:text-[14px] font-medium text-zinc-200 mb-8 shadow-[0_8px_32px_rgba(0,71,171,0.25),inset_0_1px_0_0_rgba(37,99,235,0.3)]"
       >
-        <span className="w-2 h-2 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,1)] animate-pulse" />
-        <span className="tracking-wide uppercase font-mono text-[11px]">Operating System for Freelancers</span>
+        <span className="w-2.5 h-2.5 rounded-full bg-[#2563EB] shadow-[0_0_12px_rgba(37,99,235,1)] animate-pulse" />
+        <span className="tracking-widest uppercase font-mono text-[13px] sm:text-[14px] text-[#E8F0FF] font-semibold">Operating System for Freelancers</span>
       </motion.div>
 
       {/* Headline */}
@@ -62,11 +62,11 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
         initial={{ opacity: 0, y: 22 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-        className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white max-w-4xl leading-[1.08]"
+        className="text-5xl sm:text-7xl lg:text-[76px] font-extrabold tracking-tight text-white max-w-5xl leading-[1.08]"
       >
-        Your freelance business.
-        <span className="block text-zinc-400 font-normal mt-2 text-3xl sm:text-5xl lg:text-6xl tracking-tight">
-          One workspace.
+        Run Your Freelance Business.{' '}
+        <span className="block text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400 font-extrabold mt-2 tracking-tight">
+          All in One Place.
         </span>
       </motion.h1>
 
@@ -75,9 +75,9 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
         initial={{ opacity: 0, y: 22 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="text-base sm:text-lg text-zinc-300 max-w-2xl mt-6 leading-relaxed font-normal"
+        className="text-xl sm:text-2xl text-zinc-200 max-w-3xl mt-7 leading-relaxed font-normal"
       >
-        Manage clients, projects, deliverables, approvals, documents, invoices, and payments from one unified platform designed for independent professionals.
+        From your first client conversation to final payment, manage projects, deliverables, approvals, documents, and invoices through one seamless workspace.
       </motion.p>
 
       {/* CTAs */}
@@ -85,24 +85,28 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
         initial={{ opacity: 0, y: 22 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="flex flex-wrap items-center justify-center gap-4 mt-9 z-20"
+        className="flex flex-wrap items-center justify-center gap-4 mt-10 z-20"
       >
         <Button
           variant="primary"
           size="lg"
           onClick={() => onOpenAuth('signup')}
-          className="shadow-[0_0_24px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.35)] transition-all duration-300"
-          rightIcon={<ArrowRight className="w-4 h-4" />}
+          className="text-base sm:text-lg font-semibold shadow-[0_0_30px_rgba(0,71,171,0.4)] hover:shadow-[0_0_45px_rgba(0,71,171,0.6)] transition-all duration-300 px-8 py-4"
+          rightIcon={<ArrowRight className="w-5 h-5" />}
         >
-          Create Free Workspace
+          Start Managing Your Work — Free
         </Button>
         <Button
           variant="secondary"
           size="lg"
-          onClick={() => onOpenAuth('login')}
-          className="hover:border-white/40 transition-all duration-300"
+          onClick={() => {
+            const el = document.getElementById('features');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+            else onLaunchApp();
+          }}
+          className="text-base sm:text-lg font-medium hover:border-[#0047AB]/50 transition-all duration-300 px-8 py-4"
         >
-          Sign In
+          Explore FlowDesk
         </Button>
       </motion.div>
 
@@ -124,58 +128,58 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
         }}
       >
         {/* Crystal Glass Border Frame */}
-        <div className="relative rounded-2xl border border-white/20 bg-zinc-950/85 backdrop-blur-3xl shadow-[0_30px_90px_-20px_rgba(0,0,0,0.95),inset_0_1px_0_0_rgba(255,255,255,0.25)] p-5 sm:p-7 overflow-hidden group hover:border-white/35 transition-all duration-500">
+        <div className="relative rounded-2xl border border-[#2A2A2A] bg-[#0A0A0A]/90 backdrop-blur-3xl shadow-[0_30px_90px_-20px_rgba(0,0,0,0.95),inset_0_1px_0_0_rgba(255,255,255,0.06)] p-6 sm:p-8 overflow-hidden group hover:border-[#2563EB]/40 transition-all duration-500">
           {/* Glass Cursor Reflection Highlight */}
           {isHovered && (
             <div
               className="absolute inset-0 pointer-events-none transition-opacity duration-300"
               style={{
-                background: `radial-gradient(circle 350px at ${mousePos.px}px ${mousePos.py}px, rgba(255, 255, 255, 0.08), transparent 70%)`,
+                background: `radial-gradient(circle 350px at ${mousePos.px}px ${mousePos.py}px, rgba(37, 99, 235, 0.1), transparent 70%)`,
               }}
             />
           )}
 
           {/* Mock Window Top Bar */}
-          <div className="flex items-center justify-between pb-4 mb-5 border-b border-white/10 text-xs text-zinc-400 relative z-10">
+          <div className="flex items-center justify-between pb-4 mb-5 border-b border-[#2A2A2A] text-sm text-zinc-400 relative z-10">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-zinc-700/80 border border-white/10" />
-              <div className="w-3 h-3 rounded-full bg-zinc-700/80 border border-white/10" />
-              <div className="w-3 h-3 rounded-full bg-zinc-700/80 border border-white/10" />
-              <span className="ml-3 font-mono text-[11px] text-zinc-400 flex items-center gap-1.5">
-                <Terminal className="w-3 h-3 text-zinc-400" /> flowdesk.app/workspace/rivera-studio
+              <div className="w-3 h-3 rounded-full bg-zinc-800 border border-[#2A2A2A]" />
+              <div className="w-3 h-3 rounded-full bg-zinc-800 border border-[#2A2A2A]" />
+              <div className="w-3 h-3 rounded-full bg-zinc-800 border border-[#2A2A2A]" />
+              <span className="ml-3 font-mono text-xs sm:text-sm text-zinc-300 flex items-center gap-1.5">
+                <Terminal className="w-3.5 h-3.5 text-[#2563EB]" /> flowdesk.app/workspace/rivera-studio
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-flex items-center gap-1.5 text-[10px] uppercase font-mono px-2.5 py-1 rounded-full bg-white/10 text-zinc-200 border border-white/15">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="hidden sm:inline-flex items-center gap-1.5 text-xs uppercase font-mono px-3 py-1 rounded-full bg-[#181818] text-zinc-200 border border-[#2A2A2A] font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                 Live Workspace
               </span>
             </div>
           </div>
 
           {/* Inner Grid Preview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-left relative z-10">
             {/* Stat Card 1 */}
-            <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 backdrop-blur-md hover:border-white/30 hover:bg-white/[0.08] transition-all duration-300 shadow-sm">
-              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold">Active Clients</span>
-              <p className="text-2xl font-bold text-white mt-1">04 Accounts</p>
-              <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-white" /> Acme Corp • Stellar Labs
+            <div className="p-5 rounded-xl bg-[#111111]/80 border border-[#2A2A2A] backdrop-blur-md hover:border-[#2563EB]/40 hover:bg-[#181818] transition-all duration-300 shadow-sm">
+              <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest font-semibold">Active Clients</span>
+              <p className="text-3xl font-extrabold text-white mt-1.5">04 Accounts</p>
+              <p className="text-sm text-zinc-300 mt-1.5 flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-[#2563EB]" /> Acme Corp • Stellar Labs
               </p>
             </div>
 
             {/* Stat Card 2 */}
-            <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 backdrop-blur-md hover:border-white/30 hover:bg-white/[0.08] transition-all duration-300 shadow-sm">
-              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold">Deliverables For Review</span>
-              <p className="text-2xl font-bold text-white mt-1">03 Awaiting Sign-off</p>
-              <p className="text-xs text-zinc-400 mt-1 truncate">Brand Identity v2 • Web Platform</p>
+            <div className="p-5 rounded-xl bg-[#111111]/80 border border-[#2A2A2A] backdrop-blur-md hover:border-[#2563EB]/40 hover:bg-[#181818] transition-all duration-300 shadow-sm">
+              <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest font-semibold">Deliverables For Review</span>
+              <p className="text-3xl font-extrabold text-white mt-1.5">03 Awaiting Sign-off</p>
+              <p className="text-sm text-zinc-300 mt-1.5 truncate">Brand Identity v2 • Web Platform</p>
             </div>
 
             {/* Stat Card 3 */}
-            <div className="p-4 rounded-xl bg-white/[0.04] border border-white/10 backdrop-blur-md hover:border-white/30 hover:bg-white/[0.08] transition-all duration-300 shadow-sm">
-              <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest font-semibold">Tracked Settlements</span>
-              <p className="text-2xl font-bold text-white mt-1">₹1,84,500</p>
-              <p className="text-xs text-zinc-400 mt-1">INV-2026-0042 • Due in 5 days</p>
+            <div className="p-5 rounded-xl bg-[#111111]/80 border border-[#2A2A2A] backdrop-blur-md hover:border-[#2563EB]/40 hover:bg-[#181818] transition-all duration-300 shadow-sm">
+              <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest font-semibold">Tracked Settlements</span>
+              <p className="text-3xl font-extrabold text-white mt-1.5">₹1,84,500</p>
+              <p className="text-sm text-zinc-300 mt-1.5">INV-2026-0042 • Due in 5 days</p>
             </div>
           </div>
         </div>

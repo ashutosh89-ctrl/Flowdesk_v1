@@ -33,13 +33,13 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-20 bg-zinc-950/80 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 py-3.5 transition-all">
+    <header className="sticky top-0 z-20 bg-[#0A0A0A]/90 backdrop-blur-xl border-b border-[#2A2A2A] px-4 sm:px-6 py-3.5 transition-all">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         {/* Left: Mobile Toggle & Tab Title */}
         <div className="flex items-center gap-3">
           <button
             onClick={onOpenMobileSidebar}
-            className="lg:hidden p-2 rounded-xl bg-white/5 border border-white/10 text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
+            className="lg:hidden p-2 rounded-xl bg-[#181818] border border-[#2A2A2A] text-zinc-300 hover:text-white hover:border-[#0047AB]/40 transition-colors"
             title="Open navigation menu"
           >
             <Menu className="w-4 h-4" />
@@ -65,7 +65,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search deliverables, docs, invoices..."
-            className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-zinc-900/90 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-all"
+            className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[#111111] border border-[#2A2A2A] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]/40 transition-all"
           />
           {searchQuery && (
             <button
@@ -85,7 +85,7 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
           {/* Quick Actions Button */}
           <button
             onClick={onOpenQuickActions}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-zinc-950 hover:bg-zinc-200 font-bold text-xs shadow-md shadow-white/5 transition-all active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0047AB] hover:bg-[#003A8C] text-white font-bold text-xs shadow-md shadow-[#0047AB]/25 transition-all active:scale-95"
           >
             <Plus className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Quick Action</span>
@@ -97,8 +97,8 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
               onClick={onToggleNotifications}
               className={`relative p-2 rounded-xl border transition-all ${
                 isNotificationsOpen
-                  ? 'bg-white/15 border-white/30 text-white'
-                  : 'bg-white/5 border-white/10 text-zinc-300 hover:text-white hover:bg-white/10'
+                  ? 'bg-[#0047AB]/20 border-[#2563EB]/40 text-[#2563EB]'
+                  : 'bg-[#181818] border-[#2A2A2A] text-zinc-300 hover:text-white hover:border-[#0047AB]/40'
               }`}
               title="Notifications"
             >

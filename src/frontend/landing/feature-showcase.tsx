@@ -11,42 +11,42 @@ export const FeatureShowcase: React.FC = () => {
     {
       icon: <Users className="w-5 h-5 text-white" />,
       title: 'Client Workspaces',
-      description: 'Keep every client relationship organized with a dedicated workspace for contact details, projects, deliverables, invoices, and ongoing work.',
+      description: 'Keep every client, conversation, project, and document organized in its own dedicated workspace.',
     },
     {
       icon: <FolderKanban className="w-5 h-5 text-white" />,
       title: 'Projects & Milestones',
-      description: 'Plan project timelines, track progress, manage budgets, and keep important work moving toward completion.',
+      description: 'Stay on top of deadlines, project budgets, milestones, and progress without losing track of important work.',
     },
     {
       icon: <CheckSquare className="w-5 h-5 text-white" />,
       title: 'Deliverable Versioning',
-      description: 'Keep deliverable files and versions organized so you and your client always know what is current and ready for review.',
+      description: 'Share work confidently with organized file versions, clear updates, and complete revision history.',
     },
     {
       icon: <GitFork className="w-5 h-5 text-white" />,
       title: 'Approvals & Revisions',
-      description: 'Turn client feedback into clear approval and revision requests linked directly to the work being reviewed.',
+      description: 'Collect client feedback, manage revision requests, and get work approved without endless back-and-forth.',
     },
     {
       icon: <FileText className="w-5 h-5 text-white" />,
       title: 'Documents & File Requests',
-      description: 'Keep project documents and requested files organized in the right client workspace instead of searching through scattered folders.',
+      description: 'Keep essential documents, shared files, and client requests organized exactly where they belong.',
     },
     {
       icon: <Receipt className="w-5 h-5 text-white" />,
       title: 'Professional Invoicing',
-      description: 'Create itemized invoices with configurable taxes, discounts, currencies, payment terms, and professional PDF output.',
+      description: 'Create professional invoices with flexible taxes, discounts, currencies, and payment terms.',
     },
     {
       icon: <ShieldCheck className="w-5 h-5 text-white" />,
       title: 'Client Portal',
-      description: 'Give clients one place to review work, respond to deliverables, request revisions, access documents, and view their invoices.',
+      description: 'Give clients a dedicated space to review deliverables, share feedback, access documents, and track invoices.',
     },
     {
       icon: <Activity className="w-5 h-5 text-white" />,
       title: 'Activity Timeline',
-      description: 'Keep a clear history of important project activity, including deliverable updates, approvals, comments, and payment events.',
+      description: 'See every important update, approval, comment, and payment event in one transparent activity history.',
     },
   ];
 
@@ -57,14 +57,16 @@ export const FeatureShowcase: React.FC = () => {
         whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
         viewport={{ once: false, amount: 0.2 }}
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        className="text-center max-w-2xl mx-auto mb-16 space-y-4"
+        className="text-center max-w-3xl mx-auto mb-16 space-y-4"
       >
-        <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">Features</span>
-        <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-          Everything your freelance business requires.
+        <span className="text-xs sm:text-[13px] font-mono uppercase tracking-widest text-[#E8F0FF] bg-[#0047AB]/20 px-4 py-1.5 rounded-full border border-[#2563EB]/30 font-semibold">
+          Complete Workspace Features
+        </span>
+        <h2 className="text-4xl sm:text-5xl lg:text-[50px] font-extrabold text-white tracking-tight leading-tight">
+          Everything You Need to Run Your Freelance Business
         </h2>
-        <p className="text-sm text-zinc-400">
-          Purpose-built tools to manage client work with clarity and confidence.
+        <p className="text-lg sm:text-xl lg:text-[22px] text-zinc-300 max-w-3xl mx-auto leading-relaxed font-normal">
+          One connected workspace for managing clients, delivering great work, collecting approvals, and getting paid on time.
         </p>
       </motion.div>
 
@@ -84,23 +86,23 @@ export const FeatureShowcase: React.FC = () => {
             }}
             className="relative"
           >
-            <Card interactive className="group h-full relative overflow-hidden transition-all duration-300 hover:border-white/30">
+            <Card interactive className="group h-full relative overflow-hidden transition-all duration-300 hover:border-[#2563EB]/40 p-6 sm:p-7">
               {hoveredIdx === idx && (
                 <div
                   className="absolute inset-0 pointer-events-none transition-opacity duration-300"
                   style={{
-                    background: `radial-gradient(circle 220px at ${mousePos.x}px ${mousePos.y}px, rgba(255, 255, 255, 0.08), transparent 70%)`,
+                    background: `radial-gradient(circle 220px at ${mousePos.x}px ${mousePos.y}px, rgba(37, 99, 235, 0.12), transparent 70%)`,
                   }}
                 />
               )}
-              <CardHeader>
-                <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center mb-2 group-hover:scale-110 group-hover:bg-white group-hover:text-zinc-950 transition-all duration-300">
+              <CardHeader className="mb-3">
+                <div className="w-12 h-12 rounded-xl bg-[#0047AB]/10 border border-[#2563EB]/25 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-[#0047AB] group-hover:text-white transition-all duration-300">
                   {feat.icon}
                 </div>
-                <CardTitle>{feat.title}</CardTitle>
+                <CardTitle className="text-2xl font-bold text-white tracking-tight">{feat.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <CardDescription>{feat.description}</CardDescription>
+                <CardDescription className="text-base sm:text-lg text-zinc-300 leading-relaxed font-normal">{feat.description}</CardDescription>
               </CardContent>
             </Card>
           </motion.div>
