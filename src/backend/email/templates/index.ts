@@ -18,13 +18,15 @@ export function renderClientInvitationEmail(params: ClientInvitationParams) {
   const contentHtml = `
     <p>Hello <strong>${clientName}</strong>,</p>
     <p><strong>${sender}</strong> has invited you to access your dedicated collaboration portal on FlowDesk.</p>
-    <p>From your portal, you can review deliverables, approve milestones, upload brand assets, and view invoices in one secure place.</p>
+    <p>From your portal, you can securely review deliverables, approve milestones, upload project documents, and track invoices in one private workspace.</p>
     <div class="info-box">
       <div class="info-row"><span class="info-label">Client</span><span class="info-value">${clientName}</span></div>
       <div class="info-row"><span class="info-label">Invited By</span><span class="info-value">${sender}</span></div>
       <div class="info-row"><span class="info-label">Access Type</span><span class="info-value">Client Collaboration Portal</span></div>
+      <div class="info-row"><span class="info-label">Link Validity</span><span class="info-value">7 Days</span></div>
     </div>
-    <p>Click below to enter your workspace:</p>
+    <p>Click below to verify your email and connect your workspace:</p>
+    <p style="font-size: 12px; color: #71717a; margin-top: 24px;">When you accept, you will authenticate with your verified email address to establish this workspace connection. If you did not expect this invitation from ${sender}, you can safely ignore this email.</p>
   `;
 
   return {
@@ -33,10 +35,10 @@ export function renderClientInvitationEmail(params: ClientInvitationParams) {
       title: 'Welcome to your Client Portal',
       previewText: `${cleanSender} has invited you to collaborate on FlowDesk.`,
       contentHtml,
-      ctaText: 'Enter Client Portal',
+      ctaText: 'Accept Invitation & Enter Portal',
       ctaUrl: safePortalUrl,
     }),
-    text: `Hello ${cleanClientName},\n\n${cleanSender} has invited you to your dedicated collaboration portal on FlowDesk.\n\nAccess your portal here: ${safePortalUrl}\n\nFlowDesk Team`,
+    text: `Hello ${cleanClientName},\n\n${cleanSender} has invited you to your dedicated collaboration portal on FlowDesk.\n\nFrom your portal, you can securely review deliverables, approve milestones, and track invoices.\n\nAccept your invitation and access your portal here (valid for 7 days):\n${safePortalUrl}\n\nNote: If you did not expect this invitation, you can safely ignore this message.\n\nFlowDesk Team`,
   };
 }
 

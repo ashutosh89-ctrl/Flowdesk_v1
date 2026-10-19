@@ -34,6 +34,7 @@ import {
   BillingSubscriptionActivatedParams,
   BillingPlanChangedParams,
 } from './templates';
+import { checkEmailKillSwitch } from './brevo-client';
 
 export interface SendEmailOptions {
   to: string;
@@ -45,6 +46,7 @@ export interface SendEmailOptions {
   referenceId?: string;
   workspaceId?: string;
   userId?: string;
+  userPreferences?: Partial<Record<string, boolean>>;
 }
 
 export interface EmailSendResult {
@@ -103,6 +105,11 @@ export const EmailService = {
       }
     }
 
+    // 0.0 Kill-switch Guard: Fail closed immediately if global kill switch is active
+    if (checkEmailKillSwitch()) {
+      return { success: false, error: 'Email sending is currently disabled globally by kill-switch.' };
+    }
+
     const db = supabaseAdmin || supabase;
     const recipientNorm = to.toLowerCase().trim();
     const workerId = `worker_${process.pid || 1}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
@@ -138,10 +145,32 @@ export const EmailService = {
       });
     }
 
+    // 0.4 Check Recipient Suppression / Bounce History
+    try {
+      const { data: suppressedRow } = await db
+        .from('email_events')
+        .select('id, status, last_error')
+        .eq('recipient', recipientNorm)
+        .in('status', ['bounced', 'hard_bounce', 'complained', 'spam', 'invalid_email'])
+        .limit(1)
+        .maybeSingle();
+
+      if (suppressedRow) {
+        console.info(`[EmailService] Recipient ${recipientNorm} is on suppression list (${suppressedRow.status}). Send aborted.`);
+        return {
+          success: false,
+          suppressed: true,
+          error: `Delivery aborted: Recipient email is suppressed due to previous ${suppressedRow.status}.`,
+        };
+      }
+    } catch {
+      // Non-critical if email_events table suppression check encounters notice
+    }
+
     // 0.5 Email preference enforcement.
     //    Non-critical transactional emails respect the workspace owner's
-    //    user_settings preferences. Security-critical events (client invitation,
-    //    account lifecycle, security alerts) are always delivered.
+    //    user_settings preferences. Security-critical events (security alerts,
+    //    account lifecycle) cannot be disabled.
     const PREFERENCE_MAP: Record<string, string> = {
       deliverable_ready: 'email_deliverables',
       deliverable_approved: 'email_deliverables',
@@ -151,9 +180,9 @@ export const EmailService = {
       invoice_reminder: 'email_invoices',
       payment_received: 'email_invoices',
       receipt_issued: 'email_invoices',
+      client_invitation: 'email_invitations',
     };
     const MANDATORY_EVENTS = new Set([
-      'client_invitation',
       'account_deleted',
       'account_restored',
       'security_alert',
@@ -165,39 +194,45 @@ export const EmailService = {
       'billing_plan_changed',
     ]);
 
-    if (workspaceId && !MANDATORY_EVENTS.has(eventType)) {
+    if (!MANDATORY_EVENTS.has(eventType)) {
       const prefColumn = PREFERENCE_MAP[eventType];
       if (prefColumn) {
-        try {
-          const { data: ws } = await db.from('workspaces').select('owner_id').eq('id', workspaceId).maybeSingle();
-          if (ws?.owner_id) {
-            const { data: prefs } = await db
-              .from('user_settings')
-              .select(prefColumn)
-              .eq('id', ws.owner_id)
-              .maybeSingle();
-            // Default to enabled when no explicit preference row exists.
-            const prefsRecord = prefs as Record<string, unknown> | null;
-            const enabled = prefsRecord ? prefsRecord[prefColumn] !== false : true;
-            if (!enabled) {
-              console.info(`[EmailService] ${eventType} suppressed by workspace email preference (${prefColumn}=false).`);
-              try {
-                await db.from('email_events').insert({
-                  workspace_id: workspaceId || null,
-                  user_id: ws.owner_id,
-                  recipient: recipientNorm,
-                  event_type: eventType,
-                  reference_type: referenceType || null,
-                  reference_id: referenceId || null,
-                  status: 'suppressed',
-                  last_error: `Suppressed by ${prefColumn} preference`,
-                });
-              } catch { /* non-critical */ }
-              return { success: true, suppressed: true, messageId: 'suppressed_by_preference' };
+        if (options.userPreferences && options.userPreferences[prefColumn] === false) {
+          console.info(`[EmailService] ${eventType} suppressed by user notification preference (${prefColumn}=false).`);
+          return { success: false, suppressed: true, error: `Suppressed by user ${prefColumn} preference` };
+        }
+        if (workspaceId) {
+          try {
+            const { data: ws } = await db.from('workspaces').select('owner_id').eq('id', workspaceId).maybeSingle();
+            if (ws?.owner_id) {
+              const { data: prefs } = await db
+                .from('user_settings')
+                .select(prefColumn)
+                .eq('id', ws.owner_id)
+                .maybeSingle();
+              // Default to enabled when no explicit preference row exists.
+              const prefsRecord = prefs as Record<string, unknown> | null;
+              const enabled = prefsRecord ? prefsRecord[prefColumn] !== false : true;
+              if (!enabled) {
+                console.info(`[EmailService] ${eventType} suppressed by workspace email preference (${prefColumn}=false).`);
+                try {
+                  await db.from('email_events').insert({
+                    workspace_id: workspaceId || null,
+                    user_id: ws.owner_id,
+                    recipient: recipientNorm,
+                    event_type: eventType,
+                    reference_type: referenceType || null,
+                    reference_id: referenceId || null,
+                    status: 'suppressed',
+                    last_error: `Suppressed by ${prefColumn} preference`,
+                  });
+                } catch { /* non-critical */ }
+                return { success: true, suppressed: true, messageId: 'suppressed_by_preference' };
+              }
             }
+          } catch (err) {
+            console.warn('[EmailService] Preference lookup notice (defaulting to enabled):', err);
           }
-        } catch (err) {
-          console.warn('[EmailService] Preference lookup notice (defaulting to enabled):', err);
         }
       }
     }
@@ -369,11 +404,23 @@ export const EmailService = {
         : { success: false, error: 'Brevo client module not loaded.' };
 
       if (!sendResult.success) {
-        console.warn(`[EmailService] Brevo delivery error for ${eventType}:`, sendResult.error);
+        console.warn(`[EmailService] Brevo delivery error for ${eventType} (code: ${sendResult.code}):`, sendResult.error);
         const actionableError = sendResult.error || 'Brevo delivery failed';
 
-        const retryDelaySec = 60; // 1 minute backoff for retry
-        const nextAttempt = new Date(Date.now() + retryDelaySec * 1000).toISOString();
+        const isPermanentError =
+          sendResult.code === 'SENDING_PLATFORM_DISABLED' ||
+          sendResult.code === 'KILL_SWITCH_ACTIVE' ||
+          sendResult.code === 'INVALID_CREDENTIALS' ||
+          sendResult.code === 'PROVIDER_NOT_CONFIGURED' ||
+          sendResult.code === 'INVALID_RECIPIENT' ||
+          sendResult.code === 'unauthorized' ||
+          sendResult.code === '401' ||
+          sendResult.code === '400';
+
+        // Only schedule retry for transient errors (rate limit, temporary 5xx, network timeout)
+        const nextAttempt = isPermanentError
+          ? null
+          : new Date(Date.now() + 60 * 1000).toISOString(); // 1 minute backoff for transient retry
 
         if (idempotencyKey) {
           inMemoryIdempotencyCache.set(idempotencyKey, { status: 'failed', timestamp: Date.now() });

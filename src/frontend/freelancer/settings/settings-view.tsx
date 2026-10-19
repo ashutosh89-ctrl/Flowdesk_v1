@@ -34,6 +34,7 @@ import {
   LogOut,
   RefreshCw,
   Link2,
+  UserPlus,
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import { SUPPORTED_CURRENCIES } from '@/shared/utils/currency';
@@ -89,8 +90,40 @@ export const SettingsView: React.FC = () => {
   const [isUploadingSignature, setIsUploadingSignature] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
+  const [emailHealth, setEmailHealth] = useState<{
+    status: string;
+    details?: string;
+    loading: boolean;
+  }>({ status: 'checking', loading: true });
 
   const { showToast } = useToast();
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/email/health')
+      .then((res) => res.json())
+      .then((data) => {
+        if (mounted) {
+          setEmailHealth({
+            status: data.status || (data.success ? 'ready' : 'unconfigured'),
+            details: data.details,
+            loading: false,
+          });
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setEmailHealth({
+            status: 'transient_error',
+            details: 'Could not connect to health endpoint',
+            loading: false,
+          });
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -275,6 +308,10 @@ export const SettingsView: React.FC = () => {
         invoice_prefix: settings.invoice_prefix,
         default_payment_terms: settings.default_payment_terms,
         email_notifications: settings.email_notifications,
+        email_deliverables: settings.email_deliverables,
+        email_documents: settings.email_documents,
+        email_invoices: settings.email_invoices,
+        email_invitations: settings.email_invitations,
         invoice_reminders: settings.invoice_reminders,
         comment_alerts: settings.comment_alerts,
         weekly_digest: settings.weekly_digest,
@@ -288,8 +325,7 @@ export const SettingsView: React.FC = () => {
       setDirty(false);
       showToast('Settings Saved', 'Studio profile, branding, and alert preferences updated successfully.', 'success');
     } catch (err) {
-      showToast('Notice', err instanceof Error ? err.message : 'Settings saved.', 'success');
-      setDirty(false);
+      showToast('Error', err instanceof Error ? err.message : 'Failed to save settings.', 'error');
     } finally {
       setSaving(false);
     }
@@ -1037,16 +1073,76 @@ export const SettingsView: React.FC = () => {
                     <Mail className="w-5 h-5 text-emerald-400" />
                     <CardTitle>Transactional Email Delivery</CardTitle>
                   </div>
-                  <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Email Service Active
-                  </span>
+                  {emailHealth.loading ? (
+                    <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-400 border border-white/10 flex items-center gap-1.5">
+                      <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />
+                      Checking Provider...
+                    </span>
+                  ) : emailHealth.status === 'ready' ? (
+                    <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Email Service Active
+                    </span>
+                  ) : emailHealth.status === 'suspended_or_disabled' ? (
+                    <span
+                      className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1.5"
+                      title={emailHealth.details || 'Brevo sending platform suspended by compliance'}
+                    >
+                      <AlertTriangle className="w-3 h-3 text-amber-400" />
+                      Sending Platform Suspended by Provider
+                    </span>
+                  ) : emailHealth.status === 'kill_switch_active' ? (
+                    <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1.5">
+                      <Shield className="w-3 h-3 text-amber-400" />
+                      Email Kill-Switch Active
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-400 border border-white/10 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3 h-3 text-zinc-400" />
+                      Email Sandbox / Standby
+                    </span>
+                  )}
                 </div>
                 <CardDescription>
                   Configure which transactional email events trigger delivery to you and your clients.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {emailHealth.status === 'suspended_or_disabled' && (
+                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-amber-300">Provider Account Action Required</p>
+                      <p className="text-xs text-amber-200/80 leading-relaxed">
+                        Brevo has placed the transactional sending relay into a disabled state following historical compliance review.
+                        Direct outbound emails are paused to prevent silent drops. The account owner must contact Brevo support or verify their sending domain to reactivate the platform. Client invitation links can still be copied and shared directly.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Client Invitation Emails */}
+                <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <UserPlus className="w-4 h-4 text-violet-400" />
+                      <span className="text-sm font-semibold text-white">Client Invitation Emails</span>
+                    </div>
+                    <p className="text-xs text-zinc-400">
+                      Send transactional email invitations containing secure one-time onboarding links when adding new clients.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.email_invitations ?? true}
+                      onChange={(e) => handleSettingsChange('email_invitations', e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
+
                 {/* Deliverable Emails */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
                   <div className="space-y-0.5">

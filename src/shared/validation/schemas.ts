@@ -255,6 +255,7 @@ export const UpdateNotificationSettingsSchema = z.object({
   emailDeliverables: z.boolean().optional(),
   emailDocuments: z.boolean().optional(),
   emailInvoices: z.boolean().optional(),
+  emailInvitations: z.boolean().optional(),
   invoiceReminders: z.boolean().optional(),
   commentAlerts: z.boolean().optional(),
   weeklyDigest: z.boolean().optional(),

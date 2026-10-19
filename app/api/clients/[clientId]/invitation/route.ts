@@ -141,6 +141,7 @@ export async function POST(
     });
 
     let emailDispatched = false;
+    let emailDeliveryError: string | null = null;
     if (sendEmail) {
       const emailTarget = (recipientEmail || client.email || '').trim();
       if (emailTarget && emailTarget.includes('@')) {
@@ -165,7 +166,11 @@ export async function POST(
             { workspaceId: client.workspace_id, clientId: client.id }
           );
           emailDispatched = Boolean(emailRes.success);
-        } catch (emailErr) {
+          if (!emailDispatched) {
+            emailDeliveryError = emailRes.error || 'Email dispatch paused or rejected by provider.';
+          }
+        } catch (emailErr: any) {
+          emailDeliveryError = emailErr?.message || 'Failed to dispatch client invitation email server-side';
           logger.warn('Failed to dispatch client invitation email server-side', { error: String(emailErr) });
         }
       }
@@ -176,6 +181,7 @@ export async function POST(
       status: 'SUCCESS',
       clientId,
       workspaceId: client.workspace_id,
+      emailDispatched,
     });
 
     return NextResponse.json(
@@ -183,10 +189,14 @@ export async function POST(
         success: true,
         message: emailDispatched
           ? `Invitation email successfully dispatched to ${recipientEmail || client.email}`
+          : emailDeliveryError
+          ? `Invitation link generated. Note: Email was not sent (${emailDeliveryError}). You can copy and share the link manually.`
           : 'Connection link generated successfully.',
         url: result.url,
         rawToken: result.rawToken,
         invitation: result.invitation,
+        emailDispatched,
+        emailDeliveryError,
         requestId,
       },
       {

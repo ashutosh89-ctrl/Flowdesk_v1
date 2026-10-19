@@ -24,6 +24,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   email_deliverables: true,
   email_documents: true,
   email_invoices: true,
+  email_invitations: true,
   invoice_reminders: true,
   comment_alerts: true,
   weekly_digest: false,
@@ -66,6 +67,7 @@ export const UserSettingsService = {
             email_deliverables: data.email_deliverables !== undefined ? Boolean(data.email_deliverables) : true,
             email_documents: data.email_documents !== undefined ? Boolean(data.email_documents) : true,
             email_invoices: data.email_invoices !== undefined ? Boolean(data.email_invoices) : true,
+            email_invitations: data.email_invitations !== undefined ? Boolean(data.email_invitations) : true,
             invoice_reminders: data.invoice_reminders !== undefined ? Boolean(data.invoice_reminders) : true,
             comment_alerts: data.comment_alerts !== undefined ? Boolean(data.comment_alerts) : true,
             weekly_digest: data.weekly_digest !== undefined ? Boolean(data.weekly_digest) : false,
@@ -120,6 +122,7 @@ export const UserSettingsService = {
       email_deliverables: updates.email_deliverables !== undefined ? updates.email_deliverables : (currentSettings.email_deliverables ?? true),
       email_documents: updates.email_documents !== undefined ? updates.email_documents : (currentSettings.email_documents ?? true),
       email_invoices: updates.email_invoices !== undefined ? updates.email_invoices : (currentSettings.email_invoices ?? true),
+      email_invitations: updates.email_invitations !== undefined ? updates.email_invitations : (currentSettings.email_invitations ?? true),
       invoice_reminders: updates.invoice_reminders !== undefined ? updates.invoice_reminders : (currentSettings.invoice_reminders ?? true),
       comment_alerts: updates.comment_alerts !== undefined ? updates.comment_alerts : (currentSettings.comment_alerts ?? true),
       weekly_digest: updates.weekly_digest !== undefined ? updates.weekly_digest : (currentSettings.weekly_digest ?? false),
@@ -154,6 +157,7 @@ export const UserSettingsService = {
             updates.email_deliverables !== undefined ||
             updates.email_documents !== undefined ||
             updates.email_invoices !== undefined ||
+            updates.email_invitations !== undefined ||
             updates.invoice_reminders !== undefined ||
             updates.comment_alerts !== undefined ||
             updates.weekly_digest !== undefined
@@ -166,6 +170,7 @@ export const UserSettingsService = {
                 emailDeliverables: updates.email_deliverables,
                 emailDocuments: updates.email_documents,
                 emailInvoices: updates.email_invoices,
+                emailInvitations: updates.email_invitations,
                 invoiceReminders: updates.invoice_reminders,
                 commentAlerts: updates.comment_alerts,
                 weeklyDigest: updates.weekly_digest,
@@ -203,11 +208,17 @@ export const UserSettingsService = {
         if (updates.email_deliverables !== undefined) payload.email_deliverables = updates.email_deliverables;
         if (updates.email_documents !== undefined) payload.email_documents = updates.email_documents;
         if (updates.email_invoices !== undefined) payload.email_invoices = updates.email_invoices;
+        if (updates.email_invitations !== undefined) payload.email_invitations = updates.email_invitations;
         if (updates.invoice_reminders !== undefined) payload.invoice_reminders = updates.invoice_reminders;
         if (updates.comment_alerts !== undefined) payload.comment_alerts = updates.comment_alerts;
         if (updates.weekly_digest !== undefined) payload.weekly_digest = updates.weekly_digest;
 
-        const { error } = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
+        let { error } = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
+        if (error && error.message?.includes('email_invitations')) {
+          delete payload.email_invitations;
+          const retry = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
+          error = retry.error;
+        }
         if (error) {
           console.warn('Supabase settings upsert error:', error.message);
           throw error;
@@ -286,13 +297,19 @@ export const UserSettingsService = {
           email_deliverables: DEFAULT_USER_SETTINGS.email_deliverables,
           email_documents: DEFAULT_USER_SETTINGS.email_documents,
           email_invoices: DEFAULT_USER_SETTINGS.email_invoices,
+          email_invitations: DEFAULT_USER_SETTINGS.email_invitations,
           invoice_reminders: DEFAULT_USER_SETTINGS.invoice_reminders,
           comment_alerts: DEFAULT_USER_SETTINGS.comment_alerts,
           weekly_digest: DEFAULT_USER_SETTINGS.weekly_digest,
           updated_at: new Date().toISOString(),
         };
 
-        const { error } = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
+        let { error } = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
+        if (error && error.message?.includes('email_invitations')) {
+          delete payload.email_invitations;
+          const retry = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
+          error = retry.error;
+        }
         if (error) {
           console.warn('Supabase settings reset error:', error.message);
           throw error;

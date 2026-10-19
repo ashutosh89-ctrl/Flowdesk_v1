@@ -36,6 +36,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
   const currency = customCurrency !== null ? customCurrency : studioCurrency;
   const [notes, setNotes] = useState('');
   const [tagsStr, setTagsStr] = useState('');
+  const [sendInviteNow, setSendInviteNow] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,6 +50,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
     setCustomCurrency(null);
     setNotes('');
     setTagsStr('');
+    setSendInviteNow(true);
     setError(null);
   };
 
@@ -80,6 +82,29 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
       });
 
       showToast('Client Workspace Created', `Workspace for "${company.trim()}" is ready.`, 'success');
+
+      if (sendInviteNow && newClient?.id) {
+        try {
+          const invRes = await fetch(`/api/clients/${encodeURIComponent(newClient.id)}/invitation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recipientEmail: email.trim(),
+              forceNew: true,
+              sendEmail: true,
+            }),
+          });
+          const invData = await invRes.json();
+          if (invData.emailDispatched) {
+            showToast('Invitation Email Dispatched', `Sent onboarding invitation to ${email.trim()}`, 'success');
+          } else if (invData.emailDeliveryError) {
+            showToast('Workspace Created', `Client ready. Note: Email paused (${invData.emailDeliveryError}).`, 'info');
+          }
+        } catch (invErr) {
+          console.warn('Auto invitation send notice:', invErr);
+        }
+      }
+
       resetForm();
       onClose();
       if (onSuccess) {
@@ -166,6 +191,24 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
           value={tagsStr}
           onChange={(e) => setTagsStr(e.target.value)}
         />
+
+        <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/10">
+          <div className="space-y-0.5">
+            <span className="text-xs font-semibold text-white">Send Email Invitation Now</span>
+            <p className="text-[11px] text-zinc-400">
+              Immediately dispatch a one-time onboarding link to {email.trim() || 'the client email'}.
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={sendInviteNow}
+              onChange={(e) => setSendInviteNow(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-10 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+          </label>
+        </div>
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-zinc-300">Workspace Notes</label>

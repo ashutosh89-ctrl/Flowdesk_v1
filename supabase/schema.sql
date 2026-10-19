@@ -2471,7 +2471,20 @@ BEGIN
       'error', 'This connection link is invalid or does not exist.');
   END IF;
 
+  -- Idempotency check: If this invitation was already claimed by the exact same user, return success
   IF v_inv.status = 'claimed' THEN
+    IF v_inv.claimed_by_user_id = p_user_id THEN
+      SELECT * INTO v_client FROM public.clients WHERE id = v_inv.client_id;
+      RETURN jsonb_build_object(
+        'success', true,
+        'clientId', v_client.id,
+        'workspaceId', v_client.workspace_id,
+        'clientName', v_client.name,
+        'company', v_client.company,
+        'message', 'Connection already established.'
+      );
+    END IF;
+
     RETURN jsonb_build_object('success', false, 'errorCode', 'ALREADY_CLAIMED',
       'error', 'This connection link has already been used.');
   END IF;
@@ -2505,7 +2518,9 @@ BEGIN
   END IF;
 
   UPDATE public.clients
-     SET user_id = p_user_id, updated_at = now()
+     SET user_id = p_user_id,
+         status = 'active',
+         updated_at = now()
    WHERE id = v_client.id
      AND (user_id IS NULL OR user_id = p_user_id)
   RETURNING id INTO v_bound_id;
@@ -2518,6 +2533,29 @@ BEGIN
   UPDATE public.client_invitations
      SET status = 'claimed', claimed_at = now(), claimed_by_user_id = p_user_id
    WHERE id = v_inv.id;
+
+  -- Synchronously upsert client_connections to reconcile with permanent portal link
+  INSERT INTO public.client_connections (
+    workspace_id,
+    freelancer_user_id,
+    client_user_id,
+    client_id,
+    status,
+    connected_at
+  ) VALUES (
+    v_client.workspace_id,
+    v_inv.freelancer_id,
+    p_user_id,
+    v_client.id,
+    'active',
+    now()
+  )
+  ON CONFLICT (client_user_id, workspace_id)
+  DO UPDATE SET
+    client_id = EXCLUDED.client_id,
+    status = 'active',
+    disconnected_at = NULL,
+    updated_at = now();
 
   RETURN jsonb_build_object(
     'success', true,

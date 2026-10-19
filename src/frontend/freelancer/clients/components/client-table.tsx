@@ -33,6 +33,7 @@ export interface ClientTableProps {
   onArchive: (client: Client, e: React.MouseEvent) => void;
   onDelete: (client: Client, e: React.MouseEvent) => void;
   onCopyConnectionLink?: (client: Client, e: React.MouseEvent) => void;
+  onInviteEmail?: (client: Client, e: React.MouseEvent) => void;
 }
 
 export const ClientTable: React.FC<ClientTableProps> = ({
@@ -47,6 +48,7 @@ export const ClientTable: React.FC<ClientTableProps> = ({
   onArchive,
   onDelete,
   onCopyConnectionLink,
+  onInviteEmail,
 }) => {
   return (
     <Card variant="crystal" className="p-0 overflow-hidden border-white/10">
@@ -130,8 +132,23 @@ export const ClientTable: React.FC<ClientTableProps> = ({
                   </td>
 
                   {/* Status */}
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 space-y-1">
                     <StatusPill status={client.status} />
+                    <div>
+                      {client.userId ? (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
+                          Connected
+                        </span>
+                      ) : client.portalToken ? (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded">
+                          Invite Pending
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-zinc-500 bg-zinc-900 border border-white/5 px-1.5 py-0.5 rounded">
+                          Not Connected
+                        </span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Actions */}
@@ -145,6 +162,17 @@ export const ClientTable: React.FC<ClientTableProps> = ({
                       >
                         Workspace
                       </Button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onInviteEmail?.(client, e);
+                        }}
+                        title={client.portalToken ? 'Manage Invitation' : 'Invite by Email'}
+                        className="p-1.5 rounded-lg text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 transition-colors"
+                      >
+                        <Mail className="w-4 h-4" />
+                      </button>
 
                       <button
                         onClick={(e) => onEdit(client, e)}

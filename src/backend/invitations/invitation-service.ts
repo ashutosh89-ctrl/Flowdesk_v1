@@ -383,6 +383,22 @@ export const InvitationService = {
 
       if (!invErr && inv) {
         if (inv.status === 'claimed') {
+          if (inv.claimed_by_user_id === userId) {
+            const { data: existingClient } = await db
+              .from('clients')
+              .select('id, workspace_id, name, company')
+              .eq('id', inv.client_id)
+              .maybeSingle();
+
+            return {
+              success: true,
+              clientId: existingClient?.id || inv.client_id,
+              workspaceId: inv.workspace_id,
+              clientName: existingClient?.name,
+              company: existingClient?.company,
+              message: 'Client account is already connected to this workspace.',
+            };
+          }
           return {
             success: false,
             errorCode: 'ALREADY_CLAIMED',
@@ -453,9 +469,9 @@ export const InvitationService = {
         // Atomically bind client to user if not already bound to another user
         const { data: updatedClient, error: clientUpdateErr } = await db
           .from('clients')
-          .update({ user_id: userId })
+          .update({ user_id: userId, status: 'active', updated_at: now.toISOString() })
           .eq('id', client.id)
-          .is('user_id', null)
+          .or(`user_id.is.null,user_id.eq.${userId}`)
           .select('id, workspace_id, name, company')
           .maybeSingle();
 
@@ -465,6 +481,22 @@ export const InvitationService = {
             errorCode: 'CLIENT_ALREADY_CONNECTED',
             error: 'This client connection has already been completed by another user.',
           };
+        }
+
+        // Sync with client_connections table
+        try {
+          await db
+            .from('client_connections')
+            .upsert({
+              client_id: client.id,
+              user_id: userId,
+              workspace_id: inv.workspace_id,
+              freelancer_id: inv.freelancer_id,
+              status: 'connected',
+              connected_at: now.toISOString(),
+            }, { onConflict: 'client_id,user_id' });
+        } catch (connErr) {
+          console.warn('[InvitationService] client_connections upsert notice:', connErr);
         }
 
         // Consume invitation
@@ -506,6 +538,17 @@ export const InvitationService = {
         };
       }
 
+      if (client.user_id === userId) {
+        return {
+          success: true,
+          clientId: client.id,
+          workspaceId: client.workspace_id,
+          clientName: client.name,
+          company: client.company,
+          message: 'Client account is already connected.',
+        };
+      }
+
       if (client.user_id && client.user_id !== userId) {
         return {
           success: false,
@@ -536,7 +579,7 @@ export const InvitationService = {
       // Atomic update: only updates if user_id is null, preventing race conditions
       const { data: updatedClient, error: updateErr } = await db
         .from('clients')
-        .update({ user_id: userId, portal_token: null })
+        .update({ user_id: userId, portal_token: null, status: 'active', updated_at: new Date().toISOString() })
         .eq('id', client.id)
         .is('user_id', null)
         .select('id, workspace_id, name, company')
@@ -549,6 +592,18 @@ export const InvitationService = {
           error: 'This client connection has already been completed by another user.',
         };
       }
+
+      try {
+        await db
+          .from('client_connections')
+          .upsert({
+            client_id: client.id,
+            user_id: userId,
+            workspace_id: client.workspace_id,
+            status: 'connected',
+            connected_at: new Date().toISOString(),
+          }, { onConflict: 'client_id,user_id' });
+      } catch {}
 
       return {
         success: true,

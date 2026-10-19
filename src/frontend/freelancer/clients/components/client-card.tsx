@@ -31,6 +31,7 @@ export interface ClientCardProps {
   onArchive: (client: Client, e: React.MouseEvent) => void;
   onDelete: (client: Client, e: React.MouseEvent) => void;
   onCopyConnectionLink?: (client: Client, e: React.MouseEvent) => void;
+  onInviteEmail?: (client: Client, e: React.MouseEvent) => void;
 }
 
 export const ClientCard: React.FC<ClientCardProps> = ({
@@ -41,6 +42,7 @@ export const ClientCard: React.FC<ClientCardProps> = ({
   onArchive,
   onDelete,
   onCopyConnectionLink,
+  onInviteEmail,
 }) => {
   const [showMenu, setShowMenu] = React.useState(false);
 
@@ -84,6 +86,15 @@ export const ClientCard: React.FC<ClientCardProps> = ({
                     className="w-full text-left px-3.5 py-2 text-zinc-200 hover:text-white hover:bg-white/10 flex items-center gap-2 font-medium"
                   >
                     <ArrowUpRight className="w-3.5 h-3.5" /> Open Workspace
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      setShowMenu(false);
+                      onInviteEmail?.(client, e);
+                    }}
+                    className="w-full text-left px-3.5 py-2 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 flex items-center gap-2 font-medium"
+                  >
+                    <Mail className="w-3.5 h-3.5" /> {client.portalToken ? 'Manage Invitation' : 'Invite by Email'}
                   </button>
                   <button
                     onClick={(e) => {
@@ -168,6 +179,19 @@ export const ClientCard: React.FC<ClientCardProps> = ({
         <div className="flex items-center gap-2 flex-wrap pt-1">
           <HealthBadge level={client.healthBadge} />
           <StatusPill status={client.status} />
+          {client.userId ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+              Connected
+            </span>
+          ) : client.portalToken ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-md">
+              Invite Pending
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-zinc-400 bg-zinc-800 border border-white/10 px-2 py-0.5 rounded-md">
+              Not Connected
+            </span>
+          )}
           {client.country && (
             <span className="inline-flex items-center gap-1 text-[10px] font-mono text-zinc-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">
               <Globe className="w-3 h-3 text-zinc-500" />

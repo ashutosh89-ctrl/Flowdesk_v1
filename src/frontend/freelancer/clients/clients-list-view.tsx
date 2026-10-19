@@ -12,6 +12,7 @@ import { FilterBar } from './components/filter-bar';
 import { ClientCard } from './components/client-card';
 import { ClientTable } from './components/client-table';
 import { CreateClientModal } from './components/create-client-modal';
+import { InviteClientModal } from './components/invite-client-modal';
 import { CountrySelect } from '@/frontend/shared/ui/country-select';
 import { PhoneInput } from '@/frontend/shared/ui/phone-input';
 import { switchCountryPrefix } from '@/shared/utils/countries';
@@ -41,6 +42,7 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
+  const [invitingClient, setInvitingClient] = useState<Client | null>(null);
 
   // Form Fields
   const [name, setName] = useState('');
@@ -245,6 +247,11 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
     }
   };
 
+  const handleOpenInvite = (client: Client, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setInvitingClient(client);
+  };
+
   const resetForm = () => {
     setName('');
     setCompany('');
@@ -337,6 +344,7 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
                   onArchive={handleArchiveClient}
                   onDelete={handleDeleteClient}
                   onCopyConnectionLink={handleCopyConnectionLink}
+                  onInviteEmail={handleOpenInvite}
                 />
               ))}
             </div>
@@ -385,6 +393,7 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
           onArchive={handleArchiveClient}
           onDelete={handleDeleteClient}
           onCopyConnectionLink={handleCopyConnectionLink}
+          onInviteEmail={handleOpenInvite}
         />
       )}
 
@@ -396,6 +405,14 @@ export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspac
           loadClients();
           onOpenWorkspace(newClient.id);
         }}
+      />
+
+      {/* Dedicated Invite Client Modal */}
+      <InviteClientModal
+        isOpen={!!invitingClient}
+        onClose={() => setInvitingClient(null)}
+        client={invitingClient}
+        onSuccess={loadClients}
       />
 
       {/* Edit Client Modal */}

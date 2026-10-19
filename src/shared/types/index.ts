@@ -703,6 +703,7 @@ export interface UserSettings {
   email_deliverables?: boolean;
   email_documents?: boolean;
   email_invoices?: boolean;
+  email_invitations?: boolean;
   invoice_reminders?: boolean;
   comment_alerts?: boolean;
   weekly_digest?: boolean;

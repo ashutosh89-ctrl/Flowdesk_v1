@@ -112,15 +112,28 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     if (updates.emailDeliverables !== undefined) dbPayload.email_deliverables = updates.emailDeliverables;
     if (updates.emailDocuments !== undefined) dbPayload.email_documents = updates.emailDocuments;
     if (updates.emailInvoices !== undefined) dbPayload.email_invoices = updates.emailInvoices;
+    if (updates.emailInvitations !== undefined) dbPayload.email_invitations = updates.emailInvitations;
     if (updates.invoiceReminders !== undefined) dbPayload.invoice_reminders = updates.invoiceReminders;
     if (updates.commentAlerts !== undefined) dbPayload.comment_alerts = updates.commentAlerts;
     if (updates.weeklyDigest !== undefined) dbPayload.weekly_digest = updates.weeklyDigest;
 
-    const { data: updated, error: upsertErr } = await supabaseAdmin
+    let { data: updated, error: upsertErr } = await supabaseAdmin
       .from('user_settings')
       .upsert(dbPayload)
       .select()
-      .single();
+      .maybeSingle();
+
+    // If PostgREST schema cache does not have email_invitations yet, retry without it
+    if (upsertErr && upsertErr.message && upsertErr.message.includes('email_invitations')) {
+      delete dbPayload.email_invitations;
+      const retry = await supabaseAdmin
+        .from('user_settings')
+        .upsert(dbPayload)
+        .select()
+        .maybeSingle();
+      updated = retry.data;
+      upsertErr = retry.error;
+    }
 
     if (upsertErr || !updated) {
       logger.error('Failed to upsert notification settings in database', upsertErr, {

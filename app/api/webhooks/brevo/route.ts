@@ -140,18 +140,41 @@ export async function POST(request: NextRequest) {
         break;
     }
 
-    if (Object.keys(updateData).length > 0 && messageId) {
-      const { error } = await db
-        .from('email_events')
-        .update(updateData)
-        .eq('provider_message_id', messageId);
+    if (Object.keys(updateData).length > 0) {
+      if (messageId) {
+        const { error } = await db
+          .from('email_events')
+          .update(updateData)
+          .eq('provider_message_id', messageId);
 
-      if (error) {
-        console.warn('[Webhook /api/webhooks/brevo] Notice updating email_event:', error.message);
+        if (error) {
+          console.warn('[Webhook /api/webhooks/brevo] Notice updating email_event by messageId:', error.message);
+        }
+      } else if (recipient && (event === 'hard_bounce' || event === 'invalid_email' || event === 'spam' || event === 'complaint')) {
+        const { error } = await db
+          .from('email_events')
+          .update(updateData)
+          .eq('recipient', recipient)
+          .eq('status', 'sent');
+
+        if (error) {
+          console.warn('[Webhook /api/webhooks/brevo] Notice updating email_event by recipient:', error.message);
+        }
+      }
+
+      // Propagate delivery/bounce state to client_invitations if applicable
+      if (recipient) {
+        if (event === 'hard_bounce' || event === 'invalid_email' || event === 'blocked') {
+          await db
+            .from('client_invitations')
+            .update({ status: 'bounced' })
+            .eq('recipient_email', recipient)
+            .eq('status', 'pending');
+        }
       }
     }
 
-    return NextResponse.json({ received: true, event, messageId });
+    return NextResponse.json({ received: true, event, messageId, recipient });
   } catch (err: any) {
     console.error('[Webhook /api/webhooks/brevo] Webhook processing error:', err);
     return NextResponse.json(
