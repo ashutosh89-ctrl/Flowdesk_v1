@@ -92,11 +92,13 @@ export const InviteClientModal: React.FC<InviteClientModalProps> = ({
   }, [cooldownSeconds]);
 
   // Reset local state when client changes
-  useEffect(() => {
+  const [prevClientId, setPrevClientId] = useState(client?.id);
+  if (client?.id !== prevClientId) {
+    setPrevClientId(client?.id);
     setConnectionUrl('');
     setEmailStatus(null);
     setCopied(false);
-  }, [client?.id]);
+  }
 
   if (!client) return null;
 
