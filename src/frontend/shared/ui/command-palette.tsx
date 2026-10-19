@@ -211,10 +211,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -12 }}
             transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-            className="relative w-full max-w-2xl bg-zinc-950/95 border border-white/20 backdrop-blur-3xl rounded-2xl shadow-[0_25px_80px_rgba(0,0,0,0.9),0_0_1px_1px_rgba(255,255,255,0.15)] overflow-hidden z-10 flex flex-col"
+            className="relative w-full max-w-2xl bg-[#0A0A0A]/95 border border-[#2A2A2A] backdrop-blur-3xl rounded-2xl shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden z-10 flex flex-col"
           >
             {/* Input Bar */}
-            <div className="flex items-center gap-3 p-4 border-b border-white/10 bg-white/[0.02]">
+            <div className="flex items-center gap-3 p-4 border-b border-[#2A2A2A] bg-white/[0.02]">
               <Search className="w-5 h-5 text-zinc-400 shrink-0" />
               <input
                 type="text"
@@ -230,7 +230,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
               />
               <button
                 onClick={onClose}
-                className="px-2 py-1 text-[10px] font-mono text-zinc-400 bg-white/10 border border-white/15 rounded-md hover:bg-white/20 transition-colors"
+                className="px-2 py-1 text-[10px] font-mono text-zinc-400 bg-[#181818] border border-[#2A2A2A] rounded-md hover:bg-white/10 transition-colors"
               >
                 ESC
               </button>
@@ -252,14 +252,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
                       onMouseEnter={() => setSelectedIndex(idx)}
                       className={`w-full flex items-center justify-between p-3 rounded-xl text-left transition-all ${
                         isSelected
-                          ? 'bg-white/10 border border-white/20 text-white shadow-md'
+                          ? 'bg-[#0047AB]/20 border border-[#2563EB]/45 text-white shadow-md'
                           : 'bg-transparent text-zinc-300 hover:bg-white/5 border border-transparent'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div
                           className={`p-2 rounded-xl flex items-center justify-center transition-colors ${
-                            isSelected ? 'bg-white text-zinc-950' : 'bg-white/10 text-zinc-300 border border-white/10'
+                            isSelected ? 'bg-[#0047AB] text-white shadow-sm' : 'bg-[#181818] text-zinc-300 border border-[#2A2A2A]'
                           }`}
                         >
                           {cmd.icon}
@@ -270,10 +270,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-400">
+                        <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-white/5 border border-[#2A2A2A] text-zinc-400">
                           {cmd.category}
                         </span>
-                        {isSelected && <CornerDownLeft className="w-3.5 h-3.5 text-white" />}
+                        {isSelected && <CornerDownLeft className="w-3.5 h-3.5 text-[#2563EB]" />}
                       </div>
                     </button>
                   );
@@ -282,7 +282,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
             </div>
 
             {/* Modal Bottom Footer Navigation Hint */}
-            <div className="p-3 px-4 border-t border-white/10 bg-zinc-950 flex items-center justify-between text-[10px] text-zinc-500 font-mono">
+            <div className="p-3 px-4 border-t border-[#2A2A2A] bg-[#0A0A0A] flex items-center justify-between text-[10px] text-zinc-500 font-mono">
               <div className="flex items-center gap-3">
                 <span>↑↓ Navigate</span>
                 <span>↵ Select</span>

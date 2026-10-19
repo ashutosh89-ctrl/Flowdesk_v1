@@ -84,17 +84,17 @@ export const FeatureShowcase: React.FC = () => {
             }}
             className="relative"
           >
-            <Card interactive className="group h-full relative overflow-hidden transition-all duration-300 hover:border-white/30">
+            <Card interactive className="group h-full relative overflow-hidden transition-all duration-300 hover:border-[#2563EB]/40">
               {hoveredIdx === idx && (
                 <div
                   className="absolute inset-0 pointer-events-none transition-opacity duration-300"
                   style={{
-                    background: `radial-gradient(circle 220px at ${mousePos.x}px ${mousePos.y}px, rgba(255, 255, 255, 0.08), transparent 70%)`,
+                    background: `radial-gradient(circle 220px at ${mousePos.x}px ${mousePos.y}px, rgba(37, 99, 235, 0.12), transparent 70%)`,
                   }}
                 />
               )}
               <CardHeader>
-                <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center mb-2 group-hover:scale-110 group-hover:bg-white group-hover:text-zinc-950 transition-all duration-300">
+                <div className="w-10 h-10 rounded-xl bg-[#0047AB]/10 border border-[#2563EB]/25 flex items-center justify-center mb-2 group-hover:scale-110 group-hover:bg-[#0047AB] group-hover:text-white transition-all duration-300">
                   {feat.icon}
                 </div>
                 <CardTitle>{feat.title}</CardTitle>

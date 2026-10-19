@@ -57,7 +57,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const baseStyles =
-      'inline-flex items-center justify-center font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white/20 focus:ring-offset-1 focus:ring-offset-zinc-950 disabled:opacity-50 disabled:cursor-not-allowed select-none rounded-xl relative overflow-hidden active:scale-[0.98] will-change-transform';
+      'inline-flex items-center justify-center font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 focus:ring-offset-[#0A0A0A] disabled:opacity-50 disabled:cursor-not-allowed select-none rounded-xl relative overflow-hidden active:scale-[0.98] will-change-transform';
 
     const sizeStyles = {
       sm: 'px-3 py-1.5 text-xs gap-1.5 min-h-[32px]',
@@ -67,17 +67,17 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary:
-        'bg-white text-zinc-950 font-semibold border border-white/80 shadow-[0_4px_20px_rgba(255,255,255,0.18),inset_0_1px_0_0_rgba(255,255,255,1)] hover:bg-zinc-100 hover:shadow-[0_8px_28px_rgba(255,255,255,0.3)] hover:-translate-y-[2px]',
+        'bg-[#0047AB] text-white font-semibold border border-[#2563EB]/70 shadow-[0_4px_20px_rgba(0,71,171,0.35),inset_0_1px_0_0_rgba(255,255,255,0.25)] hover:bg-[#003A8C] hover:border-[#2563EB] hover:shadow-[0_8px_28px_rgba(0,71,171,0.55)] hover:-translate-y-[2px]',
       secondary:
-        'bg-zinc-950/70 text-zinc-100 border border-white/20 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:bg-zinc-900/90 hover:border-white/35 hover:text-white hover:-translate-y-[2px]',
+        'bg-[#181818] text-[#F5F7FA] border border-[#2A2A2A] backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:bg-[#222222] hover:border-white/20 hover:text-white hover:-translate-y-[2px]',
       outline:
-        'bg-transparent text-zinc-200 border border-white/15 hover:border-white/30 hover:bg-white/[0.06] hover:text-white hover:-translate-y-[1px]',
+        'bg-transparent text-[#F5F7FA] border border-[#2A2A2A] hover:border-[#2563EB]/50 hover:bg-[#0047AB]/10 hover:text-white hover:-translate-y-[1px]',
       ghost:
-        'bg-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08]',
+        'bg-transparent text-zinc-400 hover:text-white hover:bg-white/[0.08]',
       icon:
-        'p-2 text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08] rounded-lg aspect-square',
+        'p-2 text-zinc-400 hover:text-white hover:bg-white/[0.08] hover:border-[#2563EB]/30 rounded-lg aspect-square',
       danger:
-        'bg-zinc-900 text-zinc-200 border border-zinc-700/60 hover:border-zinc-500 hover:bg-zinc-800 hover:text-white shadow-sm',
+        'bg-rose-950/40 text-rose-200 border border-rose-500/35 hover:border-rose-500 hover:bg-rose-900/60 hover:text-white shadow-sm',
     };
 
     return (
@@ -96,7 +96,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             className="absolute inset-0 pointer-events-none transition-opacity duration-300"
             style={{
               background: `radial-gradient(circle 80px at ${coords.x}px ${coords.y}px, ${
-                variant === 'primary' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.15)'
+                variant === 'primary' ? 'rgba(37, 99, 235, 0.45)' : 'rgba(255, 255, 255, 0.15)'
               }, transparent 70%)`,
             }}
           />
@@ -106,7 +106,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {ripples.map((r) => (
           <span
             key={r.id}
-            className="absolute rounded-full pointer-events-none bg-white/25 animate-ping"
+            className={`absolute rounded-full pointer-events-none animate-ping ${
+              variant === 'primary' ? 'bg-white/35' : 'bg-white/25'
+            }`}
             style={{
               left: r.x - 20,
               top: r.y - 20,

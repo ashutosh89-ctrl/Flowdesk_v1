@@ -80,13 +80,13 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-            className="relative w-full max-w-md bg-zinc-950/95 border-l border-white/20 backdrop-blur-3xl h-full shadow-2xl z-10 flex flex-col justify-between"
+            className="relative w-full max-w-md bg-[#0A0A0A] border-l border-[#2A2A2A] backdrop-blur-3xl h-full shadow-2xl z-10 flex flex-col justify-between"
           >
             <div>
               {/* Header */}
-              <div className="p-5 border-b border-white/10 flex items-center justify-between">
+              <div className="p-5 border-b border-[#2A2A2A] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                  <div className="p-2 rounded-xl bg-[#0047AB]/20 border border-[#2563EB]/30 text-[#2563EB]">
                     <Bell className="w-5 h-5" />
                   </div>
                   <div>
@@ -105,12 +105,12 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
               </div>
 
               {/* Action Bar */}
-              <div className="p-3 px-5 border-b border-white/10 bg-zinc-900/50 flex items-center justify-between text-xs">
+              <div className="p-3 px-5 border-b border-[#2A2A2A] bg-[#111111]/80 flex items-center justify-between text-xs">
                 <button
                   onClick={() => setFilterUnread(!filterUnread)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
                     filterUnread
-                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                      ? 'bg-[#0047AB] text-white border border-[#2563EB]'
                       : 'text-zinc-400 hover:text-white'
                   }`}
                 >
@@ -119,7 +119,7 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
 
                 <button
                   onClick={handleMarkAllRead}
-                  className="text-xs font-semibold text-amber-400 hover:underline flex items-center gap-1"
+                  className="text-xs font-semibold text-[#2563EB] hover:text-[#0047AB] flex items-center gap-1"
                 >
                   <Check className="w-3.5 h-3.5" /> Mark All Read
                 </button>
@@ -156,18 +156,18 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
                       }}
                       className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
                         !n.read
-                          ? 'bg-zinc-900 border-white/20 shadow-sm'
-                          : 'bg-zinc-950/40 border-white/5 text-zinc-400 opacity-75'
+                          ? 'bg-[#111111] border-[#0047AB]/40 shadow-sm'
+                          : 'bg-[#0A0A0A] border-[#2A2A2A] text-zinc-400 opacity-75'
                       }`}
                     >
                       <div className="flex items-start gap-3 min-w-0">
-                        <div className="p-2 rounded-lg bg-white/5 border border-white/10 shrink-0 mt-0.5">
+                        <div className="p-2 rounded-lg bg-white/5 border border-[#2A2A2A] shrink-0 mt-0.5">
                           {getNotificationIcon(n)}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
                             <h4 className="text-xs font-bold text-white truncate">{n.title}</h4>
-                            {!n.read && <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />}
+                            {!n.read && <span className="w-2 h-2 rounded-full bg-[#2563EB] shrink-0" />}
                           </div>
                           <p className="text-xs text-zinc-400 line-clamp-2">{n.message}</p>
                           <span className="text-[10px] font-mono text-zinc-500 mt-1 block">{n.timestamp}</span>
@@ -188,7 +188,7 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-white/10 bg-zinc-950 text-center text-[11px] text-zinc-500">
+            <div className="p-4 border-t border-[#2A2A2A] bg-[#0A0A0A] text-center text-[11px] text-zinc-500">
               All notifications up to date
             </div>
           </motion.div>

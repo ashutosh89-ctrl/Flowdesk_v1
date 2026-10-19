@@ -28,7 +28,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   const currentTitle = breadcrumbItems[breadcrumbItems.length - 1]?.label || 'Dashboard';
 
   return (
-    <header className="w-full h-16 px-4 md:px-8 border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl flex items-center justify-between sticky top-0 z-30 select-none">
+    <header className="w-full h-16 px-4 md:px-8 border-b border-[#2A2A2A] bg-[#0A0A0A]/90 backdrop-blur-xl flex items-center justify-between sticky top-0 z-30 select-none">
       {/* Left Section: Mobile Toggle & Page Title */}
       <div className="flex items-center gap-3">
         <button
@@ -47,7 +47,7 @@ export const TopNav: React.FC<TopNavProps> = ({
       <div className="flex-1 max-w-[540px] mx-4 hidden md:block">
         <button
           onClick={onOpenSearch}
-          className="w-full h-9 px-3.5 rounded-xl bg-white/[0.04] border border-white/10 hover:border-white/20 hover:bg-white/[0.07] backdrop-blur-md flex items-center justify-between text-xs text-zinc-400 hover:text-white transition-all duration-200 shadow-inner group"
+          className="w-full h-9 px-3.5 rounded-xl bg-[#111111] border border-[#2A2A2A] hover:border-[#2563EB]/40 hover:bg-[#181818] backdrop-blur-md flex items-center justify-between text-xs text-zinc-400 hover:text-white transition-all duration-200 shadow-inner group"
         >
           <div className="flex items-center gap-2">
             <Search className="w-3.5 h-3.5 text-zinc-400 group-hover:text-white transition-colors" />
@@ -55,7 +55,7 @@ export const TopNav: React.FC<TopNavProps> = ({
               Search clients, invoices, deliverables, documents...
             </span>
           </div>
-          <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-medium bg-white/10 border border-white/15 rounded text-zinc-300 shadow-sm">
+          <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-medium bg-[#181818] border border-[#2A2A2A] rounded text-zinc-300 shadow-sm">
             ⌘K
           </kbd>
         </button>
@@ -90,7 +90,7 @@ export const TopNav: React.FC<TopNavProps> = ({
         {/* Settings Shortcut Button */}
         <button
           onClick={() => onNavigate('settings')}
-          className="p-2 text-zinc-400 hover:text-white rounded-xl bg-white/[0.04] border border-white/10 hover:border-white/20 hover:bg-white/[0.08] transition-all"
+          className="p-2 text-zinc-400 hover:text-white rounded-xl bg-[#111111] border border-[#2A2A2A] hover:border-[#2563EB]/40 hover:bg-[#181818] transition-all"
           title="Settings"
         >
           <Settings className="w-4 h-4" />

@@ -44,9 +44,9 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Active Clients',
       value: safeMetrics.activeClientsCount.toString(),
       subtext: 'Active client accounts',
-      icon: <Users className="w-5 h-5 text-indigo-400" />,
-      color: 'from-indigo-500/10 to-transparent',
-      borderColor: 'border-indigo-500/20',
+      icon: <Users className="w-5 h-5 text-[#2563EB]" />,
+      color: 'from-[#0047AB]/15 to-transparent',
+      borderColor: 'border-[#2563EB]/30',
       actionView: 'clients',
     },
     {
@@ -54,9 +54,9 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Active Projects',
       value: safeMetrics.activeProjectsCount.toString(),
       subtext: `${safeMetrics.completionRate}% avg completion`,
-      icon: <FolderKanban className="w-5 h-5 text-sky-400" />,
-      color: 'from-sky-500/10 to-transparent',
-      borderColor: 'border-sky-500/20',
+      icon: <FolderKanban className="w-5 h-5 text-[#2563EB]" />,
+      color: 'from-[#0047AB]/15 to-transparent',
+      borderColor: 'border-[#2563EB]/30',
       actionView: 'projects',
     },
     {
@@ -114,19 +114,19 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Workspace Health',
       value: `${safeMetrics.workspaceHealthScore}/100`,
       subtext: 'Optimal operational score',
-      icon: <ShieldCheck className="w-5 h-5 text-purple-400" />,
-      color: 'from-purple-500/10 to-transparent',
-      borderColor: 'border-purple-500/20',
+      icon: <ShieldCheck className="w-5 h-5 text-[#2563EB]" />,
+      color: 'from-[#0047AB]/15 to-transparent',
+      borderColor: 'border-[#2563EB]/30',
       actionView: 'dashboard',
     },
   ];
 
   return (
-    <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
+    <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-            <Activity className="w-5 h-5 text-emerald-400" /> Business Intelligence Snapshot
+            <Activity className="w-5 h-5 text-[#2563EB]" /> Business Intelligence Snapshot
           </h2>
           <p className="text-xs text-zinc-400">High-level financial &amp; operational metrics across all client hubs.</p>
         </div>
@@ -137,7 +137,7 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
           <div
             key={card.id}
             onClick={() => onNavigate(card.actionView)}
-            className={`p-4 rounded-xl bg-gradient-to-br ${card.color} bg-zinc-900/60 border ${card.borderColor} hover:border-white/30 transition-all cursor-pointer group flex flex-col justify-between`}
+            className={`p-4 rounded-xl bg-gradient-to-br ${card.color} bg-[#181818]/80 border ${card.borderColor} hover:border-[#0047AB]/50 transition-all cursor-pointer group flex flex-col justify-between`}
           >
             <div className="flex items-start justify-between mb-3">
               <span className="p-2 rounded-lg bg-white/5 border border-white/10 group-hover:scale-105 transition-transform">

@@ -11,7 +11,7 @@ export interface LandingFooterProps {
 
 export const LandingFooter: React.FC<LandingFooterProps> = ({ onLaunchApp, onOpenAuth }) => {
   return (
-    <footer className="w-full bg-zinc-950 border-t border-white/10 select-none relative overflow-hidden">
+    <footer className="w-full bg-[#0A0A0A] border-t border-[#2A2A2A] select-none relative overflow-hidden">
       {/* Strong Final CTA Section with Liquid Light & Glass Frame */}
       <div className="py-24 px-6 lg:px-12 max-w-7xl mx-auto text-center relative z-10">
         <motion.div
@@ -19,14 +19,14 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onLaunchApp, onOpe
           whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           viewport={{ once: false, amount: 0.2 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="relative rounded-3xl p-10 sm:p-16 border border-white/20 bg-zinc-900/90 backdrop-blur-3xl shadow-[0_30px_90px_rgba(0,0,0,0.9),inset_0_1px_0_0_rgba(255,255,255,0.25)] overflow-hidden"
+          className="relative rounded-3xl p-10 sm:p-16 border border-[#2A2A2A] bg-[#111111]/90 backdrop-blur-3xl shadow-[0_30px_90px_rgba(0,0,0,0.9),inset_0_1px_0_0_rgba(255,255,255,0.08)] overflow-hidden"
         >
           {/* Subtle Ambient Liquid Glow inside CTA frame */}
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-white/[0.08] rounded-full blur-[100px] pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-white/[0.06] rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute -top-24 -left-24 w-96 h-96 bg-[#0047AB]/20 rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-[#2563EB]/15 rounded-full blur-[120px] pointer-events-none" />
 
           <div className="relative z-10 max-w-3xl mx-auto space-y-6">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 bg-white/10 px-3.5 py-1 rounded-full border border-white/15">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-[#E8F0FF] bg-[#0047AB]/20 px-3.5 py-1 rounded-full border border-[#2563EB]/30">
               Ready to Get Organized?
             </span>
             <h2 className="text-3xl sm:text-5xl font-bold text-white tracking-tight leading-tight">
@@ -40,7 +40,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onLaunchApp, onOpe
                 variant="primary"
                 size="lg"
                 onClick={() => onOpenAuth?.('signup')}
-                className="shadow-[0_0_30px_rgba(255,255,255,0.25)] hover:shadow-[0_0_45px_rgba(255,255,255,0.4)] transition-all duration-300"
+                className="shadow-[0_0_30px_rgba(0,71,171,0.4)] hover:shadow-[0_0_45px_rgba(0,71,171,0.6)] transition-all duration-300"
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
                 Create Free Workspace
@@ -49,7 +49,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onLaunchApp, onOpe
                 variant="secondary"
                 size="lg"
                 onClick={() => onOpenAuth?.('login')}
-                className="hover:border-white/40 transition-all duration-300"
+                className="hover:border-[#0047AB]/50 transition-all duration-300"
               >
                 Sign In
               </Button>
@@ -58,7 +58,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onLaunchApp, onOpe
         </motion.div>
       </div>
 
-      <div className="pt-16 pb-12 px-6 lg:px-12 border-t border-white/10">
+      <div className="pt-16 pb-12 px-6 lg:px-12 border-t border-[#2A2A2A]">
         <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-16 text-zinc-400">
           {/* Brand Overview Column */}
           <div className="sm:col-span-2 md:col-span-1 space-y-4">
@@ -130,7 +130,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onLaunchApp, onOpe
         </div>
 
         {/* Bottom Legal & Copyright Bar */}
-        <div className="max-w-7xl mx-auto pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-500 gap-4">
+        <div className="max-w-7xl mx-auto pt-8 border-t border-[#2A2A2A] flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-500 gap-4">
           <div>
             <p>© 2026 FlowDesk. All rights reserved.</p>
           </div>

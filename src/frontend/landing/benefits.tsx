@@ -21,7 +21,7 @@ export const BenefitsSection: React.FC = () => {
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         className="text-center max-w-2xl mx-auto mb-16 space-y-4"
       >
-        <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">Benefits</span>
+        <span className="text-[10px] font-mono uppercase tracking-widest text-[#E8F0FF] bg-[#0047AB]/20 px-3 py-1 rounded-full border border-[#2563EB]/30">Benefits</span>
         <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
           Bring your freelance workflow into one place.
         </h2>
@@ -38,7 +38,7 @@ export const BenefitsSection: React.FC = () => {
             whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             viewport={{ once: false, amount: 0.15 }}
             transition={{ duration: 0.5, delay: idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
-            className="p-6 rounded-2xl bg-zinc-900/60 border border-white/10 backdrop-blur-xl flex flex-col justify-between gap-4 hover:border-white/30 hover:bg-zinc-900/80 transition-all hover:-translate-y-1 shadow-lg group"
+            className="p-6 rounded-2xl bg-[#111111]/70 border border-[#2A2A2A] backdrop-blur-xl flex flex-col justify-between gap-4 hover:border-[#0047AB]/50 hover:bg-[#111111] transition-all hover:-translate-y-1 shadow-lg group"
           >
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400 line-through">
@@ -46,7 +46,7 @@ export const BenefitsSection: React.FC = () => {
                 <span>{item.oldTool}</span>
               </div>
               <div className="flex items-start gap-2 text-sm font-bold text-white">
-                <CheckCircle2 className="w-4 h-4 text-white shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                <CheckCircle2 className="w-4 h-4 text-[#2563EB] shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
                 <span>{item.replacedBy}</span>
               </div>
             </div>

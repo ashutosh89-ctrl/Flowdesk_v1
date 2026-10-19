@@ -26,12 +26,12 @@ export const Progress: React.FC<ProgressProps> = ({
       {showLabel && (
         <div className="flex justify-between items-center text-xs font-medium text-zinc-400">
           <span>Progress</span>
-          <span className="text-white font-semibold">{clampedValue}%</span>
+          <span className="text-[#2563EB] font-bold">{clampedValue}%</span>
         </div>
       )}
-      <div className={`w-full bg-zinc-900 border border-white/10 rounded-full overflow-hidden p-0.5 ${heightStyles[size]}`}>
+      <div className={`w-full bg-[#111111] border border-[#2A2A2A] rounded-full overflow-hidden p-0.5 ${heightStyles[size]}`}>
         <div
-          className="bg-white h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(255,255,255,0.6)]"
+          className="bg-gradient-to-r from-[#0047AB] to-[#2563EB] h-full rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(37,99,235,0.7)]"
           style={{ width: `${clampedValue}%` }}
         />
       </div>

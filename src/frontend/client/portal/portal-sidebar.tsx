@@ -136,12 +136,12 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   ];
 
   const content = (
-    <div className="h-full flex flex-col justify-between p-4 bg-zinc-950/95 backdrop-blur-2xl border-r border-white/10 w-64 text-white font-sans">
+    <div className="h-full flex flex-col justify-between p-4 bg-[#0A0A0A] backdrop-blur-2xl border-r border-[#2A2A2A] w-64 text-white font-sans">
       <div className="space-y-6">
         {/* Brand / Client Workspace Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/10">
+        <div className="flex items-center justify-between pb-4 border-b border-[#2A2A2A]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-white to-zinc-300 text-zinc-950 font-extrabold flex items-center justify-center text-base shadow-lg shadow-white/5 shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0047AB] to-[#2563EB] text-white font-extrabold flex items-center justify-center text-base shadow-lg shadow-[#0047AB]/25 shrink-0">
               {companyName ? companyName.charAt(0) : 'C'}
             </div>
             <div className="min-w-0">
@@ -160,7 +160,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         </div>
 
         {/* Client Welcome Tag */}
-        <div className="px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center gap-2.5">
+        <div className="px-3 py-2.5 rounded-xl bg-[#111111] border border-[#2A2A2A] flex items-center gap-2.5">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
           <div className="min-w-0">
             <p className="text-[10px] uppercase font-mono text-zinc-400 font-semibold tracking-wider">Logged in as</p>
@@ -185,18 +185,18 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all group ${
                   isActive
-                    ? 'bg-white text-zinc-950 font-bold shadow-md shadow-white/10'
+                    ? 'bg-[#0047AB] text-white font-bold shadow-md shadow-[#0047AB]/25'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-zinc-950' : 'text-zinc-400 group-hover:text-white'}`} />
+                  <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'text-zinc-400 group-hover:text-white'}`} />
                   <span>{item.label}</span>
                 </div>
                 {item.badge !== undefined && item.badge > 0 && (
                   <span
                     className={`px-2 py-0.5 rounded-full text-[10px] font-mono border font-bold ${
-                      isActive ? 'bg-zinc-900 text-white border-zinc-700' : item.badgeColor
+                      isActive ? 'bg-[#003A8C] text-white border-white/20' : item.badgeColor
                     }`}
                   >
                     {item.badge}
@@ -209,7 +209,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       </div>
 
       {/* Switcher & Security Footer */}
-      <div className="pt-4 border-t border-white/10 space-y-2.5">
+      <div className="pt-4 border-t border-[#2A2A2A] space-y-2.5">
         {hasFreelancerAccess && (
           <button
             type="button"
@@ -234,7 +234,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white bg-white/[0.02] hover:bg-white/10 border border-white/10 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white bg-[#181818] hover:bg-[#202020] border border-[#2A2A2A] transition-colors"
         >
           <LogOut className="w-3.5 h-3.5" />
           Sign Out of Portal

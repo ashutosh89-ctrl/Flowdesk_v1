@@ -51,7 +51,7 @@ export const Modal: React.FC<ModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md"
+            className="fixed inset-0 bg-black/85 backdrop-blur-md"
           />
 
           {/* Modal Content Window */}
@@ -60,11 +60,11 @@ export const Modal: React.FC<ModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-            className={`relative w-full ${sizeWidths[size]} bg-zinc-900/90 border border-white/15 backdrop-blur-2xl rounded-2xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8),inset_0_1px_0_0_rgba(255,255,255,0.15)] overflow-hidden z-10 flex flex-col max-h-[90vh]`}
+            className={`relative w-full ${sizeWidths[size]} bg-[#111111]/95 border border-[#2A2A2A] backdrop-blur-2xl rounded-2xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.9),inset_0_1px_0_0_rgba(255,255,255,0.08)] overflow-hidden z-10 flex flex-col max-h-[90vh]`}
           >
             {/* Header */}
             {(title || description) && (
-              <div className="flex items-start justify-between p-6 pb-4 border-b border-white/10 shrink-0">
+              <div className="flex items-start justify-between p-6 pb-4 border-b border-[#2A2A2A] shrink-0">
                 <div className="pr-6">
                   {title && <h2 className="text-xl font-semibold text-white tracking-tight">{title}</h2>}
                   {description && <p className="text-sm text-zinc-400 mt-1">{description}</p>}

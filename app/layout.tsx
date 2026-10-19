@@ -178,7 +178,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body
-        className="bg-[#09090b] text-white min-h-screen font-sans selection:bg-white selection:text-zinc-950 antialiased"
+        className="bg-[#0A0A0A] text-[#F5F7FA] min-h-screen font-sans selection:bg-[#0047AB] selection:text-white antialiased"
         suppressHydrationWarning
       >
         <RootProviders>{children}</RootProviders>

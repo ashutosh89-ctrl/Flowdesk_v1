@@ -64,10 +64,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             type={inputType}
             value={value}
             disabled={disabled}
-            className={`w-full bg-zinc-900/50 backdrop-blur-md text-zinc-100 text-sm placeholder-zinc-500 border rounded-xl py-2.5 transition-all duration-200 focus:outline-none focus:ring-2 ${
+            className={`w-full bg-[#111111]/70 backdrop-blur-md text-[#F5F7FA] text-sm placeholder-zinc-500 border rounded-xl py-2.5 transition-all duration-200 focus:outline-none focus:ring-2 ${
               error
-                ? 'border-red-500/60 focus:border-red-500 focus:ring-red-500/20'
-                : 'border-white/10 hover:border-white/20 focus:border-white/40 focus:ring-white/20'
+                ? 'border-rose-500/60 focus:border-rose-500 focus:ring-rose-500/25'
+                : 'border-[#2A2A2A] hover:border-zinc-500 focus:border-[#2563EB] focus:ring-[#2563EB]/25'
             } ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${
               isCurrency ? 'pl-8' : leftIcon || isSearch ? 'pl-10' : 'pl-3.5'
             } ${rightIcon || isPassword || onClear ? 'pr-10' : 'pr-3.5'} ${className}`}

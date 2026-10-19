@@ -59,13 +59,13 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
 
         {/* Interval Selector */}
         <div className="pt-4 flex justify-center">
-          <div className="inline-flex items-center p-1 bg-zinc-900 border border-white/10 rounded-xl">
+          <div className="inline-flex items-center p-1 bg-[#111111] border border-[#2A2A2A] rounded-xl">
             <button
               type="button"
               onClick={() => setInterval('monthly')}
               className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 interval === 'monthly'
-                  ? 'bg-white/10 text-white shadow-sm'
+                  ? 'bg-[#0047AB] text-white shadow-sm shadow-[#0047AB]/30'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -76,7 +76,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
               onClick={() => setInterval('yearly')}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 interval === 'yearly'
-                  ? 'bg-white/10 text-white shadow-sm'
+                  ? 'bg-[#0047AB] text-white shadow-sm shadow-[#0047AB]/30'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -104,15 +104,15 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
               viewport={{ once: true }}
               className={`flex flex-col justify-between p-6 sm:p-8 rounded-3xl border transition-all ${
                 isPopular
-                  ? 'bg-zinc-900/90 border-emerald-500/40 shadow-[0_20px_60px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/30'
-                  : 'bg-zinc-900/60 border-white/10 hover:border-white/20'
+                  ? 'bg-[#111111]/95 border-[#2563EB]/60 shadow-[0_20px_60px_rgba(0,71,171,0.25)] ring-1 ring-[#0047AB]/50'
+                  : 'bg-[#111111]/70 border-[#2A2A2A] hover:border-[#0047AB]/40'
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-xl font-bold text-white tracking-tight">{plan.name}</h3>
                   {plan.badge && (
-                    <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/25">
+                    <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-[#0047AB]/20 text-[#E8F0FF] border border-[#2563EB]/40">
                       {plan.badge}
                     </span>
                   )}
@@ -122,7 +122,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
                   {plan.tagline}
                 </p>
 
-                <div className="mb-6 pb-6 border-b border-white/10">
+                <div className="mb-6 pb-6 border-b border-[#2A2A2A]">
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
                       ₹{price.toLocaleString('en-IN')}
@@ -151,7 +151,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
                   variant={isPopular ? 'primary' : 'secondary'}
                   size="lg"
                   className={`w-full ${
-                    isPopular ? 'shadow-[0_0_24px_rgba(16,185,129,0.3)]' : ''
+                    isPopular ? 'shadow-[0_0_24px_rgba(0,71,171,0.4)]' : ''
                   }`}
                   onClick={() => onOpenAuth('signup')}
                   rightIcon={<ArrowRight className="w-4 h-4" />}
@@ -170,12 +170,12 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
         whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
         viewport={{ once: false, amount: 0.15 }}
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        className="relative rounded-3xl p-8 sm:p-12 border border-white/20 bg-zinc-900/85 backdrop-blur-3xl shadow-[0_30px_90px_rgba(0,0,0,0.9)] overflow-hidden"
+        className="relative rounded-3xl p-8 sm:p-12 border border-[#2A2A2A] bg-[#111111]/90 backdrop-blur-3xl shadow-[0_30px_90px_rgba(0,0,0,0.9)] overflow-hidden"
       >
-        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-white/10">
+        <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-8 border-b border-[#2A2A2A]">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white border border-white/15 text-xs font-mono mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0047AB]/20 text-[#E8F0FF] border border-[#2563EB]/30 text-xs font-mono mb-3">
+              <Sparkles className="w-3.5 h-3.5 text-[#2563EB]" />
               <span>Complete Freelance Workspace</span>
             </div>
             <h3 className="text-2xl font-bold text-white tracking-tight">
@@ -200,9 +200,9 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
           {capabilities.map((cap, idx) => (
             <div
               key={idx}
-              className="flex items-start gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-white/25 hover:bg-white/[0.06] transition-all duration-300"
+              className="flex items-start gap-4 p-4 rounded-2xl bg-[#181818]/60 border border-[#2A2A2A] hover:border-[#0047AB]/40 hover:bg-[#181818] transition-all duration-300"
             >
-              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-[#0047AB]/15 border border-[#2563EB]/30 flex items-center justify-center shrink-0">
                 {cap.icon}
               </div>
               <div className="space-y-0.5">
@@ -216,7 +216,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
           ))}
         </div>
 
-        <div className="relative z-10 mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-400 gap-3">
+        <div className="relative z-10 mt-8 pt-6 border-t border-[#2A2A2A] flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-400 gap-3">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>Client data is protected by strict workspace isolation and never deleted on payment failure.</span>

@@ -9,14 +9,14 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ children, variant = 'crystal', interactive = false, className = '', ...props }, ref) => {
     const variantStyles = {
       crystal:
-        'bg-zinc-900/60 backdrop-blur-xl border border-white/10 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.1)] relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/5 before:to-transparent before:pointer-events-none',
-      subtle: 'bg-zinc-900/40 border border-white/5 backdrop-blur-md',
-      outline: 'bg-transparent border border-white/10',
-      flat: 'bg-zinc-900/80 border border-zinc-800',
+        'bg-[#111111]/85 backdrop-blur-xl border border-[#2A2A2A] shadow-[0_10px_30px_-5px_rgba(0,0,0,0.6),inset_0_1px_0_0_rgba(255,255,255,0.06)] relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/[0.04] before:to-transparent before:pointer-events-none',
+      subtle: 'bg-[#111111]/60 border border-[#2A2A2A]/70 backdrop-blur-md',
+      outline: 'bg-transparent border border-[#2A2A2A]',
+      flat: 'bg-[#111111] border border-[#2A2A2A]',
     };
 
     const interactiveStyles = interactive
-      ? 'cursor-pointer hover:border-white/20 hover:bg-zinc-900/80 hover:shadow-[0_16px_40px_-10px_rgba(0,0,0,0.7)] transition-all duration-200 hover:-translate-y-0.5'
+      ? 'cursor-pointer hover:border-[#2563EB]/40 hover:bg-[#181818] hover:shadow-[0_16px_40px_-10px_rgba(0,71,171,0.25)] transition-all duration-200 hover:-translate-y-0.5'
       : '';
 
     return (
