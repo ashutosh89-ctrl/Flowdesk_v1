@@ -11,7 +11,7 @@ interface InvoiceBuilderModalProps {
   isOpen: boolean;
   onClose: () => void;
   invoiceToEdit?: Invoice | null;
-  onSave?: (invoiceData: any) => Promise<void> | void;
+  onSave?: (invoiceData: any, savedInvoice?: Invoice | null) => Promise<void> | void;
   defaultClientId?: string;
 }
 
@@ -104,7 +104,7 @@ export function InvoiceBuilderModal({
         setTaxName(settings?.tax_name || 'GST');
         setCurrency(studioCurrency);
 
-        const targetClient = (defaultClientId && allClients.find((c) => c.id === defaultClientId)) || allClients[0];
+        const targetClient = (defaultClientId && allClients.find((c) => c.id === defaultClientId)) || allClients.find((c) => c.id === selectedClientId) || allClients[0];
         if (targetClient) {
           setSelectedClientId(targetClient.id);
           if (targetClient.currency && targetClient.currency !== 'USD') {
@@ -114,6 +114,9 @@ export function InvoiceBuilderModal({
           }
           FreelancerProjectService.getProjectsByClientId(targetClient.id).then(setProjects);
         } else {
+          if (defaultClientId) {
+            setSelectedClientId(defaultClientId);
+          }
           setCurrency(studioCurrency);
           setProjects([]);
         }
@@ -234,14 +237,15 @@ export function InvoiceBuilderModal({
         internalNotes,
       };
 
-      if (onSave) {
-        await onSave(payload);
+      let savedInvoice: Invoice | null = null;
+      if (invoiceToEdit) {
+        savedInvoice = (await FreelancerInvoiceService.updateInvoice(invoiceToEdit.id, payload)) || null;
       } else {
-        if (invoiceToEdit) {
-          await FreelancerInvoiceService.updateInvoice(invoiceToEdit.id, payload);
-        } else {
-          await FreelancerInvoiceService.createInvoice(payload);
-        }
+        savedInvoice = await FreelancerInvoiceService.createInvoice(payload);
+      }
+
+      if (onSave) {
+        await onSave(payload, savedInvoice);
       }
       onClose();
     } catch (err) {

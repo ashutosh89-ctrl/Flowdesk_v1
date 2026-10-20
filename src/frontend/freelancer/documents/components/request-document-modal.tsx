@@ -42,6 +42,12 @@ export const RequestDocumentModal: React.FC<RequestDocumentModalProps> = ({
   const effectiveClientId = docClientId || defaultClientId || clients[0]?.id || '';
 
   useEffect(() => {
+    if (defaultClientId) {
+      setDocClientId(defaultClientId);
+    }
+  }, [defaultClientId]);
+
+  useEffect(() => {
     if (isOpen && (!propClients || propClients.length === 0)) {
       ClientService.getClients().then((cls) => {
         setFetchedClients(cls);
@@ -76,8 +82,8 @@ export const RequestDocumentModal: React.FC<RequestDocumentModalProps> = ({
       return;
     }
 
-    const effectiveClientId = docClientId || clients[0]?.id;
-    if (!effectiveClientId) {
+    const targetClientId = docClientId || defaultClientId || clients[0]?.id;
+    if (!targetClientId) {
       setError('Please select a target client.');
       return;
     }
@@ -86,7 +92,7 @@ export const RequestDocumentModal: React.FC<RequestDocumentModalProps> = ({
     setError(null);
 
     try {
-      const createdDoc = await DocumentService.requestDocument(effectiveClientId, {
+      const createdDoc = await DocumentService.requestDocument(targetClientId, {
         title: docTitle.trim(),
         type: docType,
         isRequired,

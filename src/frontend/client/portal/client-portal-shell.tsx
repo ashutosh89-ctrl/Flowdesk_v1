@@ -176,6 +176,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
         }}
         companyName={client.company}
         clientName={client.name}
+        logoUrl={(branding as any)?.logoUrl || (profile as any)?.logoUrl || client.avatarUrl || '/branding/flowdesk-symbol.png'}
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         pendingApprovalsCount={pendingApprovalsCount}
@@ -190,6 +191,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
         <PortalHeader
           companyName={client.company}
           clientName={client.name}
+          logoUrl={(branding as any)?.logoUrl || (profile as any)?.logoUrl || client.avatarUrl || '/branding/flowdesk-symbol.png'}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           notifications={notifications}
@@ -391,6 +393,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
               {activeTab === 'invoices' && (
                 <InvoicesPanel
                   invoices={invoices}
+                  profile={(branding as any) || profile}
                   onPayClick={(inv) => {
                     setSelectedPaymentInvoice(inv);
                   }}

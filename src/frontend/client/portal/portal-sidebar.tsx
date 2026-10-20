@@ -17,6 +17,7 @@ import {
   BriefcaseBusiness,
 } from 'lucide-react';
 import { ClientAuthService } from '@/backend/client/client-auth-service';
+import { isSafeImageUrl } from '@/shared/utils/safe-url';
 
 export type PortalTabType =
   | 'overview'
@@ -33,6 +34,7 @@ interface PortalSidebarProps {
   onTabChange: (tab: PortalTabType) => void;
   companyName: string;
   clientName: string;
+  logoUrl?: string;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
   unreadCommentsCount?: number;
@@ -46,6 +48,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
   onTabChange,
   companyName,
   clientName,
+  logoUrl,
   isMobileOpen = false,
   onCloseMobile,
   unreadCommentsCount = 0,
@@ -141,9 +144,15 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         {/* Brand / Client Workspace Header */}
         <div className="flex items-center justify-between pb-4 border-b border-[#2A2A2A]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0047AB] to-[#2563EB] text-white font-extrabold flex items-center justify-center text-base shadow-lg shadow-[#0047AB]/25 shrink-0">
-              {companyName ? companyName.charAt(0) : 'C'}
-            </div>
+            {logoUrl && isSafeImageUrl(logoUrl) ? (
+              <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center p-1.5 shadow-lg shadow-black/40 shrink-0 overflow-hidden">
+                <img src={logoUrl} alt={companyName || 'Logo'} className="w-full h-full object-contain" />
+              </div>
+            ) : (
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0047AB] to-[#2563EB] text-white font-extrabold flex items-center justify-center text-base shadow-lg shadow-[#0047AB]/25 shrink-0">
+                {companyName ? companyName.charAt(0) : 'C'}
+              </div>
+            )}
             <div className="min-w-0">
               <h2 className="text-sm font-bold text-white tracking-tight truncate">{companyName}</h2>
               <p className="text-[11px] text-zinc-400 truncate">Client Portal</p>
@@ -229,6 +238,11 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
               Encrypted authenticated access provided by your service provider.
             </p>
           </div>
+        </div>
+
+        <div className="flex items-center justify-center gap-2 py-1 text-[11px] text-zinc-500 font-medium select-none">
+          <img src="/branding/flowdesk-symbol.png" alt="FlowDesk" className="w-4 h-4 object-contain opacity-70" />
+          <span className="tracking-wide">Powered by FlowDesk</span>
         </div>
 
         <button

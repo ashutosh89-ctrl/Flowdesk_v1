@@ -73,7 +73,7 @@ export const DocumentsTab: React.FC<DocumentsTabProps> = ({ summary, onRefresh }
     const actualSize = selectedDocFile ? formatFileSize(selectedDocFile.size) : '1.8 MB';
     
     DocumentService.requestDocument(client.id, { title: docTitle, type: docType }).then((doc) => {
-      DocumentService.uploadDocumentFile(doc.id, { fileName: actualFileName, size: actualSize }).then(() => {
+      DocumentService.uploadDocumentFile(doc.id, { fileName: actualFileName, size: actualSize, file: selectedDocFile || undefined }).then(() => {
         showToast('Document Uploaded', `Uploaded "${docTitle}" to repository.`, 'success');
         setIsUploadModalOpen(false);
         resetForm();

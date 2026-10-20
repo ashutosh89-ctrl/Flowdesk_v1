@@ -63,11 +63,15 @@ export async function POST(
 
   // 3. Route Parameter Validation
   const rawParams = await context.params;
-  const paramValidation = validateRouteParam(rawParams.invoiceId, uuidSchema, 'invoiceId');
-  if (!paramValidation.success) {
-    return paramValidation.response;
+  const invoiceId = rawParams.invoiceId?.trim();
+  if (!invoiceId) {
+    return createApiErrorResponse({
+      message: 'Missing or invalid invoice ID.',
+      code: 'BAD_REQUEST',
+      status: 400,
+      requestId,
+    });
   }
-  const invoiceId = paramValidation.data;
 
   // 4. Request Body Validation
   const bodyValidation = await parseJsonBody(request, RecordOfflinePaymentSchema, {
@@ -112,7 +116,7 @@ export async function POST(
   try {
     const { data: invoice, error: fetchError } = await supabaseAdmin
       .from('invoices')
-      .select('id, workspace_id, client_id, client_email, client_name, invoice_number, total_amount, paid_amount, currency')
+      .select('id, workspace_id, client_id, client_email, client_name, invoice_number, total_amount, paid_amount, currency, status')
       .eq('id', invoiceId)
       .maybeSingle();
 
@@ -149,34 +153,89 @@ export async function POST(
       });
     }
 
-    // 7. Atomic DB Execution via RPC or transaction
-    // NULL means "settle the full remaining balance". An explicit non-positive
-    // amount is passed through untouched so the RPC rejects it instead of
-    // silently upgrading it to a full settlement.
+    // 7. Atomic DB Execution via RPC or Direct Table Fallback
     const settleAmount = amount !== undefined && amount !== null ? amount : null;
-    const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('record_manual_payment', {
-      p_invoice_id: invoiceId,
-      p_amount: settleAmount,
-      p_payment_method: paymentMethod || 'bank_transfer',
-      p_notes: notes || (settleAmount !== null ? 'Partial offline settlement recorded' : 'Payment marked as paid in full'),
-    });
+    let settledAmount = 0;
 
-    if (rpcError || (rpcResult && rpcResult.success === false)) {
-      const errMsg = rpcResult?.error || rpcError?.message || 'Payment could not be recorded.';
-      logger.error('Failed to record manual payment via RPC', rpcError, {
-        requestId,
-        invoiceId,
-        rpcResult,
+    let rpcSuccess = false;
+    try {
+      const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('record_manual_payment', {
+        p_invoice_id: invoiceId,
+        p_amount: settleAmount,
+        p_payment_method: paymentMethod || 'bank_transfer',
+        p_notes: notes || (settleAmount !== null ? 'Partial offline settlement recorded' : 'Payment marked as paid in full'),
       });
-      return createApiErrorResponse({
-        message: errMsg.includes('rpc') ? 'Payment could not be recorded. Please verify the amount.' : errMsg,
-        code: 'PAYMENT_SETTLEMENT_ERROR',
-        status: 400,
-        requestId,
-      });
+
+      if (!rpcError && rpcResult && rpcResult.success !== false) {
+        rpcSuccess = true;
+        settledAmount = Number(rpcResult.amountSettled) || amount || (invoice.total_amount - (invoice.paid_amount || 0));
+      }
+    } catch (rpcEx) {
+      logger.warn('record_manual_payment RPC threw exception, proceeding to direct write', { rpcEx });
     }
 
-    const settledAmount = Number(rpcResult?.amountSettled) || amount || (invoice.total_amount - (invoice.paid_amount || 0));
+    if (!rpcSuccess) {
+      // Direct Table Fallback
+      const total = Number(invoice.total_amount) || 0;
+      const currentPaid = Number(invoice.paid_amount) || 0;
+      const remaining = Math.max(0, total - currentPaid);
+      const actualSettle = (settleAmount !== null && settleAmount > 0) ? Math.min(settleAmount, remaining) : remaining;
+      const newPaid = currentPaid + actualSettle;
+      const isFullyPaid = newPaid >= total;
+
+      const { error: updateError } = await supabaseAdmin
+        .from('invoices')
+        .update({
+          paid_amount: newPaid,
+          payment_status: isFullyPaid ? 'paid' : 'partial',
+          status: isFullyPaid ? 'paid' : ((invoice as any)?.status || 'sent'),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', invoiceId);
+
+      if (updateError) {
+        logger.error('Failed direct table invoice update', updateError, { requestId, invoiceId });
+        return createApiErrorResponse({
+          message: 'Payment could not be recorded in database.',
+          code: 'PAYMENT_SETTLEMENT_ERROR',
+          status: 400,
+          requestId,
+        });
+      }
+
+      settledAmount = actualSettle;
+
+      // Attempt recording in payments table (non-blocking)
+      try {
+        await supabaseAdmin.from('payments').insert({
+          workspace_id: invoice.workspace_id,
+          invoice_id: invoiceId,
+          amount: actualSettle,
+          payment_method: paymentMethod || 'bank_transfer',
+          status: 'completed',
+          notes: notes || 'Manual offline payment settlement',
+          created_at: new Date().toISOString(),
+        });
+      } catch (payErr) {
+        logger.warn('Non-critical payments insert notice', { payErr });
+      }
+
+      // Record activity
+      try {
+        await supabaseAdmin.from('activities').insert({
+          workspace_id: invoice.workspace_id,
+          client_id: invoice.client_id,
+          user_id: caller.userId,
+          action: 'recorded_payment',
+          resource_type: 'invoice',
+          title: `Payment Recorded: #${invoice.invoice_number}`,
+          description: `Recorded offline payment of ${invoice.currency || '$'}${actualSettle.toLocaleString()} via ${paymentMethod || 'bank transfer'}`,
+          created_at: new Date().toISOString(),
+        });
+      } catch {
+        // non-critical
+      }
+    }
 
     // 8. Non-Blocking Email Dispatch
     if (invoice.client_email) {

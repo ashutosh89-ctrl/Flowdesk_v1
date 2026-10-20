@@ -58,6 +58,14 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
   const [projectId, setProjectId] = useState(defaultProjectId || '');
 
   React.useEffect(() => {
+    if (defaultClientId) setClientId(defaultClientId);
+  }, [defaultClientId]);
+
+  React.useEffect(() => {
+    if (defaultProjectId) setProjectId(defaultProjectId);
+  }, [defaultProjectId]);
+
+  React.useEffect(() => {
     if (isOpen) {
       if (!propClients || propClients.length === 0) {
         FreelancerClientService.getClients().then(setFetchedClients);

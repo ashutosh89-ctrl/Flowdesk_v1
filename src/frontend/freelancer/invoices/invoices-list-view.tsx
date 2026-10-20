@@ -144,16 +144,14 @@ export const InvoicesListView: React.FC = () => {
   const handleSaveInvoice = async (payload: any) => {
     setIsSaving(true);
     try {
-      if (invoiceToEdit) {
-        await InvoiceService.updateInvoice(invoiceToEdit.id, payload);
-        showToast('Invoice Updated', `Invoice ${payload.invoiceNumber} saved successfully.`, 'success');
-      } else {
-        await InvoiceService.createInvoice(payload);
-        showToast('Invoice Created', `Invoice ${payload.invoiceNumber} created and recorded.`, 'success');
-      }
+      showToast(
+        invoiceToEdit ? 'Invoice Updated' : 'Invoice Created',
+        `Invoice ${payload.invoiceNumber} ${invoiceToEdit ? 'updated' : 'created and recorded'}.`,
+        'success'
+      );
       await refreshData();
     } catch (err) {
-      showToast('Error', err instanceof Error ? err.message : 'Unable to save invoice.', 'error');
+      showToast('Error', err instanceof Error ? err.message : 'Unable to refresh invoices.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -165,7 +163,7 @@ export const InvoicesListView: React.FC = () => {
       showToast('Settlement Recorded', 'Invoice payment recorded successfully.', 'success');
       await refreshData();
     } catch (err) {
-      showToast('Error', 'Payment could not be recorded.', 'error');
+      showToast('Error', err instanceof Error ? err.message : 'Payment could not be recorded.', 'error');
     }
   };
 

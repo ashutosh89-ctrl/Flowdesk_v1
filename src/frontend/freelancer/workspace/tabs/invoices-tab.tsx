@@ -112,7 +112,10 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({ summary, onRefresh }) 
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         defaultClientId={client.id}
-        onSave={() => onRefresh()}
+        onSave={async (payload) => {
+          showToast('Invoice Created', `Invoice ${payload?.invoiceNumber || ''} created and recorded in workspace.`, 'success');
+          onRefresh();
+        }}
       />
 
       {/* View Invoice Modal */}

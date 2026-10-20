@@ -486,6 +486,7 @@ export const ClientPortalService = {
       businessName: 'FlowDesk Freelance Studio',
       freelancerName: 'Studio Lead',
       email: '',
+      logoUrl: '/branding/flowdesk-symbol.png',
     };
 
     try {
@@ -493,20 +494,21 @@ export const ClientPortalService = {
       if (wsId) {
         const { data: wsData } = await supabase
           .from('workspaces')
-          .select('name, logo_url, signature_url, user_id')
+          .select('name, logo_url, signature_url, owner_id, user_id')
           .eq('id', wsId)
           .maybeSingle();
 
         if (wsData) {
           branding.businessName = wsData.name || branding.businessName;
-          branding.logoUrl = wsData.logo_url || undefined;
-          branding.signatureUrl = wsData.signature_url || undefined;
+          if (wsData.logo_url) branding.logoUrl = wsData.logo_url;
+          if (wsData.signature_url) branding.signatureUrl = wsData.signature_url;
 
-          if (wsData.user_id) {
+          const ownerId = wsData.owner_id || wsData.user_id;
+          if (ownerId) {
             const { data: profData } = await supabase
               .from('profiles')
               .select('full_name, business_name, email, phone, logo_url, signature_url')
-              .eq('id', wsData.user_id)
+              .eq('id', ownerId)
               .maybeSingle();
 
             if (profData) {
@@ -514,8 +516,8 @@ export const ClientPortalService = {
               branding.businessName = profData.business_name || wsData.name || branding.businessName;
               branding.email = profData.email || '';
               branding.phone = profData.phone || '';
-              branding.logoUrl = profData.logo_url || wsData.logo_url || undefined;
-              branding.signatureUrl = profData.signature_url || wsData.signature_url || undefined;
+              if (profData.logo_url) branding.logoUrl = profData.logo_url;
+              if (profData.signature_url) branding.signatureUrl = profData.signature_url;
             }
           }
         }

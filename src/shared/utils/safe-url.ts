@@ -44,3 +44,31 @@ export function isSafeHttpUrl(url: unknown): boolean {
 export function getSafeHttpUrl(url: unknown, fallback: string = ''): string {
   return isSafeHttpUrl(url) ? (url as string).trim() : fallback;
 }
+
+/**
+ * Validates whether an image source is safe to render in <img> tags.
+ * Allows:
+ * - Relative internal paths starting with '/' (e.g. '/branding/flowdesk-symbol.png') without path traversal
+ * - Inline image data URIs (e.g. 'data:image/png;base64,...', 'data:image/jpeg;base64,...', 'data:image/svg+xml;base64,...')
+ * - Valid http: and https: URLs via isSafeHttpUrl
+ */
+export function isSafeImageUrl(url: unknown): boolean {
+  if (typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+
+  // Reject ASCII control characters
+  if (/[\x00-\x1F\x7F]/.test(trimmed)) return false;
+
+  // Allow safe relative paths in the public directory (no .. traversal)
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.includes('..')) {
+    return true;
+  }
+
+  // Allow safe image data URIs
+  if (trimmed.startsWith('data:image/') && (trimmed.includes(';base64,') || trimmed.includes(';utf8,'))) {
+    return true;
+  }
+
+  return isSafeHttpUrl(trimmed);
+}

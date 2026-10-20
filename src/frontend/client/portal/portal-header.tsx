@@ -4,10 +4,12 @@ import React from 'react';
 import { Search, Bell, Menu, Sparkles, Plus, Eye, Lock, ShieldCheck } from 'lucide-react';
 import { PortalNotification } from '@/shared/types';
 import { ClientWorkspaceSwitcher } from './client-workspace-switcher';
+import { isSafeImageUrl } from '@/shared/utils/safe-url';
 
 interface PortalHeaderProps {
   companyName: string;
   clientName: string;
+  logoUrl?: string;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   notifications: PortalNotification[];
@@ -21,6 +23,7 @@ interface PortalHeaderProps {
 export const PortalHeader: React.FC<PortalHeaderProps> = ({
   companyName,
   clientName,
+  logoUrl,
   searchQuery,
   onSearchChange,
   notifications,
@@ -47,11 +50,16 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
 
           <div>
             <div className="flex items-center gap-2">
+              {logoUrl && isSafeImageUrl(logoUrl) ? (
+                <img src={logoUrl} alt="" className="w-4 h-4 object-contain rounded" />
+              ) : (
+                <img src="/branding/flowdesk-symbol.png" alt="" className="w-4 h-4 object-contain opacity-80" />
+              )}
               <span className="text-xs font-mono uppercase text-zinc-400 font-semibold tracking-wider">
                 {companyName}
               </span>
               <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-zinc-600" />
-              <span className="hidden sm:inline-block text-xs text-zinc-400 font-medium">Your Client Portal</span>
+              <span className="hidden sm:inline-block text-xs text-zinc-400 font-medium">Client Portal</span>
             </div>
             <h1 className="text-base sm:text-lg font-bold text-white tracking-tight">{activeTabTitle}</h1>
           </div>

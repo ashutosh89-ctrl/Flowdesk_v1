@@ -65,6 +65,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (defaultClientId) {
+      setClientId(defaultClientId);
+    }
+  }, [defaultClientId]);
+
+  useEffect(() => {
     if (isOpen && (!propClients || propClients.length === 0)) {
       ClientService.getClients().then((cls) => {
         setFetchedClients(cls);
@@ -110,7 +116,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       return;
     }
 
-    const effectiveClientId = clientId || clients[0]?.id;
+    const effectiveClientId = clientId || defaultClientId || clients[0]?.id;
     if (!effectiveClientId) {
       setError('Please select or create a client workspace first.');
       return;

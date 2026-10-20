@@ -32,6 +32,8 @@ function getTargetInvoiceElement(elementOrId?: HTMLElement | string | null): HTM
 
 /**
  * Renders an offscreen InvoiceDocument for cases when no modal preview is mounted in the DOM
+/**
+ * Renders an offscreen InvoiceDocument for cases when no modal preview is mounted in the DOM
  * (e.g., clicking download directly from table rows or list views, or when responsive preview is scaled).
  */
 async function renderOffscreenInvoiceDocument(
@@ -40,12 +42,13 @@ async function renderOffscreenInvoiceDocument(
 ): Promise<{ container: HTMLElement; unmount: () => void; sheetElement: HTMLElement }> {
   const container = document.createElement('div');
   container.style.position = 'fixed';
-  container.style.left = '-9999px';
-  container.style.top = '-9999px';
+  container.style.left = '0';
+  container.style.top = '0';
   container.style.width = '794px';
   container.style.background = '#ffffff';
-  container.style.zIndex = '-9999';
-  container.style.opacity = '1';
+  container.style.zIndex = '-999999';
+  container.style.opacity = '1'; // CRITICAL: 1.0 opacity so html2canvas renders 100% opaque, crisp pixels
+  container.style.visibility = 'visible';
   container.style.pointerEvents = 'none';
   document.body.appendChild(container);
 
@@ -62,7 +65,7 @@ async function renderOffscreenInvoiceDocument(
   );
 
   // Allow DOM mounting, React rendering, and fonts to paint
-  await new Promise((resolve) => setTimeout(resolve, 150));
+  await new Promise((resolve) => setTimeout(resolve, 200));
   if (document.fonts) {
     try {
       await document.fonts.ready;
@@ -70,6 +73,18 @@ async function renderOffscreenInvoiceDocument(
       // ignore font error
     }
   }
+
+  // Ensure all images are fully loaded before capturing
+  const images = Array.from(container.querySelectorAll('img'));
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    })
+  );
 
   const sheetElement = (container.querySelector('.invoice-document-sheet') as HTMLElement) || container;
 
@@ -102,16 +117,26 @@ export async function exportInvoiceToPNG(
 
   let targetEl = getTargetInvoiceElement(elementOrId);
   let cleanup: (() => void) | null = null;
+  let restoreTransform: (() => void) | null = null;
 
-  // If no mounted element or if it's scaled down, render a clean offscreen 794px version
-  if ((!targetEl || targetEl.style.transform || targetEl.closest('[style*="scale"]')) && invoice) {
+  // Always use pristine offscreen renderer if invoice is provided to bypass modal container clipping and CSS scale transforms
+  if (invoice) {
     try {
       const offscreen = await renderOffscreenInvoiceDocument(invoice, branding);
       targetEl = offscreen.sheetElement;
       cleanup = offscreen.unmount;
-    } catch {
-      // keep targetEl
+    } catch (offErr) {
+      console.warn('Offscreen render error, falling back to targetEl:', offErr);
     }
+  } else if (targetEl && document.body.contains(targetEl)) {
+    const prevTransform = targetEl.style.transform;
+    const prevOrigin = targetEl.style.transformOrigin;
+    targetEl.style.transform = 'none';
+    targetEl.style.transformOrigin = 'top left';
+    restoreTransform = () => {
+      targetEl!.style.transform = prevTransform;
+      targetEl!.style.transformOrigin = prevOrigin;
+    };
   }
 
   if (!targetEl) {
@@ -123,14 +148,33 @@ export async function exportInvoiceToPNG(
     const canvas = await (html2canvas as any)(targetEl, {
       scale: 2, // 2x high resolution
       useCORS: true,
-      allowTaint: true,
+      allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
+      scrollX: 0,
+      scrollY: 0,
       windowWidth: 1200,
       imageTimeout: 15000,
     });
 
-    const dataUrl = canvas.toDataURL('image/png', 1.0);
+    let dataUrl: string;
+    try {
+      dataUrl = canvas.toDataURL('image/png', 1.0);
+    } catch {
+      // In case of tainted canvas error, retry without cross-origin images
+      const fallbackCanvas = await (html2canvas as any)(targetEl, {
+        scale: 2,
+        useCORS: false,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 1200,
+      });
+      dataUrl = fallbackCanvas.toDataURL('image/png', 1.0);
+    }
+
     const link = document.createElement('a');
     link.download = sanitizeFilename(invoiceNumber, 'png');
     link.href = dataUrl;
@@ -142,6 +186,7 @@ export async function exportInvoiceToPNG(
     console.error('Failed to export invoice to PNG:', err);
     return false;
   } finally {
+    if (restoreTransform) restoreTransform();
     if (cleanup) cleanup();
   }
 }
@@ -159,15 +204,26 @@ export async function exportInvoiceToJPG(
 
   let targetEl = getTargetInvoiceElement(elementOrId);
   let cleanup: (() => void) | null = null;
+  let restoreTransform: (() => void) | null = null;
 
-  if ((!targetEl || targetEl.style.transform || targetEl.closest('[style*="scale"]')) && invoice) {
+  // Always use pristine offscreen renderer if invoice is provided to bypass modal container clipping and CSS scale transforms
+  if (invoice) {
     try {
       const offscreen = await renderOffscreenInvoiceDocument(invoice, branding);
       targetEl = offscreen.sheetElement;
       cleanup = offscreen.unmount;
-    } catch {
-      // keep targetEl
+    } catch (offErr) {
+      console.warn('Offscreen render error, falling back to targetEl:', offErr);
     }
+  } else if (targetEl && document.body.contains(targetEl)) {
+    const prevTransform = targetEl.style.transform;
+    const prevOrigin = targetEl.style.transformOrigin;
+    targetEl.style.transform = 'none';
+    targetEl.style.transformOrigin = 'top left';
+    restoreTransform = () => {
+      targetEl!.style.transform = prevTransform;
+      targetEl!.style.transformOrigin = prevOrigin;
+    };
   }
 
   if (!targetEl) {
@@ -179,14 +235,32 @@ export async function exportInvoiceToJPG(
     const canvas = await (html2canvas as any)(targetEl, {
       scale: 2,
       useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff', // Required for clean white background without transparency artifacts
+      allowTaint: false,
+      backgroundColor: '#ffffff',
       logging: false,
+      scrollX: 0,
+      scrollY: 0,
       windowWidth: 1200,
       imageTimeout: 15000,
     });
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    let dataUrl: string;
+    try {
+      dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    } catch {
+      const fallbackCanvas = await (html2canvas as any)(targetEl, {
+        scale: 2,
+        useCORS: false,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 1200,
+      });
+      dataUrl = fallbackCanvas.toDataURL('image/jpeg', 0.95);
+    }
+
     const link = document.createElement('a');
     link.download = sanitizeFilename(invoiceNumber, 'jpg');
     link.href = dataUrl;
@@ -198,6 +272,7 @@ export async function exportInvoiceToJPG(
     console.error('Failed to export invoice to JPG:', err);
     return false;
   } finally {
+    if (restoreTransform) restoreTransform();
     if (cleanup) cleanup();
   }
 }
@@ -329,7 +404,7 @@ export async function printInvoice(
         <style>
           @page {
             size: A4 portrait;
-            margin: 12mm 15mm;
+            margin: 8mm 12mm;
           }
           * {
             box-sizing: border-box;
@@ -342,12 +417,17 @@ export async function printInvoice(
             background: #ffffff !important;
             color: #09090b !important;
             width: 100% !important;
+            height: auto !important;
+            opacity: 1 !important;
+            visibility: visible !important;
           }
           .print-wrapper {
             width: 100% !important;
             max-width: 794px !important;
             margin: 0 auto !important;
             background: #ffffff !important;
+            opacity: 1 !important;
+            visibility: visible !important;
           }
           .invoice-document-sheet {
             box-shadow: none !important;
@@ -355,8 +435,11 @@ export async function printInvoice(
             transform: none !important;
             width: 100% !important;
             max-width: 794px !important;
+            min-height: auto !important;
             margin: 0 auto !important;
             padding: 0 !important;
+            opacity: 1 !important;
+            visibility: visible !important;
           }
           table, tr, .avoid-break {
             page-break-inside: avoid !important;
@@ -377,12 +460,15 @@ export async function printInvoice(
 
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
+    iframe.style.left = '0';
+    iframe.style.top = '0';
+    iframe.style.width = '100vw';
+    iframe.style.height = '100vh';
     iframe.style.border = '0';
-    iframe.style.visibility = 'hidden';
+    iframe.style.zIndex = '-99999';
+    iframe.style.opacity = '1'; // CRITICAL: 1.0 opacity so Chromium print engine renders visible content
+    iframe.style.visibility = 'visible';
+    iframe.style.pointerEvents = 'none';
     document.body.appendChild(iframe);
 
     const doc = iframe.contentWindow?.document;

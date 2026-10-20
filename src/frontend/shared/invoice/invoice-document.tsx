@@ -4,7 +4,7 @@ import React, { forwardRef, useEffect, useRef, useState } from 'react';
 import { Invoice, UserProfile, InvoiceBranding } from '@/shared/types';
 import { formatCurrency, getCurrencySymbol } from '@/shared/utils/currency';
 import { convertAmountToWords } from '@/shared/utils/number-to-words';
-import { isSafeHttpUrl } from '@/shared/utils/safe-url';
+import { isSafeHttpUrl, isSafeImageUrl } from '@/shared/utils/safe-url';
 
 import { Building2, Landmark, QrCode } from 'lucide-react';
 
@@ -243,7 +243,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
           <div className="flex items-start justify-between gap-6 pb-6 border-b border-zinc-300">
             {/* Business / Studio Info (Left) */}
             <div className="flex items-start gap-4 max-w-[60%]">
-              {logoUrl && isSafeHttpUrl(logoUrl) ? (
+              {logoUrl && isSafeImageUrl(logoUrl) ? (
                 <img
                   src={logoUrl}
                   alt={studioName}
@@ -251,8 +251,12 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
                   className="h-14 w-auto max-w-[140px] object-contain rounded-lg shrink-0"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-xl bg-zinc-900 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Building2 className="w-6 h-6 text-zinc-100" />
+                <div className="w-12 h-12 rounded-xl bg-zinc-950 border border-zinc-200 flex items-center justify-center shrink-0 shadow-sm overflow-hidden p-1.5">
+                  <img
+                    src="/branding/flowdesk-symbol.png"
+                    alt="FlowDesk Studio"
+                    className="w-full h-full object-contain"
+                  />
                 </div>
               )}
 
