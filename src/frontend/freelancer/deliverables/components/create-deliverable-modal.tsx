@@ -5,24 +5,15 @@ import { Button } from '@/frontend/shared/ui/button';
 import { Client, Project, DeliverablePriority, DeliverableNiche, DeliverableNicheMetadata } from '@/shared/types';
 import {
   Layers,
-  Calendar,
   FileText,
+  Code2,
+  Briefcase,
+  CheckCircle2,
   Lock,
   MessageSquare,
-  AlertCircle,
-  Code2,
-  Palette,
-  Video,
-  Share2,
-  Search,
-  PenTool,
-  Briefcase,
-  GitBranch,
-  GitPullRequest,
-  ExternalLink,
-  CheckSquare,
 } from 'lucide-react';
 
+import { useAuth } from '@/frontend/auth/auth-context';
 import { FreelancerClientService, FreelancerProjectService, FreelancerDeliverableService } from '@/backend/freelancer';
 import { useToast } from '@/frontend/shared/ui/toast';
 
@@ -92,64 +83,29 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
   const [fileSize, setFileSize] = useState('3.5 MB');
   const [fileUrl, setFileUrl] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const { userSettings } = useAuth();
   const [internalNotes, setInternalNotes] = useState('');
   const [submissionMessage, setSubmissionMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
 
-  // Freelancer Niche & Specialized Fields
-  const [niche, setNiche] = useState<DeliverableNiche>('general');
+  // Freelancer Niche & Specialized Fields (Software Developer vs Others)
+  const [niche, setNiche] = useState<DeliverableNiche>(() => {
+    return userSettings?.default_deliverable_niche || 'software_development';
+  });
 
-  // Software Development
+  React.useEffect(() => {
+    if (isOpen && userSettings?.default_deliverable_niche) {
+      setNiche(userSettings.default_deliverable_niche);
+    }
+  }, [isOpen, userSettings?.default_deliverable_niche]);
+
+  // Software Development Technical Fields
   const [repoUrl, setRepoUrl] = useState('');
   const [branchName, setBranchName] = useState('');
   const [prUrl, setPrUrl] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
   const [technicalStatus, setTechnicalStatus] = useState<'in_development' | 'code_review' | 'qa_testing' | 'deployed' | 'ready_for_review'>('ready_for_review');
-
-  // Graphic Design
-  const [designPreviewUrl, setDesignPreviewUrl] = useState('');
-  const [designTool, setDesignTool] = useState('Figma');
-  const [exportFormats, setExportFormats] = useState('PNG, SVG, PDF');
-  const [designRevisionRound, setDesignRevisionRound] = useState('1');
-
-  // Video Editing
-  const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
-  const [videoDuration, setVideoDuration] = useState('');
-  const [aspectRatio, setAspectRatio] = useState('16:9');
-  const [resolution, setResolution] = useState('1080p');
-  const [videoExportFormat, setVideoExportFormat] = useState('MP4');
-  const [videoDownloadUrl, setVideoDownloadUrl] = useState('');
-
-  // Social Media
-  const [socialPlatform, setSocialPlatform] = useState('Instagram');
-  const [socialContentType, setSocialContentType] = useState('Carousel');
-  const [campaignName, setCampaignName] = useState('');
-  const [assetCount, setAssetCount] = useState('1');
-  const [plannedPublishDate, setPlannedPublishDate] = useState('');
-  const [socialPreviewUrl, setSocialPreviewUrl] = useState('');
-  const [publishingUrl, setPublishingUrl] = useState('');
-
-  // SEO & Marketing
-  const [seoDeliverableType, setSeoDeliverableType] = useState('Monthly SEO Report');
-  const [seoReportingPeriod, setSeoReportingPeriod] = useState('');
-  const [seoReportUrl, setSeoReportUrl] = useState('');
-  const [seoAuditType, setSeoAuditType] = useState('Technical SEO Audit');
-  const [seoCompletedWork, setSeoCompletedWork] = useState('');
-
-  // Writing & Copywriting
-  const [writingContentType, setWritingContentType] = useState('Article / Blog Post');
-  const [writingDocUrl, setWritingDocUrl] = useState('');
-  const [writingLanguage, setWritingLanguage] = useState('English');
-  const [wordCount, setWordCount] = useState('');
-  const [writingRevisionRound, setWritingRevisionRound] = useState('1');
-
-  // Consulting & Virtual Assistance
-  const [consultingType, setConsultingType] = useState('Executive Brief / SOP');
-  const [consultingPeriod, setConsultingPeriod] = useState('');
-  const [consultingDocUrl, setConsultingDocUrl] = useState('');
-  const [consultingSummary, setConsultingSummary] = useState('');
-  const [consultingSignOff, setConsultingSignOff] = useState(true);
 
   const effectiveClientId = clientId || defaultClientId || clients[0]?.id || '';
   const availableProjects = projects.filter((p) => p.clientId === effectiveClientId);
@@ -164,73 +120,18 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
   };
 
   const buildNicheMetadata = (): DeliverableNicheMetadata => {
-    switch (niche) {
-      case 'software_development':
-        return {
-          repositoryUrl: repoUrl.trim() || undefined,
-          branchName: branchName.trim() || undefined,
-          pullRequestUrl: prUrl.trim() || undefined,
-          releaseVersion: version || undefined,
-          previewUrl: previewUrl.trim() || undefined,
-          technicalStatus,
-          buildStatus: 'not_connected',
-        };
-      case 'graphic_design':
-        return {
-          designPreviewUrl: designPreviewUrl.trim() || undefined,
-          designTool: designTool.trim() || undefined,
-          versionNumber: version || undefined,
-          exportFormats: exportFormats ? exportFormats.split(',').map((s) => s.trim()).filter(Boolean) : undefined,
-          revisionRound: designRevisionRound || '1',
-        };
-      case 'video_editing':
-        return {
-          videoPreviewUrl: videoPreviewUrl.trim() || undefined,
-          duration: videoDuration.trim() || undefined,
-          aspectRatio: aspectRatio || undefined,
-          resolution: resolution || undefined,
-          exportFormat: videoExportFormat || undefined,
-          versionNumber: version || undefined,
-          finalDownloadUrl: videoDownloadUrl.trim() || undefined,
-        };
-      case 'social_media':
-        return {
-          platform: socialPlatform || undefined,
-          contentType: socialContentType || undefined,
-          campaignName: campaignName.trim() || undefined,
-          assetCount: assetCount ? parseInt(assetCount, 10) : undefined,
-          plannedPublishDate: plannedPublishDate || undefined,
-          previewUrl: socialPreviewUrl.trim() || undefined,
-          publishingUrl: publishingUrl.trim() || undefined,
-        };
-      case 'seo_marketing':
-        return {
-          deliverableType: seoDeliverableType || undefined,
-          reportingPeriod: seoReportingPeriod.trim() || undefined,
-          reportUrl: seoReportUrl.trim() || undefined,
-          auditType: seoAuditType || undefined,
-          completedWorkSummary: seoCompletedWork.trim() || undefined,
-        };
-      case 'writing_translation':
-        return {
-          contentType: writingContentType || undefined,
-          documentUrl: writingDocUrl.trim() || undefined,
-          language: writingLanguage.trim() || undefined,
-          wordCount: wordCount ? parseInt(wordCount, 10) : undefined,
-          versionNumber: version || undefined,
-          revisionRound: writingRevisionRound || '1',
-        };
-      case 'consulting_va':
-        return {
-          deliverableType: consultingType || undefined,
-          reportingPeriod: consultingPeriod.trim() || undefined,
-          documentUrl: consultingDocUrl.trim() || undefined,
-          completionSummary: consultingSummary.trim() || undefined,
-          clientSignOffRequired: consultingSignOff,
-        };
-      default:
-        return {};
+    if (niche === 'software_development') {
+      return {
+        repositoryUrl: repoUrl.trim() || undefined,
+        branchName: branchName.trim() || undefined,
+        pullRequestUrl: prUrl.trim() || undefined,
+        releaseVersion: version || undefined,
+        previewUrl: previewUrl.trim() || undefined,
+        technicalStatus,
+        buildStatus: 'not_connected',
+      };
     }
+    return {};
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -293,43 +194,12 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
     setInternalNotes('');
     setSubmissionMessage('');
     setFileError(null);
-    setNiche('general');
+    setNiche(userSettings?.default_deliverable_niche || 'software_development');
     setRepoUrl('');
     setBranchName('');
     setPrUrl('');
     setPreviewUrl('');
-    setDesignPreviewUrl('');
-    setDesignTool('Figma');
-    setExportFormats('PNG, SVG, PDF');
-    setDesignRevisionRound('1');
-    setVideoPreviewUrl('');
-    setVideoDuration('');
-    setAspectRatio('16:9');
-    setResolution('1080p');
-    setVideoExportFormat('MP4');
-    setVideoDownloadUrl('');
-    setSocialPlatform('Instagram');
-    setSocialContentType('Carousel');
-    setCampaignName('');
-    setAssetCount('1');
-    setPlannedPublishDate('');
-    setSocialPreviewUrl('');
-    setPublishingUrl('');
-    setSeoDeliverableType('Monthly SEO Report');
-    setSeoReportingPeriod('');
-    setSeoReportUrl('');
-    setSeoAuditType('Technical SEO Audit');
-    setSeoCompletedWork('');
-    setWritingContentType('Article / Blog Post');
-    setWritingDocUrl('');
-    setWritingLanguage('English');
-    setWordCount('');
-    setWritingRevisionRound('1');
-    setConsultingType('Executive Brief / SOP');
-    setConsultingPeriod('');
-    setConsultingDocUrl('');
-    setConsultingSummary('');
-    setConsultingSignOff(true);
+    setTechnicalStatus('ready_for_review');
   };
 
   return (
@@ -428,29 +298,76 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
           />
         </div>
 
-        {/* Freelancer Niche / Template Selector */}
+        {/* Freelancer Niche Selector (2 Options: Software Developer vs Others) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-blue-400" />
-              <span>Freelancer Niche Template</span>
+              <span>Deliverable Workflow Type</span>
             </label>
-            <span className="text-[11px] text-zinc-500">Reveals specialized fields for your discipline</span>
+            <span className="text-[11px] text-zinc-500">Configure workflow fields for your deliverable</span>
           </div>
-          <select
-            value={niche}
-            onChange={(e) => setNiche(e.target.value as DeliverableNiche)}
-            className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-sm text-white focus:outline-none focus:border-white/30"
-          >
-            <option value="general">General / Standard Asset</option>
-            <option value="software_development">💻 Software Development & Code</option>
-            <option value="graphic_design">🎨 Graphic & Brand Design</option>
-            <option value="video_editing">🎬 Video Editing & Motion Graphics</option>
-            <option value="social_media">📱 Social Media & Content Creation</option>
-            <option value="seo_marketing">📈 SEO & Digital Marketing</option>
-            <option value="writing_translation">✍️ Writing, Copy & Translation</option>
-            <option value="consulting_va">💼 Consulting & Virtual Assistance</option>
-          </select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Software Developer Option */}
+            <button
+              type="button"
+              onClick={() => setNiche('software_development')}
+              className={`p-3.5 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
+                niche === 'software_development'
+                  ? 'bg-[#2563EB]/15 border-[#2563EB] shadow-[0_0_15px_rgba(37,99,235,0.15)] ring-1 ring-[#2563EB]/50'
+                  : 'bg-zinc-900/60 border-white/10 hover:border-white/20 hover:bg-zinc-900'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-lg ${
+                      niche === 'software_development' ? 'bg-[#2563EB]/25 text-[#60A5FA]' : 'bg-white/5 text-zinc-400'
+                    }`}>
+                      <Code2 className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-semibold text-white">Software Developer</span>
+                  </div>
+                  {niche === 'software_development' && (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#60A5FA]" />
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  Reveals technical fields: repository URL, branch, pull request, and deployment preview.
+                </p>
+              </div>
+            </button>
+
+            {/* Others Option */}
+            <button
+              type="button"
+              onClick={() => setNiche('others')}
+              className={`p-3.5 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
+                niche !== 'software_development'
+                  ? 'bg-[#2563EB]/15 border-[#2563EB] shadow-[0_0_15px_rgba(37,99,235,0.15)] ring-1 ring-[#2563EB]/50'
+                  : 'bg-zinc-900/60 border-white/10 hover:border-white/20 hover:bg-zinc-900'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-lg ${
+                      niche !== 'software_development' ? 'bg-[#2563EB]/25 text-[#60A5FA]' : 'bg-white/5 text-zinc-400'
+                    }`}>
+                      <Briefcase className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-semibold text-white">Others</span>
+                  </div>
+                  {niche !== 'software_development' && (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#60A5FA]" />
+                  )}
+                </div>
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  Standard workflow for design, video, copy, marketing, consulting, and all creative services.
+                </p>
+              </div>
+            </button>
+          </div>
         </div>
 
         {/* Specialized Niche Fields */}
@@ -505,323 +422,6 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
                 <option value="in_development">In Active Development</option>
               </select>
             </div>
-          </div>
-        )}
-
-        {niche === 'graphic_design' && (
-          <div className="p-4 rounded-xl bg-purple-500/[0.04] border border-purple-500/20 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-semibold text-purple-300">
-              <Palette className="w-4 h-4 text-purple-400" />
-              <span>Graphic & Brand Design Specifications</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input
-                label="Design Preview URL"
-                placeholder="https://figma.com/file/... or Adobe XD"
-                value={designPreviewUrl}
-                onChange={(e) => setDesignPreviewUrl(e.target.value)}
-              />
-              <Input
-                label="Design Tool / Source"
-                placeholder="e.g. Figma, Illustrator, Photoshop"
-                value={designTool}
-                onChange={(e) => setDesignTool(e.target.value)}
-              />
-              <Input
-                label="Export Formats Included"
-                placeholder="e.g. SVG, PNG 2x, PDF, AI"
-                value={exportFormats}
-                onChange={(e) => setExportFormats(e.target.value)}
-              />
-              <Input
-                label="Revision Round"
-                placeholder="e.g. Round 1"
-                value={designRevisionRound}
-                onChange={(e) => setDesignRevisionRound(e.target.value)}
-              />
-            </div>
-          </div>
-        )}
-
-        {niche === 'video_editing' && (
-          <div className="p-4 rounded-xl bg-rose-500/[0.04] border border-rose-500/20 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-semibold text-rose-300">
-              <Video className="w-4 h-4 text-rose-400" />
-              <span>Video & Motion Specifications</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input
-                label="Video Preview URL"
-                placeholder="https://vimeo.com/... or Frame.io"
-                value={videoPreviewUrl}
-                onChange={(e) => setVideoPreviewUrl(e.target.value)}
-              />
-              <Input
-                label="Final Download URL"
-                placeholder="https://drive.google.com/... or WeTransfer"
-                value={videoDownloadUrl}
-                onChange={(e) => setVideoDownloadUrl(e.target.value)}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  label="Duration"
-                  placeholder="e.g. 02:45"
-                  value={videoDuration}
-                  onChange={(e) => setVideoDuration(e.target.value)}
-                />
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1">
-                    Aspect Ratio
-                  </label>
-                  <select
-                    value={aspectRatio}
-                    onChange={(e) => setAspectRatio(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white focus:outline-none focus:border-white/30"
-                  >
-                    <option value="16:9">16:9 (Landscape)</option>
-                    <option value="9:16">9:16 (Vertical / Reels)</option>
-                    <option value="1:1">1:1 (Square)</option>
-                    <option value="4:5">4:5 (Portrait)</option>
-                    <option value="21:9">21:9 (Ultrawide)</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1">
-                    Resolution
-                  </label>
-                  <select
-                    value={resolution}
-                    onChange={(e) => setResolution(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white focus:outline-none focus:border-white/30"
-                  >
-                    <option value="4K (3840x2160)">4K UHD</option>
-                    <option value="1080p (1920x1080)">1080p Full HD</option>
-                    <option value="2K (2560x1440)">2K QHD</option>
-                    <option value="720p">720p HD</option>
-                  </select>
-                </div>
-                <Input
-                  label="Format"
-                  placeholder="e.g. MP4 (H.264), ProRes"
-                  value={videoExportFormat}
-                  onChange={(e) => setVideoExportFormat(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {niche === 'social_media' && (
-          <div className="p-4 rounded-xl bg-amber-500/[0.04] border border-amber-500/20 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-semibold text-amber-300">
-              <Share2 className="w-4 h-4 text-amber-400" />
-              <span>Social Media & Content Campaign</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1">
-                  Target Platform
-                </label>
-                <select
-                  value={socialPlatform}
-                  onChange={(e) => setSocialPlatform(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white focus:outline-none focus:border-white/30"
-                >
-                  <option value="Instagram">Instagram</option>
-                  <option value="LinkedIn">LinkedIn</option>
-                  <option value="X (Twitter)">X (Twitter)</option>
-                  <option value="TikTok">TikTok</option>
-                  <option value="YouTube">YouTube</option>
-                  <option value="Facebook">Facebook</option>
-                  <option value="Pinterest">Pinterest</option>
-                  <option value="Multi-Platform">Multi-Platform</option>
-                </select>
-              </div>
-              <Input
-                label="Content Type"
-                placeholder="e.g. Carousel, Reel, Story, Thread"
-                value={socialContentType}
-                onChange={(e) => setSocialContentType(e.target.value)}
-              />
-              <Input
-                label="Campaign Association / Name"
-                placeholder="e.g. Q4 Brand Relaunch"
-                value={campaignName}
-                onChange={(e) => setCampaignName(e.target.value)}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  label="Asset Count"
-                  type="number"
-                  placeholder="1"
-                  value={assetCount}
-                  onChange={(e) => setAssetCount(e.target.value)}
-                />
-                <Input
-                  label="Planned Publish Date"
-                  type="date"
-                  value={plannedPublishDate}
-                  onChange={(e) => setPlannedPublishDate(e.target.value)}
-                />
-              </div>
-              <Input
-                label="Preview URL"
-                placeholder="e.g. Canva link, Figma, Notion draft"
-                value={socialPreviewUrl}
-                onChange={(e) => setSocialPreviewUrl(e.target.value)}
-              />
-              <Input
-                label="Live Publishing URL (if live)"
-                placeholder="https://instagram.com/p/..."
-                value={publishingUrl}
-                onChange={(e) => setPublishingUrl(e.target.value)}
-              />
-            </div>
-          </div>
-        )}
-
-        {niche === 'seo_marketing' && (
-          <div className="p-4 rounded-xl bg-emerald-500/[0.04] border border-emerald-500/20 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-300">
-              <Search className="w-4 h-4 text-emerald-400" />
-              <span>SEO & Digital Marketing Deliverable</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input
-                label="Deliverable / Report Type"
-                placeholder="e.g. Monthly SEO Performance Report"
-                value={seoDeliverableType}
-                onChange={(e) => setSeoDeliverableType(e.target.value)}
-              />
-              <Input
-                label="Reporting Period"
-                placeholder="e.g. October 2026 or Q3 2026"
-                value={seoReportingPeriod}
-                onChange={(e) => setSeoReportingPeriod(e.target.value)}
-              />
-              <Input
-                label="Report or Dashboard URL"
-                placeholder="https://lookerstudio.google.com/... or GA4"
-                value={seoReportUrl}
-                onChange={(e) => setSeoReportUrl(e.target.value)}
-              />
-              <Input
-                label="Audit / Analysis Type"
-                placeholder="e.g. Technical Audit, Backlink Profile"
-                value={seoAuditType}
-                onChange={(e) => setSeoAuditType(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1">
-                Work Completed Summary
-              </label>
-              <textarea
-                rows={2}
-                value={seoCompletedWork}
-                onChange={(e) => setSeoCompletedWork(e.target.value)}
-                placeholder="Key technical fixes implemented, backlinks built, ranking shifts..."
-                className="w-full px-3.5 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
-              />
-            </div>
-          </div>
-        )}
-
-        {niche === 'writing_translation' && (
-          <div className="p-4 rounded-xl bg-teal-500/[0.04] border border-teal-500/20 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-semibold text-teal-300">
-              <PenTool className="w-4 h-4 text-teal-400" />
-              <span>Writing, Copy & Translation Specifications</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input
-                label="Content Type"
-                placeholder="e.g. Long-form Article, Landing Page Copy"
-                value={writingContentType}
-                onChange={(e) => setWritingContentType(e.target.value)}
-              />
-              <Input
-                label="Live Document URL"
-                placeholder="https://docs.google.com/document/... or Notion"
-                value={writingDocUrl}
-                onChange={(e) => setWritingDocUrl(e.target.value)}
-              />
-              <Input
-                label="Language"
-                placeholder="e.g. English (US), Spanish (ES)"
-                value={writingLanguage}
-                onChange={(e) => setWritingLanguage(e.target.value)}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  label="Target / Word Count"
-                  type="number"
-                  placeholder="e.g. 1500"
-                  value={wordCount}
-                  onChange={(e) => setWordCount(e.target.value)}
-                />
-                <Input
-                  label="Revision Round"
-                  placeholder="e.g. Round 1"
-                  value={writingRevisionRound}
-                  onChange={(e) => setWritingRevisionRound(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {niche === 'consulting_va' && (
-          <div className="p-4 rounded-xl bg-indigo-500/[0.04] border border-indigo-500/20 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-semibold text-indigo-300">
-              <Briefcase className="w-4 h-4 text-indigo-400" />
-              <span>Consulting & Virtual Assistance</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input
-                label="Deliverable Type"
-                placeholder="e.g. Executive Summary, Process SOP, Audit"
-                value={consultingType}
-                onChange={(e) => setConsultingType(e.target.value)}
-              />
-              <Input
-                label="Reporting Period"
-                placeholder="e.g. Week 42, Oct 2026"
-                value={consultingPeriod}
-                onChange={(e) => setConsultingPeriod(e.target.value)}
-              />
-              <div className="md:col-span-2">
-                <Input
-                  label="Supporting Document / Drive URL"
-                  placeholder="https://drive.google.com/... or Notion workspace"
-                  value={consultingDocUrl}
-                  onChange={(e) => setConsultingDocUrl(e.target.value)}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1">
-                Completion Summary & Key Takeaways
-              </label>
-              <textarea
-                rows={2}
-                value={consultingSummary}
-                onChange={(e) => setConsultingSummary(e.target.value)}
-                placeholder="Summary of advisory outcomes, checklist items finished, recommendations..."
-                className="w-full px-3.5 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
-              />
-            </div>
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-zinc-300">
-              <input
-                type="checkbox"
-                checked={consultingSignOff}
-                onChange={(e) => setConsultingSignOff(e.target.checked)}
-                className="rounded bg-zinc-900 border-white/20 text-indigo-500 focus:ring-0"
-              />
-              <span>Formal Client Sign-Off Required for Milestone Completion</span>
-            </label>
           </div>
         )}
 

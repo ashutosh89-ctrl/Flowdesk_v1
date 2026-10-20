@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Input } from '@/frontend/shared/ui/input';
 import { Button } from '@/frontend/shared/ui/button';
-import { Mail, AlertCircle } from 'lucide-react';
+import { Mail, AlertCircle, KeyRound } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import { useAuth } from '@/frontend/auth/auth-context';
 
@@ -75,7 +75,8 @@ export const VerifyEmailForm: React.FC<VerifyEmailFormProps> = ({ email: initial
         value={code}
         onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))}
         placeholder="000000"
-        className="text-center font-mono text-lg tracking-widest"
+        leftIcon={<KeyRound className="w-4 h-4" />}
+        className="font-mono text-base tracking-widest"
         maxLength={6}
         required
       />

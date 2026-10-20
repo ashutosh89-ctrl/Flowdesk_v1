@@ -2678,6 +2678,7 @@ export const CommentService = {
         time: c.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
         text: c.text,
         isOwner: Boolean(c.is_owner),
+        isInternal: Boolean(c.is_internal),
         replyToId: c.reply_to_id || undefined,
         replyToAuthor: c.reply_to_author || undefined,
         replyToText: c.reply_to_text || undefined,
@@ -2697,6 +2698,7 @@ export const CommentService = {
       author?: string;
       avatar?: string;
       isOwner?: boolean;
+      isInternal?: boolean;
       replyToId?: string;
       replyToAuthor?: string;
       replyToText?: string;
@@ -2721,6 +2723,7 @@ export const CommentService = {
         author: commentData.author || 'Member',
         avatar: commentData.avatar || '',
         is_owner: commentData.isOwner ?? true,
+        is_internal: Boolean(commentData.isInternal),
         reply_to_id: commentData.replyToId || null,
         reply_to_author: commentData.replyToAuthor || null,
         reply_to_text: commentData.replyToText || null,
@@ -2737,9 +2740,10 @@ export const CommentService = {
         clientId: data.client_id,
         author: data.author,
         avatar: data.avatar,
-        time: data.created_at.split('T')[0],
+        time: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
         text: data.text,
         isOwner: data.is_owner,
+        isInternal: Boolean(data.is_internal),
       };
     } catch {
       throw new Error("Failed to add comment");

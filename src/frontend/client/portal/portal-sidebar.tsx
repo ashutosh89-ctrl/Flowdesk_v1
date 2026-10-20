@@ -178,7 +178,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         </div>
 
         {/* Client Portal Main Nav */}
-        <nav className="space-y-1">
+        <nav className="space-y-1" role="navigation" aria-label="Portal Navigation">
           <p className="px-3 text-[10px] font-mono text-zinc-500 uppercase tracking-widest font-semibold mb-2">
             Workspace Nav
           </p>
@@ -188,23 +188,30 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => {
                   onTabChange(item.id);
                   if (onCloseMobile) onCloseMobile();
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 group relative text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] ${
                   isActive
-                    ? 'bg-[#0047AB] text-white font-bold shadow-md shadow-[#0047AB]/25'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-[#0047AB] text-white font-bold shadow-md shadow-[#0047AB]/30 border border-[#2563EB]/40'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.06] border border-transparent hover:border-white/5'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-white' : 'text-zinc-400 group-hover:text-white'}`} />
-                  <span>{item.label}</span>
+                  <Icon
+                    className={`w-4 h-4 transition-all duration-200 transform group-hover:scale-110 motion-reduce:transform-none ${
+                      isActive ? 'text-white' : 'text-zinc-400 group-hover:text-white'
+                    }`}
+                  />
+                  <span className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transform-none">
+                    {item.label}
+                  </span>
                 </div>
                 {item.badge !== undefined && item.badge > 0 && (
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono border font-bold ${
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono border font-bold transition-transform duration-200 group-hover:scale-105 ${
                       isActive ? 'bg-[#003A8C] text-white border-white/20' : item.badgeColor
                     }`}
                   >

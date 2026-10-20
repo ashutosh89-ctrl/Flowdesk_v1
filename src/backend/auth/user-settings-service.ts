@@ -28,6 +28,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   invoice_reminders: true,
   comment_alerts: true,
   weekly_digest: false,
+  default_deliverable_niche: 'software_development',
 };
 
 export const UserSettingsService = {
@@ -71,6 +72,7 @@ export const UserSettingsService = {
             invoice_reminders: data.invoice_reminders !== undefined ? Boolean(data.invoice_reminders) : true,
             comment_alerts: data.comment_alerts !== undefined ? Boolean(data.comment_alerts) : true,
             weekly_digest: data.weekly_digest !== undefined ? Boolean(data.weekly_digest) : false,
+            default_deliverable_niche: data.default_deliverable_niche === 'others' ? 'others' : 'software_development',
           };
           this.setLocalSettings(userId, settings);
           return settings;
@@ -126,6 +128,7 @@ export const UserSettingsService = {
       invoice_reminders: updates.invoice_reminders !== undefined ? updates.invoice_reminders : (currentSettings.invoice_reminders ?? true),
       comment_alerts: updates.comment_alerts !== undefined ? updates.comment_alerts : (currentSettings.comment_alerts ?? true),
       weekly_digest: updates.weekly_digest !== undefined ? updates.weekly_digest : (currentSettings.weekly_digest ?? false),
+      default_deliverable_niche: updates.default_deliverable_niche || currentSettings.default_deliverable_niche || 'software_development',
     };
 
     // Always cache locally
@@ -150,6 +153,7 @@ export const UserSettingsService = {
               defaultTaxRate: updates.default_tax_rate,
               taxName: updates.tax_name,
               defaultPaymentTerms: updates.default_payment_terms,
+              defaultDeliverableNiche: updates.default_deliverable_niche,
             }),
           });
           if (
@@ -212,10 +216,12 @@ export const UserSettingsService = {
         if (updates.invoice_reminders !== undefined) payload.invoice_reminders = updates.invoice_reminders;
         if (updates.comment_alerts !== undefined) payload.comment_alerts = updates.comment_alerts;
         if (updates.weekly_digest !== undefined) payload.weekly_digest = updates.weekly_digest;
+        if (updates.default_deliverable_niche !== undefined) payload.default_deliverable_niche = updates.default_deliverable_niche;
 
         let { error } = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
-        if (error && error.message?.includes('email_invitations')) {
-          delete payload.email_invitations;
+        if (error && (error.message?.includes('email_invitations') || error.message?.includes('default_deliverable_niche'))) {
+          if (error.message?.includes('email_invitations')) delete payload.email_invitations;
+          if (error.message?.includes('default_deliverable_niche')) delete payload.default_deliverable_niche;
           const retry = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
           error = retry.error;
         }

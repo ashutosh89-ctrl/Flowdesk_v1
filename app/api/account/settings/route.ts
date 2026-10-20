@@ -93,12 +93,20 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     if (updates.defaultTaxRate !== undefined) dbPayload.default_tax_rate = updates.defaultTaxRate;
     if (updates.taxName !== undefined) dbPayload.tax_name = updates.taxName;
     if (updates.defaultPaymentTerms !== undefined) dbPayload.default_payment_terms = updates.defaultPaymentTerms;
+    if (updates.defaultDeliverableNiche !== undefined) dbPayload.default_deliverable_niche = updates.defaultDeliverableNiche;
 
-    const { data: updated, error: upsertErr } = await supabaseAdmin
+    let { data: updated, error: upsertErr } = await supabaseAdmin
       .from('user_settings')
       .upsert(dbPayload)
       .select()
-      .single();
+      .maybeSingle();
+
+    if (upsertErr && (upsertErr.message?.includes('default_deliverable_niche') || upsertErr.message?.includes('column "default_deliverable_niche" of relation "user_settings" does not exist'))) {
+      delete dbPayload.default_deliverable_niche;
+      const retry = await supabaseAdmin.from('user_settings').upsert(dbPayload).select().maybeSingle();
+      updated = retry.data;
+      upsertErr = retry.error;
+    }
 
     if (upsertErr || !updated) {
       logger.error('Failed to upsert user settings in database', upsertErr, {

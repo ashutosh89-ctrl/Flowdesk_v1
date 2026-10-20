@@ -123,10 +123,10 @@ export const WorkflowSection: React.FC = () => {
 
         {/* Step Tabs Row */}
         <div className="relative mb-10">
-          {/* Progress Connecting Line on Desktop */}
-          <div className="hidden lg:block absolute top-[44px] left-8 right-8 h-0.5 bg-[#181818] -z-0">
+          {/* Progress Connecting Line on Desktop - Staged in dedicated lower layer */}
+          <div className="hidden lg:block absolute top-[34px] left-[5%] right-[5%] h-0.5 bg-[#1C1C21] z-0 pointer-events-none overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-[#0047AB] to-[#2563EB] shadow-[0_0_12px_rgba(37,99,235,0.8)]"
+              className="h-full bg-gradient-to-r from-[#0047AB] via-[#2563EB] to-[#3B82F6] shadow-[0_0_12px_rgba(37,99,235,0.8)]"
               initial={{ width: '0%' }}
               animate={{ width: `${(activeStep / (steps.length - 1)) * 100}%` }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
@@ -141,10 +141,10 @@ export const WorkflowSection: React.FC = () => {
                   key={step.id}
                   type="button"
                   onClick={() => setActiveStep(idx)}
-                  className={`p-4 rounded-2xl border transition-all duration-300 text-left flex flex-col justify-between ${
+                  className={`p-4 rounded-2xl border transition-all duration-300 text-left flex flex-col justify-between relative z-10 ${
                     isActive
-                      ? 'bg-[#181818] border-[#2563EB]/50 shadow-[0_10px_30px_rgba(0,71,171,0.25)] ring-1 ring-[#2563EB]/40'
-                      : 'bg-[#111111]/70 border-[#2A2A2A] hover:border-[#2563EB]/30 hover:bg-[#181818]'
+                      ? 'bg-[#18181C] border-[#2563EB]/60 shadow-[0_10px_30px_rgba(0,71,171,0.3)] ring-1 ring-[#2563EB]/50'
+                      : 'bg-[#121214] border-[#2A2A2A] hover:border-[#2563EB]/40 hover:bg-[#18181C]'
                   }`}
                 >
                   <div>
@@ -153,7 +153,7 @@ export const WorkflowSection: React.FC = () => {
                         className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition-colors ${
                           isActive
                             ? 'bg-[#0047AB] text-white shadow-[0_0_16px_rgba(37,99,235,0.7)]'
-                            : 'bg-[#181818] text-zinc-300 border border-[#2A2A2A]'
+                            : 'bg-[#18181C] text-zinc-300 border border-[#2A2A2A]'
                         }`}
                       >
                         {step.icon}

@@ -402,6 +402,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   monthlyRevenue={metrics.monthlyRevenue}
                   pendingInvoicesAmount={metrics.pendingInvoicesAmount}
                   revenueHistory={metrics.revenueHistory || []}
+                  revenueGrowthPct={metrics.revenueGrowthPct}
                   onNavigate={onNavigate}
                 />
               </div>

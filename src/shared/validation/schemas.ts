@@ -197,6 +197,7 @@ export const CreateDeliverableSchema = z.object({
     'seo_marketing',
     'writing_translation',
     'consulting_va',
+    'others',
   ]).optional().default('general'),
   nicheMetadata: z.record(z.string(), z.any()).optional().default({}),
 }).strict();
@@ -259,6 +260,7 @@ export const UpdateUserSettingsSchema = z.object({
   defaultTaxRate: z.number().min(0).max(100).optional(),
   taxName: z.string().trim().max(50).optional(),
   defaultPaymentTerms: z.number().min(0).max(365).optional(),
+  defaultDeliverableNiche: z.enum(['software_development', 'others']).optional(),
 }).strict();
 
 export const UpdateNotificationSettingsSchema = z.object({

@@ -35,6 +35,8 @@ import {
   RefreshCw,
   Link2,
   UserPlus,
+  Code2,
+  Briefcase,
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import { SUPPORTED_CURRENCIES } from '@/shared/utils/currency';
@@ -315,6 +317,7 @@ export const SettingsView: React.FC = () => {
         invoice_reminders: settings.invoice_reminders,
         comment_alerts: settings.comment_alerts,
         weekly_digest: settings.weekly_digest,
+        default_deliverable_niche: settings.default_deliverable_niche,
       });
 
       // 4. Refresh profile context across app shell
@@ -783,6 +786,92 @@ export const SettingsView: React.FC = () => {
                       {profile.signatureUrl ? 'Replace Signature' : 'Upload Signature'}
                     </Button>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Deliverable Workflow Preferences */}
+            <Card variant="crystal">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-[#2563EB]" />
+                  <CardTitle>Deliverable Preferences</CardTitle>
+                </div>
+                <CardDescription>
+                  Choose the default workflow for creating deliverables. You can change this preference at any time.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Software Developer Option */}
+                  <button
+                    type="button"
+                    onClick={() => handleSettingsChange('default_deliverable_niche', 'software_development')}
+                    className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
+                      (settings.default_deliverable_niche || 'software_development') === 'software_development'
+                        ? 'bg-[#2563EB]/10 border-[#2563EB] shadow-[0_0_15px_rgba(37,99,235,0.15)] ring-1 ring-[#2563EB]/50'
+                        : 'bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`p-2 rounded-lg ${
+                            (settings.default_deliverable_niche || 'software_development') === 'software_development'
+                              ? 'bg-[#2563EB]/20 text-[#60A5FA]'
+                              : 'bg-white/5 text-zinc-400'
+                          }`}>
+                            <Code2 className="w-4 h-4" />
+                          </div>
+                          <span className="text-sm font-semibold text-white">Software Developer</span>
+                        </div>
+                        {(settings.default_deliverable_niche || 'software_development') === 'software_development' && (
+                          <CheckCircle2 className="w-4 h-4 text-[#60A5FA]" />
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-400 leading-relaxed mt-1">
+                        Preselects technical deliverable workflow with repository URL, branch, pull request, and deployment preview fields.
+                      </p>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-wider">Default: Code & Tech</span>
+                    </div>
+                  </button>
+
+                  {/* Others Option */}
+                  <button
+                    type="button"
+                    onClick={() => handleSettingsChange('default_deliverable_niche', 'others')}
+                    className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
+                      settings.default_deliverable_niche === 'others'
+                        ? 'bg-[#2563EB]/10 border-[#2563EB] shadow-[0_0_15px_rgba(37,99,235,0.15)] ring-1 ring-[#2563EB]/50'
+                        : 'bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`p-2 rounded-lg ${
+                            settings.default_deliverable_niche === 'others'
+                              ? 'bg-[#2563EB]/20 text-[#60A5FA]'
+                              : 'bg-white/5 text-zinc-400'
+                          }`}>
+                            <Briefcase className="w-4 h-4" />
+                          </div>
+                          <span className="text-sm font-semibold text-white">Others</span>
+                        </div>
+                        {settings.default_deliverable_niche === 'others' && (
+                          <CheckCircle2 className="w-4 h-4 text-[#60A5FA]" />
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-400 leading-relaxed mt-1">
+                        Preselects general-purpose deliverable workflow for design, video editing, copywriting, marketing, consulting, and other creative services.
+                      </p>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-wider">Default: General & Creative</span>
+                    </div>
+                  </button>
                 </div>
               </CardContent>
             </Card>

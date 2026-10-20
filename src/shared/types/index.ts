@@ -213,7 +213,8 @@ export type DeliverableNiche =
   | 'social_media'
   | 'seo_marketing'
   | 'writing_translation'
-  | 'consulting_va';
+  | 'consulting_va'
+  | 'others';
 
 export interface SoftwareDeliverableMetadata {
   repositoryUrl?: string;
@@ -804,6 +805,7 @@ export interface UserSettings {
   invoice_reminders?: boolean;
   comment_alerts?: boolean;
   weekly_digest?: boolean;
+  default_deliverable_niche?: 'software_development' | 'others';
 }
 
 export interface OnboardingData {

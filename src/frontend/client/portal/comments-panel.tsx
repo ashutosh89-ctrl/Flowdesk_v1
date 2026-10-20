@@ -21,7 +21,7 @@ interface CommentsPanelProps {
   comments: PortalComment[];
   clientName: string;
   clientAvatar?: string;
-  onPostComment: (text: string, replyToId?: string) => void;
+  onPostComment: (text: string, replyToId?: string) => Promise<void> | void;
   onToggleResolve?: (commentId: string) => void;
 }
 
@@ -35,13 +35,25 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
   const [newCommentText, setNewCommentText] = useState('');
   const [replyingTo, setReplyingTo] = useState<PortalComment | null>(null);
   const [showResolved, setShowResolved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!newCommentText.trim()) return;
-    onPostComment(newCommentText, replyingTo?.id);
-    setNewCommentText('');
-    setReplyingTo(null);
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      await onPostComment(newCommentText.trim(), replyingTo?.id);
+      setNewCommentText('');
+      setReplyingTo(null);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Failed to post comment. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const filteredComments = comments.filter((c) => (showResolved ? true : !c.isResolved));
@@ -72,6 +84,19 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
         {/* New Comment Form */}
         <form onSubmit={handleSubmit} className="space-y-3">
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-xs text-red-300 flex items-center justify-between">
+              <span>{errorMessage}</span>
+              <button
+                type="button"
+                onClick={() => setErrorMessage(null)}
+                className="text-[11px] underline hover:text-white"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {replyingTo && (
             <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-xs flex items-center justify-between">
               <div className="flex items-center gap-2 text-indigo-300">
@@ -92,6 +117,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
             <textarea
               rows={3}
               value={newCommentText}
+              disabled={isSubmitting}
               onChange={(e) => setNewCommentText(e.target.value)}
               placeholder="Type your feedback, question, or note..."
               maxLength={2000}
@@ -110,10 +136,11 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
                 type="submit"
                 variant="primary"
                 size="sm"
-                disabled={!newCommentText.trim()}
+                isLoading={isSubmitting}
+                disabled={isSubmitting || !newCommentText.trim()}
                 leftIcon={<Send className="w-3.5 h-3.5" />}
               >
-                Post Comment
+                {isSubmitting ? 'Posting...' : 'Post Comment'}
               </Button>
             </div>
           </div>
