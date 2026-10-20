@@ -5,6 +5,7 @@ import { Avatar } from '@/frontend/shared/ui/avatar';
 import { StatusPill } from '@/frontend/shared/ui/status-pill';
 import { HealthBadge } from '@/frontend/shared/ui/health-badge';
 import { WorkspaceService } from '@/backend/freelancer';
+import { supabase } from '@/backend/utilities/supabase';
 import { WorkspaceSummary } from '@/shared/types';
 import { OverviewTab } from './tabs/overview-tab';
 import { ProjectsTab } from './tabs/projects-tab';
@@ -56,7 +57,54 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
 
   useEffect(() => {
     loadSummary();
-  }, [loadSummary]);
+
+    // 1. Proactive Polling: Checks every 12 seconds
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadSummary();
+      }
+    }, 12000);
+
+    // 2. Window Focus & Visibility Change: Instantly re-queries when returning to tab
+    const onWindowFocus = () => {
+      loadSummary();
+    };
+    window.addEventListener('focus', onWindowFocus);
+    document.addEventListener('visibilitychange', onWindowFocus);
+
+    // 3. Supabase Realtime Channel: Instantly sync when client actions occur
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel(`workspace-sync-${clientId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'deliverables' }, () => {
+          loadSummary();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => {
+          loadSummary();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'documents' }, () => {
+          loadSummary();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'deliverable_comments' }, () => {
+          loadSummary();
+        })
+        .subscribe();
+    } catch {
+      // Realtime non-blocking
+    }
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onWindowFocus);
+      document.removeEventListener('visibilitychange', onWindowFocus);
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
+      }
+    };
+  }, [loadSummary, clientId]);
 
   useEffect(() => {
     let isMounted = true;

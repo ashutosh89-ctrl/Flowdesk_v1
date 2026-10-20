@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/frontend/auth/auth-context';
-import { isDemoModeActive } from '@/backend/utilities/supabase';
+import { isDemoModeActive, supabase } from '@/backend/utilities/supabase';
 import {
   DashboardService,
   ActivityService,
@@ -327,6 +327,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   useEffect(() => {
     refreshData();
+
+    // 1. Proactive Polling: Checks every 12 seconds when freelancer is viewing the dashboard
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshData();
+      }
+    }, 12000);
+
+    // 2. Window Focus & Visibility Change: Instantly re-queries when returning to tab
+    const onWindowFocus = () => {
+      refreshData();
+    };
+    window.addEventListener('focus', onWindowFocus);
+    document.addEventListener('visibilitychange', onWindowFocus);
+
+    // 3. Supabase Realtime Channel: Instantly sync when client actions occur
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel('freelancer-dashboard-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'deliverables' }, () => {
+          refreshData();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => {
+          refreshData();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'client_connections' }, () => {
+          refreshData();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
+          refreshData();
+        })
+        .subscribe();
+    } catch {
+      // Realtime channel non-blocking
+    }
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onWindowFocus);
+      document.removeEventListener('visibilitychange', onWindowFocus);
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
+      }
+    };
   }, []);
 
 

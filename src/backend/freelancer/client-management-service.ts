@@ -1,5 +1,5 @@
 import { ClientRepository } from '@/backend/repositories/clients/client-service';
-import { supabase, isDemoModeActive } from '@/backend/utilities/supabase';
+import { supabase, supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
 import { Client, ClientPortalConfig, AccountDeletionRecord } from '@/shared/types';
 import { DemoDataProvider } from '@/backend/utilities/demo-data-provider';
 import { AccountDeletionService } from '@/backend/auth/account-deletion-service';
@@ -272,7 +272,8 @@ export const FreelancerClientManagementService = {
           workspace_id: 'ws-demo-workspace',
         };
       } else {
-        const { data: dbClient } = await supabase
+        const db = supabaseAdmin || supabase;
+        const { data: dbClient } = await db
           .from('clients')
           .select('id, name, email, company, workspace_id')
           .eq('id', clientId)
@@ -285,11 +286,11 @@ export const FreelancerClientManagementService = {
 
         let ownerId: string | undefined;
         if (client.workspace_id) {
-          const { data: ws } = await supabase.from('workspaces').select('owner_id').eq('id', client.workspace_id).single();
+          const { data: ws } = await db.from('workspaces').select('owner_id').eq('id', client.workspace_id).single();
           ownerId = ws?.owner_id;
         }
         if (ownerId) {
-          const { data: profile } = await supabase.from('profiles').select('business_name, full_name').eq('id', ownerId).single();
+          const { data: profile } = await db.from('profiles').select('business_name, full_name').eq('id', ownerId).single();
           if (profile?.business_name) studioName = profile.business_name;
           else if (profile?.full_name) studioName = profile.full_name;
         }

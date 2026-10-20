@@ -45,20 +45,6 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           </label>
         )}
         <div className="relative flex items-center w-full group">
-          {/* Currency Prefix */}
-          {isCurrency && (
-            <span className="absolute left-3.5 text-zinc-300 text-base font-semibold pointer-events-none group-focus-within:text-[#3B82F6] transition-colors">
-              {currencySymbol || '$'}
-            </span>
-          )}
-
-          {/* Left Icon with crisp visibility and focus illumination */}
-          {!isCurrency && (leftIcon || isSearch) && (
-            <span className="absolute left-3.5 text-zinc-300 pointer-events-none flex items-center justify-center transition-colors duration-200 group-focus-within:text-[#3B82F6] [&_svg]:w-4 [&_svg]:h-4 [&_svg]:text-zinc-300 group-focus-within:[&_svg]:text-[#3B82F6] [&_svg]:stroke-[1.85]">
-              {leftIcon || <Search className="w-4 h-4 text-zinc-300 group-focus-within:text-[#3B82F6]" />}
-            </span>
-          )}
-
           <input
             ref={ref}
             type={inputType}
@@ -74,8 +60,22 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
 
+          {/* Currency Prefix rendered above input */}
+          {isCurrency && (
+            <span className="absolute left-3.5 z-20 text-zinc-200 text-base font-semibold pointer-events-none group-focus-within:text-[#3B82F6] transition-colors">
+              {currencySymbol || '$'}
+            </span>
+          )}
+
+          {/* Left Icon with guaranteed z-20 visibility and focus illumination */}
+          {!isCurrency && (leftIcon || isSearch) && (
+            <span className="absolute left-3.5 z-20 pointer-events-none flex items-center justify-center transition-all duration-200 text-zinc-200 group-focus-within:text-[#3B82F6] [&_svg]:w-4 [&_svg]:h-4 [&_svg]:text-zinc-200 group-focus-within:[&_svg]:text-[#3B82F6] [&_svg]:stroke-[2] group-focus-within:[&_svg]:drop-shadow-[0_0_8px_rgba(59,130,246,0.7)]">
+              {leftIcon || <Search className="w-4 h-4 text-zinc-200 group-focus-within:text-[#3B82F6]" />}
+            </span>
+          )}
+
           {/* Right Icon / Actions */}
-          <div className="absolute right-3 flex items-center gap-1.5 text-zinc-300">
+          <div className="absolute right-3 z-20 flex items-center gap-1.5 text-zinc-300">
             {value && onClear && (
               <button
                 type="button"

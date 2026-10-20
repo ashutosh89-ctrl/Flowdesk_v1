@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ClientPortalShell } from './client-portal-shell';
 import { Card } from '@/frontend/shared/ui/card';
-import { ClientPortalService } from '@/backend/client';
+import { ClientPortalService, invalidatePortalCache } from '@/backend/client';
+import { supabase } from '@/backend/utilities/supabase';
 import {
   Client,
   Project,
@@ -37,8 +38,11 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
   const [branding, setBranding] = useState<InvoiceBranding | null>(null);
   const [fileRequests, setFileRequests] = useState<PortalFileRequest[]>([]);
 
-  const loadPortalData = useCallback(async () => {
+  const loadPortalData = useCallback(async (forceRefresh = false) => {
     try {
+      if (forceRefresh) {
+        invalidatePortalCache(clientId);
+      }
       const data = await ClientPortalService.getPortalData(clientId);
       if (data.client) {
         setClient(data.client);
@@ -63,17 +67,59 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
     }
   }, [clientId]);
 
+  // Live Bidirectional Synchronization with Freelancer Workspace
   useEffect(() => {
     let isMounted = true;
-    const run = async () => {
-      await loadPortalData();
-      if (!isMounted) return;
+    loadPortalData();
+
+    // 1. Proactive Polling: Checks every 10 seconds when tab is active
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadPortalData(true);
+      }
+    }, 10000);
+
+    // 2. Window Focus & Visibility Change: Refetches immediately when client returns to tab
+    const onWindowFocus = () => {
+      loadPortalData(true);
     };
-    run();
+    window.addEventListener('focus', onWindowFocus);
+    document.addEventListener('visibilitychange', onWindowFocus);
+
+    // 3. Supabase Realtime Channel: Instantly syncs whenever freelancer updates deliverables, invoices, or comments
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel(`client-portal-sync-${clientId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'deliverables' }, () => {
+          loadPortalData(true);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => {
+          loadPortalData(true);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'documents' }, () => {
+          loadPortalData(true);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'deliverable_comments' }, () => {
+          loadPortalData(true);
+        })
+        .subscribe();
+    } catch {
+      // Realtime channel non-blocking
+    }
+
     return () => {
       isMounted = false;
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onWindowFocus);
+      document.removeEventListener('visibilitychange', onWindowFocus);
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
+      }
     };
-  }, [loadPortalData]);
+  }, [loadPortalData, clientId]);
 
   // Actions with Client Authorization Context
   const handleApproveDeliverable = async (delivId: string, notes?: string) => {

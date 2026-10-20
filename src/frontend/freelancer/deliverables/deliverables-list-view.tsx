@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { DeliverableService, ClientService, ProjectService } from '@/backend/freelancer';
+import { supabase } from '@/backend/utilities/supabase';
 import { Deliverable, Client, Project, DeliverableStatus, ApprovalStatus } from '@/shared/types';
 import { DeliverablesTable } from './components/deliverables-table';
 import { DeliverableCard } from './components/deliverable-card';
@@ -89,6 +90,47 @@ export const DeliverablesListView: React.FC<DeliverablesListViewProps> = ({
 
   useEffect(() => {
     loadData();
+
+    // 1. Proactive Polling: Checks every 12 seconds
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadData();
+      }
+    }, 12000);
+
+    // 2. Window Focus & Visibility Change: Instantly re-queries when returning to tab
+    const onWindowFocus = () => {
+      loadData();
+    };
+    window.addEventListener('focus', onWindowFocus);
+    document.addEventListener('visibilitychange', onWindowFocus);
+
+    // 3. Supabase Realtime Channel: Instantly sync when client actions occur
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel('freelancer-deliverables-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'deliverables' }, () => {
+          loadData();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'deliverable_comments' }, () => {
+          loadData();
+        })
+        .subscribe();
+    } catch {
+      // Realtime non-blocking
+    }
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', onWindowFocus);
+      document.removeEventListener('visibilitychange', onWindowFocus);
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch {}
+      }
+    };
   }, [loadData]);
 
   // Overdue detection helper

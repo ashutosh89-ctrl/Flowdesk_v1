@@ -57,7 +57,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
         type="email"              placeholder="your.email@company.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        leftIcon={<Mail className="w-4 h-4 text-zinc-300" />}
+        leftIcon={<Mail className="w-4 h-4 text-zinc-200" />}
         required
       />
 

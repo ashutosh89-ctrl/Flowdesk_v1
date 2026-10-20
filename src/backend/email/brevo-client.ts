@@ -58,7 +58,27 @@ export interface BrevoAccountStatus {
  */
 export const getBrevoApiKey = (): string => {
   if (typeof window !== 'undefined') return '';
-  const key = process.env.BREVO_API_KEY || process.env.SIB_API_V3_KEY || '';
+  let key = process.env.BREVO_API_KEY || process.env.SIB_API_V3_KEY || '';
+  if (!key || key.trim().length === 0) {
+    try {
+      // Dynamic fallback for server runtime if .env.local was updated during execution
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require('fs');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const path = require('path');
+      const envPath = path.resolve(process.cwd(), '.env.local');
+      if (fs.existsSync(envPath)) {
+        const content = fs.readFileSync(envPath, 'utf8');
+        const match = content.match(/BREVO_API_KEY=["']?([^"'\r\n]+)["']?/);
+        if (match && match[1]) {
+          key = match[1].trim();
+          process.env.BREVO_API_KEY = key;
+        }
+      }
+    } catch {
+      // Non-critical if filesystem read is restricted
+    }
+  }
   return key.trim().replace(/^['"]|['"]$/g, '');
 };
 
@@ -217,7 +237,7 @@ export async function getBrevoAccountStatus(forceRefresh = false): Promise<Brevo
         status: 'unauthorized',
         blockerReason,
       };
-      cachedAccountStatus = { status: result, timestamp: now };
+      cachedAccountStatus = null; // Do not cache unauthorized states so new key updates apply immediately
       return result;
     }
 
@@ -233,7 +253,7 @@ export async function getBrevoAccountStatus(forceRefresh = false): Promise<Brevo
         status: 'error',
         blockerReason: errData.message || `Brevo API HTTP ${accRes.status} Error`,
       };
-      cachedAccountStatus = { status: result, timestamp: now };
+      cachedAccountStatus = null; // Do not cache transient HTTP errors
       return result;
     }
 
@@ -381,15 +401,16 @@ export async function sendBrevoEmail(payload: SendBrevoEmailPayload): Promise<Br
   const defaultParsed = parseSender(getDefaultSender());
   let resolvedSender = payload.sender || defaultParsed;
 
-  // If a custom sender was requested, verify it against verified senders if known
-  if (payload.sender && accountStatus.verifiedSenders.length > 0) {
+  // Brevo strictly enforces that sender email must be verified on the account.
+  // If sender email is not identical to default verified sender, check against verifiedSenders.
+  const isCustomSender = resolvedSender.email.toLowerCase() !== defaultParsed.email.toLowerCase();
+  if (isCustomSender) {
     const isVerified = accountStatus.verifiedSenders.some(
-      (s) => s.email.toLowerCase() === payload.sender!.email.toLowerCase() && s.active !== false
+      (s) => s.email.toLowerCase() === resolvedSender.email.toLowerCase() && s.active !== false
     );
     if (!isVerified) {
-      // Do not allow arbitrary unverified sender impersonation:
-      // Fall back to verified platform sender and use the requested sender as replyTo!
-      const originalSender = payload.sender;
+      // Fall back to verified platform sender and preserve custom sender as replyTo
+      const originalSender = resolvedSender;
       resolvedSender = defaultParsed;
       if (!payload.replyTo) {
         payload.replyTo = originalSender;
