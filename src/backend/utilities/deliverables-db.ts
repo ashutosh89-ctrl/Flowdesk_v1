@@ -15,6 +15,8 @@ export const EXTENDED_DELIVERABLE_COLUMNS = [
   'files_count',
   'comments_count',
   'is_archived',
+  'niche',
+  'metadata',
 ] as const;
 
 /**

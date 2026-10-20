@@ -205,6 +205,101 @@ export interface DeliverableTimelineItem {
   metadata?: string;
 }
 
+export type DeliverableNiche =
+  | 'general'
+  | 'software_development'
+  | 'graphic_design'
+  | 'video_editing'
+  | 'social_media'
+  | 'seo_marketing'
+  | 'writing_translation'
+  | 'consulting_va';
+
+export interface SoftwareDeliverableMetadata {
+  repositoryUrl?: string;
+  branchName?: string;
+  pullRequestUrl?: string;
+  releaseVersion?: string;
+  previewUrl?: string;
+  technicalStatus?: 'in_development' | 'code_review' | 'qa_testing' | 'deployed' | 'ready_for_review';
+  buildStatus?: 'pending' | 'success' | 'failed' | 'queued' | 'not_connected';
+  githubActivity?: Array<{
+    id: string;
+    type: string;
+    message: string;
+    timestamp: string;
+    author?: string;
+    url?: string;
+  }>;
+}
+
+export interface GraphicDesignDeliverableMetadata {
+  designPreviewUrl?: string;
+  designTool?: string;
+  versionNumber?: string;
+  exportFormats?: string[];
+  revisionRound?: string | number;
+  finalAssetAttachments?: string[];
+}
+
+export interface VideoEditingDeliverableMetadata {
+  videoPreviewUrl?: string;
+  duration?: string;
+  aspectRatio?: string;
+  resolution?: string;
+  exportFormat?: string;
+  versionNumber?: string;
+  finalDownloadUrl?: string;
+  timestampedNotes?: Array<{ timestamp: string; note: string }>;
+}
+
+export interface SocialMediaDeliverableMetadata {
+  platform?: string;
+  contentType?: string;
+  campaignName?: string;
+  assetCount?: number;
+  plannedPublishDate?: string;
+  previewUrl?: string;
+  publishingUrl?: string;
+}
+
+export interface SeoMarketingDeliverableMetadata {
+  deliverableType?: string;
+  reportingPeriod?: string;
+  reportUrl?: string;
+  auditType?: string;
+  completedWorkSummary?: string;
+  relevantAttachments?: string[];
+}
+
+export interface WritingDeliverableMetadata {
+  contentType?: string;
+  documentUrl?: string;
+  language?: string;
+  wordCount?: number;
+  versionNumber?: string;
+  revisionRound?: string | number;
+}
+
+export interface ConsultingVaDeliverableMetadata {
+  deliverableType?: string;
+  reportingPeriod?: string;
+  documentUrl?: string;
+  checklist?: Array<{ id: string; item: string; completed: boolean }>;
+  completionSummary?: string;
+  clientSignOffRequired?: boolean;
+}
+
+export type DeliverableNicheMetadata =
+  | SoftwareDeliverableMetadata
+  | GraphicDesignDeliverableMetadata
+  | VideoEditingDeliverableMetadata
+  | SocialMediaDeliverableMetadata
+  | SeoMarketingDeliverableMetadata
+  | WritingDeliverableMetadata
+  | ConsultingVaDeliverableMetadata
+  | Record<string, any>;
+
 export interface Deliverable {
   id: string;
   projectId: string;
@@ -221,6 +316,8 @@ export interface Deliverable {
   fileName?: string;
   fileSize?: string;
   version: string;
+  niche?: DeliverableNiche;
+  nicheMetadata?: DeliverableNicheMetadata;
   commentsCount?: number;
   filesCount?: number;
   linkedProjectId?: string;

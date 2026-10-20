@@ -85,7 +85,7 @@ export const InvoicesListView: React.FC = () => {
   const refreshData = async () => {
     try {
       const updatedInvoices = await InvoiceService.getInvoices();
-      const updatedMetrics = await InvoiceService.getFinancialMetrics();
+      const updatedMetrics = await InvoiceService.getFinancialMetrics(updatedInvoices);
       setInvoices(updatedInvoices);
       setMetrics(updatedMetrics);
 
@@ -174,10 +174,18 @@ export const InvoicesListView: React.FC = () => {
       const res = await InvoiceService.sendReminder(id);
       if (res.success) {
         showToast('Reminder Recorded', res.message, 'success');
+        if (res.invoice) {
+          setInvoices((prev) =>
+            prev.map((inv) => (inv.id === id ? res.invoice! : inv))
+          );
+          if (detailsInvoice && detailsInvoice.id === id) {
+            setDetailsInvoice(res.invoice);
+          }
+        }
       } else {
         showToast('Reminder', res.message, 'info');
       }
-      await refreshData();
+      return res;
     } catch (err) {
       showToast('Error', 'Failed to record reminder.', 'error');
     }

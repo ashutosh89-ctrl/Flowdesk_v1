@@ -81,7 +81,7 @@ export function InvoiceDetailsModal({
     if (exportingType) return;
     setExportingType('png');
     try {
-      await exportInvoiceToPNG(documentRef.current, invoice.invoiceNumber);
+      await exportInvoiceToPNG(documentRef.current, invoice.invoiceNumber, invoice, profile);
     } finally {
       setExportingType(null);
     }
@@ -91,7 +91,7 @@ export function InvoiceDetailsModal({
     if (exportingType) return;
     setExportingType('jpg');
     try {
-      await exportInvoiceToJPG(documentRef.current, invoice.invoiceNumber);
+      await exportInvoiceToJPG(documentRef.current, invoice.invoiceNumber, invoice, profile);
     } finally {
       setExportingType(null);
     }

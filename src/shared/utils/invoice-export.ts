@@ -18,7 +18,6 @@ export function sanitizeFilename(invoiceNumber: string, ext: string = 'pdf'): st
  */
 function getTargetInvoiceElement(elementOrId?: HTMLElement | string | null): HTMLElement | null {
   if (!elementOrId) {
-    // Try to find the default invoice document sheet in DOM
     const el = document.querySelector('.invoice-document-sheet');
     return el as HTMLElement | null;
   }
@@ -33,7 +32,7 @@ function getTargetInvoiceElement(elementOrId?: HTMLElement | string | null): HTM
 
 /**
  * Renders an offscreen InvoiceDocument for cases when no modal preview is mounted in the DOM
- * (e.g., clicking download directly from table rows or list views).
+ * (e.g., clicking download directly from table rows or list views, or when responsive preview is scaled).
  */
 async function renderOffscreenInvoiceDocument(
   invoice: Invoice,
@@ -104,10 +103,15 @@ export async function exportInvoiceToPNG(
   let targetEl = getTargetInvoiceElement(elementOrId);
   let cleanup: (() => void) | null = null;
 
-  if (!targetEl && invoice) {
-    const offscreen = await renderOffscreenInvoiceDocument(invoice, branding);
-    targetEl = offscreen.sheetElement;
-    cleanup = offscreen.unmount;
+  // If no mounted element or if it's scaled down, render a clean offscreen 794px version
+  if ((!targetEl || targetEl.style.transform || targetEl.closest('[style*="scale"]')) && invoice) {
+    try {
+      const offscreen = await renderOffscreenInvoiceDocument(invoice, branding);
+      targetEl = offscreen.sheetElement;
+      cleanup = offscreen.unmount;
+    } catch {
+      // keep targetEl
+    }
   }
 
   if (!targetEl) {
@@ -123,6 +127,7 @@ export async function exportInvoiceToPNG(
       backgroundColor: '#ffffff',
       logging: false,
       windowWidth: 1200,
+      imageTimeout: 15000,
     });
 
     const dataUrl = canvas.toDataURL('image/png', 1.0);
@@ -155,10 +160,14 @@ export async function exportInvoiceToJPG(
   let targetEl = getTargetInvoiceElement(elementOrId);
   let cleanup: (() => void) | null = null;
 
-  if (!targetEl && invoice) {
-    const offscreen = await renderOffscreenInvoiceDocument(invoice, branding);
-    targetEl = offscreen.sheetElement;
-    cleanup = offscreen.unmount;
+  if ((!targetEl || targetEl.style.transform || targetEl.closest('[style*="scale"]')) && invoice) {
+    try {
+      const offscreen = await renderOffscreenInvoiceDocument(invoice, branding);
+      targetEl = offscreen.sheetElement;
+      cleanup = offscreen.unmount;
+    } catch {
+      // keep targetEl
+    }
   }
 
   if (!targetEl) {
@@ -171,9 +180,10 @@ export async function exportInvoiceToJPG(
       scale: 2,
       useCORS: true,
       allowTaint: true,
-      backgroundColor: '#ffffff',
+      backgroundColor: '#ffffff', // Required for clean white background without transparency artifacts
       logging: false,
       windowWidth: 1200,
+      imageTimeout: 15000,
     });
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
@@ -206,8 +216,8 @@ export async function exportInvoiceToPDF(
   let targetEl = getTargetInvoiceElement(elementOrId);
   let cleanup: (() => void) | null = null;
 
-  // If no mounted DOM element exists, mount offscreen so we generate 100% pixel-perfect PDF
-  if (!targetEl) {
+  // If no mounted DOM element exists or scaled down, mount offscreen for 100% pixel-perfect PDF
+  if (!targetEl || targetEl.style.transform || targetEl.closest('[style*="scale"]')) {
     try {
       const offscreen = await renderOffscreenInvoiceDocument(invoice, branding);
       targetEl = offscreen.sheetElement;
@@ -227,6 +237,7 @@ export async function exportInvoiceToPDF(
         backgroundColor: '#ffffff',
         logging: false,
         windowWidth: 1200,
+        imageTimeout: 15000,
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 0.98);
@@ -249,7 +260,7 @@ export async function exportInvoiceToPDF(
       pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
       heightLeft -= pdfHeight;
 
-      // Additional pages if invoice is long
+      // Additional pages if invoice spans multiple pages
       while (heightLeft > 5) {
         position = heightLeft - imgHeight;
         pdf.addPage();
@@ -279,6 +290,7 @@ export async function exportInvoiceToPDF(
 
 /**
  * Triggers clean print dialog with only the invoice document visible.
+ * Injects host styles and uses print media rules to ensure pixel-perfect rendering.
  */
 export async function printInvoice(
   invoice: Invoice,
@@ -290,44 +302,68 @@ export async function printInvoice(
   let targetEl = getTargetInvoiceElement(elementOrId);
   let cleanup: (() => void) | null = null;
 
-  if (!targetEl) {
+  if (!targetEl || targetEl.style.transform || targetEl.closest('[style*="scale"]')) {
     try {
       const offscreen = await renderOffscreenInvoiceDocument(invoice, branding);
       targetEl = offscreen.sheetElement;
       cleanup = offscreen.unmount;
     } catch {
-      // ignore
+      // keep targetEl
     }
   }
 
   if (targetEl) {
+    // Copy all style & stylesheet links from host document to iframe so Tailwind styles apply
+    const styleTags = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map((el) => el.outerHTML)
+      .join('\n');
+
     const printHtml = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8" />
-        <title>Invoice ${invoice.invoiceNumber}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Invoice ${invoice.invoiceNumber || 'Document'}</title>
+        ${styleTags}
         <style>
           @page {
             size: A4 portrait;
-            margin: 10mm 15mm;
+            margin: 12mm 15mm;
           }
           * {
             box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: #ffffff;
-            color: #09090b;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            color: #09090b !important;
+            width: 100% !important;
           }
           .print-wrapper {
-            width: 100%;
-            max-width: 794px;
-            margin: 0 auto;
+            width: 100% !important;
+            max-width: 794px !important;
+            margin: 0 auto !important;
+            background: #ffffff !important;
+          }
+          .invoice-document-sheet {
+            box-shadow: none !important;
+            border: none !important;
+            transform: none !important;
+            width: 100% !important;
+            max-width: 794px !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+          }
+          table, tr, .avoid-break {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          button, .no-print {
+            display: none !important;
           }
         </style>
       </head>
@@ -346,6 +382,7 @@ export async function printInvoice(
     iframe.style.width = '0';
     iframe.style.height = '0';
     iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
     document.body.appendChild(iframe);
 
     const doc = iframe.contentWindow?.document;
@@ -354,19 +391,46 @@ export async function printInvoice(
       doc.write(printHtml);
       doc.close();
 
-      iframe.contentWindow?.focus();
-      setTimeout(() => {
+      const waitIframeReady = async () => {
+        if (iframe.contentWindow?.document?.fonts) {
+          try {
+            await iframe.contentWindow.document.fonts.ready;
+          } catch {
+            // ignore
+          }
+        }
+        const images = Array.from(doc.images);
+        await Promise.all(
+          images.map((img) => {
+            if (img.complete) return Promise.resolve();
+            return new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+          })
+        );
+        await new Promise((r) => setTimeout(r, 150));
+      };
+
+      try {
+        await waitIframeReady();
+        iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
+      } catch (err) {
+        console.warn('Iframe print failed, falling back to original print:', err);
+        originalPrint(invoice, branding);
+      } finally {
         setTimeout(() => {
-          document.body.removeChild(iframe);
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
           if (cleanup) cleanup();
-        }, 1000);
-      }, 350);
+        }, 1500);
+      }
       return;
     }
   }
 
   if (cleanup) cleanup();
-  // Fallback print
   originalPrint(invoice, branding);
 }

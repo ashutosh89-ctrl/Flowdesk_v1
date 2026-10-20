@@ -20,6 +20,8 @@ import {
   ChevronUp,
 } from 'lucide-react';
 
+import { isSafeHttpUrl } from '@/shared/utils/safe-url';
+
 interface DeliverablesPanelProps {
   deliverables: Deliverable[];
   onApproveClick: (deliv: Deliverable) => void;
@@ -89,6 +91,19 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
             const isVersionExpanded = expandedVersionId === deliv.id;
             const isApproved = deliv.status === 'approved' || deliv.status === 'completed';
 
+            const clientPreviewUrl = (() => {
+              const meta = (deliv.nicheMetadata || {}) as Record<string, any>;
+              const url =
+                meta.previewUrl ||
+                meta.designPreviewUrl ||
+                meta.videoPreviewUrl ||
+                meta.documentUrl ||
+                meta.reportUrl ||
+                meta.socialPreviewUrl ||
+                meta.publishingUrl;
+              return url && isSafeHttpUrl(url) ? url : null;
+            })();
+
             return (
               <Card key={deliv.id} variant="crystal" className="p-6 border-white/15 hover:border-white/25 transition-all space-y-4">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-white/10">
@@ -101,14 +116,32 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                       <StatusPill status={deliv.status} />
                     </div>
                     <p className="text-xs text-zinc-300 leading-relaxed">{deliv.description}</p>
-                    <div className="flex items-center gap-4 text-[11px] font-mono text-zinc-400 pt-1">
+                    <div className="flex items-center gap-4 text-[11px] font-mono text-zinc-400 pt-1 flex-wrap">
                       <span>Review Deadline: {deliv.dueDate}</span>
                       {deliv.fileSize && <span>Size: {deliv.fileSize}</span>}
+                      {deliv.niche && deliv.niche !== 'general' && (
+                        <span className="capitalize text-zinc-300">
+                          Discipline: {deliv.niche.replace(/_/g, ' ')}
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-wrap shrink-0">
+                    {clientPreviewUrl && (
+                      <a
+                        href={clientPreviewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Preview</span>
+                        <ExternalLink className="w-3 h-3 text-zinc-400" />
+                      </a>
+                    )}
+
                     {deliv.fileUrl && deliv.fileUrl !== '#' && deliv.fileUrl !== '' ? (
                       <Button
                         variant="ghost"

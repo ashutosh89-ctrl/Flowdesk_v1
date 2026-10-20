@@ -69,7 +69,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
     if (exportingType) return;
     setExportingType('png');
     try {
-      await exportInvoiceToPNG(previewDocRef.current, inv.invoiceNumber);
+      await exportInvoiceToPNG(previewDocRef.current, inv.invoiceNumber, inv, profile);
     } finally {
       setExportingType(null);
     }
@@ -79,7 +79,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
     if (exportingType) return;
     setExportingType('jpg');
     try {
-      await exportInvoiceToJPG(previewDocRef.current, inv.invoiceNumber);
+      await exportInvoiceToJPG(previewDocRef.current, inv.invoiceNumber, inv, profile);
     } finally {
       setExportingType(null);
     }

@@ -50,6 +50,15 @@ import {
   Loader2,
   AlertCircle,
   UploadCloud,
+  Code2,
+  Palette,
+  Video,
+  Share2,
+  Search,
+  PenTool,
+  Briefcase,
+  GitBranch,
+  GitPullRequest,
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 
@@ -452,6 +461,8 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
     loadDeliverable(deliverable.id);
   };
 
+  const nicheMeta = (deliverable.nicheMetadata || {}) as Record<string, any>;
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <div className="space-y-6 select-none -m-1">
@@ -484,7 +495,7 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
               <span>{deliverable.title}</span>
             </h1>
 
-            <div className="flex items-center gap-4 text-xs text-zinc-400">
+            <div className="flex items-center gap-3 text-xs text-zinc-400 flex-wrap">
               <span className="flex items-center gap-1 font-medium text-zinc-300">
                 <User className="w-3.5 h-3.5 text-zinc-500" />
                 {clientName}
@@ -496,6 +507,14 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
                 <Calendar className="w-3.5 h-3.5 text-zinc-500" />
                 Due: {deliverable.dueDate}
               </span>
+              {deliverable.niche && deliverable.niche !== 'general' && (
+                <>
+                  <span>•</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/20 uppercase tracking-wider">
+                    {deliverable.niche.replace(/_/g, ' ')}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -676,6 +695,279 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
                   </div>
                 )}
 
+                {/* Niche Specifications & Technical Activity */}
+                {deliverable.nicheMetadata && Object.keys(deliverable.nicheMetadata).length > 0 && (
+                  <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
+                        {deliverable.niche === 'software_development' && <Code2 className="w-4 h-4 text-blue-400" />}
+                        {deliverable.niche === 'graphic_design' && <Palette className="w-4 h-4 text-purple-400" />}
+                        {deliverable.niche === 'video_editing' && <Video className="w-4 h-4 text-rose-400" />}
+                        {deliverable.niche === 'social_media' && <Share2 className="w-4 h-4 text-amber-400" />}
+                        {deliverable.niche === 'seo_marketing' && <Search className="w-4 h-4 text-emerald-400" />}
+                        {deliverable.niche === 'writing_translation' && <PenTool className="w-4 h-4 text-teal-400" />}
+                        {deliverable.niche === 'consulting_va' && <Briefcase className="w-4 h-4 text-indigo-400" />}
+                        {(!deliverable.niche || deliverable.niche === 'general') && <Layers className="w-4 h-4 text-zinc-400" />}
+                        <span>
+                          {deliverable.niche
+                            ? `${deliverable.niche.replace(/_/g, ' ')} Specifications`
+                            : 'Niche Specifications'}
+                        </span>
+                      </h3>
+                      {deliverable.niche && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-white/5 border border-white/10 text-zinc-400">
+                          {deliverable.niche.replace(/_/g, ' ')}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      {/* Software fields */}
+                      {nicheMeta.repositoryUrl && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold flex items-center gap-1">
+                            <GitBranch className="w-3 h-3 text-blue-400" /> Repository
+                          </span>
+                          <a
+                            href={isSafeHttpUrl(nicheMeta.repositoryUrl) ? nicheMeta.repositoryUrl : '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:underline flex items-center gap-1 truncate font-mono text-xs"
+                          >
+                            <span className="truncate">{nicheMeta.repositoryUrl}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                        </div>
+                      )}
+
+                      {nicheMeta.branchName && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold flex items-center gap-1">
+                            <GitBranch className="w-3 h-3 text-blue-400" /> Branch
+                          </span>
+                          <p className="font-mono text-white text-xs">{nicheMeta.branchName}</p>
+                        </div>
+                      )}
+
+                      {nicheMeta.pullRequestUrl && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold flex items-center gap-1">
+                            <GitPullRequest className="w-3 h-3 text-purple-400" /> Pull Request
+                          </span>
+                          <a
+                            href={isSafeHttpUrl(nicheMeta.pullRequestUrl) ? nicheMeta.pullRequestUrl : '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-purple-400 hover:underline flex items-center gap-1 truncate font-mono text-xs"
+                          >
+                            <span className="truncate">{nicheMeta.pullRequestUrl}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                        </div>
+                      )}
+
+                      {nicheMeta.previewUrl && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold flex items-center gap-1">
+                            <ExternalLink className="w-3 h-3 text-emerald-400" /> Staging / Preview
+                          </span>
+                          <a
+                            href={isSafeHttpUrl(nicheMeta.previewUrl) ? nicheMeta.previewUrl : '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-400 hover:underline flex items-center gap-1 truncate font-mono text-xs"
+                          >
+                            <span className="truncate">{nicheMeta.previewUrl}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                        </div>
+                      )}
+
+                      {nicheMeta.technicalStatus && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold">Technical Status</span>
+                          <p className="font-semibold text-white capitalize text-xs">
+                            {nicheMeta.technicalStatus.replace(/_/g, ' ')}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Design fields */}
+                      {nicheMeta.designPreviewUrl && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold flex items-center gap-1">
+                            <Palette className="w-3 h-3 text-purple-400" /> Design Preview
+                          </span>
+                          <a
+                            href={isSafeHttpUrl(nicheMeta.designPreviewUrl) ? nicheMeta.designPreviewUrl : '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-purple-400 hover:underline flex items-center gap-1 truncate font-mono text-xs"
+                          >
+                            <span className="truncate">{nicheMeta.designPreviewUrl}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                        </div>
+                      )}
+
+                      {nicheMeta.designTool && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold">Design Tool</span>
+                          <p className="font-semibold text-white text-xs">{nicheMeta.designTool}</p>
+                        </div>
+                      )}
+
+                      {nicheMeta.exportFormats && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold">Formats Included</span>
+                          <p className="font-mono text-zinc-300 text-xs">
+                            {Array.isArray(nicheMeta.exportFormats)
+                              ? nicheMeta.exportFormats.join(', ')
+                              : nicheMeta.exportFormats}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Video fields */}
+                      {nicheMeta.videoPreviewUrl && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold flex items-center gap-1">
+                            <Video className="w-3 h-3 text-rose-400" /> Video Preview
+                          </span>
+                          <a
+                            href={isSafeHttpUrl(nicheMeta.videoPreviewUrl) ? nicheMeta.videoPreviewUrl : '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-rose-400 hover:underline flex items-center gap-1 truncate font-mono text-xs"
+                          >
+                            <span className="truncate">{nicheMeta.videoPreviewUrl}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                        </div>
+                      )}
+
+                      {nicheMeta.duration && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold">Duration</span>
+                          <p className="font-mono text-white text-xs">{nicheMeta.duration}</p>
+                        </div>
+                      )}
+
+                      {nicheMeta.aspectRatio && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold">Aspect Ratio & Res</span>
+                          <p className="font-mono text-white text-xs">
+                            {nicheMeta.aspectRatio} • {nicheMeta.resolution || 'HD'}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Social Media fields */}
+                      {nicheMeta.platform && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold">Platform & Type</span>
+                          <p className="font-semibold text-white text-xs">
+                            {nicheMeta.platform} • {nicheMeta.contentType || 'Post'}
+                          </p>
+                        </div>
+                      )}
+
+                      {nicheMeta.campaignName && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold">Campaign</span>
+                          <p className="text-white text-xs">{nicheMeta.campaignName}</p>
+                        </div>
+                      )}
+
+                      {nicheMeta.socialPreviewUrl && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold flex items-center gap-1">
+                            <Share2 className="w-3 h-3 text-amber-400" /> Campaign Preview
+                          </span>
+                          <a
+                            href={isSafeHttpUrl(nicheMeta.socialPreviewUrl) ? nicheMeta.socialPreviewUrl : '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-amber-400 hover:underline flex items-center gap-1 truncate font-mono text-xs"
+                          >
+                            <span className="truncate">{nicheMeta.socialPreviewUrl}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                        </div>
+                      )}
+
+                      {/* SEO fields */}
+                      {nicheMeta.deliverableType && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold">Report Type</span>
+                          <p className="font-semibold text-white text-xs">{nicheMeta.deliverableType}</p>
+                        </div>
+                      )}
+
+                      {nicheMeta.reportUrl && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold flex items-center gap-1">
+                            <Search className="w-4 h-4 text-emerald-400" /> Report / Dashboard
+                          </span>
+                          <a
+                            href={isSafeHttpUrl(nicheMeta.reportUrl) ? nicheMeta.reportUrl : '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-400 hover:underline flex items-center gap-1 truncate font-mono text-xs"
+                          >
+                            <span className="truncate">{nicheMeta.reportUrl}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Writing fields */}
+                      {nicheMeta.wordCount && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold">Word Count & Lang</span>
+                          <p className="font-mono text-white text-xs">
+                            {nicheMeta.wordCount} words • {nicheMeta.language || 'English'}
+                          </p>
+                        </div>
+                      )}
+
+                      {nicheMeta.documentUrl && (
+                        <div className="p-3 rounded-xl bg-zinc-900 border border-white/5 space-y-1">
+                          <span className="text-[10px] uppercase text-zinc-500 font-semibold flex items-center gap-1">
+                            <PenTool className="w-3 h-3 text-teal-400" /> Live Document
+                          </span>
+                          <a
+                            href={isSafeHttpUrl(nicheMeta.documentUrl) ? nicheMeta.documentUrl : '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-teal-400 hover:underline flex items-center gap-1 truncate font-mono text-xs"
+                          >
+                            <span className="truncate">{nicheMeta.documentUrl}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* GitHub Activity Trail if Software Niche and activity present */}
+                    {nicheMeta.githubActivity && nicheMeta.githubActivity.length > 0 && (
+                      <div className="pt-2 border-t border-white/5 space-y-2">
+                        <span className="text-[10px] uppercase font-bold text-zinc-400 flex items-center gap-1">
+                          <GitCommit className="w-3 h-3 text-blue-400" /> Recent Technical Activity
+                        </span>
+                        <div className="space-y-1.5">
+                          {nicheMeta.githubActivity.slice(0, 3).map((act: any) => (
+                            <div key={act.id} className="p-2 rounded-lg bg-zinc-950 border border-white/5 flex items-center justify-between text-xs">
+                              <span className="text-zinc-200">{act.message}</span>
+                              <span className="text-[10px] text-zinc-500 font-mono">{act.timestamp}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Primary Assets Preview */}
                 <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
                   <div className="flex items-center justify-between">
@@ -736,6 +1028,13 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
                       <span className="text-zinc-500">Current Version</span>
                       <span className="font-mono font-bold text-white px-2 py-0.5 rounded bg-white/10 border border-white/15">
                         {deliverable.version}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center py-1 border-b border-white/5">
+                      <span className="text-zinc-500">Discipline / Niche</span>
+                      <span className="font-semibold text-white capitalize">
+                        {deliverable.niche ? deliverable.niche.replace(/_/g, ' ') : 'General'}
                       </span>
                     </div>
 

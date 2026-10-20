@@ -15,9 +15,9 @@ export const ClientDeliverableService = {
   getDeliverables: async (clientId: string): Promise<Deliverable[]> => {
     if (!clientId) return [];
 
-    // Demo mode: return mock data
+    // Demo mode: return mock data without internal notes
     if (isDemoModeActive()) {
-      return FlowDeskStore.getDeliverables(clientId);
+      return FlowDeskStore.getDeliverables(clientId).map(({ internalNotes, ...rest }) => rest as Deliverable);
     }
 
     try {
@@ -49,6 +49,8 @@ export const ClientDeliverableService = {
           version: d.current_version || 'v1.0',
           submissionMessage: d.submission_message || '',
           rejectionReason: d.rejection_reason || undefined,
+          niche: d.niche || 'general',
+          nicheMetadata: d.metadata || {},
           commentsCount: d.comments_count || 0,
           filesCount: d.files_count || 0,
           createdAt: d.created_at,
@@ -68,9 +70,12 @@ export const ClientDeliverableService = {
   getDeliverableById: async (deliverableId: string, clientId: string): Promise<Deliverable | undefined> => {
     if (!deliverableId || !clientId) return undefined;
 
-    // Demo mode
+    // Demo mode: strip internalNotes to prevent private freelancer note leakage
     if (isDemoModeActive()) {
-      return FlowDeskStore.getDeliverableById(deliverableId);
+      const raw = FlowDeskStore.getDeliverableById(deliverableId);
+      if (!raw) return undefined;
+      const { internalNotes, ...safe } = raw;
+      return safe as Deliverable;
     }
 
     try {
@@ -144,6 +149,8 @@ export const ClientDeliverableService = {
         version: data.current_version || 'v1.0',
         submissionMessage: data.submission_message || '',
         rejectionReason: data.rejection_reason || undefined,
+        niche: data.niche || 'general',
+        nicheMetadata: data.metadata || {},
         files,
         versionHistory: versions,
         comments,

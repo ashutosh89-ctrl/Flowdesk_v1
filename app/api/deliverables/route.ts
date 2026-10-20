@@ -76,6 +76,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       fileName: payload.fileName,
       fileSize: payload.fileSize,
       fileUrl: payload.fileUrl,
+      niche: payload.niche || 'general',
+      nicheMetadata: payload.nicheMetadata || {},
     });
 
     return NextResponse.json(
@@ -192,6 +194,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       internal_notes: payload.internalNotes || '',
       submission_message: payload.submissionMessage || '',
       approval_status: payload.approvalStatus || 'pending',
+      niche: payload.niche || 'general',
+      metadata: payload.nicheMetadata || {},
     };
 
     const { data: deliverable, error: delError } = await safeDeliverableInsert(supabaseAdmin, insertPayload);
@@ -273,6 +277,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           version: deliverable.current_version || payload.version || 'v1.0',
           internalNotes: deliverable.internal_notes || payload.internalNotes || '',
           submissionMessage: deliverable.submission_message || payload.submissionMessage || '',
+          niche: deliverable.niche || payload.niche || 'general',
+          nicheMetadata: deliverable.metadata || payload.nicheMetadata || {},
           filesCount: payload.fileName || payload.fileUrl ? 1 : 0,
           commentsCount: 0,
           createdAt: deliverable.created_at,
@@ -392,6 +398,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           version: d.current_version || 'v1.0',
           internalNotes: d.internal_notes || '',
           submissionMessage: d.submission_message || '',
+          niche: d.niche || 'general',
+          nicheMetadata: d.metadata || {},
           filesCount: d.files_count || 0,
           commentsCount: d.comments_count || 0,
           isArchived: d.status === 'archived',

@@ -582,6 +582,8 @@ export const FreelancerDeliverableService = {
         version: d.current_version || 'v1.0',
         internalNotes: d.internal_notes || '',
         submissionMessage: d.submission_message || '',
+        niche: d.niche || 'general',
+        nicheMetadata: d.metadata || {},
         commentsCount: d.comments_count || 0,
         filesCount: d.files_count || 0,
         isArchived: d.status === 'archived',
@@ -665,6 +667,8 @@ export const FreelancerDeliverableService = {
         internalNotes: data.internal_notes || '',
         submissionMessage: data.submission_message || '',
         rejectionReason: data.rejection_reason || undefined,
+        niche: data.niche || 'general',
+        nicheMetadata: data.metadata || {},
         commentsCount: data.comments_count || comments.length,
         filesCount: data.files_count || files.length,
         files,
@@ -712,6 +716,8 @@ export const FreelancerDeliverableService = {
             submissionMessage: delData.submissionMessage || '',
             status: delData.status || 'draft',
             approvalStatus: delData.approvalStatus || 'pending',
+            niche: delData.niche || 'general',
+            nicheMetadata: delData.nicheMetadata || {},
           }),
         });
 
@@ -893,10 +899,26 @@ export const FreelancerDeliverableService = {
       if (updates.revisionNote !== undefined) payload.rejection_reason = updates.revisionNote;
       if ((updates as any).revisionNotes !== undefined) payload.rejection_reason = (updates as any).revisionNotes;
       if (updates.approvalStatus !== undefined) payload.approval_status = updates.approvalStatus;
+      if (updates.niche !== undefined) payload.niche = updates.niche;
+      if (updates.nicheMetadata !== undefined) payload.metadata = updates.nicheMetadata;
       const { data, error } = await safeDeliverableUpdate(supabase, id, payload, { key: 'workspace_id', value: wsId });
       if (error) { console.warn('Supabase deliverable update error:', error.message); return undefined; }
       if (!data) return undefined;
-      return { id: data.id, projectId: data.project_id || '', clientId: data.client_id, clientName: data.client_name || '', title: data.title, description: data.description || '', status: data.status || 'draft', dueDate: data.due_date || '', version: data.current_version || 'v1.0', internalNotes: data.internal_notes || '', approvalStatus: deriveApprovalStatus(data.status, data.approval_status) };
+      return {
+        id: data.id,
+        projectId: data.project_id || '',
+        clientId: data.client_id,
+        clientName: data.client_name || '',
+        title: data.title,
+        description: data.description || '',
+        status: data.status || 'draft',
+        dueDate: data.due_date || '',
+        version: data.current_version || 'v1.0',
+        internalNotes: data.internal_notes || '',
+        approvalStatus: deriveApprovalStatus(data.status, data.approval_status),
+        niche: data.niche || 'general',
+        nicheMetadata: data.metadata || {},
+      };
     } catch { return undefined; }
   },
   duplicateDeliverable: async (id: string): Promise<Deliverable | undefined> => {
@@ -1389,7 +1411,14 @@ export const FreelancerInvoiceService = {
       let query = supabase.from('invoices').select('*, invoice_items(*), invoice_payments(*), receipts(*)').eq('workspace_id', wsId);
       if (clientId) query = query.eq('client_id', clientId);
 
-      let { data, error } = await query.order('created_at', { ascending: false });
+      const [invoicesResult, reminderLogsResult] = await Promise.all([
+        query.order('created_at', { ascending: false }),
+        supabase.from('reminder_log').select('*').eq('workspace_id', wsId).order('sent_at', { ascending: true }),
+      ]);
+
+      let { data, error } = invoicesResult;
+      const reminderLogs = reminderLogsResult.data || [];
+
       if (error) {
         console.warn('[FreelancerInvoiceService] Primary invoice join notice, retrying base select:', error.message);
         let fallbackQuery = supabase.from('invoices').select('*').eq('workspace_id', wsId);
@@ -1402,6 +1431,21 @@ export const FreelancerInvoiceService = {
         data = fallback.data;
       }
       if (!data) return [];
+
+      const remindersByInvoice = reminderLogs.reduce((acc: any, r: any) => {
+        if (!acc[r.invoice_id]) acc[r.invoice_id] = [];
+        const count = acc[r.invoice_id].length + 1;
+        acc[r.invoice_id].push({
+          id: r.id,
+          invoiceId: r.invoice_id,
+          reminderNumber: count,
+          date: r.sent_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          method: 'email',
+          status: 'sent',
+          notes: `Payment reminder #${count} dispatched to ${r.recipient_email}`,
+        });
+        return acc;
+      }, {});
 
       const mapped = data.map((i) => {
         const paidAmt = Number(i.paid_amount) || 0;
@@ -1478,6 +1522,7 @@ export const FreelancerInvoiceService = {
           paymentInstructions: i.payment_instructions || '',
           internalNotes: i.internal_notes || '',
           receipts,
+          reminders: remindersByInvoice[i.id] || [],
         } as Invoice;
       });
 
@@ -1488,8 +1533,129 @@ export const FreelancerInvoiceService = {
     }
   },
   getInvoiceById: async (id: string): Promise<Invoice | undefined> => {
-    const invs = await FreelancerInvoiceService.getInvoices();
-    return invs.find((i) => i.id === id || i.invoiceNumber === id);
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      return FlowDeskStore.getInvoiceById(id);
+    }
+    const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+    if (!wsId) return undefined;
+
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      let query = supabase
+        .from('invoices')
+        .select('*, invoice_items(*), invoice_payments(*), receipts(*)')
+        .eq('workspace_id', wsId);
+
+      if (isUuid) {
+        query = query.eq('id', id);
+      } else {
+        query = query.eq('invoice_number', id);
+      }
+
+      const { data: i, error } = await query.maybeSingle();
+      if (error || !i) {
+        const invs = await FreelancerInvoiceService.getInvoices();
+        return invs.find((item) => item.id === id || item.invoiceNumber === id);
+      }
+
+      const { data: reminderLogs } = await supabase
+        .from('reminder_log')
+        .select('*')
+        .eq('invoice_id', i.id)
+        .eq('workspace_id', wsId)
+        .order('sent_at', { ascending: true });
+
+      const reminders = (reminderLogs || []).map((r: any, idx: number) => ({
+        id: r.id,
+        invoiceId: r.invoice_id,
+        reminderNumber: idx + 1,
+        date: r.sent_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        method: 'email' as const,
+        status: 'sent' as const,
+        notes: `Payment reminder #${idx + 1} dispatched to ${r.recipient_email}`,
+      }));
+
+      const paidAmt = Number(i.paid_amount) || 0;
+      const totalAmt = Number(i.total_amount) || 0;
+      const paymentStatus = derivePaymentStatus(totalAmt, paidAmt);
+      const isOverdue = isInvoiceOverdue(i.due_date, paymentStatus, i.status || 'draft');
+
+      const persistedReceipts = (i.receipts || []).map((r: any) => ({
+        id: r.id,
+        receiptNumber: r.receipt_number,
+        invoiceId: r.invoice_id,
+        invoiceNumber: i.invoice_number,
+        amount: Number(r.amount) || 0,
+        currency: r.currency || i.currency || 'USD',
+        paymentDate: r.payment_date || r.created_at || new Date().toISOString(),
+        paymentMethod: r.payment_method || 'razorpay',
+        clientName: i.client_name,
+        notes: r.notes,
+        razorpayPaymentId: r.razorpay_payment_id,
+        razorpayOrderId: r.razorpay_order_id,
+        gateway: 'razorpay',
+        gatewayStatus: 'completed',
+      }));
+
+      const receipts = persistedReceipts.length > 0
+        ? persistedReceipts
+        : (i.invoice_payments || []).map((p: any) => ({
+            id: p.id,
+            receiptNumber: `RCP-${i.invoice_number || 'INV'}-${(p.id || '').slice(0, 4)}`,
+            invoiceId: p.invoice_id,
+            invoiceNumber: i.invoice_number,
+            amount: Number(p.amount) || 0,
+            currency: p.currency || i.currency || 'USD',
+            paymentDate: p.payment_date || p.created_at || new Date().toISOString(),
+            paymentMethod: p.payment_method || 'bank_transfer',
+            clientName: i.client_name,
+            notes: p.notes,
+            razorpayPaymentId: p.razorpay_payment_id,
+            razorpayOrderId: p.razorpay_order_id,
+            gateway: p.gateway || 'manual',
+            gatewayStatus: p.gateway_status || 'completed',
+          }));
+
+      return {
+        id: i.id,
+        invoiceNumber: i.invoice_number,
+        clientId: i.client_id,
+        clientName: i.client_name || 'Client Workspace',
+        clientEmail: i.client_email || 'client@example.com',
+        projectId: i.project_id || undefined,
+        projectName: i.project_name || undefined,
+        issueDate: i.issue_date,
+        dueDate: i.due_date,
+        workflowStatus: (i.status as any) || 'draft',
+        paymentStatus,
+        status: isOverdue ? 'overdue' : (i.status || 'draft'),
+        items: (i.invoice_items || []).map((item: any) => ({
+          id: item.id,
+          description: item.description,
+          quantity: Number(item.quantity) || 1,
+          rate: Number(item.unit_price) || 0,
+          amount: Number(item.amount) || 0,
+        })),
+        subtotal: Number(i.subtotal) || 0,
+        discount: Number(i.discount) || 0,
+        taxName: i.tax_name || 'Tax',
+        taxPercentage: Number(i.tax_percentage) || 0,
+        tax: Number(i.tax_amount) || 0,
+        total: totalAmt,
+        paidAmount: paidAmt,
+        remainingBalance: calculateRemainingBalance(totalAmt, paidAmt),
+        currency: i.currency || 'USD',
+        notes: i.notes || '',
+        paymentInstructions: i.payment_instructions || '',
+        internalNotes: i.internal_notes || '',
+        receipts,
+        reminders,
+      } as Invoice;
+    } catch (err) {
+      console.error('[FreelancerInvoiceService] Unexpected error in getInvoiceById:', err);
+      const invs = await FreelancerInvoiceService.getInvoices();
+      return invs.find((item) => item.id === id || item.invoiceNumber === id);
+    }
   },
   createInvoice: async (
     invoice: Partial<Invoice> & { clientId: string; items: any[] }
@@ -2091,34 +2257,90 @@ export const FreelancerInvoiceService = {
       throw err instanceof Error ? err : new Error('Payment could not be recorded. Please try again.');
     }
   },
-  sendReminder: async (id: string, notes?: string): Promise<{ success: boolean; message: string; invoice?: Invoice }> => {
+  sendReminder: async (
+    id: string,
+    notes?: string
+  ): Promise<{ success: boolean; message: string; reminder?: any; invoice?: Invoice }> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       const inv = FlowDeskStore.getInvoiceById(id);
       if (!inv) return { success: false, message: 'Invoice not found' };
+      const currentReminders = inv.reminders || [];
+      if (currentReminders.length >= 3) {
+        return { success: false, message: 'Maximum limit of 3 manual reminders reached for this invoice.' };
+      }
+      const reminderNum = currentReminders.length + 1;
+      const newReminder = {
+        id: `demo_rem_${Date.now()}`,
+        invoiceId: inv.id,
+        reminderNumber: reminderNum,
+        date: new Date().toISOString().split('T')[0],
+        method: 'email' as const,
+        status: 'sent' as const,
+        notes: notes || `Payment reminder #${reminderNum} sent to ${inv.clientName}`,
+      };
+      const updatedInv = {
+        ...inv,
+        reminders: [...currentReminders, newReminder],
+      };
+      FlowDeskStore.updateInvoice(id, { reminders: updatedInv.reminders });
       FlowDeskStore.logActivity({
         user: 'Alex Rivera',
         action: 'sent reminder for invoice',
         target: inv.invoiceNumber,
         category: 'invoice',
-        metadata: notes || `Payment reminder sent to ${inv.clientName}`,
+        metadata: notes || `Payment reminder #${reminderNum} sent to ${inv.clientName}`,
       });
-      return { success: true, message: `Payment reminder recorded for ${inv.invoiceNumber}.`, invoice: inv };
+      return {
+        success: true,
+        message: `Payment reminder #${reminderNum} recorded for #${inv.invoiceNumber}.`,
+        reminder: newReminder,
+        invoice: updatedInv,
+      };
     }
+
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return { success: false, message: "No active workspace" };
+    if (!wsId) return { success: false, message: 'No active workspace' };
+
     try {
       const inv = await FreelancerInvoiceService.getInvoiceById(id);
       if (!inv) return { success: false, message: 'Invoice not found' };
+
+      const existingReminders = inv.reminders || [];
+      if (existingReminders.length >= 3) {
+        return { success: false, message: 'Maximum limit of 3 manual reminders reached for this invoice.' };
+      }
+
+      const reminderNum = existingReminders.length + 1;
+      const ruleKey = `manual_${reminderNum}_${Date.now()}`;
+
+      // Insert into reminder_log (persisting the audit record)
+      const { data: reminderRow, error: reminderErr } = await supabase
+        .from('reminder_log')
+        .insert({
+          workspace_id: wsId,
+          invoice_id: inv.id,
+          rule_key: ruleKey,
+          recipient_email: inv.clientEmail || 'client@example.com',
+          sent_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (reminderErr) {
+        console.warn('[FreelancerInvoiceService] reminder_log insert notice:', reminderErr.message);
+      }
+
+      // Log activity
       await supabase.from('activities').insert({
         workspace_id: wsId,
         action: 'sent_reminder',
         title: inv.invoiceNumber,
-        description: `Payment reminder recorded for ${inv.invoiceNumber}`,
+        description: notes || `Payment reminder #${reminderNum} dispatched for invoice #${inv.invoiceNumber}`,
         resource_type: 'invoice',
         resource_id: id,
       });
 
-      // Dispatch Invoice Due / Reminder email
+      // Dispatch Invoice Due / Reminder email via EmailService
       try {
         if (inv.clientEmail) {
           const { EmailService } = await import('@/backend/email/email-service');
@@ -2129,21 +2351,53 @@ export const FreelancerInvoiceService = {
             const { data: profile } = await supabase.from('profiles').select('business_name, full_name').eq('id', ws.owner_id).single();
             if (profile?.business_name) studioName = profile.business_name;
           }
-          await EmailService.sendInvoiceIssued(inv.clientEmail, {
-            clientName: inv.clientName || 'Client',
-            freelancerName: studioName,
-            invoiceNumber: inv.invoiceNumber,
-            amount: `${inv.currency || '$'} ${inv.total.toLocaleString()}`,
-            dueDate: inv.dueDate,
-            invoiceUrl: `${getAppBaseUrl()}/portal/${inv.clientId}`,
-          }, { workspaceId: wsId, invoiceId: id });
+          const stage: 'before_due' | 'due_date' | 'after_due' =
+            new Date(inv.dueDate) < new Date() ? 'after_due' : 'before_due';
+
+          await EmailService.sendInvoiceReminder(
+            inv.clientEmail,
+            {
+              clientName: inv.clientName || 'Client',
+              freelancerName: studioName,
+              invoiceNumber: inv.invoiceNumber,
+              amountFormatted: `${inv.currency || '$'} ${inv.total.toLocaleString()}`,
+              remainingBalanceFormatted: `${inv.currency || '$'} ${(inv.remainingBalance ?? inv.total).toLocaleString()}`,
+              dueDate: inv.dueDate,
+              portalUrl: `${getAppBaseUrl()}/portal/${inv.clientId}`,
+              stage,
+            },
+            { workspaceId: wsId, invoiceId: inv.id, ruleKey }
+          );
         }
       } catch (emailErr) {
         console.warn('[FreelancerInvoiceService] Email dispatch notice (reminder):', emailErr);
       }
 
-      return { success: true, message: `Payment reminder recorded for ${inv.invoiceNumber}.`, invoice: inv };
-    } catch { return { success: false, message: 'Failed to record reminder' }; }
+      const newReminder = {
+        id: reminderRow?.id || ruleKey,
+        invoiceId: inv.id,
+        reminderNumber: reminderNum,
+        date: new Date().toISOString().split('T')[0],
+        method: 'email' as const,
+        status: 'sent' as const,
+        notes: notes || `Payment reminder #${reminderNum} dispatched to ${inv.clientEmail}`,
+      };
+
+      const updatedInvoice: Invoice = {
+        ...inv,
+        reminders: [...existingReminders, newReminder],
+      };
+
+      return {
+        success: true,
+        message: `Payment reminder #${reminderNum} dispatched for #${inv.invoiceNumber}.`,
+        reminder: newReminder,
+        invoice: updatedInvoice,
+      };
+    } catch (err: any) {
+      console.error('[FreelancerInvoiceService] sendReminder error:', err);
+      return { success: false, message: 'Failed to record reminder.' };
+    }
   },
   recordInvoiceView: async (id: string): Promise<Invoice | undefined> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
@@ -2177,7 +2431,7 @@ export const FreelancerInvoiceService = {
       return undefined;
     }
   },
-  getFinancialMetrics: async (): Promise<FinancialDashboardMetrics> => {
+  getFinancialMetrics: async (existingInvoices?: Invoice[]): Promise<FinancialDashboardMetrics> => {
     const defaultMetrics: FinancialDashboardMetrics = {
       lifetimeRevenue: 0,
       outstandingBalance: 0,
@@ -2204,16 +2458,17 @@ export const FreelancerInvoiceService = {
     };
 
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return defaultMetrics;
+    if (!wsId && !existingInvoices) return defaultMetrics;
 
     try {
-      const allInvoices = await FreelancerInvoiceService.getInvoices();
+      const allInvoices = existingInvoices || (await FreelancerInvoiceService.getInvoices());
       if (!allInvoices || allInvoices.length === 0) return defaultMetrics;
 
       const lifetimeRevenue = allInvoices.reduce((acc, i) => acc + (Number(i.total) || 0), 0);
-      const totalPaid = allInvoices.filter(i => i.paymentStatus === 'paid').reduce((acc, i) => acc + (Number(i.total) || 0), 0);
-      const outstandingBalance = lifetimeRevenue - totalPaid;
-      const overdueInvoices = allInvoices.filter(i => i.paymentStatus !== 'paid' && new Date(i.dueDate) < new Date());
+      const isPaid = (i: Invoice) => i.paymentStatus === 'paid' || i.status === 'paid';
+      const totalPaid = allInvoices.filter(isPaid).reduce((acc, i) => acc + (Number(i.paidAmount ?? (i as any).amountPaid ?? i.total) || 0), 0);
+      const outstandingBalance = Math.max(0, lifetimeRevenue - totalPaid);
+      const overdueInvoices = allInvoices.filter(i => !isPaid(i) && (i.status === 'overdue' || new Date(i.dueDate) < new Date()));
       const overdueAmount = overdueInvoices.reduce((acc, i) => acc + (Number(i.total) || 0), 0);
       const now = new Date();
       const thisMonth = allInvoices.filter(i => {

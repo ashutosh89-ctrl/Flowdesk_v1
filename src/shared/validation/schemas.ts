@@ -188,6 +188,17 @@ export const CreateDeliverableSchema = z.object({
   submissionMessage: z.string().trim().max(5000).optional().default(''),
   status: z.enum(['draft', 'preparing', 'ready_for_review', 'submitted', 'approved', 'revision_requested', 'completed', 'archived']).optional().default('draft'),
   approvalStatus: z.enum(['pending', 'approved', 'revision_requested', 'rejected']).optional().default('pending'),
+  niche: z.enum([
+    'general',
+    'software_development',
+    'graphic_design',
+    'video_editing',
+    'social_media',
+    'seo_marketing',
+    'writing_translation',
+    'consulting_va',
+  ]).optional().default('general'),
+  nicheMetadata: z.record(z.string(), z.any()).optional().default({}),
 }).strict();
 
 export type CreateDeliverablePayload = z.infer<typeof CreateDeliverableSchema>;
