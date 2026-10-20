@@ -17,7 +17,7 @@ export interface Workspace {
 let workspaceCache: { userId: string; workspace: Workspace } | null = null;
 
 // Mock workspace for demo mode
-const DEMO_WORKSPACE: Workspace = {
+export const DEMO_WORKSPACE: Workspace = {
   id: 'ws-demo-001',
   ownerId: 'usr-demo',
   name: 'My Workspace',

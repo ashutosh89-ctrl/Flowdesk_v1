@@ -2275,7 +2275,7 @@ export const FreelancerInvoiceService = {
             .eq('id', id);
 
           try {
-            await supabase.from('payments').insert({
+            await supabase.from('invoice_payments').insert({
               workspace_id: wsId,
               invoice_id: id,
               amount: actualSettle,
@@ -2297,10 +2297,10 @@ export const FreelancerInvoiceService = {
         if (inv?.clientEmail) {
           const { EmailService } = await import('@/backend/email/email-service');
           const { getAppBaseUrl } = await import('@/shared/utils/url');
-          const { data: ws } = await supabase.from('workspaces').select('name, owner_id').eq('id', wsId).single();
+          const { data: ws } = await supabase.from('workspaces').select('name, owner_id').eq('id', wsId).maybeSingle();
           let studioName = ws?.name || 'FlowDesk Studio';
           if (ws?.owner_id) {
-            const { data: profile } = await supabase.from('profiles').select('business_name, full_name').eq('id', ws.owner_id).single();
+            const { data: profile } = await supabase.from('profiles').select('business_name, full_name').eq('id', ws.owner_id).maybeSingle();
             if (profile?.business_name) studioName = profile.business_name;
           }
           await EmailService.sendPaymentReceived(inv.clientEmail, {
@@ -2414,10 +2414,10 @@ export const FreelancerInvoiceService = {
         if (inv.clientEmail) {
           const { EmailService } = await import('@/backend/email/email-service');
           const { getAppBaseUrl } = await import('@/shared/utils/url');
-          const { data: ws } = await supabase.from('workspaces').select('name, owner_id').eq('id', wsId).single();
+          const { data: ws } = await supabase.from('workspaces').select('name, owner_id').eq('id', wsId).maybeSingle();
           let studioName = ws?.name || 'FlowDesk Studio';
           if (ws?.owner_id) {
-            const { data: profile } = await supabase.from('profiles').select('business_name, full_name').eq('id', ws.owner_id).single();
+            const { data: profile } = await supabase.from('profiles').select('business_name, full_name').eq('id', ws.owner_id).maybeSingle();
             if (profile?.business_name) studioName = profile.business_name;
           }
           const stage: 'before_due' | 'due_date' | 'after_due' =

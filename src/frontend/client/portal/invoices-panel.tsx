@@ -5,7 +5,7 @@ import { Card } from '@/frontend/shared/ui/card';
 import { Button } from '@/frontend/shared/ui/button';
 import { StatusPill } from '@/frontend/shared/ui/status-pill';
 import { Modal } from '@/frontend/shared/ui/modal';
-import { Invoice, UserProfile } from '@/shared/types';
+import { Invoice, UserProfile, InvoiceBranding } from '@/shared/types';
 import { formatCurrency } from '@/shared/utils/currency';
 import { InvoiceDocument } from '@/frontend/shared/invoice/invoice-document';
 import {
@@ -31,6 +31,7 @@ interface InvoicesPanelProps {
   onPayClick: (invoice: Invoice) => void;
   onDownloadClick: (invoice: Invoice) => void;
   profile?: UserProfile | null;
+  branding?: InvoiceBranding | null;
 }
 
 export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
@@ -38,12 +39,15 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
   onPayClick,
   onDownloadClick,
   profile,
+  branding,
 }) => {
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'paid'>('all');
   const [selectedInvoiceModal, setSelectedInvoiceModal] = useState<Invoice | null>(null);
   const [paymentInstructionsModal, setPaymentInstructionsModal] = useState<Invoice | null>(null);
   const [exportingType, setExportingType] = useState<'pdf' | 'png' | 'jpg' | 'print' | null>(null);
   const previewDocRef = useRef<HTMLDivElement>(null);
+
+  const effectiveBranding = branding || (profile as any);
 
   const filteredInvoices = invoices.filter((inv) => {
     if (filter === 'unpaid') return inv.paymentStatus !== 'paid';
@@ -59,7 +63,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
     if (exportingType) return;
     setExportingType('pdf');
     try {
-      await exportInvoiceToPDF(inv, profile, previewDocRef.current);
+      await exportInvoiceToPDF(inv, effectiveBranding, previewDocRef.current);
     } finally {
       setExportingType(null);
     }
@@ -69,7 +73,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
     if (exportingType) return;
     setExportingType('png');
     try {
-      await exportInvoiceToPNG(previewDocRef.current, inv.invoiceNumber, inv, profile);
+      await exportInvoiceToPNG(previewDocRef.current, inv.invoiceNumber, inv, effectiveBranding);
     } finally {
       setExportingType(null);
     }
@@ -79,7 +83,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
     if (exportingType) return;
     setExportingType('jpg');
     try {
-      await exportInvoiceToJPG(previewDocRef.current, inv.invoiceNumber, inv, profile);
+      await exportInvoiceToJPG(previewDocRef.current, inv.invoiceNumber, inv, effectiveBranding);
     } finally {
       setExportingType(null);
     }
@@ -89,7 +93,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
     if (exportingType) return;
     setExportingType('print');
     try {
-      printInvoice(inv, profile, previewDocRef.current);
+      printInvoice(inv, effectiveBranding, previewDocRef.current);
     } finally {
       setExportingType(null);
     }
@@ -307,7 +311,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
               <InvoiceDocument
                 ref={previewDocRef}
                 invoice={selectedInvoiceModal}
-                branding={profile}
+                branding={effectiveBranding}
                 responsiveScale={true}
                 documentId={`client-portal-preview-${selectedInvoiceModal.id}`}
               />

@@ -7,6 +7,8 @@ export * from './client-comment-service';
 import { supabase, isDemoModeActive } from '@/backend/utilities/supabase';
 import { StorageHelper } from '@/backend/storage/storage-helper';
 import { DemoDataProvider } from '@/backend/utilities/demo-data-provider';
+import { DEMO_WORKSPACE } from '@/backend/utilities/workspace';
+import { FlowDeskStore } from '@/backend/store/storage-store';
 import { ClientAuthService } from './client-auth-service';
 import { ClientDeliverableService } from './client-deliverable-service';
 import { ClientDocumentService } from './client-document-service';
@@ -168,6 +170,16 @@ export const ClientPortalService = {
         },
       ];
 
+      const localProfile = FlowDeskStore.getUserProfile() || {};
+      const demoBranding: InvoiceBranding = {
+        businessName: (DEMO_WORKSPACE.name && DEMO_WORKSPACE.name !== 'My Workspace') ? DEMO_WORKSPACE.name : (localProfile.companyName || localProfile.name || 'FlowDesk Freelance Studio'),
+        freelancerName: localProfile.name || 'Studio Lead',
+        email: localProfile.email || 'billing@flowdesk.app',
+        phone: localProfile.phone || '',
+        logoUrl: DEMO_WORKSPACE.logoUrl || localProfile.logoUrl || '/branding/flowdesk-symbol.png',
+        signatureUrl: DEMO_WORKSPACE.signatureUrl || localProfile.signatureUrl || '',
+      };
+
       const demoResult: ClientPortalDataset = {
         client: mockClient,
         projects: mockProjs,
@@ -196,6 +208,7 @@ export const ClientPortalService = {
           portalLanguage: 'English (US)',
           recentAccess: 'Active Session',
         },
+        branding: demoBranding,
         fileRequests: mockDocs.filter(d => d.status === 'pending').map(d => ({
           id: d.id, clientId: mockClient.id, title: d.title, description: `Please upload ${d.title}.`,
           requestedBy: 'Studio Owner', category: 'Brand Assets', status: d.status === 'uploaded' || d.status === 'verified' ? 'fulfilled' as const : 'pending' as const,
@@ -482,48 +495,107 @@ export const ClientPortalService = {
     };
 
     // 8. Freelancer Studio Branding for Invoices & PDF
+    const localProf = FlowDeskStore.getUserProfile();
     let branding: any = {
-      businessName: 'FlowDesk Freelance Studio',
-      freelancerName: 'Studio Lead',
-      email: '',
-      logoUrl: '/branding/flowdesk-symbol.png',
+      businessName: localProf?.companyName || localProf?.name || 'FlowDesk Freelance Studio',
+      freelancerName: localProf?.name || 'Studio Lead',
+      email: localProf?.email || '',
+      phone: localProf?.phone || '',
+      logoUrl: localProf?.logoUrl || '/branding/flowdesk-symbol.png',
+      signatureUrl: localProf?.signatureUrl || '',
     };
 
-    try {
-      const wsId = (client as any).workspace_id;
-      if (wsId) {
-        const { data: wsData } = await supabase
-          .from('workspaces')
-          .select('name, logo_url, signature_url, owner_id, user_id')
-          .eq('id', wsId)
-          .maybeSingle();
+    let brandingResolved = false;
 
-        if (wsData) {
-          branding.businessName = wsData.name || branding.businessName;
-          if (wsData.logo_url) branding.logoUrl = wsData.logo_url;
-          if (wsData.signature_url) branding.signatureUrl = wsData.signature_url;
+    // Prefer server-side branding resolution (bypasses RLS)
+    if (typeof window !== 'undefined') {
+      try {
+        const brandRes = await fetch(`/api/portal/branding?clientId=${encodeURIComponent(cleanId)}`, {
+          cache: 'no-store',
+        });
+        if (brandRes.ok) {
+          const brandJson = await brandRes.json();
+          if (brandJson?.success && brandJson.branding) {
+            branding = { ...branding, ...brandJson.branding };
+            brandingResolved = true;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[ClientPortalService] Branding API route attempt notice:', apiErr);
+      }
+    }
 
-          const ownerId = wsData.owner_id || wsData.user_id;
-          if (ownerId) {
-            const { data: profData } = await supabase
-              .from('profiles')
-              .select('full_name, business_name, email, phone, logo_url, signature_url')
-              .eq('id', ownerId)
-              .maybeSingle();
+    if (!brandingResolved) {
+      try {
+        let wsId = (client as any).workspace_id || (client as any).workspaceId;
+        if (!wsId && client.id) {
+          const { data: cRow } = await supabase
+            .from('clients')
+            .select('workspace_id')
+            .eq('id', client.id)
+            .maybeSingle();
+          if (cRow?.workspace_id) {
+            wsId = cRow.workspace_id;
+            (client as any).workspace_id = wsId;
+            (client as any).workspaceId = wsId;
+          }
+        }
 
-            if (profData) {
-              branding.freelancerName = profData.full_name || branding.freelancerName;
-              branding.businessName = profData.business_name || wsData.name || branding.businessName;
-              branding.email = profData.email || '';
-              branding.phone = profData.phone || '';
-              if (profData.logo_url) branding.logoUrl = profData.logo_url;
-              if (profData.signature_url) branding.signatureUrl = profData.signature_url;
+        if (wsId) {
+          const { data: wsData } = await supabase
+            .from('workspaces')
+            .select('name, logo_url, signature_url, owner_id')
+            .eq('id', wsId)
+            .maybeSingle();
+
+          if (wsData) {
+            if (wsData.name && wsData.name !== 'My Workspace') {
+              branding.businessName = wsData.name;
+            }
+            if (wsData.logo_url) {
+              branding.logoUrl = wsData.logo_url.startsWith('http') || wsData.logo_url.startsWith('/') || wsData.logo_url.startsWith('data:')
+                ? wsData.logo_url
+                : StorageHelper.getPublicUrl('logos', wsData.logo_url);
+            }
+            if (wsData.signature_url) {
+              branding.signatureUrl = wsData.signature_url.startsWith('http') || wsData.signature_url.startsWith('/') || wsData.signature_url.startsWith('data:')
+                ? wsData.signature_url
+                : StorageHelper.getPublicUrl('signatures', wsData.signature_url);
+            }
+
+            const ownerId = wsData.owner_id;
+            if (ownerId) {
+              const { data: profData } = await supabase
+                .from('profiles')
+                .select('full_name, business_name, company_name, email, phone, logo_url, signature_url, country')
+                .eq('id', ownerId)
+                .maybeSingle();
+
+              if (profData) {
+                if (profData.full_name) branding.freelancerName = profData.full_name;
+                if (profData.business_name || profData.company_name) {
+                  branding.businessName = profData.business_name || profData.company_name || branding.businessName;
+                }
+                if (profData.email) branding.email = profData.email;
+                if (profData.phone) branding.phone = profData.phone;
+                if ((profData as any).country) (branding as any).country = (profData as any).country;
+                if (profData.logo_url) {
+                  branding.logoUrl = profData.logo_url.startsWith('http') || profData.logo_url.startsWith('/') || profData.logo_url.startsWith('data:')
+                    ? profData.logo_url
+                    : StorageHelper.getPublicUrl('logos', profData.logo_url);
+                }
+                if (profData.signature_url) {
+                  branding.signatureUrl = profData.signature_url.startsWith('http') || profData.signature_url.startsWith('/') || profData.signature_url.startsWith('data:')
+                    ? profData.signature_url
+                    : StorageHelper.getPublicUrl('signatures', profData.signature_url);
+                }
+              }
             }
           }
         }
+      } catch (bErr) {
+        console.warn('Error resolving workspace branding in client portal:', bErr);
       }
-    } catch {
-      // safe fallback
     }
 
     const result: ClientPortalDataset = {

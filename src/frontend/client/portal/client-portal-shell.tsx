@@ -394,6 +394,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
                 <InvoicesPanel
                   invoices={invoices}
                   profile={(branding as any) || profile}
+                  branding={branding}
                   onPayClick={(inv) => {
                     setSelectedPaymentInvoice(inv);
                   }}

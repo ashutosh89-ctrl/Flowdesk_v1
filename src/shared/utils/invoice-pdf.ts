@@ -995,17 +995,44 @@ export function printInvoiceDocument(
     </html>
   `;
 
+  // 1. Dedicated print window
+  let printWin: Window | null = null;
+  try {
+    printWin = window.open('', '_blank', 'width=850,height=1000');
+  } catch {
+    printWin = null;
+  }
+
+  if (printWin) {
+    try {
+      printWin.document.open();
+      printWin.document.write(printHtml);
+      printWin.document.close();
+      const triggerPrint = () => {
+        printWin?.focus();
+        printWin?.print();
+      };
+      if (printWin.document.readyState === 'complete') {
+        setTimeout(triggerPrint, 250);
+      } else {
+        printWin.onload = () => setTimeout(triggerPrint, 200);
+      }
+      return;
+    } catch {
+      // Fall through to iframe
+    }
+  }
+
+  // 2. Fallback to iframe (positioned in viewport with minimal opacity so Chromium maintains print focus)
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
-  iframe.style.left = '0';
-  iframe.style.top = '0';
-  iframe.style.width = '100vw';
-  iframe.style.height = '100vh';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '1px';
+  iframe.style.height = '1px';
   iframe.style.border = '0';
-  iframe.style.zIndex = '-99999';
-  iframe.style.opacity = '1'; // CRITICAL: 1.0 opacity so Chromium print preview renders content
+  iframe.style.opacity = '0.01';
   iframe.style.visibility = 'visible';
-  iframe.style.pointerEvents = 'none';
   document.body.appendChild(iframe);
 
   const doc = iframe.contentWindow?.document;
@@ -1022,7 +1049,9 @@ export function printInvoiceDocument(
   setTimeout(() => {
     iframe.contentWindow?.print();
     setTimeout(() => {
-      document.body.removeChild(iframe);
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
     }, 1000);
   }, 350);
 }

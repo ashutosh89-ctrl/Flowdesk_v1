@@ -153,8 +153,8 @@ export const InvoiceItemInputSchema = z.object({
 }).strict();
 
 export const CreateInvoiceSchema = z.object({
-  clientId: uuidSchema,
-  projectId: uuidSchema.optional().nullable(),
+  clientId: z.string().trim().min(1, 'Client ID is required'),
+  projectId: z.string().trim().optional().nullable().transform((v) => (v && v.trim() !== '' ? v : null)),
   invoiceNumber: z.string().trim().min(1).max(100).optional(),
   issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Issue date must be YYYY-MM-DD'),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must be YYYY-MM-DD'),

@@ -66,7 +66,7 @@ export function isSafeImageUrl(url: unknown): boolean {
   }
 
   // Allow safe image data URIs
-  if (trimmed.startsWith('data:image/') && (trimmed.includes(';base64,') || trimmed.includes(';utf8,'))) {
+  if (trimmed.startsWith('data:image/')) {
     return true;
   }
 

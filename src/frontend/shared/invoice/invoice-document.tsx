@@ -53,25 +53,13 @@ function UPIPaymentQR({
     );
   }
 
-  // Construct UPI URI
-  const encodedName = encodeURIComponent(payeeName.slice(0, 25));
-  const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodedName}&am=${amount.toFixed(2)}&cu=INR&tn=Invoice%20${encodeURIComponent(invoiceNumber)}`;
-  // Use quickchart or clean QR SVG fallback
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=4&data=${encodeURIComponent(upiUri)}`;
-
   return (
     <div className="flex flex-col items-center">
-      <div className="w-24 h-24 rounded-lg bg-white border border-zinc-300 p-1 shadow-sm overflow-hidden flex items-center justify-center">
-        <img
-          src={qrUrl}
-          alt="UPI QR Code"
-          className="w-full h-full object-contain"
-          crossOrigin="anonymous"
-          onError={(e) => {
-            // If image load fails (offline), fallback gracefully to icon
-            (e.target as HTMLElement).style.display = 'none';
-          }}
-        />
+      <div className="w-24 h-24 rounded-lg bg-zinc-50 border border-zinc-300 p-2 shadow-sm flex flex-col items-center justify-center text-center">
+        <QrCode className="w-10 h-10 text-zinc-800 mb-1" />
+        <span className="text-[8px] font-mono text-zinc-600 truncate max-w-[80px]" title={upiId}>
+          {upiId}
+        </span>
       </div>
       <span className="text-[9px] font-bold text-zinc-600 mt-1 uppercase tracking-wider">Pay via UPI</span>
     </div>
@@ -248,6 +236,12 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
                   src={logoUrl}
                   alt={studioName}
                   crossOrigin="anonymous"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (!target.src.includes('/api/image-proxy') && (logoUrl.startsWith('http://') || logoUrl.startsWith('https://'))) {
+                      target.src = `/api/image-proxy?url=${encodeURIComponent(logoUrl)}`;
+                    }
+                  }}
                   className="h-14 w-auto max-w-[140px] object-contain rounded-lg shrink-0"
                 />
               ) : (
@@ -538,11 +532,17 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
                 for <strong className="text-zinc-950">{studioName}</strong>
               </p>
               <div className="h-16 flex items-center justify-end">
-                {signatureUrl && isSafeHttpUrl(signatureUrl) ? (
+                {signatureUrl && isSafeImageUrl(signatureUrl) ? (
                   <img
                     src={signatureUrl}
                     alt="Authorized Signature"
                     crossOrigin="anonymous"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.src.includes('/api/image-proxy') && (signatureUrl.startsWith('http://') || signatureUrl.startsWith('https://'))) {
+                        target.src = `/api/image-proxy?url=${encodeURIComponent(signatureUrl)}`;
+                      }
+                    }}
                     className="max-h-14 w-auto max-w-[140px] object-contain"
                   />
                 ) : (

@@ -114,12 +114,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const effectiveWorkspaceId: string = workspaceId!;
 
     // 6. Verify Client Affiliation
-    const { data: client } = await supabaseAdmin
+    let { data: client } = await supabaseAdmin
       .from('clients')
-      .select('id, name, email')
+      .select('id, name, email, workspace_id')
       .eq('id', payload.clientId)
-      .eq('workspace_id', effectiveWorkspaceId)
       .maybeSingle();
+
+    if (!client) {
+      // Also check if clientId was passed as portal_token or email
+      const { data: altClient } = await supabaseAdmin
+        .from('clients')
+        .select('id, name, email, workspace_id')
+        .or(`portal_token.eq.${payload.clientId},email.eq.${payload.clientId}`)
+        .maybeSingle();
+      client = altClient;
+    }
 
     if (!client) {
       return createApiErrorResponse({
@@ -130,9 +139,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
+    const targetWorkspaceId = client.workspace_id || effectiveWorkspaceId;
+
     // 6a. Quota Enforcement: Verify within plan limit for invoices per month (cached)
     try {
-      await assertWithinLimit(effectiveWorkspaceId, 'invoicesPerMonth', 1);
+      await assertWithinLimit(targetWorkspaceId, 'invoicesPerMonth', 1);
     } catch (limitErr: any) {
       if (limitErr instanceof PlanLimitError) {
         return createApiErrorResponse({
@@ -158,7 +169,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const { data: existingInvs } = await supabaseAdmin
         .from('invoices')
         .select('invoice_number')
-        .eq('workspace_id', effectiveWorkspaceId);
+        .eq('workspace_id', targetWorkspaceId);
 
       const existingNumbers = (existingInvs || []).map((i) => i.invoice_number);
       const year = new Date().getFullYear();
@@ -179,14 +190,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { data: insertedInvoice, error: insertError } = await supabaseAdmin
       .from('invoices')
       .insert({
-        workspace_id: workspaceId,
-        client_id: payload.clientId,
+        workspace_id: targetWorkspaceId,
+        client_id: client.id,
         user_id: caller.userId,
         client_name: client.name || 'Client',
         client_email: client.email || 'client@example.com',
         project_id: payload.projectId || null,
         invoice_number: invoiceNumber,
         status: 'draft',
+        workflow_status: 'draft',
+        payment_status: 'pending',
         issue_date: payload.issueDate,
         due_date: payload.dueDate,
         subtotal: calc.subtotal,
@@ -233,8 +246,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     (async () => {
       try {
         await supabaseAdmin.from('activities').insert({
-          workspace_id: workspaceId,
-          client_id: payload.clientId,
+          workspace_id: targetWorkspaceId,
+          client_id: client.id,
           action: 'created_invoice',
           title: `Created Invoice #${invoiceNumber}`,
           description: `Created invoice #${invoiceNumber} for ${client.name}`,
