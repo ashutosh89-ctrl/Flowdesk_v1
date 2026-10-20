@@ -64,10 +64,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onNavigate(item.key as NavItemKey);
                   if (onCloseMobile) onCloseMobile();
                 }}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative group ${
+                className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-[15px] sm:text-base font-semibold transition-all duration-200 relative group ${
                   isActive
-                    ? 'bg-[#0047AB]/15 text-white shadow-[inset_0_1px_0_0_rgba(37,99,235,0.25)] border border-[#2563EB]/40'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
+                    ? 'bg-[#0047AB]/20 text-white shadow-[inset_0_1px_0_0_rgba(37,99,235,0.25)] border border-[#2563EB]/40'
+                    : 'text-zinc-300 hover:text-white hover:bg-white/[0.06]'
                 }`}
               >
                 <span
@@ -79,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
                 <span>{item.label}</span>
                 {isActive && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#2563EB] shadow-[0_0_8px_rgba(37,99,235,0.9)]" />
+                  <span className="ml-auto w-2 h-2 rounded-full bg-[#2563EB] shadow-[0_0_8px_rgba(37,99,235,0.9)]" />
                 )}
               </button>
             );
@@ -88,15 +88,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer / System Status */}
-      <div className="p-3 rounded-xl bg-[#111111] border border-[#2A2A2A] backdrop-blur-md">
-        <div className="flex items-center justify-between text-xs text-zinc-400">
-          <span className="flex items-center gap-1.5 font-medium text-white">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+      <div className="p-3.5 rounded-xl bg-[#111111] border border-[#2A2A2A] backdrop-blur-md">
+        <div className="flex items-center justify-between text-sm text-zinc-300">
+          <span className="flex items-center gap-2 font-semibold text-white">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
             System Live
           </span>
-          <span className="text-[10px] text-zinc-500 font-mono">v1.0.0</span>
+          <span className="text-xs text-zinc-400 font-mono font-medium">v1.0.0</span>
         </div>
-        <p className="text-[10px] text-zinc-500 mt-1">Freelancer Workspace</p>
+        <p className="text-xs text-zinc-400 mt-1 font-medium">Freelancer Operating System</p>
       </div>
     </aside>
   );

@@ -86,9 +86,9 @@ export const StatusPill: React.FC<StatusPillProps> = ({ status, customLabel, cla
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border backdrop-blur-md uppercase tracking-wider ${config.container} ${className}`}
+      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold border backdrop-blur-md uppercase tracking-wider ${config.container} ${className}`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${config.dot}`} />
+      <span className={`w-2 h-2 rounded-full shrink-0 ${config.dot}`} />
       <span className="capitalize">{config.label}</span>
     </span>
   );

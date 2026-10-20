@@ -60,9 +60,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       'inline-flex items-center justify-center font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 focus:ring-offset-[#0A0A0A] disabled:opacity-50 disabled:cursor-not-allowed select-none rounded-xl relative overflow-hidden active:scale-[0.98] will-change-transform';
 
     const sizeStyles = {
-      sm: 'px-3 py-1.5 text-xs gap-1.5 min-h-[32px]',
-      md: 'px-4 py-2 text-sm gap-2 min-h-[40px]',
-      lg: 'px-6 py-3 text-base gap-2.5 min-h-[48px]',
+      sm: 'px-3.5 py-2 text-sm font-semibold gap-2 min-h-[38px]',
+      md: 'px-5 py-2.5 text-[15px] sm:text-base font-semibold gap-2.5 min-h-[44px]',
+      lg: 'px-6 py-3.5 text-base sm:text-lg font-bold gap-3 min-h-[52px]',
     };
 
     const variantStyles = {

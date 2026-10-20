@@ -125,10 +125,10 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
     <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-            <Activity className="w-5 h-5 text-[#2563EB]" /> Business Intelligence Snapshot
+          <h2 className="text-xl sm:text-2xl font-bold font-display text-white tracking-tight flex items-center gap-2.5">
+            <Activity className="w-6 h-6 text-[#2563EB]" /> Business Intelligence Snapshot
           </h2>
-          <p className="text-xs text-zinc-400">High-level financial &amp; operational metrics across all client hubs.</p>
+          <p className="text-sm text-zinc-300 font-medium mt-1">High-level financial &amp; operational metrics across all client hubs.</p>
         </div>
       </div>
 
@@ -137,21 +137,21 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
           <div
             key={card.id}
             onClick={() => onNavigate(card.actionView)}
-            className={`p-4 rounded-xl bg-gradient-to-br ${card.color} bg-[#181818]/80 border ${card.borderColor} hover:border-[#0047AB]/50 transition-all cursor-pointer group flex flex-col justify-between`}
+            className={`p-5 rounded-xl bg-gradient-to-br ${card.color} bg-[#181818]/80 border ${card.borderColor} hover:border-[#0047AB]/50 transition-all cursor-pointer group flex flex-col justify-between`}
           >
-            <div className="flex items-start justify-between mb-3">
-              <span className="p-2 rounded-lg bg-white/5 border border-white/10 group-hover:scale-105 transition-transform">
+            <div className="flex items-start justify-between mb-3.5">
+              <span className="p-2.5 rounded-lg bg-white/5 border border-white/10 group-hover:scale-105 transition-transform">
                 {card.icon}
               </span>
-              <ArrowUpRight className="w-4 h-4 text-zinc-600 group-hover:text-white transition-colors" />
+              <ArrowUpRight className="w-5 h-5 text-zinc-500 group-hover:text-white transition-colors" />
             </div>
 
             <div>
-              <p className="text-xs font-medium text-zinc-400">{card.label}</p>
-              <h3 className="text-xl font-extrabold text-white tracking-tight my-0.5 group-hover:text-amber-300 transition-colors">
+              <p className="text-sm font-semibold text-zinc-300">{card.label}</p>
+              <h3 className="text-2xl sm:text-3xl font-extrabold font-display text-white tracking-tight my-1 group-hover:text-amber-300 transition-colors">
                 {card.value}
               </h3>
-              <p className="text-[11px] text-zinc-400">{card.subtext}</p>
+              <p className="text-xs sm:text-sm text-zinc-400 font-medium">{card.subtext}</p>
             </div>
           </div>
         ))}

@@ -66,8 +66,8 @@ export const Modal: React.FC<ModalProps> = ({
             {(title || description) && (
               <div className="flex items-start justify-between p-6 pb-4 border-b border-[#2A2A2A] shrink-0">
                 <div className="pr-6">
-                  {title && <h2 className="text-xl font-semibold text-white tracking-tight">{title}</h2>}
-                  {description && <p className="text-sm text-zinc-400 mt-1">{description}</p>}
+                  {title && <h2 className="text-2xl font-bold font-display text-white tracking-tight">{title}</h2>}
+                  {description && <p className="text-base text-zinc-300 mt-1.5">{description}</p>}
                 </div>
                 <button
                   onClick={onClose}

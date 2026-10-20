@@ -13,8 +13,8 @@ export const Badge: React.FC<BadgeProps> = ({
   ...props
 }) => {
   const sizeStyles = {
-    sm: 'px-2 py-0.5 text-xs font-medium',
-    md: 'px-2.5 py-1 text-xs font-semibold',
+    sm: 'px-2.5 py-1 text-xs sm:text-sm font-semibold',
+    md: 'px-3.5 py-1.5 text-sm font-bold',
   };
 
   const variantStyles = {

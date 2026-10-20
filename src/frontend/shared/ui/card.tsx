@@ -38,11 +38,11 @@ export const CardHeader = ({ children, className = '' }: { children: React.React
 );
 
 export const CardTitle = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <h3 className={`text-lg font-semibold text-white tracking-tight ${className}`}>{children}</h3>
+  <h3 className={`text-xl sm:text-2xl font-bold font-display text-white tracking-tight ${className}`}>{children}</h3>
 );
 
 export const CardDescription = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <p className={`text-sm text-zinc-400 ${className}`}>{children}</p>
+  <p className={`text-base text-zinc-300 font-normal ${className}`}>{children}</p>
 );
 
 export const CardContent = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (

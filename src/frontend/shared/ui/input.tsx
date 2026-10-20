@@ -40,14 +40,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full flex flex-col gap-1.5">
         {label && (
-          <label className="text-xs font-medium text-zinc-300 tracking-wide">
+          <label className="text-sm font-semibold text-zinc-200 tracking-normal">
             {label}
           </label>
         )}
         <div className="relative flex items-center w-full">
           {/* Currency Prefix */}
           {isCurrency && (
-            <span className="absolute left-3.5 text-zinc-400 text-sm font-medium pointer-events-none">
+            <span className="absolute left-3.5 text-zinc-400 text-base font-semibold pointer-events-none">
               {currencySymbol || '$'}
             </span>
           )}
@@ -55,7 +55,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           {/* Left Icon */}
           {!isCurrency && (leftIcon || isSearch) && (
             <span className="absolute left-3.5 text-zinc-400 pointer-events-none flex items-center justify-center">
-              {leftIcon || <Search className="w-4 h-4 text-zinc-500" />}
+              {leftIcon || <Search className="w-5 h-5 text-zinc-400" />}
             </span>
           )}
 
@@ -64,13 +64,13 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             type={inputType}
             value={value}
             disabled={disabled}
-            className={`w-full bg-[#111111]/70 backdrop-blur-md text-[#F5F7FA] text-sm placeholder-zinc-500 border rounded-xl py-2.5 transition-all duration-200 focus:outline-none focus:ring-2 ${
+            className={`w-full bg-[#111111]/70 backdrop-blur-md text-[#F5F7FA] text-base placeholder-zinc-500 border rounded-xl py-3 transition-all duration-200 focus:outline-none focus:ring-2 ${
               error
                 ? 'border-rose-500/60 focus:border-rose-500 focus:ring-rose-500/25'
                 : 'border-[#2A2A2A] hover:border-zinc-500 focus:border-[#2563EB] focus:ring-[#2563EB]/25'
             } ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${
-              isCurrency ? 'pl-8' : leftIcon || isSearch ? 'pl-10' : 'pl-3.5'
-            } ${rightIcon || isPassword || onClear ? 'pr-10' : 'pr-3.5'} ${className}`}
+              isCurrency ? 'pl-9' : leftIcon || isSearch ? 'pl-11' : 'pl-4'
+            } ${rightIcon || isPassword || onClear ? 'pr-11' : 'pr-4'} ${className}`}
             {...props}
           />
 
@@ -103,9 +103,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         </div>
 
         {error ? (
-          <p className="text-xs text-red-400 font-medium" role="alert">{error}</p>
+          <p className="text-sm text-red-400 font-medium" role="alert">{error}</p>
         ) : helperText ? (
-          <p className="text-xs text-zinc-500">{helperText}</p>
+          <p className="text-sm text-zinc-400">{helperText}</p>
         ) : null}
       </div>
     );

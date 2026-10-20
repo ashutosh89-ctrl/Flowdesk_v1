@@ -37,9 +37,9 @@ export const TopNav: React.FC<TopNavProps> = ({
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-bold text-white tracking-tight">{currentTitle}</h2>
-          <span className="hidden sm:inline-block w-1.5 h-1.5 rounded-full bg-emerald-400" />
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-base sm:text-lg font-bold font-display text-white tracking-tight">{currentTitle}</h2>
+          <span className="hidden sm:inline-block w-2 h-2 rounded-full bg-emerald-400" />
         </div>
       </div>
 
@@ -47,15 +47,15 @@ export const TopNav: React.FC<TopNavProps> = ({
       <div className="flex-1 max-w-[540px] mx-4 hidden md:block">
         <button
           onClick={onOpenSearch}
-          className="w-full h-9 px-3.5 rounded-xl bg-[#111111] border border-[#2A2A2A] hover:border-[#2563EB]/40 hover:bg-[#181818] backdrop-blur-md flex items-center justify-between text-xs text-zinc-400 hover:text-white transition-all duration-200 shadow-inner group"
+          className="w-full h-10 px-4 rounded-xl bg-[#111111] border border-[#2A2A2A] hover:border-[#2563EB]/40 hover:bg-[#181818] backdrop-blur-md flex items-center justify-between text-sm text-zinc-400 hover:text-white transition-all duration-200 shadow-inner group"
         >
-          <div className="flex items-center gap-2">
-            <Search className="w-3.5 h-3.5 text-zinc-400 group-hover:text-white transition-colors" />
-            <span className="font-normal text-zinc-400 group-hover:text-zinc-300">
+          <div className="flex items-center gap-2.5">
+            <Search className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" />
+            <span className="font-medium text-zinc-300 group-hover:text-white">
               Search clients, invoices, deliverables, documents...
             </span>
           </div>
-          <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-medium bg-[#181818] border border-[#2A2A2A] rounded text-zinc-300 shadow-sm">
+          <kbd className="px-2 py-0.5 text-xs font-mono font-medium bg-[#181818] border border-[#2A2A2A] rounded text-zinc-300 shadow-sm">
             ⌘K
           </kbd>
         </button>
