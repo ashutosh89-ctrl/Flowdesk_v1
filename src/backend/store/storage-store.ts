@@ -1060,14 +1060,22 @@ export const FlowDeskStore = {
 
   uploadDocumentFile: (
     docId: string,
-    fileData: { fileName?: string; size?: string; downloadUrl?: string }
+    fileData: { fileName?: string; size?: string; downloadUrl?: string; file?: File }
   ): DocumentItem | undefined => {
     const doc = documents.find((d) => d.id === docId);
     if (doc) {
+      let resolvedUrl = fileData.downloadUrl;
+      if (!resolvedUrl && fileData.file && typeof window !== 'undefined' && typeof URL !== 'undefined' && URL.createObjectURL) {
+        try {
+          resolvedUrl = URL.createObjectURL(fileData.file);
+        } catch {
+          // ignore in node or non-browser envs
+        }
+      }
       doc.status = 'uploaded';
-      doc.fileName = fileData.fileName || `${doc.title.toLowerCase().replace(/\s+/g, '-')}-uploaded.pdf`;
+      doc.fileName = fileData.fileName || (fileData.file ? fileData.file.name : `${doc.title.toLowerCase().replace(/\s+/g, '-')}-uploaded.pdf`);
       doc.size = fileData.size || '1.8 MB';
-      doc.downloadUrl = fileData.downloadUrl || '#';
+      doc.downloadUrl = resolvedUrl || doc.downloadUrl || '#';
       doc.uploadedAt = new Date().toISOString().split('T')[0];
       doc.updatedAt = new Date().toISOString().split('T')[0];
       doc.rejectionReason = undefined;
@@ -1104,8 +1112,17 @@ export const FlowDeskStore = {
       size?: string;
       downloadUrl?: string;
       projectId?: string;
+      file?: File;
     }
   ): DocumentItem => {
+    let resolvedUrl = data.downloadUrl;
+    if (!resolvedUrl && data.file && typeof window !== 'undefined' && typeof URL !== 'undefined' && URL.createObjectURL) {
+      try {
+        resolvedUrl = URL.createObjectURL(data.file);
+      } catch {
+        // ignore in node or non-browser envs
+      }
+    }
     const docType = (data.type || data.category || 'other') as DocumentItem['type'];
     const newDoc: DocumentItem & { category?: string } = {
       id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -1116,9 +1133,9 @@ export const FlowDeskStore = {
       category: data.category || docType,
       status: 'uploaded',
       isRequired: false,
-      fileName: data.fileName || `${data.title.toLowerCase().replace(/\s+/g, '-')}.pdf`,
+      fileName: data.fileName || (data.file ? data.file.name : `${data.title.toLowerCase().replace(/\s+/g, '-')}.pdf`),
       size: data.size || '2.4 MB',
-      downloadUrl: data.downloadUrl || '#',
+      downloadUrl: resolvedUrl || '#',
       uploadedAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
     };
