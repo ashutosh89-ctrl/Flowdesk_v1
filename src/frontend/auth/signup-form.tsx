@@ -82,7 +82,7 @@ export const SignUpForm: React.FC<SignupFormProps> = ({
           placeholder="Jane Doe"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          leftIcon={<User className="w-4 h-4" />}
+          leftIcon={<User className="w-4 h-4 text-zinc-300" />}
           required
         />
 
@@ -92,7 +92,7 @@ export const SignUpForm: React.FC<SignupFormProps> = ({
           placeholder="My Studio"
           value={company}
           onChange={(e) => setCompany(e.target.value)}
-          leftIcon={<Building className="w-4 h-4" />}
+          leftIcon={<Building className="w-4 h-4 text-zinc-300" />}
           required
         />
 
@@ -102,7 +102,7 @@ export const SignUpForm: React.FC<SignupFormProps> = ({
           placeholder="jane@studio.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          leftIcon={<Mail className="w-4 h-4" />}
+          leftIcon={<Mail className="w-4 h-4 text-zinc-300" />}
           required
         />
 
@@ -112,7 +112,7 @@ export const SignUpForm: React.FC<SignupFormProps> = ({
           placeholder="Create password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          leftIcon={<Lock className="w-4 h-4" />}
+          leftIcon={<Lock className="w-4 h-4 text-zinc-300" />}
           required
         />
 

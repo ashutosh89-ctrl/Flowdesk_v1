@@ -44,18 +44,18 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <div className="relative flex items-center w-full">
+        <div className="relative flex items-center w-full group">
           {/* Currency Prefix */}
           {isCurrency && (
-            <span className="absolute left-3.5 text-zinc-400 text-base font-semibold pointer-events-none">
+            <span className="absolute left-3.5 text-zinc-300 text-base font-semibold pointer-events-none group-focus-within:text-[#3B82F6] transition-colors">
               {currencySymbol || '$'}
             </span>
           )}
 
-          {/* Left Icon */}
+          {/* Left Icon with crisp visibility and focus illumination */}
           {!isCurrency && (leftIcon || isSearch) && (
-            <span className="absolute left-3.5 text-zinc-400 pointer-events-none flex items-center justify-center">
-              {leftIcon || <Search className="w-5 h-5 text-zinc-400" />}
+            <span className="absolute left-3.5 text-zinc-300 pointer-events-none flex items-center justify-center transition-colors duration-200 group-focus-within:text-[#3B82F6] [&_svg]:w-4 [&_svg]:h-4 [&_svg]:text-zinc-300 group-focus-within:[&_svg]:text-[#3B82F6] [&_svg]:stroke-[1.85]">
+              {leftIcon || <Search className="w-4 h-4 text-zinc-300 group-focus-within:text-[#3B82F6]" />}
             </span>
           )}
 
@@ -75,7 +75,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           />
 
           {/* Right Icon / Actions */}
-          <div className="absolute right-3 flex items-center gap-1.5 text-zinc-400">
+          <div className="absolute right-3 flex items-center gap-1.5 text-zinc-300">
             {value && onClear && (
               <button
                 type="button"
@@ -83,7 +83,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 onClick={onClear}
                 className="hover:text-white transition-colors p-1 rounded-md focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4 text-zinc-300 hover:text-white" />
               </button>
             )}
 
@@ -92,13 +92,13 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 type="button"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 onClick={() => setShowPassword(!showPassword)}
-                className="text-zinc-400 hover:text-zinc-200 transition-colors p-1 rounded-md focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 focus-visible:bg-white/10"
+                className="text-zinc-300 hover:text-white transition-colors p-1.5 rounded-md focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 focus-visible:bg-white/10"
               >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPassword ? <EyeOff className="w-4 h-4 text-zinc-300 hover:text-white" /> : <Eye className="w-4 h-4 text-zinc-300 hover:text-white" />}
               </button>
             )}
 
-            {!isPassword && rightIcon && <span>{rightIcon}</span>}
+            {!isPassword && rightIcon && <span className="text-zinc-300">{rightIcon}</span>}
           </div>
         </div>
 

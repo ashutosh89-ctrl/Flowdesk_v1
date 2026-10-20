@@ -342,12 +342,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setPinnedItems((prev) => prev.filter((item) => item.id !== resourceId));
   };
 
-  const getGreeting = () => {
+  const computeGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
+    // After 12 o'clock midnight (00:00 to 11:59) -> Good morning
+    if (hour >= 0 && hour < 12) return 'Good morning';
+    // 12:00 noon to 17:59 -> Good afternoon
+    if (hour >= 12 && hour < 18) return 'Good afternoon';
+    // 18:00 to 23:59 (evening/night) -> Good evening
     return 'Good evening';
   };
+
+  const [greeting, setGreeting] = useState<string>(computeGreeting);
+
+  useEffect(() => {
+    const update = () => setGreeting(computeGreeting());
+    update();
+    const timer = setInterval(update, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const displayName = profile?.name ?? user?.email?.split('@')[0] ?? 'User';
   const displayCompany = profile?.companyName || 'My Workspace';
@@ -361,7 +373,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-          {getGreeting()}, {displayName}
+          {greeting}, {displayName}
         </h1>
         <p className="text-xs text-zinc-400 mt-1">{displayCompany} Workspace</p>
       </div>

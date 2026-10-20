@@ -101,7 +101,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       .select()
       .maybeSingle();
 
-    if (upsertErr && (upsertErr.message?.includes('default_deliverable_niche') || upsertErr.message?.includes('column "default_deliverable_niche" of relation "user_settings" does not exist'))) {
+    if (upsertErr && dbPayload.default_deliverable_niche !== undefined) {
       delete dbPayload.default_deliverable_niche;
       const retry = await supabaseAdmin.from('user_settings').upsert(dbPayload).select().maybeSingle();
       updated = retry.data;

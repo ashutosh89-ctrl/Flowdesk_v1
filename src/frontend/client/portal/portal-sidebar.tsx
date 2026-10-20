@@ -199,12 +199,20 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                     : 'text-zinc-400 hover:text-white hover:bg-white/[0.06] border border-transparent hover:border-white/5'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <Icon
-                    className={`w-4 h-4 transition-all duration-200 transform group-hover:scale-110 motion-reduce:transform-none ${
-                      isActive ? 'text-white' : 'text-zinc-400 group-hover:text-white'
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                      isActive
+                        ? 'bg-white/20 text-white border border-white/30 shadow-[0_0_10px_rgba(255,255,255,0.25)]'
+                        : 'bg-white/[0.03] border border-transparent text-zinc-400 group-hover:bg-[#2563EB]/15 group-hover:border-[#2563EB]/40 group-hover:text-[#60A5FA] group-hover:shadow-[0_0_10px_rgba(37,99,235,0.25)]'
                     }`}
-                  />
+                  >
+                    <Icon
+                      className={`w-3.5 h-3.5 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform group-hover:scale-125 group-hover:-rotate-6 motion-reduce:transform-none ${
+                        isActive ? 'text-white scale-110 drop-shadow-[0_0_6px_rgba(255,255,255,0.8)]' : 'group-hover:drop-shadow-[0_0_6px_rgba(59,130,246,0.8)]'
+                      }`}
+                    />
+                  </div>
                   <span className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transform-none">
                     {item.label}
                   </span>

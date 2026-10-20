@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
   invoice_reminders BOOLEAN DEFAULT true,
   comment_alerts BOOLEAN DEFAULT true,
   weekly_digest BOOLEAN DEFAULT false,
+  default_deliverable_niche TEXT DEFAULT 'software_development',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );

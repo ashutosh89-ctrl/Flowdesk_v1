@@ -169,6 +169,11 @@ export const SettingsView: React.FC = () => {
   const handleSettingsChange = (field: keyof UserSettings, value: any) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
     setDirty(true);
+    if (field === 'default_deliverable_niche' && user?.id) {
+      UserSettingsService.saveUserSettings(user.id, { [field]: value }).catch((err) => {
+        console.warn('Background niche preference sync notice:', err);
+      });
+    }
   };
 
   const uploadBrandingAsset = async (file: File, type: 'logo' | 'signature'): Promise<string> => {
@@ -283,15 +288,15 @@ export const SettingsView: React.FC = () => {
       // 2. Sync workspace branding and currency in parallel
       const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
       if (wsId) {
-        await updateWorkspaceBranding(wsId, {
-          name: profile.companyName,
-          logoUrl: profile.logoUrl,
-          signatureUrl: profile.signatureUrl,
-          currency: profile.currency,
-        });
-
-        // Propagate studio currency to clients in this workspace so new and existing client operations stay in sync
         try {
+          await updateWorkspaceBranding(wsId, {
+            name: profile.companyName,
+            logoUrl: profile.logoUrl,
+            signatureUrl: profile.signatureUrl,
+            currency: profile.currency,
+          });
+
+          // Propagate studio currency to clients in this workspace so new and existing client operations stay in sync
           const { supabase } = await import('@/backend/utilities/supabase');
           await supabase
             .from('clients')
@@ -303,22 +308,26 @@ export const SettingsView: React.FC = () => {
       }
 
       // 3. Save user settings (tax, currency, prefix, terms, notifications)
-      await UserSettingsService.saveUserSettings(user?.id || 'usr-default', {
-        currency: profile.currency,
-        default_tax_rate: settings.default_tax_rate,
-        tax_name: settings.tax_name,
-        invoice_prefix: settings.invoice_prefix,
-        default_payment_terms: settings.default_payment_terms,
-        email_notifications: settings.email_notifications,
-        email_deliverables: settings.email_deliverables,
-        email_documents: settings.email_documents,
-        email_invoices: settings.email_invoices,
-        email_invitations: settings.email_invitations,
-        invoice_reminders: settings.invoice_reminders,
-        comment_alerts: settings.comment_alerts,
-        weekly_digest: settings.weekly_digest,
-        default_deliverable_niche: settings.default_deliverable_niche,
-      });
+      try {
+        await UserSettingsService.saveUserSettings(user?.id || 'usr-default', {
+          currency: profile.currency,
+          default_tax_rate: settings.default_tax_rate,
+          tax_name: settings.tax_name,
+          invoice_prefix: settings.invoice_prefix,
+          default_payment_terms: settings.default_payment_terms,
+          email_notifications: settings.email_notifications,
+          email_deliverables: settings.email_deliverables,
+          email_documents: settings.email_documents,
+          email_invoices: settings.email_invoices,
+          email_invitations: settings.email_invitations,
+          invoice_reminders: settings.invoice_reminders,
+          comment_alerts: settings.comment_alerts,
+          weekly_digest: settings.weekly_digest,
+          default_deliverable_niche: settings.default_deliverable_niche,
+        });
+      } catch (settingsErr) {
+        console.warn('UserSettingsService.saveUserSettings notice:', settingsErr);
+      }
 
       // 4. Refresh profile context across app shell
       if (refreshProfile) {
@@ -327,8 +336,9 @@ export const SettingsView: React.FC = () => {
 
       setDirty(false);
       showToast('Settings Saved', 'Studio profile, branding, and alert preferences updated successfully.', 'success');
-    } catch (err) {
-      showToast('Error', err instanceof Error ? err.message : 'Failed to save settings.', 'error');
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message : (err && typeof err === 'object' && 'message' in err) ? String(err.message) : 'Failed to save settings.';
+      showToast('Error', msg, 'error');
     } finally {
       setSaving(false);
     }

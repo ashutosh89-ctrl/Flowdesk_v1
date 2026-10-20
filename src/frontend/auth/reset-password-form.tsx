@@ -138,7 +138,7 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ onSuccess 
         placeholder="••••••••••••"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        leftIcon={<Lock className="w-4 h-4" />}
+        leftIcon={<Lock className="w-4 h-4 text-zinc-300" />}
         required
       />
 
@@ -148,7 +148,7 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ onSuccess 
         placeholder="••••••••••••"
         value={confirmPassword}
         onChange={(e) => setConfirmPassword(e.target.value)}
-        leftIcon={<Lock className="w-4 h-4" />}
+        leftIcon={<Lock className="w-4 h-4 text-zinc-300" />}
         required
       />
 

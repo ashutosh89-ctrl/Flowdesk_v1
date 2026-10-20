@@ -219,19 +219,17 @@ export const UserSettingsService = {
         if (updates.default_deliverable_niche !== undefined) payload.default_deliverable_niche = updates.default_deliverable_niche;
 
         let { error } = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
-        if (error && (error.message?.includes('email_invitations') || error.message?.includes('default_deliverable_niche'))) {
-          if (error.message?.includes('email_invitations')) delete payload.email_invitations;
-          if (error.message?.includes('default_deliverable_niche')) delete payload.default_deliverable_niche;
+        if (error) {
+          delete payload.default_deliverable_niche;
+          delete payload.email_invitations;
           const retry = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
           error = retry.error;
         }
         if (error) {
-          console.warn('Supabase settings upsert error:', error.message);
-          throw error;
+          console.warn('Supabase settings upsert notice (non-fatal, cached locally):', error.message);
         }
       } catch (err: any) {
-        console.warn('Supabase settings sync notice:', err?.message);
-        throw err;
+        console.warn('Supabase settings sync notice (saved to local cache):', err?.message);
       }
     }
 

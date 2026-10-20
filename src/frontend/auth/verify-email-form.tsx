@@ -65,7 +65,7 @@ export const VerifyEmailForm: React.FC<VerifyEmailFormProps> = ({ email: initial
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        leftIcon={<Mail className="w-4 h-4" />}
+        leftIcon={<Mail className="w-4 h-4 text-zinc-300" />}
         required
       />
 
@@ -75,7 +75,7 @@ export const VerifyEmailForm: React.FC<VerifyEmailFormProps> = ({ email: initial
         value={code}
         onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))}
         placeholder="000000"
-        leftIcon={<KeyRound className="w-4 h-4" />}
+        leftIcon={<KeyRound className="w-4 h-4 text-zinc-300" />}
         className="font-mono text-base tracking-widest"
         maxLength={6}
         required

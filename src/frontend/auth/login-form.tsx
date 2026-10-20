@@ -202,9 +202,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input label="Email Address" type="email" placeholder="your.email@company.com" value={email} disabled={loading || demoLoading !== null} onChange={(e) => setEmail(e.target.value)} leftIcon={<Mail className="w-4 h-4" />} required />
+        <Input label="Email Address" type="email" placeholder="your.email@company.com" value={email} disabled={loading || demoLoading !== null} onChange={(e) => setEmail(e.target.value)} leftIcon={<Mail className="w-4 h-4 text-zinc-300" />} required />
         <div className="space-y-1.5">
-          <Input label="Password" type="password" placeholder="••••••••••••" value={password} disabled={loading || demoLoading !== null} onChange={(e) => setPassword(e.target.value)} leftIcon={<Lock className="w-4 h-4" />} required />
+          <Input label="Password" type="password" placeholder="••••••••••••" value={password} disabled={loading || demoLoading !== null} onChange={(e) => setPassword(e.target.value)} leftIcon={<Lock className="w-4 h-4 text-zinc-300" />} required />
           <div className="flex justify-end pt-0.5"><button type="button" onClick={onSwitchToForgotPassword} className="text-xs text-zinc-400 hover:text-white transition-colors focus:outline-none focus-visible:underline">Forgot password?</button></div>
         </div>
         <Button type="submit" variant="primary" className="w-full h-10 min-h-[40px] text-xs font-semibold shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:shadow-[0_0_30px_rgba(255,255,255,0.25)] transition-all" isLoading={loading} rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
