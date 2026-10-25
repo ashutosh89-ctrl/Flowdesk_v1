@@ -61,6 +61,7 @@ const SUITES: Step[] = [
   { name: 'Job Runner Engine (Phase 7 Task 2)', command: 'npx', args: ['tsx', '--test', 'tests/job-runner.test.ts'] },
   { name: 'Recurring Invoices Parity (Phase 7 Task 3)', command: 'npx', args: ['tsx', '--test', 'tests/recurring-invoices.test.ts'] },
   { name: 'Cron Run-Jobs Route Security (Phase 7 Task 2)', command: 'npx', args: ['tsx', '--test', 'tests/cron-jobs-route.test.ts'] },
+  { name: 'Dual Payment, QR & Export Engine Suite', command: 'npx', args: ['tsx', 'tests/dual-payment-and-export.test.ts'] },
 ];
 
 function runAll() {

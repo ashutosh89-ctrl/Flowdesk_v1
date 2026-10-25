@@ -62,9 +62,7 @@ export const getBrevoApiKey = (): string => {
   if (!key || key.trim().length === 0) {
     try {
       // Dynamic fallback for server runtime if .env.local was updated during execution
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const fs = require('fs');
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const path = require('path');
       const envPath = path.resolve(process.cwd(), '.env.local');
       if (fs.existsSync(envPath)) {
