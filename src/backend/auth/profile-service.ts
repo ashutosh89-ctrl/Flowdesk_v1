@@ -111,8 +111,18 @@ export const ProfileService = {
     if (profileData.signatureUrl !== undefined) supabasePayload.signature_url = profileData.signatureUrl;
     if (profileData.currency !== undefined) supabasePayload.currency = profileData.currency;
     if (profileData.hourlyRate !== undefined) supabasePayload.hourly_rate = profileData.hourlyRate;
+    if (profileData.upiId !== undefined) supabasePayload.upi_id = profileData.upiId;
+    if (profileData.upiQrCodeUrl !== undefined) supabasePayload.upi_qr_code_url = profileData.upiQrCodeUrl;
 
-    const { error } = await supabase.from('profiles').upsert(supabasePayload, { onConflict: 'id' });
+    let { error } = await supabase.from('profiles').upsert(supabasePayload, { onConflict: 'id' });
+    if (error && (supabasePayload.upi_qr_code_url !== undefined || supabasePayload.upi_id !== undefined)) {
+      // Fallback: retry without optional payment columns if not present in profiles table
+      delete supabasePayload.upi_qr_code_url;
+      delete supabasePayload.upi_id;
+      const retry = await supabase.from('profiles').upsert(supabasePayload, { onConflict: 'id' });
+      error = retry.error;
+    }
+
     if (error) {
       console.error('Profile persistence failed:', error.message);
       throw new Error(`Profile could not be saved: ${error.message}`);
@@ -178,6 +188,8 @@ export const ProfileService = {
       avatarUrl: sp.avatar_url || '',
       logoUrl: sp.logo_url || '',
       signatureUrl: sp.signature_url || '',
+      upiId: sp.upi_id || '',
+      upiQrCodeUrl: sp.upi_qr_code_url || '',
       currency: sp.currency || 'USD',
       companyName: sp.business_name || sp.company_name || 'My Workspace',
       hourlyRate: Number(sp.hourly_rate) || 120,

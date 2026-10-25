@@ -94,7 +94,25 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     if (updates.taxName !== undefined) dbPayload.tax_name = updates.taxName;
     if (updates.defaultPaymentTerms !== undefined) dbPayload.default_payment_terms = updates.defaultPaymentTerms;
     if (updates.defaultDeliverableNiche !== undefined) dbPayload.default_deliverable_niche = updates.defaultDeliverableNiche;
-    if (updates.paymentSettings !== undefined) dbPayload.payment_settings = updates.paymentSettings;
+    const effectivePaymentSettings = {
+      ...(updates.paymentSettings || {}),
+      ...(updates.upiQrCodeUrl !== undefined ? { upiQrCodeUrl: updates.upiQrCodeUrl } : {}),
+      ...(updates.upiId !== undefined ? { upiId: updates.upiId } : {}),
+      ...((updates.upiQrCodeUrl || updates.upiId) ? { upiEnabled: true } : {}),
+      ...(updates.bankName || updates.accountNumber ? {
+        bankDetails: {
+          accountHolderName: updates.accountHolderName || updates.paymentSettings?.bankDetails?.accountHolderName || '',
+          bankName: updates.bankName || updates.paymentSettings?.bankDetails?.bankName || '',
+          accountNumber: updates.accountNumber || updates.paymentSettings?.bankDetails?.accountNumber || '',
+          ifscCode: updates.ifscCode || updates.paymentSettings?.bankDetails?.ifscCode || '',
+          branchName: updates.branchName || updates.paymentSettings?.bankDetails?.branchName || '',
+          upiId: updates.upiId || updates.paymentSettings?.bankDetails?.upiId || '',
+        }
+      } : {}),
+      ...(updates.razorpayPaymentLink !== undefined ? { razorpayPaymentLink: updates.razorpayPaymentLink } : {}),
+    };
+    dbPayload.payment_settings = effectivePaymentSettings;
+
     if (updates.upiId !== undefined) dbPayload.upi_id = updates.upiId;
     if (updates.upiQrCodeUrl !== undefined) dbPayload.upi_qr_code_url = updates.upiQrCodeUrl;
     if (updates.bankName !== undefined) dbPayload.bank_name = updates.bankName;
@@ -110,11 +128,40 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       .select()
       .maybeSingle();
 
-    if (upsertErr && dbPayload.default_deliverable_niche !== undefined) {
+    if (upsertErr) {
+      // 1. Retry without default_deliverable_niche
       delete dbPayload.default_deliverable_niche;
-      const retry = await supabaseAdmin.from('user_settings').upsert(dbPayload).select().maybeSingle();
+      let retry = await supabaseAdmin.from('user_settings').upsert(dbPayload).select().maybeSingle();
       updated = retry.data;
       upsertErr = retry.error;
+
+      // 2. If still failing (e.g. upi_qr_code_url or individual bank columns missing from table),
+      // strip individual columns and retry with payment_settings JSONB which preserves all data
+      if (upsertErr) {
+        delete dbPayload.upi_qr_code_url;
+        delete dbPayload.upi_id;
+        delete dbPayload.bank_name;
+        delete dbPayload.account_holder_name;
+        delete dbPayload.account_number;
+        delete dbPayload.ifsc_code;
+        delete dbPayload.branch_name;
+        delete dbPayload.razorpay_payment_link;
+        retry = await supabaseAdmin.from('user_settings').upsert(dbPayload).select().maybeSingle();
+        updated = retry.data;
+        upsertErr = retry.error;
+      }
+    }
+
+    // Also sync to profiles for redundant persistence
+    if (caller.userId && (updates.upiQrCodeUrl !== undefined || updates.upiId !== undefined)) {
+      try {
+        const profUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
+        if (updates.upiQrCodeUrl !== undefined) profUpdates.upi_qr_code_url = updates.upiQrCodeUrl;
+        if (updates.upiId !== undefined) profUpdates.upi_id = updates.upiId;
+        await supabaseAdmin.from('profiles').update(profUpdates).eq('id', caller.userId);
+      } catch {
+        // non-critical
+      }
     }
 
     if (upsertErr || !updated) {

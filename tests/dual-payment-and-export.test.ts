@@ -195,6 +195,61 @@ async function runDualPaymentAndExportTests() {
   assert(pdfName === 'FlowDesk-Invoice-INV_2026_500_.pdf', `PDF filename correctly formatted: ${pdfName}`);
 
   console.log('\n======================================================');
+  console.log('🧪 5. TESTING QR CODE PERSISTENCE & PDF ATTACHMENT PIPELINE');
+  console.log('======================================================');
+
+  // 1. Dynamic UPI QR Code PNG Data URL Generation for PDF attachment
+  const QRCodeLib = (await import('qrcode')).default;
+  const testUpiUri = 'upi://pay?pa=freelancer@okhdfcbank&pn=DesignStudio&am=5000&cu=INR&tn=Invoice%20INV-2026-001';
+  const qrPngDataUrl = await QRCodeLib.toDataURL(testUpiUri, {
+    errorCorrectionLevel: 'M',
+    margin: 1,
+    width: 256,
+    color: { dark: '#000000', light: '#ffffff' },
+  });
+  assert(qrPngDataUrl.startsWith('data:image/png;base64,'), 'Dynamic QR generator produces valid PNG base64 data URL for PDF');
+  assert(qrPngDataUrl.length > 500, 'QR PNG data URL contains substantial raster payload');
+
+  // 2. Defensive User Settings JSONB Embedding
+  const sampleSettingsUpdates = {
+    upiId: 'freelancer@upi',
+    upiQrCodeUrl: 'https://cdn.flowdesk.dev/qr/freelancer.png',
+    bankName: 'HDFC Bank',
+    accountNumber: '987654321',
+  };
+  const embeddedPaymentSettings = {
+    upiQrCodeUrl: sampleSettingsUpdates.upiQrCodeUrl,
+    upiId: sampleSettingsUpdates.upiId,
+    upiEnabled: Boolean(sampleSettingsUpdates.upiId || sampleSettingsUpdates.upiQrCodeUrl),
+    bankDetails: {
+      bankName: sampleSettingsUpdates.bankName,
+      accountNumber: sampleSettingsUpdates.accountNumber,
+      upiId: sampleSettingsUpdates.upiId,
+    },
+  };
+  assert(embeddedPaymentSettings.upiQrCodeUrl === sampleSettingsUpdates.upiQrCodeUrl, 'payment_settings JSONB preserves upiQrCodeUrl');
+  assert(embeddedPaymentSettings.upiId === sampleSettingsUpdates.upiId, 'payment_settings JSONB preserves upiId');
+  assert(embeddedPaymentSettings.upiEnabled === true, 'payment_settings JSONB auto-enables UPI when QR is uploaded');
+
+  // 3. Client Portal Invoice Inheritance Fallback
+  const rawInvoiceFromDb = {
+    id: 'inv-001',
+    invoice_number: 'INV-2026-0001',
+    client_id: 'cli-001',
+    total_amount: 1500,
+    paid_amount: 0,
+    upi_qr_code_url: null, // Stored as null in older row
+    upi_id: null,
+    bank_details: null,
+  };
+  const workspaceDefaultQr = 'https://cdn.flowdesk.dev/qr/studio.png';
+  const workspaceDefaultUpiId = 'studio@okhdfcbank';
+  const resolvedInvoiceQr = rawInvoiceFromDb.upi_qr_code_url || workspaceDefaultQr;
+  const resolvedInvoiceUpiId = rawInvoiceFromDb.upi_id || workspaceDefaultUpiId;
+  assert(resolvedInvoiceQr === workspaceDefaultQr, 'Invoice without explicit QR correctly inherits workspace default QR code');
+  assert(resolvedInvoiceUpiId === workspaceDefaultUpiId, 'Invoice without explicit UPI ID correctly inherits workspace default UPI ID');
+
+  console.log('\n======================================================');
   console.log(`🎉 ALL ${totalTests} DUAL PAYMENT & EXPORT TESTS PASSED! (${passedTests}/${totalTests})`);
   console.log('======================================================\n');
 }

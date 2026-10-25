@@ -1806,12 +1806,48 @@ export const FreelancerInvoiceService = {
         internal_notes: invoice.internalNotes || '',
         payment_methods: {
           ...(invoice.paymentMethods || {}),
-          upiQrCodeUrl: invoice.upiQrCodeUrl || invoice.paymentMethods?.upiQrCodeUrl || undefined,
+          upiEnabled: invoice.paymentMethods?.upiEnabled ?? Boolean(
+            invoice.upiId ||
+            invoice.upiQrCodeUrl ||
+            settings?.upi_id ||
+            settings?.upi_qr_code_url ||
+            settings?.payment_settings?.upiId ||
+            settings?.payment_settings?.upiQrCodeUrl
+          ),
+          upiQrCodeUrl:
+            invoice.upiQrCodeUrl ||
+            invoice.paymentMethods?.upiQrCodeUrl ||
+            settings?.upi_qr_code_url ||
+            settings?.payment_settings?.upiQrCodeUrl ||
+            undefined,
         },
-        upi_id: invoice.upiId || null,
-        upi_qr_code_url: invoice.upiQrCodeUrl || null,
-        bank_details: invoice.bankDetails || null,
-        razorpay_payment_link: invoice.razorpayPaymentLink || null,
+        upi_id:
+          invoice.upiId ||
+          settings?.upi_id ||
+          settings?.payment_settings?.upiId ||
+          null,
+        upi_qr_code_url:
+          invoice.upiQrCodeUrl ||
+          invoice.paymentMethods?.upiQrCodeUrl ||
+          settings?.upi_qr_code_url ||
+          settings?.payment_settings?.upiQrCodeUrl ||
+          null,
+        bank_details:
+          invoice.bankDetails ||
+          settings?.payment_settings?.bankDetails ||
+          (settings?.bank_name ? {
+            bankName: settings.bank_name,
+            accountHolderName: settings.account_holder_name || '',
+            accountNumber: settings.account_number || '',
+            ifscCode: settings.ifsc_code || '',
+            branchName: settings.branch_name || '',
+            upiId: invoice.upiId || settings?.upi_id || settings?.payment_settings?.upiId || '',
+          } : null),
+        razorpay_payment_link:
+          invoice.razorpayPaymentLink ||
+          settings?.razorpay_payment_link ||
+          settings?.payment_settings?.razorpayPaymentLink ||
+          null,
       };
 
       // Insert with concurrency-safe numbering: on a unique violation (23505) the
@@ -3061,8 +3097,16 @@ export const SettingsService = {
       if (updates.avatarUrl !== undefined) payload.avatar_url = updates.avatarUrl;
       if (updates.logoUrl !== undefined) payload.logo_url = updates.logoUrl;
       if (updates.signatureUrl !== undefined) payload.signature_url = updates.signatureUrl;
+      if (updates.upiQrCodeUrl !== undefined) payload.upi_qr_code_url = updates.upiQrCodeUrl;
+      if (updates.upiId !== undefined) payload.upi_id = updates.upiId;
 
-      const { error } = await supabase.from('profiles').upsert({ id: targetUserId, ...payload }, { onConflict: 'id' });
+      let { error } = await supabase.from('profiles').upsert({ id: targetUserId, ...payload }, { onConflict: 'id' });
+      if (error && (payload.upi_qr_code_url !== undefined || payload.upi_id !== undefined)) {
+        delete payload.upi_qr_code_url;
+        delete payload.upi_id;
+        const retry = await supabase.from('profiles').upsert({ id: targetUserId, ...payload }, { onConflict: 'id' });
+        error = retry.error;
+      }
       if (error) {
         // Production: fail closed — never return local cache as success on DB failure.
         console.error('SettingsService.updateUserProfile failed:', error.message);

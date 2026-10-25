@@ -565,11 +565,21 @@ export const ClientPortalService = {
 
             const ownerId = wsData.owner_id;
             if (ownerId) {
-              const { data: profData } = await supabase
-                .from('profiles')
-                .select('full_name, business_name, company_name, email, phone, logo_url, signature_url, country')
-                .eq('id', ownerId)
-                .maybeSingle();
+              const [profRes, settingsRes] = await Promise.all([
+                supabase
+                  .from('profiles')
+                  .select('full_name, business_name, company_name, email, phone, logo_url, signature_url, country, upi_id, upi_qr_code_url')
+                  .eq('id', ownerId)
+                  .maybeSingle(),
+                supabase
+                  .from('user_settings')
+                  .select('*')
+                  .eq('id', ownerId)
+                  .maybeSingle(),
+              ]);
+
+              const profData = profRes.data;
+              const userSettingsData = settingsRes.data;
 
               if (profData) {
                 if (profData.full_name) branding.freelancerName = profData.full_name;
@@ -589,6 +599,58 @@ export const ClientPortalService = {
                     ? profData.signature_url
                     : StorageHelper.getPublicUrl('signatures', profData.signature_url);
                 }
+              }
+
+              // Populate UPI QR code, UPI ID, Bank Transfer Details, and Payment Methods
+              const effectiveUpiQrCodeUrl =
+                userSettingsData?.upi_qr_code_url ||
+                userSettingsData?.payment_settings?.upiQrCodeUrl ||
+                profData?.upi_qr_code_url ||
+                '';
+              if (effectiveUpiQrCodeUrl) {
+                branding.upiQrCodeUrl =
+                  effectiveUpiQrCodeUrl.startsWith('http') ||
+                  effectiveUpiQrCodeUrl.startsWith('/') ||
+                  effectiveUpiQrCodeUrl.startsWith('data:')
+                    ? effectiveUpiQrCodeUrl
+                    : StorageHelper.getPublicUrl('logos', effectiveUpiQrCodeUrl);
+              }
+
+              const effectiveUpiId =
+                userSettingsData?.upi_id ||
+                userSettingsData?.payment_settings?.upiId ||
+                profData?.upi_id ||
+                '';
+              if (effectiveUpiId) {
+                branding.upiId = effectiveUpiId;
+              }
+
+              const bankDetails =
+                userSettingsData?.payment_settings?.bankDetails ||
+                (userSettingsData?.bank_name
+                  ? {
+                      bankName: userSettingsData.bank_name,
+                      accountHolderName: userSettingsData.account_holder_name || '',
+                      accountNumber: userSettingsData.account_number || '',
+                      ifscCode: userSettingsData.ifsc_code || '',
+                      branchName: userSettingsData.branch_name || '',
+                      upiId: effectiveUpiId,
+                    }
+                  : undefined);
+              if (bankDetails) {
+                branding.bankDetails = bankDetails;
+              }
+
+              const razorpayPaymentLink =
+                userSettingsData?.razorpay_payment_link ||
+                userSettingsData?.payment_settings?.razorpayPaymentLink ||
+                '';
+              if (razorpayPaymentLink) {
+                branding.razorpayPaymentLink = razorpayPaymentLink;
+              }
+
+              if (userSettingsData?.payment_settings) {
+                branding.paymentMethods = userSettingsData.payment_settings;
               }
             }
           }

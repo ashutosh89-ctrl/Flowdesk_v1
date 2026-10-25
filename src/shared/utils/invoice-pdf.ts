@@ -1,9 +1,11 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import QRCodeLib from 'qrcode';
 import { Invoice, UserProfile, InvoiceBranding } from '@/shared/types';
 import { formatCurrency, getCurrencySymbol } from '@/shared/utils/currency';
 import { convertAmountToWords } from '@/shared/utils/number-to-words';
 import { FlowDeskStore } from '@/backend/store/storage-store';
+import { generateQrMatrix } from '@/frontend/shared/ui/qr-code';
 
 /**
  * Safely loads an image URL into a Base64 data URL in browser environment.
@@ -40,6 +42,97 @@ async function loadImageDataUrl(url?: string): Promise<{ dataUrl: string; format
   } catch {
     return null;
   }
+}
+
+/**
+ * Safely loads or dynamically generates a pure PNG Base64 Data URL for a payment QR code.
+ * Guaranteed to produce a format compatible with jsPDF doc.addImage(..., 'PNG')
+ * without CORS errors or unsupported SVG format crashes.
+ */
+export async function loadQrImageDataUrl(
+  qrUrl?: string,
+  upiId?: string,
+  studioName?: string,
+  total?: number,
+  currency?: string,
+  invoiceNumber?: string
+): Promise<{ dataUrl: string; format: 'PNG' } | null> {
+  if (typeof window === 'undefined') return null;
+
+  // 1. If an uploaded custom QR code URL is provided
+  if (qrUrl && qrUrl.trim()) {
+    const trimmed = qrUrl.trim();
+
+    // If it's already a raster PNG or JPEG data URL (not SVG)
+    if (trimmed.startsWith('data:image/png') || trimmed.startsWith('data:image/jpeg') || trimmed.startsWith('data:image/webp')) {
+      return { dataUrl: trimmed, format: 'PNG' };
+    }
+
+    // Convert via HTML Canvas to guarantee a pure PNG raster data URL (handles SVG data URLs & remote URLs safely)
+    try {
+      const pngFromCanvas = await new Promise<{ dataUrl: string; format: 'PNG' } | null>((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const w = img.naturalWidth || img.width || 256;
+            const h = img.naturalHeight || img.height || 256;
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, w, h);
+              ctx.drawImage(img, 0, 0, w, h);
+              resolve({ dataUrl: canvas.toDataURL('image/png'), format: 'PNG' });
+              return;
+            }
+          } catch {
+            // Tainted canvas
+          }
+          resolve(null);
+        };
+        img.onerror = () => resolve(null);
+        img.src = trimmed;
+      });
+
+      if (pngFromCanvas) {
+        return pngFromCanvas;
+      }
+    } catch {
+      // Continue to fallback
+    }
+
+    // Try direct fetch fallback
+    try {
+      const fetched = await loadImageDataUrl(trimmed);
+      if (fetched && !fetched.dataUrl.startsWith('data:image/svg')) {
+        return { dataUrl: fetched.dataUrl, format: 'PNG' };
+      }
+    } catch {
+      // Continue to fallback
+    }
+  }
+
+  // 2. If no QR code image or loading failed, dynamically generate a crisp QR code from UPI ID if available
+  if (upiId && upiId.trim()) {
+    try {
+      const amount = total !== undefined ? Math.max(0, total) : 0;
+      const upiUri = `upi://pay?pa=${encodeURIComponent(upiId.trim())}&pn=${encodeURIComponent(studioName || 'FlowDesk Studio')}&am=${amount}&cu=${currency || 'INR'}&tn=${encodeURIComponent(`Invoice ${invoiceNumber || ''}`)}`;
+      const dataUrl = await QRCodeLib.toDataURL(upiUri, {
+        errorCorrectionLevel: 'M',
+        margin: 1,
+        width: 256,
+        color: { dark: '#000000', light: '#ffffff' },
+      });
+      return { dataUrl, format: 'PNG' };
+    } catch (err) {
+      console.warn('[invoice-pdf] Failed to generate dynamic UPI QR code:', err);
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -184,11 +277,18 @@ export async function generateInvoicePDF(
   const effectiveUpiId = invoice.upiId || upiId;
   const effectiveQrUrl = invoice.upiQrCodeUrl || invoice.paymentMethods?.upiQrCodeUrl || upiQrCodeUrl;
 
-  // Attempt to load images in parallel
+  // Attempt to load images in parallel (with safe fallback & dynamic QR generation)
   const [logoImage, signatureImage, qrImage] = await Promise.all([
     logoUrl ? loadImageDataUrl(logoUrl) : Promise.resolve(null),
     signatureUrl ? loadImageDataUrl(signatureUrl) : Promise.resolve(null),
-    effectiveQrUrl ? loadImageDataUrl(effectiveQrUrl) : Promise.resolve(null),
+    loadQrImageDataUrl(
+      effectiveQrUrl,
+      effectiveUpiId,
+      studioName,
+      invoice.remainingBalance ?? invoice.total,
+      invoice.currency,
+      invoice.invoiceNumber
+    ),
   ]);
 
   // ─── HEADER: Logo & Studio Info (Left) + INVOICE Details (Right) ───
@@ -493,7 +593,13 @@ export async function generateInvoicePDF(
   }
 
   if (effectiveUpiId || qrImage) {
-    const upiBoxHeight = qrImage ? 24 : 14;
+    const upiBoxHeight = qrImage ? 26 : 14;
+    // Check if drawing this box would overflow the page
+    if (notesY + upiBoxHeight > pageHeight - 20) {
+      doc.addPage();
+      notesY = margin;
+    }
+
     doc.setFillColor(248, 250, 252);
     doc.roundedRect(margin, notesY, notesWidth, upiBoxHeight, 1.5, 1.5, 'F');
     doc.setDrawColor(...lightGray);
@@ -502,10 +608,10 @@ export async function generateInvoicePDF(
     let textOffsetX = margin + 3.5;
     if (qrImage) {
       try {
-        doc.addImage(qrImage.dataUrl, qrImage.format, margin + 2, notesY + 2, 20, 20);
-        textOffsetX += 23;
-      } catch {
-        // continue
+        doc.addImage(qrImage.dataUrl, 'PNG', margin + 2, notesY + 2, 22, 22);
+        textOffsetX += 25;
+      } catch (e) {
+        console.warn('[invoice-pdf] Failed to draw QR image into PDF:', e);
       }
     }
 
@@ -525,9 +631,11 @@ export async function generateInvoicePDF(
     doc.setFontSize(6.5);
     doc.setTextColor(...mediumGray);
     doc.text(
-      qrImage ? 'Scan with any UPI / Banking app' : 'Scan with GPay, PhonePe, Paytm, or BHIM',
+      qrImage && !effectiveUpiId
+        ? 'Scan with any UPI / Banking app to pay'
+        : 'Scan with GPay, PhonePe, Paytm, or BHIM',
       textOffsetX,
-      notesY + (effectiveUpiId ? 13 : 9)
+      notesY + (effectiveUpiId ? 14 : 9)
     );
 
     notesY += upiBoxHeight + 4;
@@ -654,6 +762,25 @@ export function printInvoiceDocument(
 
   const effectiveUpiId = invoice.upiId || upiId;
   const effectiveQrUrl = invoice.upiQrCodeUrl || invoice.paymentMethods?.upiQrCodeUrl || upiQrCodeUrl;
+
+  let printQrHtml = '';
+  if (effectiveQrUrl) {
+    printQrHtml = `<img src="${effectiveQrUrl}" style="width: 72px; height: 72px; object-fit: contain; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px; background: #fff;" alt="QR Code" />`;
+  } else if (effectiveUpiId) {
+    try {
+      const upiUri = `upi://pay?pa=${encodeURIComponent(effectiveUpiId)}&pn=${encodeURIComponent(studioName)}&am=${invoice.remainingBalance ?? invoice.total}&cu=${invoice.currency || 'INR'}&tn=${encodeURIComponent(`Invoice ${invoice.invoiceNumber}`)}`;
+      const matrix = generateQrMatrix(upiUri);
+      if (matrix.length > 0) {
+        const size = matrix.length;
+        const rects = matrix.flatMap((row, r) =>
+          row.map((cell, c) => cell ? `<rect x="${c}" y="${r}" width="1.05" height="1.05" fill="#000" />` : '').filter(Boolean)
+        ).join('');
+        printQrHtml = `<svg viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges" style="width: 72px; height: 72px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px; background: #fff;">${rects}</svg>`;
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   const statusText = (invoice.paymentStatus || invoice.status || 'draft').toUpperCase();
   const statusBg =
@@ -976,13 +1103,13 @@ export function printInvoiceDocument(
                 : ''
             }
             ${
-              effectiveUpiId || effectiveQrUrl
+              effectiveUpiId || printQrHtml
                 ? `<div style="font-weight: 700; color: #0f172a; margin-top: 8px; margin-bottom: 4px;">${effectiveQrUrl && !effectiveUpiId ? 'Scan & Pay QR' : 'UPI Payment'}</div>
                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
-                     ${effectiveQrUrl ? `<img src="${effectiveQrUrl}" style="width: 72px; height: 72px; object-fit: contain; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px; background: #fff;" alt="QR Code" />` : ''}
+                     ${printQrHtml}
                      <div style="font-size: 11px; color: #475569;">
                        ${effectiveUpiId ? `<div>VPA / UPI ID: <strong style="font-family: monospace; color: #0f172a;">${effectiveUpiId}</strong></div>` : ''}
-                       <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Scan with GPay, PhonePe, Paytm, or BHIM</div>
+                       <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Scan with any UPI / Banking app</div>
                      </div>
                    </div>`
                 : ''

@@ -239,8 +239,14 @@ export const UserSettingsService = {
         if (updates.email_invitations !== undefined) payload.email_invitations = updates.email_invitations;
         if (updates.invoice_reminders !== undefined) payload.invoice_reminders = updates.invoice_reminders;
         if (updates.weekly_digest !== undefined) payload.weekly_digest = updates.weekly_digest;
-        if (updates.default_deliverable_niche !== undefined) payload.default_deliverable_niche = updates.default_deliverable_niche;
-        if (updates.payment_settings !== undefined) payload.payment_settings = updates.payment_settings;
+        const effectivePayment = {
+          ...(updates.payment_settings || currentSettings.payment_settings || {}),
+          ...(updates.upi_qr_code_url !== undefined ? { upiQrCodeUrl: updates.upi_qr_code_url } : {}),
+          ...(updates.upi_id !== undefined ? { upiId: updates.upi_id } : {}),
+          ...((updates.upi_qr_code_url || updates.upi_id) ? { upiEnabled: true } : {}),
+        };
+        payload.payment_settings = effectivePayment;
+
         if (updates.upi_id !== undefined) payload.upi_id = updates.upi_id;
         if (updates.upi_qr_code_url !== undefined) payload.upi_qr_code_url = updates.upi_qr_code_url;
         if (updates.bank_name !== undefined) payload.bank_name = updates.bank_name;
@@ -254,8 +260,20 @@ export const UserSettingsService = {
         if (error) {
           delete payload.default_deliverable_niche;
           delete payload.email_invitations;
-          const retry = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
+          let retry = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
           error = retry.error;
+          if (error) {
+            delete payload.upi_qr_code_url;
+            delete payload.upi_id;
+            delete payload.bank_name;
+            delete payload.account_holder_name;
+            delete payload.account_number;
+            delete payload.ifsc_code;
+            delete payload.branch_name;
+            delete payload.razorpay_payment_link;
+            retry = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
+            error = retry.error;
+          }
         }
         if (error) {
           console.warn('Supabase settings upsert notice (non-fatal, cached locally):', error.message);

@@ -140,10 +140,40 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       if (type === 'qr') {
         try {
-          await supabaseAdmin
+          // Fetch existing user_settings to merge payment_settings JSONB
+          const { data: existingSettings } = await supabaseAdmin
             .from('user_settings')
-            .update({ upi_qr_code_url: publicUrl, updated_at: new Date().toISOString() })
-            .eq('id', targetUserId);
+            .select('payment_settings')
+            .eq('id', targetUserId)
+            .maybeSingle();
+
+          const existingPayment = (existingSettings?.payment_settings as any) || {};
+          const updatedPayment = {
+            ...existingPayment,
+            upiQrCodeUrl: publicUrl,
+            upiEnabled: true,
+          };
+
+          // Try upserting both top-level column upi_qr_code_url and payment_settings JSONB
+          const { error: upsertErr } = await supabaseAdmin
+            .from('user_settings')
+            .upsert({
+              id: targetUserId,
+              upi_qr_code_url: publicUrl,
+              payment_settings: updatedPayment,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'id' });
+
+          if (upsertErr) {
+            // Fall back to just updating payment_settings JSONB if upi_qr_code_url column does not exist
+            await supabaseAdmin
+              .from('user_settings')
+              .upsert({
+                id: targetUserId,
+                payment_settings: updatedPayment,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'id' });
+          }
         } catch (usErr) {
           console.warn('[Upload API] User settings QR update notice:', usErr);
         }

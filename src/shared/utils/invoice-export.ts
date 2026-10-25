@@ -552,6 +552,7 @@ export async function renderInvoiceToCanvas(
     ctx.lineWidth = 1 * scale;
     ctx.strokeRect(qrX - 4 * scale, qrY - 4 * scale, qrPixelSize + 8 * scale, qrPixelSize + 8 * scale);
 
+    let qrRendered = false;
     if (upiQrCodeUrl) {
       try {
         const qrImg = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -562,13 +563,16 @@ export async function renderInvoiceToCanvas(
           img.src = upiQrCodeUrl;
         });
         ctx.drawImage(qrImg, qrX, qrY, qrPixelSize, qrPixelSize);
+        qrRendered = true;
       } catch {
-        // Non-fatal QR image draw
+        // Fallback to dynamic UPI QR code
       }
-    } else if (upiId) {
+    }
+
+    if (!qrRendered && upiId) {
       // Draw 2D QR Code Matrix
       try {
-        const qrValue = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(effectiveBranding.businessName)}&am=${balanceDue}&cu=${currency}`;
+        const qrValue = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(effectiveBranding.businessName || 'FlowDesk')}&am=${balanceDue}&cu=${currency}`;
         const matrix = generateQrMatrix(qrValue, 25);
         const moduleCount = matrix.length || 25;
         const cellSize = qrPixelSize / moduleCount;
@@ -582,6 +586,7 @@ export async function renderInvoiceToCanvas(
             }
           }
         }
+        qrRendered = true;
       } catch {
         // Non-fatal QR draw
       }

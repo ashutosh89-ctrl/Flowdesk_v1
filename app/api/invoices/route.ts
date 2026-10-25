@@ -185,6 +185,43 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       invoiceNumber = formatInvoiceNumber({ prefix: 'INV', includeYear: true }, maxSeq + 1, year);
     }
 
+    // Query default settings for payment methods and QR code fallback if not explicitly provided
+    let defaultQrUrl: string | null = null;
+    let defaultUpiId: string | null = null;
+    let defaultBankDetails: any = null;
+    let defaultRazorpayLink: string | null = null;
+
+    if (caller.userId) {
+      try {
+        const { data: userSettings } = await supabaseAdmin
+          .from('user_settings')
+          .select('*')
+          .eq('id', caller.userId)
+          .maybeSingle();
+
+        if (userSettings) {
+          defaultQrUrl = userSettings.upi_qr_code_url || userSettings.payment_settings?.upiQrCodeUrl || null;
+          defaultUpiId = userSettings.upi_id || userSettings.payment_settings?.upiId || null;
+          defaultBankDetails = userSettings.payment_settings?.bankDetails || (userSettings.bank_name ? {
+            bankName: userSettings.bank_name,
+            accountHolderName: userSettings.account_holder_name || '',
+            accountNumber: userSettings.account_number || '',
+            ifscCode: userSettings.ifsc_code || '',
+            branchName: userSettings.branch_name || '',
+            upiId: defaultUpiId,
+          } : null);
+          defaultRazorpayLink = userSettings.razorpay_payment_link || userSettings.payment_settings?.razorpayPaymentLink || null;
+        }
+      } catch {
+        // non-critical
+      }
+    }
+
+    const finalQrCodeUrl = payload.upiQrCodeUrl || defaultQrUrl;
+    const finalUpiId = payload.upiId || defaultUpiId;
+    const finalBankDetails = payload.bankDetails || defaultBankDetails;
+    const finalRazorpayLink = payload.razorpayPaymentLink || defaultRazorpayLink;
+
     // 9. Insert Invoice Record
     const nowIso = new Date().toISOString();
     const { data: insertedInvoice, error: insertError } = await supabaseAdmin
@@ -216,15 +253,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         payment_methods: {
           ...(payload.paymentMethods || {
             bankTransferEnabled: true,
-            upiEnabled: Boolean(payload.upiId || payload.upiQrCodeUrl),
-            razorpayLinkEnabled: Boolean(payload.razorpayPaymentLink),
+            upiEnabled: Boolean(finalUpiId || finalQrCodeUrl),
+            razorpayLinkEnabled: Boolean(finalRazorpayLink),
           }),
-          upiQrCodeUrl: payload.upiQrCodeUrl || undefined,
+          upiQrCodeUrl: finalQrCodeUrl || undefined,
         },
-        upi_id: payload.upiId || null,
-        upi_qr_code_url: payload.upiQrCodeUrl || null,
-        bank_details: payload.bankDetails || null,
-        razorpay_payment_link: payload.razorpayPaymentLink || null,
+        upi_id: finalUpiId || null,
+        upi_qr_code_url: finalQrCodeUrl || null,
+        bank_details: finalBankDetails || null,
+        razorpay_payment_link: finalRazorpayLink || null,
         created_at: nowIso,
         updated_at: nowIso,
       })

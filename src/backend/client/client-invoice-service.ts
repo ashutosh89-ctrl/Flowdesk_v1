@@ -29,6 +29,45 @@ export const ClientInvoiceService = {
       }
 
       if (data && data.length > 0) {
+        // Resolve default fallback branding/settings from workspace owner
+        let defaultQrUrl: string | undefined;
+        let defaultUpiId: string | undefined;
+        let defaultBankDetails: any = undefined;
+
+        try {
+          const wsId = data[0].workspace_id;
+          if (wsId) {
+            const { data: wsData } = await supabase
+              .from('workspaces')
+              .select('owner_id')
+              .eq('id', wsId)
+              .maybeSingle();
+
+            const ownerId = wsData?.owner_id;
+            if (ownerId) {
+              const [settingsRes, profRes] = await Promise.all([
+                supabase.from('user_settings').select('*').eq('id', ownerId).maybeSingle(),
+                supabase.from('profiles').select('upi_id, upi_qr_code_url').eq('id', ownerId).maybeSingle(),
+              ]);
+              const sData = settingsRes.data;
+              const pData = profRes.data;
+
+              defaultQrUrl = sData?.upi_qr_code_url || sData?.payment_settings?.upiQrCodeUrl || pData?.upi_qr_code_url || undefined;
+              defaultUpiId = sData?.upi_id || sData?.payment_settings?.upiId || pData?.upi_id || undefined;
+              defaultBankDetails = sData?.payment_settings?.bankDetails || (sData?.bank_name ? {
+                bankName: sData.bank_name,
+                accountHolderName: sData.account_holder_name || '',
+                accountNumber: sData.account_number || '',
+                ifscCode: sData.ifsc_code || '',
+                branchName: sData.branch_name || '',
+                upiId: defaultUpiId,
+              } : undefined);
+            }
+          }
+        } catch (fbErr) {
+          console.warn('[ClientInvoiceService] Non-critical fallback branding query notice:', fbErr);
+        }
+
         return data.map((i) => {
           const paidAmt = Number(i.paid_amount) || 0;
           const totalAmt = Number(i.total_amount) || 0;
@@ -71,6 +110,10 @@ export const ClientInvoiceService = {
                 gatewayStatus: p.gateway_status || 'completed',
               }));
 
+          const resolvedQrUrl = i.upi_qr_code_url || i.payment_methods?.upiQrCodeUrl || defaultQrUrl || undefined;
+          const resolvedUpiId = i.upi_id || defaultUpiId || undefined;
+          const resolvedBankDetails = i.bank_details || defaultBankDetails || undefined;
+
           return {
             id: i.id,
             invoiceNumber: i.invoice_number,
@@ -102,10 +145,14 @@ export const ClientInvoiceService = {
             currency: i.currency || 'USD',
             notes: i.notes || '',
             paymentInstructions: i.payment_instructions || '',
-            paymentMethods: i.payment_methods || undefined,
-            upiId: i.upi_id || undefined,
-            upiQrCodeUrl: i.upi_qr_code_url || i.payment_methods?.upiQrCodeUrl || undefined,
-            bankDetails: i.bank_details || undefined,
+            paymentMethods: {
+              ...(i.payment_methods || {}),
+              upiEnabled: i.payment_methods?.upiEnabled ?? Boolean(resolvedUpiId || resolvedQrUrl),
+              upiQrCodeUrl: resolvedQrUrl,
+            },
+            upiId: resolvedUpiId,
+            upiQrCodeUrl: resolvedQrUrl,
+            bankDetails: resolvedBankDetails,
             razorpayPaymentLink: i.razorpay_payment_link || undefined,
             paymentNotification: i.payment_notification || undefined,
             receipts,

@@ -272,6 +272,7 @@ export const SettingsView: React.FC = () => {
     try {
       const url = await uploadBrandingAsset(file, 'qr');
       handleSettingsChange('upi_qr_code_url', url);
+      handleProfileChange('upiQrCodeUrl', url);
       setSettings((prev) => ({
         ...prev,
         upi_qr_code_url: url,
@@ -280,6 +281,10 @@ export const SettingsView: React.FC = () => {
           upiQrCodeUrl: url,
           upiEnabled: true,
         },
+      }));
+      setProfile((prev) => ({
+        ...prev,
+        upiQrCodeUrl: url,
       }));
       setDirty(true);
       showToast('QR Code Uploaded', 'Custom payment QR has been saved and will appear on invoices.', 'success');
@@ -293,6 +298,7 @@ export const SettingsView: React.FC = () => {
 
   const handleRemoveQrCode = () => {
     handleSettingsChange('upi_qr_code_url', '');
+    handleProfileChange('upiQrCodeUrl', '');
     setSettings((prev) => ({
       ...prev,
       upi_qr_code_url: '',
@@ -300,6 +306,10 @@ export const SettingsView: React.FC = () => {
         ...prev.payment_settings,
         upiQrCodeUrl: '',
       },
+    }));
+    setProfile((prev) => ({
+      ...prev,
+      upiQrCodeUrl: '',
     }));
     setDirty(true);
     showToast('QR Code Removed', 'Reverted to dynamic UPI QR code generator.', 'info');
@@ -330,6 +340,8 @@ export const SettingsView: React.FC = () => {
           avatarUrl: profile.avatarUrl,
           logoUrl: profile.logoUrl,
           signatureUrl: profile.signatureUrl,
+          upiQrCodeUrl: settings.upi_qr_code_url || profile.upiQrCodeUrl || settings.payment_settings?.upiQrCodeUrl,
+          upiId: settings.upi_id || profile.upiId || settings.payment_settings?.upiId,
         },
         user?.id
       );
