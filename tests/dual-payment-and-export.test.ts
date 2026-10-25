@@ -99,6 +99,31 @@ async function runDualPaymentAndExportTests() {
   const invalidLinkParse = RazorpayPaymentLinkSchema.safeParse('https://external-untrusted-site.com/pay');
   assert(!invalidLinkParse.success, 'Razorpay Payment Link schema rejects untrusted domain');
 
+  // CreatePaymentOrderSchema & VerifyPaymentSchema with clientId & invoiceId format
+  const { CreatePaymentOrderSchema, VerifyPaymentSchema } = await import('../src/shared/validation/schemas');
+  const validOrderWithClientId = CreatePaymentOrderSchema.safeParse({
+    invoiceId: 'INV-2026-0002',
+    clientId: '44df8dc3-ad6a-49d3-b09a-556ba2c56cd6',
+    requestedAmount: 500,
+    partialPayment: false,
+  });
+  assert(validOrderWithClientId.success, 'CreatePaymentOrderSchema accepts statement ID format and clientId');
+
+  const validOrderUuid = CreatePaymentOrderSchema.safeParse({
+    invoiceId: '123e4567-e89b-12d3-a456-426614174000',
+    clientId: '44df8dc3-ad6a-49d3-b09a-556ba2c56cd6',
+    requestedAmount: 1200,
+  });
+  assert(validOrderUuid.success, 'CreatePaymentOrderSchema accepts UUID invoiceId and clientId');
+
+  const validVerifyWithClientId = VerifyPaymentSchema.safeParse({
+    orderId: 'order_12345678',
+    paymentId: 'pay_12345678',
+    signature: 'a'.repeat(64),
+    clientId: '44df8dc3-ad6a-49d3-b09a-556ba2c56cd6',
+  });
+  assert(validVerifyWithClientId.success, 'VerifyPaymentSchema accepts signature with clientId');
+
   // ClientPaymentNotificationSchema
   const validNotification = ClientPaymentNotificationSchema.safeParse({
     amount: 1500,

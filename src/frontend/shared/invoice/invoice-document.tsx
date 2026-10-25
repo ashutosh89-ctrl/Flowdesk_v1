@@ -191,6 +191,9 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
     const upiId = invoice.upiId || invoiceBankDetails.upiId || (branding as any)?.upiId || '';
     const razorpayLink = invoice.razorpayPaymentLink || (branding as any)?.razorpayPaymentLink || '';
 
+    const isUpiAvailable = Boolean(upiId || upiQrCodeUrl);
+    const shouldShowUpi = isUpiAvailable && methodsConfig.upiEnabled !== false;
+
     // Status & Watermark logic
     const status = (invoice.paymentStatus || invoice.status || 'draft').toUpperCase();
     const isPaid = status === 'PAID';
@@ -520,7 +523,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
               )}
 
               {/* Method 2: UPI Payment Block */}
-              {methodsConfig.upiEnabled !== false && (upiId || upiQrCodeUrl) && (
+              {shouldShowUpi && (
                 <div className="space-y-1">
                   <UPIPaymentQR
                     upiId={upiId}

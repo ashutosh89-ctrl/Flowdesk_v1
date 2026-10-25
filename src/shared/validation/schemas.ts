@@ -75,9 +75,18 @@ export const EmailDispatchRouteSchema = z
   })
   .strict();
 
+export const invoiceIdParamSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^(INV-[a-zA-Z0-9_-]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|inv-[a-zA-Z0-9_-]+|[a-zA-Z0-9_-]{3,64})$/,
+    'Invalid invoice ID format'
+  );
+
 export const CreatePaymentOrderSchema = z
   .object({
-    invoiceId: uuidSchema,
+    invoiceId: invoiceIdParamSchema,
+    clientId: z.string().trim().max(128).optional(),
     requestedAmount: z
       .number()
       .positive('Requested amount must be greater than zero')
@@ -93,6 +102,7 @@ export const VerifyPaymentSchema = z
     orderId: z.string().trim().min(6).max(64),
     paymentId: z.string().trim().min(6).max(64),
     signature: z.string().trim().min(10).max(256),
+    clientId: z.string().trim().max(128).optional(),
   })
   .strict();
 

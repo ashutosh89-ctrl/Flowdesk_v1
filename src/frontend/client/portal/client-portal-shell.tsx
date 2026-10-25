@@ -433,6 +433,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
         onClose={() => setSelectedPaymentInvoice(null)}
         invoice={selectedPaymentInvoice}
         clientId={client.id}
+        branding={branding || (profile as any)}
         onPaymentSuccess={async () => {
           if (selectedPaymentInvoice) {
             await onPayInvoice(selectedPaymentInvoice.id);

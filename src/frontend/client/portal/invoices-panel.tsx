@@ -30,6 +30,7 @@ import {
   Clock,
   ShieldCheck,
   AlertCircle,
+  QrCode,
 } from 'lucide-react';
 import { isApprovedRazorpayUrl } from '@/shared/utils/safe-url';
 import { QRCode } from '@/frontend/shared/ui/qr-code';
@@ -247,6 +248,17 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
         ) : (
           filteredInvoices.map((inv) => {
             const isPaid = inv.paymentStatus === 'paid' || inv.status === 'paid';
+            const invQrUrl = inv.upiQrCodeUrl || effectiveBranding?.upiQrCodeUrl;
+            const invUpiId =
+              inv.upiId ||
+              inv.bankDetails?.upiId ||
+              effectiveBranding?.upiId ||
+              effectiveBranding?.bankDetails?.upiId;
+            const hasInvQr = Boolean(invQrUrl || invUpiId);
+            const remaining = inv.remainingBalance ?? inv.total;
+            const upiDeepLink = invUpiId
+              ? `upi://pay?pa=${encodeURIComponent(invUpiId)}&pn=${encodeURIComponent(effectiveBranding?.businessName || 'FlowDesk')}&am=${remaining}&cu=${inv.currency || 'INR'}&tn=${encodeURIComponent(`Invoice ${inv.invoiceNumber}`)}`
+              : '';
 
             return (
               <Card key={inv.id} variant="crystal" className="p-5 border-white/15 hover:border-white/25 transition-all">
@@ -269,7 +281,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                       <span className="text-[10px] text-zinc-500 block uppercase">{inv.currency}</span>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -290,6 +302,16 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
 
                       {!isPaid ? (
                         <>
+                          {hasInvQr && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onPayClick(inv)}
+                              leftIcon={<QrCode className="w-3.5 h-3.5 text-emerald-400" />}
+                            >
+                              QR
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -316,6 +338,61 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Direct Attached QR Code Section on Invoice Card */}
+                {hasInvQr && !isPaid && (
+                  <div className="mt-3 pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02] p-3 rounded-xl border border-white/5">
+                    <div className="flex items-center gap-3">
+                      <div
+                        onClick={() => onPayClick(inv)}
+                        className="w-14 h-14 p-1 bg-white rounded-lg shadow shrink-0 flex items-center justify-center overflow-hidden cursor-pointer hover:scale-105 transition-transform"
+                        title="Click to view QR in payment modal"
+                      >
+                        {invQrUrl ? (
+                          <img src={invQrUrl} alt="Invoice QR" className="w-full h-full object-contain" />
+                        ) : (
+                          <QRCode value={upiDeepLink} size={48} darkColor="#000000" lightColor="#ffffff" />
+                        )}
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-mono uppercase font-bold text-emerald-400">
+                            Attached QR Payment
+                          </span>
+                          {invUpiId && (
+                            <button
+                              type="button"
+                              onClick={() => copyText(invUpiId, `card-upi-${inv.id}`)}
+                              className="text-[10px] text-zinc-400 hover:text-white flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 cursor-pointer"
+                            >
+                              {copiedField === `card-upi-${inv.id}` ? (
+                                <Check className="w-2.5 h-2.5 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-2.5 h-2.5" />
+                              )}
+                              <span className="font-mono text-[10px]">{invUpiId}</span>
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-zinc-300">
+                          Scan with PhonePe, GPay, Paytm, BHIM to settle{' '}
+                          <strong className="text-white font-mono">{formatCurrency(remaining, inv.currency)}</strong>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onPayClick(inv)}
+                        leftIcon={<QrCode className="w-3.5 h-3.5 text-emerald-400" />}
+                      >
+                        Scan QR Code
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </Card>
             );
           })
@@ -402,6 +479,20 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
+
+                  {/* Option QR: Scan & Pay QR */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const inv = selectedInvoiceModal;
+                      setSelectedInvoiceModal(null);
+                      onPayClick(inv);
+                    }}
+                    leftIcon={<QrCode className="w-4 h-4 text-emerald-400" />}
+                  >
+                    Scan QR
+                  </Button>
 
                   {/* Option A: Client Notify Payment */}
                   <Button
