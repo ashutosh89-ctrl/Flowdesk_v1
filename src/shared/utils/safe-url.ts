@@ -72,3 +72,40 @@ export function isSafeImageUrl(url: unknown): boolean {
 
   return isSafeHttpUrl(trimmed);
 }
+
+/**
+ * Razorpay Payment Link Validator
+ * Verifies that the URL is strictly HTTPS and points to an approved Razorpay payment domain:
+ * - rzp.io (standard short links, e.g. https://rzp.io/l/xyz or https://rzp.io/i/xyz)
+ * - pages.razorpay.com (Razorpay Payment Pages)
+ * - razorpay.me (Razorpay custom payment link)
+ * - *.razorpay.com (e.g. payment link subdomains)
+ */
+export function isApprovedRazorpayUrl(url: unknown): boolean {
+  if (typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (!isSafeHttpUrl(trimmed)) return false;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'https:') return false;
+
+    const hostname = parsed.hostname.toLowerCase();
+    const allowedExactHosts = ['rzp.io', 'razorpay.me', 'pages.razorpay.com', 'razorpay.com'];
+    if (allowedExactHosts.includes(hostname)) return true;
+    if (hostname.endsWith('.razorpay.com')) return true;
+    if (hostname.endsWith('.rzp.io')) return true;
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns the sanitized Razorpay Payment URL if approved, or a fallback value (default empty string).
+ */
+export function getApprovedRazorpayUrl(url: unknown, fallback: string = ''): string {
+  return isApprovedRazorpayUrl(url) ? (url as string).trim() : fallback;
+}

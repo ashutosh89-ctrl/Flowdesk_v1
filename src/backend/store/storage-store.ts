@@ -1923,6 +1923,11 @@ export const FlowDeskStore = {
       notes: invoiceData.notes || 'Thank you for your business.',
       paymentInstructions: invoiceData.paymentInstructions || 'Direct Bank Wire or Secure Razorpay Link.',
       internalNotes: invoiceData.internalNotes || '',
+      paymentMethods: invoiceData.paymentMethods,
+      upiId: invoiceData.upiId,
+      upiQrCodeUrl: invoiceData.upiQrCodeUrl,
+      bankDetails: invoiceData.bankDetails,
+      razorpayPaymentLink: invoiceData.razorpayPaymentLink,
       reminders: invoiceData.reminders || [],
       receipts: invoiceData.receipts || [],
       timeline: [

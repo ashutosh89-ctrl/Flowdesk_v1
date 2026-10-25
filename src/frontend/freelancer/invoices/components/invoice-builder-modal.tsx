@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Client, Project, Invoice, InvoiceItem } from '@/shared/types';
+import { Client, Project, Invoice, InvoiceItem, BankDetails, PaymentMethodsConfig } from '@/shared/types';
 import { FreelancerClientService, FreelancerProjectService, FreelancerInvoiceService } from '@/backend/freelancer';
 import { UserSettingsService } from '@/backend/auth';
 import { useAuth } from '@/frontend/auth/auth-context';
 import { SUPPORTED_CURRENCIES, formatCurrency, getCurrencySymbol } from '@/shared/utils/currency';
-import { X, Plus, Trash2, Copy, FileText, Check, DollarSign, AlertCircle } from 'lucide-react';
+import { X, Plus, Trash2, Copy, FileText, Check, DollarSign, AlertCircle, Building2, QrCode, CreditCard, ExternalLink, Upload, CheckCircle2 } from 'lucide-react';
 import { calculateInvoiceTotals, generateNextInvoiceNumber } from '@/shared/utils/invoice-calculations';
+import { isApprovedRazorpayUrl } from '@/shared/utils/safe-url';
+import { QRCode } from '@/frontend/shared/ui/qr-code';
 
 interface InvoiceBuilderModalProps {
   isOpen: boolean;
@@ -26,6 +28,7 @@ export function InvoiceBuilderModal({
   const [clients, setClients] = useState<Client[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showPaymentConfig, setShowPaymentConfig] = useState(true);
 
   // Form states
   const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -40,6 +43,23 @@ export function InvoiceBuilderModal({
   const [notes, setNotes] = useState('Thank you for your business. Payment due as outlined.');
   const [paymentInstructions, setPaymentInstructions] = useState('Bank Transfer as outlined on this statement.');
   const [internalNotes, setInternalNotes] = useState('');
+
+  // Dual Payment Method states
+  const [bankTransferEnabled, setBankTransferEnabled] = useState(true);
+  const [upiEnabled, setUpiEnabled] = useState(false);
+  const [razorpayLinkEnabled, setRazorpayLinkEnabled] = useState(false);
+  const [upiId, setUpiId] = useState('');
+  const [upiQrCodeUrl, setUpiQrCodeUrl] = useState('');
+  const [isUploadingQr, setIsUploadingQr] = useState(false);
+  const qrInputRef = React.useRef<HTMLInputElement>(null);
+  const [bankDetails, setBankDetails] = useState<BankDetails>({
+    accountHolderName: '',
+    bankName: '',
+    accountNumber: '',
+    ifscCode: '',
+    branchName: '',
+  });
+  const [razorpayPaymentLink, setRazorpayPaymentLink] = useState('');
 
   // Line items
   const [items, setItems] = useState<InvoiceItem[]>([
@@ -72,6 +92,19 @@ export function InvoiceBuilderModal({
         setNotes(invoiceToEdit.notes || '');
         setPaymentInstructions(invoiceToEdit.paymentInstructions || '');
         setInternalNotes(invoiceToEdit.internalNotes || '');
+        setBankTransferEnabled(invoiceToEdit.paymentMethods?.bankTransferEnabled ?? true);
+        setUpiEnabled(invoiceToEdit.paymentMethods?.upiEnabled ?? Boolean(invoiceToEdit.upiId || invoiceToEdit.upiQrCodeUrl));
+        setRazorpayLinkEnabled(invoiceToEdit.paymentMethods?.razorpayLinkEnabled ?? Boolean(invoiceToEdit.razorpayPaymentLink));
+        setUpiId(invoiceToEdit.upiId || '');
+        setUpiQrCodeUrl(invoiceToEdit.upiQrCodeUrl || invoiceToEdit.paymentMethods?.upiQrCodeUrl || '');
+        setBankDetails({
+          accountHolderName: invoiceToEdit.bankDetails?.accountHolderName || '',
+          bankName: invoiceToEdit.bankDetails?.bankName || '',
+          accountNumber: invoiceToEdit.bankDetails?.accountNumber || '',
+          ifscCode: invoiceToEdit.bankDetails?.ifscCode || '',
+          branchName: invoiceToEdit.bankDetails?.branchName || '',
+        });
+        setRazorpayPaymentLink(invoiceToEdit.razorpayPaymentLink || '');
         setItems(
           invoiceToEdit.items && invoiceToEdit.items.length > 0
             ? invoiceToEdit.items.map((it, idx) => ({ ...it, id: it.id || `item-${idx}` }))
@@ -104,6 +137,23 @@ export function InvoiceBuilderModal({
         setTaxName(settings?.tax_name || 'GST');
         setCurrency(studioCurrency);
 
+        setBankTransferEnabled(settings?.payment_settings?.bankTransferEnabled ?? true);
+        setUpiEnabled(settings?.payment_settings?.upiEnabled ?? Boolean(settings?.upi_id || settings?.upi_qr_code_url || settings?.payment_settings?.upiQrCodeUrl));
+        setRazorpayLinkEnabled(settings?.payment_settings?.razorpayLinkEnabled ?? Boolean(settings?.razorpay_payment_link));
+        setUpiId(settings?.upi_id || settings?.payment_settings?.upiId || '');
+        setUpiQrCodeUrl(settings?.upi_qr_code_url || settings?.payment_settings?.upiQrCodeUrl || '');
+        setBankDetails({
+          accountHolderName: settings?.account_holder_name || settings?.payment_settings?.bankDetails?.accountHolderName || '',
+          bankName: settings?.bank_name || settings?.payment_settings?.bankDetails?.bankName || '',
+          accountNumber: settings?.account_number || settings?.payment_settings?.bankDetails?.accountNumber || '',
+          ifscCode: settings?.ifsc_code || settings?.payment_settings?.bankDetails?.ifscCode || '',
+          branchName: settings?.branch_name || settings?.payment_settings?.bankDetails?.branchName || '',
+        });
+        setRazorpayPaymentLink(settings?.razorpay_payment_link || settings?.payment_settings?.razorpayPaymentLink || '');
+        if (settings?.payment_settings?.defaultPaymentInstructions) {
+          setPaymentInstructions(settings.payment_settings.defaultPaymentInstructions);
+        }
+
         const targetClient = (defaultClientId && allClients.find((c) => c.id === defaultClientId)) || allClients.find((c) => c.id === selectedClientId) || allClients[0];
         if (targetClient) {
           setSelectedClientId(targetClient.id);
@@ -123,7 +173,7 @@ export function InvoiceBuilderModal({
         setItems([{ id: 'item-initial', description: '', quantity: 1, rate: 0, amount: 0 }]);
       }
     });
-  }, [isOpen, invoiceToEdit, user?.id, defaultClientId, profile?.currency, userSettings?.currency]);
+  }, [isOpen, invoiceToEdit, user?.id, defaultClientId, profile?.currency, userSettings?.currency, selectedClientId]);
 
   const handleClientSelectChange = (newClientId: string) => {
     setSelectedClientId(newClientId);
@@ -183,6 +233,37 @@ export function InvoiceBuilderModal({
   const calculatedTax = calc.taxAmount;
   const total = calc.total;
 
+  const handleDirectQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingQr(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'qr');
+      if (user?.id) formData.append('userId', user.id);
+
+      const res = await fetch('/api/settings/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.url) {
+          setUpiQrCodeUrl(data.url);
+          setUpiEnabled(true);
+        }
+      }
+    } catch (err) {
+      console.warn('[InvoiceBuilderModal] Direct QR upload error:', err);
+    } finally {
+      setIsUploadingQr(false);
+      if (qrInputRef.current) qrInputRef.current.value = '';
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleSubmit = async (isDraft: boolean) => {
@@ -201,6 +282,9 @@ export function InvoiceBuilderModal({
     });
     if (taxPercentage < 0 || taxPercentage > 100) errors.push('Tax percentage must be between 0 and 100.');
     if (discount < 0) errors.push('Discount must be non-negative.');
+    if (razorpayLinkEnabled && razorpayPaymentLink.trim() && !isApprovedRazorpayUrl(razorpayPaymentLink.trim())) {
+      errors.push('Razorpay Payment Link must be a valid HTTPS URL on an approved Razorpay domain (rzp.io, pages.razorpay.com, or razorpay.me).');
+    }
 
     if (errors.length > 0) {
       setValidationErrors(errors);
@@ -235,6 +319,16 @@ export function InvoiceBuilderModal({
         notes,
         paymentInstructions,
         internalNotes,
+        paymentMethods: {
+          bankTransferEnabled,
+          upiEnabled,
+          razorpayLinkEnabled,
+          upiQrCodeUrl: upiEnabled && upiQrCodeUrl ? upiQrCodeUrl : undefined,
+        },
+        upiId: upiEnabled && upiId.trim() ? upiId.trim() : undefined,
+        upiQrCodeUrl: upiEnabled && upiQrCodeUrl ? upiQrCodeUrl : undefined,
+        bankDetails: bankTransferEnabled ? bankDetails : undefined,
+        razorpayPaymentLink: razorpayLinkEnabled && razorpayPaymentLink.trim() ? razorpayPaymentLink.trim() : undefined,
       };
 
       let savedInvoice: Invoice | null = null;
@@ -520,6 +614,211 @@ export function InvoiceBuilderModal({
                     <textarea rows={2} value={paymentInstructions} onChange={(e) => setPaymentInstructions(e.target.value)} className="w-full px-3 py-2 text-xs border border-white/10 rounded-xl bg-zinc-900/80 text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 transition-colors" />
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Payment Methods & Payout Options - Collapsible */}
+          <div className="border border-white/10 rounded-xl overflow-hidden bg-zinc-900/40">
+            <button
+              type="button"
+              onClick={() => setShowPaymentConfig(!showPaymentConfig)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-white/[0.02] text-xs font-semibold text-zinc-300 hover:text-white transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                Payment Options (Bank Transfer, UPI, Razorpay Link)
+              </span>
+              <span className="text-[10px] font-mono text-zinc-400">{showPaymentConfig ? 'Collapse' : 'Expand'}</span>
+            </button>
+            {showPaymentConfig && (
+              <div className="p-4 space-y-4 border-t border-white/10 text-xs">
+                {/* Method toggles */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors ${bankTransferEnabled ? 'bg-emerald-500/10 border-emerald-500/40 text-white' : 'bg-white/[0.02] border-white/10 text-zinc-400'}`}>
+                    <input
+                      type="checkbox"
+                      checked={bankTransferEnabled}
+                      onChange={(e) => setBankTransferEnabled(e.target.checked)}
+                      className="rounded border-zinc-700 text-emerald-500 focus:ring-0"
+                    />
+                    <Building2 className="w-4 h-4 text-emerald-400" />
+                    <span className="font-medium">Bank Transfer</span>
+                  </label>
+
+                  <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors ${upiEnabled ? 'bg-emerald-500/10 border-emerald-500/40 text-white' : 'bg-white/[0.02] border-white/10 text-zinc-400'}`}>
+                    <input
+                      type="checkbox"
+                      checked={upiEnabled}
+                      onChange={(e) => setUpiEnabled(e.target.checked)}
+                      className="rounded border-zinc-700 text-emerald-500 focus:ring-0"
+                    />
+                    <QrCode className="w-4 h-4 text-emerald-400" />
+                    <span className="font-medium">UPI & QR</span>
+                  </label>
+
+                  <label className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-colors ${razorpayLinkEnabled ? 'bg-cyan-500/10 border-cyan-500/40 text-white' : 'bg-white/[0.02] border-white/10 text-zinc-400'}`}>
+                    <input
+                      type="checkbox"
+                      checked={razorpayLinkEnabled}
+                      onChange={(e) => setRazorpayLinkEnabled(e.target.checked)}
+                      className="rounded border-zinc-700 text-cyan-500 focus:ring-0"
+                    />
+                    <ExternalLink className="w-4 h-4 text-cyan-400" />
+                    <span className="font-medium">Razorpay Link</span>
+                  </label>
+                </div>
+
+                {/* Bank Details subfields if enabled */}
+                {bankTransferEnabled && (
+                  <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/10 space-y-3">
+                    <span className="text-[11px] font-mono uppercase font-bold text-emerald-400 tracking-wider">Bank Account Details</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] text-zinc-400 mb-1">Account Holder Name</label>
+                        <input
+                          type="text"
+                          value={bankDetails.accountHolderName || ''}
+                          onChange={(e) => setBankDetails(prev => ({ ...prev, accountHolderName: e.target.value }))}
+                          placeholder="e.g. John Doe / Studio LLC"
+                          className="w-full px-3 py-1.5 text-xs border border-white/10 rounded-lg bg-zinc-900 text-white focus:outline-none focus:border-white/30"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-zinc-400 mb-1">Bank Name</label>
+                        <input
+                          type="text"
+                          value={bankDetails.bankName || ''}
+                          onChange={(e) => setBankDetails(prev => ({ ...prev, bankName: e.target.value }))}
+                          placeholder="e.g. HDFC Bank, Chase"
+                          className="w-full px-3 py-1.5 text-xs border border-white/10 rounded-lg bg-zinc-900 text-white focus:outline-none focus:border-white/30"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-zinc-400 mb-1">Account Number / IBAN</label>
+                        <input
+                          type="text"
+                          value={bankDetails.accountNumber || ''}
+                          onChange={(e) => setBankDetails(prev => ({ ...prev, accountNumber: e.target.value }))}
+                          placeholder="e.g. 50100234567890"
+                          className="w-full px-3 py-1.5 text-xs border border-white/10 rounded-lg bg-zinc-900 text-white focus:outline-none focus:border-white/30"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-zinc-400 mb-1">IFSC / SWIFT / Routing</label>
+                        <input
+                          type="text"
+                          value={bankDetails.ifscCode || ''}
+                          onChange={(e) => setBankDetails(prev => ({ ...prev, ifscCode: e.target.value }))}
+                          placeholder="e.g. HDFC0001234"
+                          className="w-full px-3 py-1.5 text-xs border border-white/10 rounded-lg bg-zinc-900 text-white focus:outline-none focus:border-white/30"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* UPI subfield if enabled */}
+                {upiEnabled && (
+                  <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-mono uppercase font-bold text-emerald-400 tracking-wider">
+                        UPI Address & Payment QR Code
+                      </span>
+                      {upiQrCodeUrl && (
+                        <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Custom QR Active
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] text-zinc-400 mb-1">UPI ID / VPA (Optional if uploading QR directly)</label>
+                      <input
+                        type="text"
+                        value={upiId}
+                        onChange={(e) => setUpiId(e.target.value.trim())}
+                        placeholder="e.g. studio@okhdfcbank"
+                        className="w-full px-3 py-2 text-xs border border-white/10 rounded-lg bg-zinc-900 text-white focus:outline-none focus:border-white/30"
+                      />
+                    </div>
+
+                    {/* QR Upload & Preview Control */}
+                    <div className="pt-2 border-t border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <input
+                        type="file"
+                        ref={qrInputRef}
+                        onChange={handleDirectQrUpload}
+                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                        className="hidden"
+                      />
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => qrInputRef.current?.click()}
+                          disabled={isUploadingQr}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-600 text-white font-medium text-xs transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{isUploadingQr ? 'Uploading QR...' : upiQrCodeUrl ? 'Replace Custom QR' : 'Upload QR Image'}</span>
+                        </button>
+
+                        {upiQrCodeUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setUpiQrCodeUrl('')}
+                            className="text-xs text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer"
+                          >
+                            Remove QR Image
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Small Live Preview */}
+                      {(upiQrCodeUrl || upiId) && (
+                        <div className="flex items-center gap-2 p-1.5 bg-white rounded-lg shadow-sm border border-zinc-200">
+                          {upiQrCodeUrl ? (
+                            <img src={upiQrCodeUrl} alt="QR Thumbnail" className="w-10 h-10 object-contain rounded" />
+                          ) : (
+                            <QRCode
+                              value={`upi://pay?pa=${encodeURIComponent(upiId)}&pn=FlowDesk&cu=${currency}`}
+                              size={40}
+                              darkColor="#000000"
+                              lightColor="#ffffff"
+                            />
+                          )}
+                          <span className="text-[10px] text-zinc-700 font-mono pr-1">
+                            {upiQrCodeUrl ? 'Uploaded QR' : 'Dynamic QR'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Razorpay link subfield if enabled */}
+                {razorpayLinkEnabled && (
+                  <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/10 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-mono uppercase font-bold text-cyan-400 tracking-wider">Freelancer Razorpay Payment Link</span>
+                      {razorpayPaymentLink && isApprovedRazorpayUrl(razorpayPaymentLink) && (
+                        <span className="text-[10px] text-emerald-400 font-mono">Approved Domain</span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={razorpayPaymentLink}
+                      onChange={(e) => setRazorpayPaymentLink(e.target.value.trim())}
+                      placeholder="e.g. https://pages.razorpay.com/pl_... or https://rzp.io/l/..."
+                      className="w-full px-3 py-2 text-xs border border-white/10 rounded-lg bg-zinc-900 text-white focus:outline-none focus:border-white/30"
+                    />
+                    <p className="text-[11px] text-zinc-500">
+                      Payment settles directly to your own Razorpay account. No API secret credentials needed.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

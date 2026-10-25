@@ -5,7 +5,7 @@ import { Card } from '@/frontend/shared/ui/card';
 import { Button } from '@/frontend/shared/ui/button';
 import { StatusPill } from '@/frontend/shared/ui/status-pill';
 import { Modal } from '@/frontend/shared/ui/modal';
-import { Invoice, UserProfile, InvoiceBranding } from '@/shared/types';
+import { Invoice, UserProfile, InvoiceBranding, ClientPaymentNotification } from '@/shared/types';
 import { formatCurrency } from '@/shared/utils/currency';
 import { InvoiceDocument } from '@/frontend/shared/invoice/invoice-document';
 import {
@@ -24,7 +24,15 @@ import {
   Printer,
   Image as ImageIcon,
   Loader2,
+  ExternalLink,
+  Copy,
+  Check,
+  Clock,
+  ShieldCheck,
+  AlertCircle,
 } from 'lucide-react';
+import { isApprovedRazorpayUrl } from '@/shared/utils/safe-url';
+import { QRCode } from '@/frontend/shared/ui/qr-code';
 
 interface InvoicesPanelProps {
   invoices: Invoice[];
@@ -44,10 +52,98 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'paid'>('all');
   const [selectedInvoiceModal, setSelectedInvoiceModal] = useState<Invoice | null>(null);
   const [paymentInstructionsModal, setPaymentInstructionsModal] = useState<Invoice | null>(null);
+  const [notifyModalInvoice, setNotifyModalInvoice] = useState<Invoice | null>(null);
   const [exportingType, setExportingType] = useState<'pdf' | 'png' | 'jpg' | 'print' | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Payment notification form state
+  const [notifyMethod, setNotifyMethod] = useState<'bank_transfer' | 'upi' | 'razorpay' | 'other'>('bank_transfer');
+  const [notifyRef, setNotifyRef] = useState('');
+  const [notifyAmount, setNotifyAmount] = useState('');
+  const [notifyNotes, setNotifyNotes] = useState('');
+  const [isSubmittingNotify, setIsSubmittingNotify] = useState(false);
+  const [notifySuccessMsg, setNotifySuccessMsg] = useState<string | null>(null);
+  const [notifyErrorMsg, setNotifyErrorMsg] = useState<string | null>(null);
+
   const previewDocRef = useRef<HTMLDivElement>(null);
 
   const effectiveBranding = branding || (profile as any);
+
+  const copyText = (text: string, fieldId: string) => {
+    try {
+      navigator.clipboard?.writeText(text);
+      setCopiedField(fieldId);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {}
+  };
+
+  const handleOpenNotifyModal = (inv: Invoice) => {
+    setNotifyModalInvoice(inv);
+    setNotifyAmount(String(inv.remainingBalance ?? inv.total));
+    setNotifyRef('');
+    setNotifyNotes('');
+    setNotifyMethod(inv.upiId ? 'upi' : 'bank_transfer');
+    setNotifySuccessMsg(null);
+    setNotifyErrorMsg(null);
+  };
+
+  const handleSubmitPaymentNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!notifyModalInvoice) return;
+    if (!notifyRef.trim()) {
+      setNotifyErrorMsg('Transaction reference or UTR number is required.');
+      return;
+    }
+    const numAmt = Number(notifyAmount);
+    if (isNaN(numAmt) || numAmt <= 0) {
+      setNotifyErrorMsg('Please enter a valid positive payment amount.');
+      return;
+    }
+
+    setIsSubmittingNotify(true);
+    setNotifyErrorMsg(null);
+
+    try {
+      const res = await fetch(`/api/invoices/${notifyModalInvoice.id}/notify-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: numAmt,
+          paymentMethod: notifyMethod,
+          transactionReference: notifyRef.trim(),
+          notes: notifyNotes.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Failed to submit payment notification');
+      }
+
+      setNotifySuccessMsg('Payment notification submitted! The freelancer has been notified to verify and confirm receipt.');
+      // Update local invoice state immutably
+      const updatedNotification: ClientPaymentNotification = {
+        amount: numAmt,
+        paymentMethod: notifyMethod,
+        transactionReference: notifyRef.trim(),
+        notes: notifyNotes.trim() || undefined,
+        notifiedAt: new Date().toISOString(),
+        status: 'awaiting_verification',
+      };
+      setNotifyModalInvoice((prev) => (prev ? { ...prev, paymentNotification: updatedNotification } : null));
+      if (selectedInvoiceModal && selectedInvoiceModal.id === notifyModalInvoice.id) {
+        setSelectedInvoiceModal({ ...selectedInvoiceModal, paymentNotification: updatedNotification });
+      }
+      setTimeout(() => {
+        setNotifyModalInvoice(null);
+        setNotifySuccessMsg(null);
+      }, 3000);
+    } catch (err: any) {
+      setNotifyErrorMsg(err.message || 'An error occurred submitting payment notification.');
+    } finally {
+      setIsSubmittingNotify(false);
+    }
+  };
 
   const filteredInvoices = invoices.filter((inv) => {
     if (filter === 'unpaid') return inv.paymentStatus !== 'paid';
@@ -226,12 +322,13 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
         )}
       </div>
 
-      {/* Upgraded Canonical Invoice Document Modal */}
+      {/* Upgraded Canonical Invoice Document Modal - size="xl" guarantees zero squishing */}
       {selectedInvoiceModal && (
         <Modal
           isOpen={!!selectedInvoiceModal}
           onClose={() => setSelectedInvoiceModal(null)}
           title={`Statement #${selectedInvoiceModal.invoiceNumber}`}
+          size="xl"
         >
           <div className="space-y-4 font-sans text-xs">
             {/* Export Toolbar */}
@@ -291,18 +388,44 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
               </div>
 
               {selectedInvoiceModal.paymentStatus !== 'paid' && selectedInvoiceModal.status !== 'paid' && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => {
-                    const inv = selectedInvoiceModal;
-                    setSelectedInvoiceModal(null);
-                    onPayClick(inv);
-                  }}
-                  leftIcon={<CreditCard className="w-4 h-4" />}
-                >
-                  Pay Securely ({formatCurrency(selectedInvoiceModal.remainingBalance ?? selectedInvoiceModal.total, selectedInvoiceModal.currency)})
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Option B: External Razorpay Payment Link */}
+                  {selectedInvoiceModal.razorpayPaymentLink && isApprovedRazorpayUrl(selectedInvoiceModal.razorpayPaymentLink) && (
+                    <a
+                      href={selectedInvoiceModal.razorpayPaymentLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-sm cursor-pointer"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Pay Online (Razorpay)</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+
+                  {/* Option A: Client Notify Payment */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleOpenNotifyModal(selectedInvoiceModal)}
+                    leftIcon={<CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                  >
+                    Notify Payment
+                  </Button>
+
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      const inv = selectedInvoiceModal;
+                      setSelectedInvoiceModal(null);
+                      onPayClick(inv);
+                    }}
+                    leftIcon={<CreditCard className="w-4 h-4" />}
+                  >
+                    Pay ({formatCurrency(selectedInvoiceModal.remainingBalance ?? selectedInvoiceModal.total, selectedInvoiceModal.currency)})
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -320,73 +443,282 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
         </Modal>
       )}
 
-      {/* Bank Settlement Details Modal */}
+      {/* Bank & Manual Settlement Details Modal */}
       {paymentInstructionsModal && (
         <Modal
           isOpen={!!paymentInstructionsModal}
           onClose={() => setPaymentInstructionsModal(null)}
-          title={`Payment Details — #${paymentInstructionsModal.invoiceNumber}`}
+          title={`Payment Instructions — #${paymentInstructionsModal.invoiceNumber}`}
+          size="lg"
         >
           <div className="space-y-4 font-sans text-xs">
-            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
-              <div className="flex justify-between text-zinc-400">
-                <span>Invoice:</span>
+            {/* Header info */}
+            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div>
+                <span className="text-zinc-400 block text-[11px]">Invoice:</span>
                 <span className="font-mono text-white font-bold">{paymentInstructionsModal.invoiceNumber}</span>
               </div>
-              <div className="flex justify-between text-zinc-400">
-                <span>Amount Due:</span>
+              <div>
+                <span className="text-zinc-400 block text-[11px]">Amount Due:</span>
                 <span className="font-mono text-emerald-400 font-bold text-sm">
                   {formatCurrency(paymentInstructionsModal.remainingBalance ?? paymentInstructionsModal.total, paymentInstructionsModal.currency)}
                 </span>
               </div>
-              <div className="flex justify-between text-zinc-400">
-                <span>Due Date:</span>
+              <div>
+                <span className="text-zinc-400 block text-[11px]">Due Date:</span>
                 <span className="font-mono text-zinc-300">{paymentInstructionsModal.dueDate}</span>
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-2">
-              <div className="flex items-center gap-2 text-emerald-400 font-semibold">
-                <Landmark className="w-4 h-4" />
-                <span>Bank Transfer & Settlement Instructions</span>
+            {/* Bank Transfer Details */}
+            {paymentInstructionsModal.bankDetails && (paymentInstructionsModal.bankDetails.bankName || paymentInstructionsModal.bankDetails.accountNumber) && (
+              <div className="p-4 rounded-xl bg-zinc-900/60 border border-white/10 space-y-3">
+                <div className="flex items-center gap-2 text-zinc-200 font-bold text-xs">
+                  <Landmark className="w-4 h-4 text-emerald-400" />
+                  <span>Direct Bank Wire Details</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                  {paymentInstructionsModal.bankDetails.accountHolderName && (
+                    <div className="p-2 rounded bg-black/40 border border-white/5">
+                      <span className="text-zinc-400 block text-[10px]">Beneficiary Name</span>
+                      <span className="font-semibold text-zinc-200">{paymentInstructionsModal.bankDetails.accountHolderName}</span>
+                    </div>
+                  )}
+                  {paymentInstructionsModal.bankDetails.bankName && (
+                    <div className="p-2 rounded bg-black/40 border border-white/5">
+                      <span className="text-zinc-400 block text-[10px]">Bank Name</span>
+                      <span className="font-semibold text-zinc-200">{paymentInstructionsModal.bankDetails.bankName}</span>
+                    </div>
+                  )}
+                  {paymentInstructionsModal.bankDetails.accountNumber && (
+                    <div className="p-2 rounded bg-black/40 border border-white/5 flex items-center justify-between">
+                      <div>
+                        <span className="text-zinc-400 block text-[10px]">Account Number</span>
+                        <span className="font-mono font-bold text-zinc-100">{paymentInstructionsModal.bankDetails.accountNumber}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyText(paymentInstructionsModal.bankDetails?.accountNumber || '', 'accNum')}
+                        className="p-1 rounded bg-white/5 hover:bg-white/15 text-zinc-300"
+                        title="Copy Account Number"
+                      >
+                        {copiedField === 'accNum' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  )}
+                  {paymentInstructionsModal.bankDetails.ifscCode && (
+                    <div className="p-2 rounded bg-black/40 border border-white/5 flex items-center justify-between">
+                      <div>
+                        <span className="text-zinc-400 block text-[10px]">IFSC / SWIFT</span>
+                        <span className="font-mono font-bold text-zinc-100">{paymentInstructionsModal.bankDetails.ifscCode}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyText(paymentInstructionsModal.bankDetails?.ifscCode || '', 'ifsc')}
+                        className="p-1 rounded bg-white/5 hover:bg-white/15 text-zinc-300"
+                        title="Copy IFSC"
+                      >
+                        {copiedField === 'ifsc' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-              <p className="text-zinc-300 leading-relaxed">
-                {paymentInstructionsModal.paymentInstructions || 'Please transfer payment to the studio bank account noted on your invoice document, quoting your invoice number as reference.'}
-              </p>
-            </div>
+            )}
 
-            <div className="flex justify-between pt-2">
+            {/* UPI Payment Block */}
+            {(paymentInstructionsModal.upiId || paymentInstructionsModal.upiQrCodeUrl) && (
+              <div className="p-4 rounded-xl bg-zinc-900/60 border border-white/10 space-y-3">
+                <div className="flex items-center justify-between text-zinc-200 font-bold text-xs">
+                  <span>
+                    {paymentInstructionsModal.upiQrCodeUrl && !paymentInstructionsModal.upiId
+                      ? 'Scan & Pay QR (Instant)'
+                      : 'UPI Direct Payment (Instant)'}
+                  </span>
+                  {paymentInstructionsModal.upiId && (
+                    <button
+                      type="button"
+                      onClick={() => copyText(paymentInstructionsModal.upiId || '', 'upiId')}
+                      className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white"
+                    >
+                      {copiedField === 'upiId' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedField === 'upiId' ? 'Copied' : 'Copy VPA'}</span>
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="p-1.5 bg-white rounded-lg shadow shrink-0 w-[108px] h-[108px] flex items-center justify-center overflow-hidden">
+                    {paymentInstructionsModal.upiQrCodeUrl ? (
+                      <img
+                        src={paymentInstructionsModal.upiQrCodeUrl}
+                        alt="Payment QR Code"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <QRCode
+                        value={`upi://pay?pa=${encodeURIComponent(paymentInstructionsModal.upiId || '')}&pn=${encodeURIComponent(effectiveBranding.businessName || 'FlowDesk')}&am=${paymentInstructionsModal.remainingBalance ?? paymentInstructionsModal.total}&cu=${paymentInstructionsModal.currency || 'INR'}`}
+                        size={96}
+                        darkColor="#000000"
+                        lightColor="#ffffff"
+                      />
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    {paymentInstructionsModal.upiId && (
+                      <p className="font-mono text-zinc-100 font-bold text-xs">{paymentInstructionsModal.upiId}</p>
+                    )}
+                    <p className="text-zinc-400 text-[11px]">
+                      {paymentInstructionsModal.upiQrCodeUrl
+                        ? 'Scan with any UPI / Banking app (PhonePe, GPay, Paytm).'
+                        : 'Scan with Google Pay, PhonePe, Paytm, or BHIM.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* External Razorpay Link */}
+            {paymentInstructionsModal.razorpayPaymentLink && isApprovedRazorpayUrl(paymentInstructionsModal.razorpayPaymentLink) && (
+              <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-blue-400 font-semibold text-xs">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>External Razorpay Payment Page</span>
+                  </div>
+                  <a
+                    href={paymentInstructionsModal.razorpayPaymentLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs"
+                  >
+                    <span>Open Payment Link</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+                <p className="text-zinc-400 text-[11px]">
+                  Pay securely with credit card, debit card, or net banking on freelancer&apos;s verified Razorpay page.
+                </p>
+              </div>
+            )}
+
+            {/* Actions footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-white/10">
               <Button variant="ghost" onClick={() => setPaymentInstructionsModal(null)}>
                 Close
               </Button>
               <div className="flex items-center gap-2">
                 <Button
-                  variant="ghost"
+                  variant="secondary"
                   onClick={() => {
                     const inv = paymentInstructionsModal;
                     setPaymentInstructionsModal(null);
-                    onDownloadClick(inv);
+                    handleOpenNotifyModal(inv);
                   }}
-                  leftIcon={<Download className="w-4 h-4" />}
+                  leftIcon={<CheckCircle2 className="w-4 h-4 text-emerald-400" />}
                 >
-                  Download PDF
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    const inv = paymentInstructionsModal;
-                    setPaymentInstructionsModal(null);
-                    onPayClick(inv);
-                  }}
-                  leftIcon={<CreditCard className="w-4 h-4" />}
-                >
-                  Pay with Razorpay
+                  I Have Paid (Notify)
                 </Button>
               </div>
             </div>
           </div>
         </Modal>
       )}
+
+      {/* Client Payment Notification Submission Modal */}
+      {notifyModalInvoice && (
+        <Modal
+          isOpen={!!notifyModalInvoice}
+          onClose={() => setNotifyModalInvoice(null)}
+          title={`Notify Payment — #${notifyModalInvoice.invoiceNumber}`}
+          size="md"
+        >
+          <form onSubmit={handleSubmitPaymentNotification} className="space-y-4 font-sans text-xs">
+            <p className="text-zinc-300 text-xs">
+              Submitted payment details will be recorded and marked as{' '}
+              <strong className="text-amber-400">awaiting verification</strong>. The invoice will be officially marked paid
+              once verified by the freelancer.
+            </p>
+
+            {notifySuccessMsg && (
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+                <span>{notifySuccessMsg}</span>
+              </div>
+            )}
+
+            {notifyErrorMsg && (
+              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                <span>{notifyErrorMsg}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-zinc-400 mb-1 text-[11px] font-semibold">Payment Method Used</label>
+              <select
+                value={notifyMethod}
+                onChange={(e) => setNotifyMethod(e.target.value as any)}
+                className="w-full bg-zinc-900 border border-white/15 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-emerald-500"
+              >
+                <option value="bank_transfer">Bank Wire / Transfer (NEFT / RTGS / IMPS)</option>
+                <option value="upi">UPI / Instant Mobile Payment</option>
+                <option value="razorpay">Razorpay Online Payment Link</option>
+                <option value="other">Other / Cheque</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-zinc-400 mb-1 text-[11px] font-semibold">
+                Transaction Reference / UTR Number <span className="text-rose-400">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. UTR1234567890 or Bank Ref ID"
+                value={notifyRef}
+                onChange={(e) => setNotifyRef(e.target.value)}
+                className="w-full bg-zinc-900 border border-white/15 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-zinc-400 mb-1 text-[11px] font-semibold">
+                Amount Paid ({notifyModalInvoice.currency}) <span className="text-rose-400">*</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                required
+                value={notifyAmount}
+                onChange={(e) => setNotifyAmount(e.target.value)}
+                className="w-full bg-zinc-900 border border-white/15 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-zinc-400 mb-1 text-[11px] font-semibold">Notes / Remarks (Optional)</label>
+              <textarea
+                rows={2}
+                placeholder="e.g. Transferred from HDFC account ending in 4321"
+                value={notifyNotes}
+                onChange={(e) => setNotifyNotes(e.target.value)}
+                className="w-full bg-zinc-900 border border-white/15 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+              <Button type="button" variant="ghost" onClick={() => setNotifyModalInvoice(null)} disabled={isSubmittingNotify}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={isSubmittingNotify}>
+                {isSubmittingNotify ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit Payment Reference'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 };
+

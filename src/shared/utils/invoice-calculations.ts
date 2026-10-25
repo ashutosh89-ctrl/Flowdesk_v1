@@ -105,15 +105,20 @@ export function derivePaymentStatus(
 }
 
 /**
- * Determine if an invoice is overdue based on due date and payment status.
+ * Determine if an invoice is overdue based on due date and payment status/remaining balance.
  * Evaluates date-only comparison so an invoice due today is NOT overdue until tomorrow.
+ * A fully paid invoice (balance <= 0 or status === 'paid') MUST NOT be marked overdue.
  */
 export function isInvoiceOverdue(
   dueDate: string,
-  paymentStatus: string,
-  workflowStatus: string
+  paymentStatusOrBalance: string | number,
+  workflowStatus: string = 'sent'
 ): boolean {
-  if (paymentStatus === 'paid') return false;
+  if (typeof paymentStatusOrBalance === 'number') {
+    if (paymentStatusOrBalance <= 0) return false;
+  } else if (typeof paymentStatusOrBalance === 'string') {
+    if (paymentStatusOrBalance.toLowerCase() === 'paid') return false;
+  }
   if (workflowStatus === 'cancelled' || workflowStatus === 'draft') return false;
   if (!dueDate) return false;
 

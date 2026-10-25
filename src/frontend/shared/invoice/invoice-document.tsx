@@ -6,7 +6,8 @@ import { formatCurrency, getCurrencySymbol } from '@/shared/utils/currency';
 import { convertAmountToWords } from '@/shared/utils/number-to-words';
 import { isSafeHttpUrl, isSafeImageUrl } from '@/shared/utils/safe-url';
 
-import { Building2, Landmark, QrCode } from 'lucide-react';
+import { Building2, Landmark, QrCode, ExternalLink, Check, Copy, Clock, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { QRCode } from '@/frontend/shared/ui/qr-code';
 
 export interface InvoiceDocumentProps {
   invoice: Invoice;
@@ -35,33 +36,72 @@ export interface InvoiceDocumentProps {
  */
 function UPIPaymentQR({
   upiId,
+  upiQrCodeUrl,
   amount,
   payeeName,
   invoiceNumber,
+  currency = 'INR',
 }: {
   upiId?: string;
+  upiQrCodeUrl?: string;
   amount: number;
   payeeName: string;
   invoiceNumber: string;
+  currency?: string;
 }) {
-  if (!upiId) {
-    return (
-      <div className="w-24 h-24 rounded-lg bg-zinc-100 border border-zinc-200 flex flex-col items-center justify-center p-2 text-center">
-        <QrCode className="w-8 h-8 text-zinc-400 mb-1" />
-        <span className="text-[9px] text-zinc-500 font-medium leading-tight">Pay via UPI / Link</span>
-      </div>
-    );
-  }
+  const [copied, setCopied] = useState(false);
+  if (!upiId && !upiQrCodeUrl) return null;
+
+  const upiUrl = upiId
+    ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=${currency}`
+    : '';
+
+  const copyToClipboard = () => {
+    if (!upiId) return;
+    try {
+      navigator.clipboard?.writeText(upiId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="w-24 h-24 rounded-lg bg-zinc-50 border border-zinc-300 p-2 shadow-sm flex flex-col items-center justify-center text-center">
-        <QrCode className="w-10 h-10 text-zinc-800 mb-1" />
-        <span className="text-[8px] font-mono text-zinc-600 truncate max-w-[80px]" title={upiId}>
-          {upiId}
-        </span>
+    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-zinc-50 border border-zinc-200">
+      <div className="w-[84px] h-[84px] p-1 bg-white border border-zinc-200 rounded flex items-center justify-center shrink-0 overflow-hidden">
+        {upiQrCodeUrl ? (
+          <img
+            src={upiQrCodeUrl}
+            alt="Payment QR Code"
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          <QRCode value={upiUrl} size={76} darkColor="#09090b" lightColor="#ffffff" />
+        )}
       </div>
-      <span className="text-[9px] font-bold text-zinc-600 mt-1 uppercase tracking-wider">Pay via UPI</span>
+      <div className="text-[11px] space-y-1">
+        <div className="flex items-center gap-1.5">
+          <span className="font-bold text-zinc-900 uppercase text-[10px]">
+            {upiQrCodeUrl && !upiId ? 'Scan & Pay QR' : 'UPI Payment'}
+          </span>
+          {upiId && (
+            <button
+              type="button"
+              onClick={copyToClipboard}
+              className="text-[10px] text-zinc-500 hover:text-zinc-900 flex items-center gap-0.5 px-1 py-0.5 rounded bg-zinc-100 hover:bg-zinc-200"
+              title="Copy UPI ID"
+            >
+              {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+              <span className="text-[9px]">{copied ? 'Copied' : 'Copy'}</span>
+            </button>
+          )}
+        </div>
+        {upiId && <p className="font-mono text-zinc-800 text-[10px] break-all">{upiId}</p>}
+        <p className="text-[9px] text-zinc-500">
+          {upiQrCodeUrl ? 'Scan with any UPI / Banking app' : 'Scan with GPay, PhonePe, Paytm, or BHIM'}
+        </p>
+      </div>
     </div>
   );
 }
@@ -124,13 +164,32 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
       (branding as UserProfile)?.signatureUrl ||
       '';
 
-    // Bank Details resolution from invoice or branding
-    const bankDetails = (branding as any)?.bankDetails || {};
-    const bankName = bankDetails.bankName || (branding as any)?.bankName || '';
-    const accountNumber = bankDetails.accountNumber || (branding as any)?.accountNumber || '';
-    const ifscCode = bankDetails.ifscCode || bankDetails.swiftCode || (branding as any)?.ifscCode || '';
-    const branchName = bankDetails.branchName || (branding as any)?.branchName || '';
-    const upiId = bankDetails.upiId || (branding as any)?.upiId || '';
+    const upiQrCodeUrl =
+      invoice.upiQrCodeUrl ||
+      invoice.paymentMethods?.upiQrCodeUrl ||
+      (branding as any)?.upiQrCodeUrl ||
+      '';
+
+    // Bank & Payment Details resolution from invoice or branding
+    const methodsConfig = invoice.paymentMethods || {
+      bankTransferEnabled: true,
+      upiEnabled: Boolean(
+        invoice.upiId ||
+        upiQrCodeUrl ||
+        (branding as any)?.upiId ||
+        (branding as any)?.bankDetails?.upiId
+      ),
+      razorpayLinkEnabled: Boolean(invoice.razorpayPaymentLink || (branding as any)?.razorpayPaymentLink),
+    };
+
+    const invoiceBankDetails = invoice.bankDetails || (branding as any)?.bankDetails || {};
+    const accountHolderName = invoiceBankDetails.accountHolderName || (branding as any)?.accountHolderName || '';
+    const bankName = invoiceBankDetails.bankName || (branding as any)?.bankName || '';
+    const accountNumber = invoiceBankDetails.accountNumber || (branding as any)?.accountNumber || '';
+    const ifscCode = invoiceBankDetails.ifscCode || invoiceBankDetails.swiftCode || (branding as any)?.ifscCode || '';
+    const branchName = invoiceBankDetails.branchName || (branding as any)?.branchName || '';
+    const upiId = invoice.upiId || invoiceBankDetails.upiId || (branding as any)?.upiId || '';
+    const razorpayLink = invoice.razorpayPaymentLink || (branding as any)?.razorpayPaymentLink || '';
 
     // Status & Watermark logic
     const status = (invoice.paymentStatus || invoice.status || 'draft').toUpperCase();
@@ -317,6 +376,46 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
             </div>
           </div>
 
+          {/* ════════════════ PAYMENT NOTIFICATION STATUS BANNER ════════════════ */}
+          {invoice.paymentNotification && (
+            <div
+              className={`my-4 p-3 rounded-xl border flex items-start gap-3 ${
+                invoice.paymentNotification.status === 'confirmed'
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                  : invoice.paymentNotification.status === 'rejected'
+                  ? 'bg-rose-50 border-rose-300 text-rose-950'
+                  : 'bg-amber-50 border-amber-300 text-amber-950'
+              }`}
+            >
+              {invoice.paymentNotification.status === 'confirmed' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              ) : (
+                <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              )}
+              <div className="text-xs space-y-0.5">
+                <p className="font-bold">
+                  {invoice.paymentNotification.status === 'confirmed'
+                    ? 'Payment Confirmed by Freelancer'
+                    : invoice.paymentNotification.status === 'rejected'
+                    ? 'Payment Reference Rejected'
+                    : 'Payment Submitted — Awaiting Verification'}
+                </p>
+                <p className="text-[11px] text-zinc-700">
+                  Client Reference:{' '}
+                  <strong className="font-mono text-zinc-950 font-bold">
+                    {invoice.paymentNotification.transactionReference}
+                  </strong>{' '}
+                  ({formatCurrency(invoice.paymentNotification.amount, currency)}) via{' '}
+                  <span className="capitalize font-medium">
+                    {invoice.paymentNotification.paymentMethod.replace('_', ' ')}
+                  </span>
+                  {invoice.paymentNotification.status === 'awaiting_verification' &&
+                    ' • Freelancer must confirm receipt before invoice is marked paid.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ════════════════ LINE ITEMS TABLE ════════════════ */}
           <div className="py-4">
             <table className="w-full border-collapse text-xs">
@@ -372,58 +471,89 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
           </div>
 
           {/* ════════════════ FINANCIAL SUMMARY & BANK DETAILS GRID ════════════════ */}
+          {/* ════════════════ FINANCIAL SUMMARY & PAYMENT METHODS GRID ════════════════ */}
           <div className="pt-2 pb-6 border-t-2 border-zinc-300 grid grid-cols-1 sm:grid-cols-2 gap-8 items-start">
-            {/* Left: Bank Transfer Details + UPI QR */}
+            {/* Left: Dual Payment Methods (Bank Transfer + UPI QR + Razorpay Link) */}
             <div className="space-y-4 text-xs">
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 text-zinc-900 font-bold tracking-tight uppercase text-[11px]">
-                  <Landmark className="w-3.5 h-3.5 text-zinc-700" />
-                  <span>BANK TRANSFER DETAILS</span>
+              {/* Method 1: Bank Transfer Details */}
+              {methodsConfig.bankTransferEnabled !== false && (bankName || accountNumber || !upiId) && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-zinc-900 font-bold tracking-tight uppercase text-[11px]">
+                    <Landmark className="w-3.5 h-3.5 text-zinc-700" />
+                    <span>BANK TRANSFER DETAILS</span>
+                  </div>
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 space-y-1 text-zinc-700 text-[11px]">
+                    {accountHolderName && (
+                      <p>
+                        <span className="text-zinc-500">Account Holder:</span> <strong>{accountHolderName}</strong>
+                      </p>
+                    )}
+                    {bankName && (
+                      <p>
+                        <span className="text-zinc-500">Bank Name:</span> <strong>{bankName}</strong>
+                      </p>
+                    )}
+                    {accountNumber && (
+                      <p>
+                        <span className="text-zinc-500">A/C Number:</span>{' '}
+                        <strong className="font-mono">{accountNumber}</strong>
+                      </p>
+                    )}
+                    {ifscCode && (
+                      <p>
+                        <span className="text-zinc-500">IFSC / SWIFT:</span>{' '}
+                        <strong className="font-mono">{ifscCode}</strong>
+                      </p>
+                    )}
+                    {branchName && (
+                      <p>
+                        <span className="text-zinc-500">Branch:</span> {branchName}
+                      </p>
+                    )}
+                    {!bankName && !accountNumber && (
+                      <p className="text-zinc-500 italic">
+                        {invoice.paymentInstructions || 'Standard electronic bank transfer accepted.'}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 space-y-1 text-zinc-700 text-[11px]">
-                  {bankName && (
-                    <p>
-                      <span className="text-zinc-500">Bank Name:</span> <strong>{bankName}</strong>
-                    </p>
-                  )}
-                  {accountNumber && (
-                    <p>
-                      <span className="text-zinc-500">A/C Number:</span>{' '}
-                      <strong className="font-mono">{accountNumber}</strong>
-                    </p>
-                  )}
-                  {ifscCode && (
-                    <p>
-                      <span className="text-zinc-500">IFSC / SWIFT:</span>{' '}
-                      <strong className="font-mono">{ifscCode}</strong>
-                    </p>
-                  )}
-                  {branchName && (
-                    <p>
-                      <span className="text-zinc-500">Branch:</span> {branchName}
-                    </p>
-                  )}
-                  {!bankName && !accountNumber && (
-                    <p className="text-zinc-500 italic">
-                      {invoice.paymentInstructions || 'Standard electronic bank transfer accepted.'}
-                    </p>
-                  )}
-                </div>
-              </div>
+              )}
 
-              {/* UPI Payment Block */}
-              {(currency.toUpperCase() === 'INR' || upiId) && (
-                <div className="flex items-center gap-4">
+              {/* Method 2: UPI Payment Block */}
+              {methodsConfig.upiEnabled !== false && (upiId || upiQrCodeUrl) && (
+                <div className="space-y-1">
                   <UPIPaymentQR
                     upiId={upiId}
-                    amount={total}
+                    upiQrCodeUrl={upiQrCodeUrl}
+                    amount={remainingBalance > 0 ? remainingBalance : total}
                     payeeName={studioName}
                     invoiceNumber={invoice.invoiceNumber}
+                    currency={currency}
                   />
-                  <div className="text-[11px] text-zinc-500 space-y-0.5">
-                    <p className="font-semibold text-zinc-800">Scan & Pay</p>
-                    <p>Use any UPI app (GPay, PhonePe, Paytm, BHIM) to settle instantly.</p>
+                </div>
+              )}
+
+              {/* Method 3: Razorpay Payment Link Block */}
+              {methodsConfig.razorpayLinkEnabled !== false && razorpayLink && (
+                <div className="space-y-1.5 p-3 rounded-lg bg-blue-50/70 border border-blue-200 text-[11px]">
+                  <div className="flex items-center justify-between font-bold text-blue-900 uppercase text-[10px]">
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                      Razorpay Online Payment Link
+                    </span>
                   </div>
+                  <p className="text-zinc-600 text-[10px]">
+                    Verified external payment link configured by freelancer:
+                  </p>
+                  <a
+                    href={razorpayLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-mono text-[11px] text-blue-700 hover:text-blue-900 underline break-all font-medium"
+                  >
+                    <span>{razorpayLink}</span>
+                    <ExternalLink className="w-3 h-3 shrink-0" />
+                  </a>
                 </div>
               )}
             </div>

@@ -27,6 +27,11 @@ export interface CreateInvoiceCoreInput {
   notes?: string;
   paymentInstructions?: string;
   internalNotes?: string;
+  paymentMethods?: { bankTransferEnabled?: boolean; upiEnabled?: boolean; razorpayLinkEnabled?: boolean; upiQrCodeUrl?: string };
+  upiId?: string | null;
+  upiQrCodeUrl?: string | null;
+  bankDetails?: any;
+  razorpayPaymentLink?: string | null;
   recurringScheduleId?: string | null;
   recurrencePeriodKey?: string | null;
 }
@@ -58,6 +63,11 @@ export async function createInvoiceCore(
     notes = '',
     paymentInstructions = '',
     internalNotes = '',
+    paymentMethods,
+    upiId,
+    upiQrCodeUrl,
+    bankDetails,
+    razorpayPaymentLink,
     recurringScheduleId,
     recurrencePeriodKey,
   } = input;
@@ -183,6 +193,18 @@ export async function createInvoiceCore(
         notes,
         payment_instructions: paymentInstructions,
         internal_notes: internalNotes,
+        payment_methods: {
+          ...(paymentMethods || {
+            bankTransferEnabled: true,
+            upiEnabled: Boolean(upiId || upiQrCodeUrl),
+            razorpayLinkEnabled: Boolean(razorpayPaymentLink),
+          }),
+          upiQrCodeUrl: upiQrCodeUrl || undefined,
+        },
+        upi_id: upiId || null,
+        upi_qr_code_url: upiQrCodeUrl || null,
+        bank_details: bankDetails || null,
+        razorpay_payment_link: razorpayPaymentLink || null,
         recurring_schedule_id: recurringScheduleId || null,
         recurrence_period_key: recurrencePeriodKey || null,
         created_at: nowIso,

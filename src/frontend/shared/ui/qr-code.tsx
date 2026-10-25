@@ -1,104 +1,104 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import QRCodeLib from 'qrcode';
 
 export interface QRCodeProps {
-  value: string;
+  /** The value/URL to encode as dynamic QR code (e.g. upi://pay?pa=...) */
+  value?: string;
+  /** Direct URL / base64 of an uploaded custom QR code image */
+  src?: string;
+  /** Dimensions in pixels (width and height) */
   size?: number;
+  /** Custom CSS classes */
   className?: string;
+  /** Color of dark modules (defaults to #000000 for maximum contrast and scan reliability) */
   darkColor?: string;
+  /** Background color (defaults to #ffffff) */
   lightColor?: string;
+  /** Accessibility label */
+  alt?: string;
+  /** Error correction level ('L' | 'M' | 'Q' | 'H') - defaults to 'M' (15% redundancy) */
+  errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H';
 }
 
 /**
- * A lightweight, dependency-free, high-contrast vector SVG QR Code renderer.
- * Produces crisp, responsive, scannable QR matrices.
+ * Generates a standard deterministic QR matrix for display and raster canvas export
+ * using standard Reed-Solomon error correction via the qrcode engine.
+ */
+export function generateQrMatrix(
+  value: string,
+  _matrixSize?: number,
+  errorCorrectionLevel: 'L' | 'M' | 'Q' | 'H' = 'M'
+): boolean[][] {
+  if (!value) return [];
+  try {
+    const qr = QRCodeLib.create(value, { errorCorrectionLevel });
+    const size = qr.modules.size;
+    const grid: boolean[][] = [];
+    for (let r = 0; r < size; r++) {
+      const row: boolean[] = [];
+      for (let c = 0; c < size; c++) {
+        row.push(qr.modules.get(r, c) === 1);
+      }
+      grid.push(row);
+    }
+    return grid;
+  } catch (err) {
+    console.warn('[QRCode] generateQrMatrix warning:', err);
+    return [];
+  }
+}
+
+/**
+ * Universal, scannable QR Code renderer.
+ * Supports:
+ * 1. Direct display of user-uploaded QR image (src)
+ * 2. High-contrast vector SVG QR generator for any standard UPI or web URL (value)
  */
 export const QRCode: React.FC<QRCodeProps> = ({
   value,
+  src,
   size = 160,
   className = '',
-  darkColor = '#ffffff',
-  lightColor = 'transparent',
+  darkColor = '#000000',
+  lightColor = '#ffffff',
+  alt = 'Payment QR Code',
+  errorCorrectionLevel = 'M',
 }) => {
-  // Generate a standard pseudo-random deterministic matrix seeded with URL hash
-  // for clean, visual QR presentation
-  const matrixSize = 25; // standard 25x25 QR Version 2 matrix
-  const matrix: boolean[][] = React.useMemo(() => {
-    const grid: boolean[][] = Array(matrixSize)
-      .fill(null)
-      .map(() => Array(matrixSize).fill(false));
+  // Generate scannable vector SVG QR code from value if no uploaded image
+  const matrix: boolean[][] = useMemo(() => {
+    if (src || !value) return [];
+    return generateQrMatrix(value, undefined, errorCorrectionLevel);
+  }, [src, value, errorCorrectionLevel]);
 
-    // Helper: draw finder patterns (7x7 with 3x3 inner square)
-    const drawFinder = (startX: number, startY: number) => {
-      for (let r = 0; r < 7; r++) {
-        for (let c = 0; c < 7; c++) {
-          if (
-            r === 0 ||
-            r === 6 ||
-            c === 0 ||
-            c === 6 ||
-            (r >= 2 && r <= 4 && c >= 2 && c <= 4)
-          ) {
-            grid[startY + r][startX + c] = true;
-          }
-        }
-      }
-    };
+  // If an uploaded QR image source is provided, render the image cleanly
+  if (src) {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className={`relative inline-flex items-center justify-center overflow-hidden rounded-lg bg-white p-1 ${className}`}
+      >
+        <img
+          src={src}
+          alt={alt}
+          className="w-full h-full object-contain select-none"
+          loading="lazy"
+        />
+      </div>
+    );
+  }
 
-    // 1. Position detection patterns (top-left, top-right, bottom-left)
-    drawFinder(0, 0);
-    drawFinder(matrixSize - 7, 0);
-    drawFinder(0, matrixSize - 7);
+  if (!value || matrix.length === 0) {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className={`inline-flex items-center justify-center rounded-lg bg-zinc-100 text-zinc-400 text-xs font-mono select-none ${className}`}
+      >
+        <span>No QR Data</span>
+      </div>
+    );
+  }
 
-    // 2. Timing patterns (row 6 and col 6)
-    for (let i = 8; i < matrixSize - 8; i++) {
-      grid[6][i] = i % 2 === 0;
-      grid[i][6] = i % 2 === 0;
-    }
-
-    // 3. Alignment pattern at (16, 16)
-    const alignX = 16;
-    const alignY = 16;
-    for (let r = -2; r <= 2; r++) {
-      for (let c = -2; c <= 2; c++) {
-        if (
-          Math.abs(r) === 2 ||
-          Math.abs(c) === 2 ||
-          (r === 0 && c === 0)
-        ) {
-          grid[alignY + r][alignX + c] = true;
-        }
-      }
-    }
-
-    // 4. Data hash encoding
-    let hash = 0;
-    for (let i = 0; i < value.length; i++) {
-      hash = (hash << 5) - hash + value.charCodeAt(i);
-      hash |= 0;
-    }
-
-    let bitIdx = 0;
-    for (let r = 0; r < matrixSize; r++) {
-      for (let c = 0; c < matrixSize; c++) {
-        // Skip finder patterns & margins
-        const inTL = r < 8 && c < 8;
-        const inTR = r < 8 && c >= matrixSize - 8;
-        const inBL = r >= matrixSize - 8 && c < 8;
-        const inAlign = Math.abs(r - alignY) <= 2 && Math.abs(c - alignX) <= 2;
-        const inTiming = r === 6 || c === 6;
-
-        if (!inTL && !inTR && !inBL && !inAlign && !inTiming) {
-          const charCode = value.charCodeAt(bitIdx % value.length) || 42;
-          const bitVal = ((hash ^ (r * 31 + c * 17) ^ charCode) & (1 << (bitIdx % 7))) !== 0;
-          grid[r][c] = bitVal;
-          bitIdx++;
-        }
-      }
-    }
-
-    return grid;
-  }, [value]);
-
+  const matrixSize = matrix.length;
   const cellSize = size / matrixSize;
 
   return (
@@ -107,10 +107,10 @@ export const QRCode: React.FC<QRCodeProps> = ({
       height={size}
       viewBox={`0 0 ${size} ${size}`}
       className={`inline-block select-none ${className}`}
-      aria-label={`QR code for ${value}`}
+      aria-label={alt}
       role="img"
     >
-      <rect width={size} height={size} fill={lightColor} rx="6" />
+      <rect width={size} height={size} fill={lightColor} rx="4" />
       {matrix.map((row, r) =>
         row.map((cell, c) => {
           if (!cell) return null;
@@ -122,7 +122,6 @@ export const QRCode: React.FC<QRCodeProps> = ({
               width={cellSize + 0.3}
               height={cellSize + 0.3}
               fill={darkColor}
-              rx={cellSize * 0.15}
             />
           );
         })

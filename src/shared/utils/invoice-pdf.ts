@@ -101,6 +101,12 @@ function resolveBranding(branding?: InvoiceBranding | UserProfile | null) {
   const accountNumber = bankDetails.accountNumber || (branding as any)?.accountNumber || '';
   const ifscCode = bankDetails.ifscCode || bankDetails.swiftCode || (branding as any)?.ifscCode || '';
   const branchName = bankDetails.branchName || (branding as any)?.branchName || '';
+  const upiId = (branding as any)?.upiId || bankDetails.upiId || fallbackProfile?.upiId || '';
+  const upiQrCodeUrl =
+    (branding as any)?.upiQrCodeUrl ||
+    (branding as any)?.paymentMethods?.upiQrCodeUrl ||
+    fallbackProfile?.upiQrCodeUrl ||
+    '';
 
   return {
     studioName,
@@ -114,6 +120,8 @@ function resolveBranding(branding?: InvoiceBranding | UserProfile | null) {
     accountNumber,
     ifscCode,
     branchName,
+    upiId,
+    upiQrCodeUrl,
   };
 }
 
@@ -169,12 +177,18 @@ export async function generateInvoicePDF(
     accountNumber,
     ifscCode,
     branchName,
+    upiId,
+    upiQrCodeUrl,
   } = resolveBranding(branding);
 
+  const effectiveUpiId = invoice.upiId || upiId;
+  const effectiveQrUrl = invoice.upiQrCodeUrl || invoice.paymentMethods?.upiQrCodeUrl || upiQrCodeUrl;
+
   // Attempt to load images in parallel
-  const [logoImage, signatureImage] = await Promise.all([
+  const [logoImage, signatureImage, qrImage] = await Promise.all([
     logoUrl ? loadImageDataUrl(logoUrl) : Promise.resolve(null),
     signatureUrl ? loadImageDataUrl(signatureUrl) : Promise.resolve(null),
+    effectiveQrUrl ? loadImageDataUrl(effectiveQrUrl) : Promise.resolve(null),
   ]);
 
   // ─── HEADER: Logo & Studio Info (Left) + INVOICE Details (Right) ───
@@ -478,6 +492,47 @@ export async function generateInvoicePDF(
     notesY += 26;
   }
 
+  if (effectiveUpiId || qrImage) {
+    const upiBoxHeight = qrImage ? 24 : 14;
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(margin, notesY, notesWidth, upiBoxHeight, 1.5, 1.5, 'F');
+    doc.setDrawColor(...lightGray);
+    doc.roundedRect(margin, notesY, notesWidth, upiBoxHeight, 1.5, 1.5, 'S');
+
+    let textOffsetX = margin + 3.5;
+    if (qrImage) {
+      try {
+        doc.addImage(qrImage.dataUrl, qrImage.format, margin + 2, notesY + 2, 20, 20);
+        textOffsetX += 23;
+      } catch {
+        // continue
+      }
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...primaryBlack);
+    doc.text(qrImage && !effectiveUpiId ? 'SCAN & PAY QR' : 'UPI PAYMENT', textOffsetX, notesY + 4.5);
+
+    if (effectiveUpiId) {
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...primaryBlack);
+      doc.text(effectiveUpiId, textOffsetX, notesY + 9);
+    }
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...mediumGray);
+    doc.text(
+      qrImage ? 'Scan with any UPI / Banking app' : 'Scan with GPay, PhonePe, Paytm, or BHIM',
+      textOffsetX,
+      notesY + (effectiveUpiId ? 13 : 9)
+    );
+
+    notesY += upiBoxHeight + 4;
+  }
+
   if (invoice.paymentInstructions && invoice.paymentInstructions.trim()) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
@@ -593,7 +648,12 @@ export function printInvoiceDocument(
     accountNumber,
     ifscCode,
     branchName,
+    upiId,
+    upiQrCodeUrl,
   } = resolveBranding(branding);
+
+  const effectiveUpiId = invoice.upiId || upiId;
+  const effectiveQrUrl = invoice.upiQrCodeUrl || invoice.paymentMethods?.upiQrCodeUrl || upiQrCodeUrl;
 
   const statusText = (invoice.paymentStatus || invoice.status || 'draft').toUpperCase();
   const statusBg =
@@ -912,6 +972,18 @@ export function printInvoiceDocument(
                      ${bankName ? `<div>Bank: <strong>${bankName}</strong></div>` : ''}
                      ${accountNumber ? `<div>A/C: <strong style="font-family: monospace;">${accountNumber}</strong> ${ifscCode ? `| IFSC: <strong style="font-family: monospace;">${ifscCode}</strong>` : ''}</div>` : ''}
                      ${branchName ? `<div>Branch: ${branchName}</div>` : ''}
+                   </div>`
+                : ''
+            }
+            ${
+              effectiveUpiId || effectiveQrUrl
+                ? `<div style="font-weight: 700; color: #0f172a; margin-top: 8px; margin-bottom: 4px;">${effectiveQrUrl && !effectiveUpiId ? 'Scan & Pay QR' : 'UPI Payment'}</div>
+                   <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+                     ${effectiveQrUrl ? `<img src="${effectiveQrUrl}" style="width: 72px; height: 72px; object-fit: contain; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px; background: #fff;" alt="QR Code" />` : ''}
+                     <div style="font-size: 11px; color: #475569;">
+                       ${effectiveUpiId ? `<div>VPA / UPI ID: <strong style="font-family: monospace; color: #0f172a;">${effectiveUpiId}</strong></div>` : ''}
+                       <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Scan with GPay, PhonePe, Paytm, or BHIM</div>
+                     </div>
                    </div>`
                 : ''
             }

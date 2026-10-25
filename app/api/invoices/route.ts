@@ -213,6 +213,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         notes: payload.notes || '',
         payment_instructions: payload.paymentInstructions || '',
         internal_notes: payload.internalNotes || '',
+        payment_methods: {
+          ...(payload.paymentMethods || {
+            bankTransferEnabled: true,
+            upiEnabled: Boolean(payload.upiId || payload.upiQrCodeUrl),
+            razorpayLinkEnabled: Boolean(payload.razorpayPaymentLink),
+          }),
+          upiQrCodeUrl: payload.upiQrCodeUrl || undefined,
+        },
+        upi_id: payload.upiId || null,
+        upi_qr_code_url: payload.upiQrCodeUrl || null,
+        bank_details: payload.bankDetails || null,
+        razorpay_payment_link: payload.razorpayPaymentLink || null,
         created_at: nowIso,
         updated_at: nowIso,
       })

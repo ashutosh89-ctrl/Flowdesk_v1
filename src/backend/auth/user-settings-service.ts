@@ -71,8 +71,16 @@ export const UserSettingsService = {
             email_invitations: data.email_invitations !== undefined ? Boolean(data.email_invitations) : true,
             invoice_reminders: data.invoice_reminders !== undefined ? Boolean(data.invoice_reminders) : true,
             comment_alerts: data.comment_alerts !== undefined ? Boolean(data.comment_alerts) : true,
-            weekly_digest: data.weekly_digest !== undefined ? Boolean(data.weekly_digest) : false,
             default_deliverable_niche: data.default_deliverable_niche === 'others' ? 'others' : 'software_development',
+            payment_settings: data.payment_settings || {},
+            upi_id: data.upi_id || data.payment_settings?.upiId || '',
+            upi_qr_code_url: data.upi_qr_code_url || data.payment_settings?.upiQrCodeUrl || '',
+            bank_name: data.bank_name || data.payment_settings?.bankDetails?.bankName || '',
+            account_holder_name: data.account_holder_name || data.payment_settings?.bankDetails?.accountHolderName || '',
+            account_number: data.account_number || data.payment_settings?.bankDetails?.accountNumber || '',
+            ifsc_code: data.ifsc_code || data.payment_settings?.bankDetails?.ifscCode || '',
+            branch_name: data.branch_name || data.payment_settings?.bankDetails?.branchName || '',
+            razorpay_payment_link: data.razorpay_payment_link || data.payment_settings?.razorpayPaymentLink || '',
           };
           this.setLocalSettings(userId, settings);
           return settings;
@@ -126,9 +134,17 @@ export const UserSettingsService = {
       email_invoices: updates.email_invoices !== undefined ? updates.email_invoices : (currentSettings.email_invoices ?? true),
       email_invitations: updates.email_invitations !== undefined ? updates.email_invitations : (currentSettings.email_invitations ?? true),
       invoice_reminders: updates.invoice_reminders !== undefined ? updates.invoice_reminders : (currentSettings.invoice_reminders ?? true),
-      comment_alerts: updates.comment_alerts !== undefined ? updates.comment_alerts : (currentSettings.comment_alerts ?? true),
       weekly_digest: updates.weekly_digest !== undefined ? updates.weekly_digest : (currentSettings.weekly_digest ?? false),
       default_deliverable_niche: updates.default_deliverable_niche || currentSettings.default_deliverable_niche || 'software_development',
+      payment_settings: updates.payment_settings || currentSettings.payment_settings || {},
+      upi_id: updates.upi_id !== undefined ? updates.upi_id : currentSettings.upi_id,
+      upi_qr_code_url: updates.upi_qr_code_url !== undefined ? updates.upi_qr_code_url : currentSettings.upi_qr_code_url,
+      bank_name: updates.bank_name !== undefined ? updates.bank_name : currentSettings.bank_name,
+      account_holder_name: updates.account_holder_name !== undefined ? updates.account_holder_name : currentSettings.account_holder_name,
+      account_number: updates.account_number !== undefined ? updates.account_number : currentSettings.account_number,
+      ifsc_code: updates.ifsc_code !== undefined ? updates.ifsc_code : currentSettings.ifsc_code,
+      branch_name: updates.branch_name !== undefined ? updates.branch_name : currentSettings.branch_name,
+      razorpay_payment_link: updates.razorpay_payment_link !== undefined ? updates.razorpay_payment_link : currentSettings.razorpay_payment_link,
     };
 
     // Always cache locally
@@ -149,11 +165,19 @@ export const UserSettingsService = {
               invoiceSeparator: updates.invoice_separator,
               invoiceIncludeYear: updates.invoice_include_year,
               invoicePadding: updates.invoice_padding,
-              invoiceNextSequence: updates.invoice_next_sequence,
               defaultTaxRate: updates.default_tax_rate,
               taxName: updates.tax_name,
               defaultPaymentTerms: updates.default_payment_terms,
               defaultDeliverableNiche: updates.default_deliverable_niche,
+              paymentSettings: updates.payment_settings,
+              upiId: updates.upi_id,
+              upiQrCodeUrl: updates.upi_qr_code_url,
+              bankName: updates.bank_name,
+              accountHolderName: updates.account_holder_name,
+              accountNumber: updates.account_number,
+              ifscCode: updates.ifsc_code,
+              branchName: updates.branch_name,
+              razorpayPaymentLink: updates.razorpay_payment_link,
             }),
           });
           if (
@@ -214,9 +238,17 @@ export const UserSettingsService = {
         if (updates.email_invoices !== undefined) payload.email_invoices = updates.email_invoices;
         if (updates.email_invitations !== undefined) payload.email_invitations = updates.email_invitations;
         if (updates.invoice_reminders !== undefined) payload.invoice_reminders = updates.invoice_reminders;
-        if (updates.comment_alerts !== undefined) payload.comment_alerts = updates.comment_alerts;
         if (updates.weekly_digest !== undefined) payload.weekly_digest = updates.weekly_digest;
         if (updates.default_deliverable_niche !== undefined) payload.default_deliverable_niche = updates.default_deliverable_niche;
+        if (updates.payment_settings !== undefined) payload.payment_settings = updates.payment_settings;
+        if (updates.upi_id !== undefined) payload.upi_id = updates.upi_id;
+        if (updates.upi_qr_code_url !== undefined) payload.upi_qr_code_url = updates.upi_qr_code_url;
+        if (updates.bank_name !== undefined) payload.bank_name = updates.bank_name;
+        if (updates.account_holder_name !== undefined) payload.account_holder_name = updates.account_holder_name;
+        if (updates.account_number !== undefined) payload.account_number = updates.account_number;
+        if (updates.ifsc_code !== undefined) payload.ifsc_code = updates.ifsc_code;
+        if (updates.branch_name !== undefined) payload.branch_name = updates.branch_name;
+        if (updates.razorpay_payment_link !== undefined) payload.razorpay_payment_link = updates.razorpay_payment_link;
 
         let { error } = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
         if (error) {

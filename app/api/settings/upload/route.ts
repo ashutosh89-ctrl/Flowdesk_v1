@@ -34,18 +34,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const type = formData.get('type') as 'logo' | 'signature' | null;
+    const type = formData.get('type') as 'logo' | 'signature' | 'qr' | null;
     const requestedWsId = formData.get('workspaceId') as string | null;
     const requestedUserId = formData.get('userId') as string | null;
 
-    if (!file || !type || (type !== 'logo' && type !== 'signature')) {
+    if (!file || !type || (type !== 'logo' && type !== 'signature' && type !== 'qr')) {
       return NextResponse.json(
-        { error: 'Valid file and type ("logo" or "signature") are required.' },
+        { error: 'Valid file and type ("logo", "signature", or "qr") are required.' },
         { status: 400 }
       );
     }
 
-    const bucketName = type === 'logo' ? 'logos' : 'signatures';
+    const bucketName = type === 'signature' ? 'signatures' : 'logos';
 
     // 3. Strict File Validation (Magic Bytes & MIME types)
     const arrayBuffer = await file.arrayBuffer();
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const publicUrl = urlData.publicUrl;
 
     // 9. Sync URL to Database Records
-    const column = type === 'logo' ? 'logo_url' : 'signature_url';
+    const column = type === 'logo' ? 'logo_url' : type === 'signature' ? 'signature_url' : 'upi_qr_code_url';
 
     if (targetUserId) {
       try {
@@ -137,9 +137,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       } catch (dbErr) {
         console.warn('[Upload API] Profile branding update notice:', dbErr);
       }
+
+      if (type === 'qr') {
+        try {
+          await supabaseAdmin
+            .from('user_settings')
+            .update({ upi_qr_code_url: publicUrl, updated_at: new Date().toISOString() })
+            .eq('id', targetUserId);
+        } catch (usErr) {
+          console.warn('[Upload API] User settings QR update notice:', usErr);
+        }
+      }
     }
 
-    if (targetWsId && targetWsId !== 'branding' && targetWsId !== targetUserId) {
+    if (targetWsId && targetWsId !== 'branding' && targetWsId !== targetUserId && type !== 'qr') {
       try {
         await supabaseAdmin
           .from('workspaces')

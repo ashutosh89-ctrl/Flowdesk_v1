@@ -131,6 +131,17 @@ export async function PATCH(
     if (updates.paymentInstructions !== undefined) dbPayload.payment_instructions = updates.paymentInstructions;
     if (updates.internalNotes !== undefined) dbPayload.internal_notes = updates.internalNotes;
     if (updates.taxName !== undefined) dbPayload.tax_name = updates.taxName;
+    if (updates.paymentMethods !== undefined) dbPayload.payment_methods = updates.paymentMethods;
+    if (updates.upiId !== undefined) dbPayload.upi_id = updates.upiId;
+    if (updates.upiQrCodeUrl !== undefined) {
+      dbPayload.upi_qr_code_url = updates.upiQrCodeUrl;
+      dbPayload.payment_methods = {
+        ...(dbPayload.payment_methods || existing.payment_methods || {}),
+        upiQrCodeUrl: updates.upiQrCodeUrl,
+      };
+    }
+    if (updates.bankDetails !== undefined) dbPayload.bank_details = updates.bankDetails;
+    if (updates.razorpayPaymentLink !== undefined) dbPayload.razorpay_payment_link = updates.razorpayPaymentLink;
 
     if (updates.items || updates.taxPercentage !== undefined || updates.discount !== undefined) {
       const itemsToCalc = updates.items || [];

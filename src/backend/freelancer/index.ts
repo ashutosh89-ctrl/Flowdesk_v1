@@ -1534,6 +1534,12 @@ export const FreelancerInvoiceService = {
           notes: i.notes || '',
           paymentInstructions: i.payment_instructions || '',
           internalNotes: i.internal_notes || '',
+          paymentMethods: i.payment_methods || undefined,
+          upiId: i.upi_id || undefined,
+          upiQrCodeUrl: i.upi_qr_code_url || i.payment_methods?.upiQrCodeUrl || undefined,
+          bankDetails: i.bank_details || undefined,
+          razorpayPaymentLink: i.razorpay_payment_link || undefined,
+          paymentNotification: i.payment_notification || undefined,
           receipts,
           reminders: remindersByInvoice[i.id] || [],
         } as Invoice;
@@ -1661,6 +1667,12 @@ export const FreelancerInvoiceService = {
         notes: i.notes || '',
         paymentInstructions: i.payment_instructions || '',
         internalNotes: i.internal_notes || '',
+        paymentMethods: i.payment_methods || undefined,
+        upiId: i.upi_id || undefined,
+        upiQrCodeUrl: i.upi_qr_code_url || i.payment_methods?.upiQrCodeUrl || undefined,
+        bankDetails: i.bank_details || undefined,
+        razorpayPaymentLink: i.razorpay_payment_link || undefined,
+        paymentNotification: i.payment_notification || undefined,
         receipts,
         reminders,
       } as Invoice;
@@ -1702,6 +1714,10 @@ export const FreelancerInvoiceService = {
           notes: invoice.notes,
           paymentInstructions: invoice.paymentInstructions,
           internalNotes: invoice.internalNotes,
+          paymentMethods: invoice.paymentMethods,
+          upiId: invoice.upiId,
+          bankDetails: invoice.bankDetails,
+          razorpayPaymentLink: invoice.razorpayPaymentLink,
         }),
       });
       const data = await response.json();
@@ -1788,6 +1804,14 @@ export const FreelancerInvoiceService = {
         notes: invoice.notes || '',
         payment_instructions: invoice.paymentInstructions || '',
         internal_notes: invoice.internalNotes || '',
+        payment_methods: {
+          ...(invoice.paymentMethods || {}),
+          upiQrCodeUrl: invoice.upiQrCodeUrl || invoice.paymentMethods?.upiQrCodeUrl || undefined,
+        },
+        upi_id: invoice.upiId || null,
+        upi_qr_code_url: invoice.upiQrCodeUrl || null,
+        bank_details: invoice.bankDetails || null,
+        razorpay_payment_link: invoice.razorpayPaymentLink || null,
       };
 
       // Insert with concurrency-safe numbering: on a unique violation (23505) the
@@ -2043,6 +2067,10 @@ export const FreelancerInvoiceService = {
           notes: updates.notes,
           paymentInstructions: updates.paymentInstructions,
           internalNotes: updates.internalNotes,
+          paymentMethods: updates.paymentMethods,
+          upiId: updates.upiId,
+          bankDetails: updates.bankDetails,
+          razorpayPaymentLink: updates.razorpayPaymentLink,
         }),
       });
       const data = await res.json();
@@ -2080,6 +2108,17 @@ export const FreelancerInvoiceService = {
       if (updates.paymentInstructions !== undefined) payload.payment_instructions = updates.paymentInstructions;
       if (updates.internalNotes !== undefined) payload.internal_notes = updates.internalNotes;
       if (updates.taxName !== undefined) payload.tax_name = updates.taxName;
+      if (updates.paymentMethods !== undefined) payload.payment_methods = updates.paymentMethods;
+      if (updates.upiId !== undefined) payload.upi_id = updates.upiId;
+      if (updates.upiQrCodeUrl !== undefined) {
+        payload.upi_qr_code_url = updates.upiQrCodeUrl;
+        payload.payment_methods = {
+          ...(payload.payment_methods || existing.paymentMethods || {}),
+          upiQrCodeUrl: updates.upiQrCodeUrl,
+        };
+      }
+      if (updates.bankDetails !== undefined) payload.bank_details = updates.bankDetails;
+      if (updates.razorpayPaymentLink !== undefined) payload.razorpay_payment_link = updates.razorpayPaymentLink;
 
       // Recalculate financials if items or tax/discount changed
       if (updates.items || updates.taxPercentage !== undefined || updates.discount !== undefined) {

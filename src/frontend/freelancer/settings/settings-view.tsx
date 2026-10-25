@@ -37,11 +37,17 @@ import {
   UserPlus,
   Code2,
   Briefcase,
+  CreditCard,
+  Building2,
+  QrCode,
+  ExternalLink,
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import { SUPPORTED_CURRENCIES } from '@/shared/utils/currency';
 import { formatInvoiceNumber, sanitizeInvoicePrefix } from '@/shared/utils/invoice-calculations';
 import { InvoiceNumberFormatPreset } from '@/shared/types';
+import { isApprovedRazorpayUrl } from '@/shared/utils/safe-url';
+import { QRCode } from '@/frontend/shared/ui/qr-code';
 
 import { CountrySelect } from '@/frontend/shared/ui/country-select';
 import { PhoneInput } from '@/frontend/shared/ui/phone-input';
@@ -87,11 +93,13 @@ export const SettingsView: React.FC = () => {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
-  // Logo & Signature upload states
+  // Logo, Signature & QR upload states
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingSignature, setIsUploadingSignature] = useState(false);
+  const [isUploadingQr, setIsUploadingQr] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
+  const qrCodeInputRef = useRef<HTMLInputElement>(null);
   const [emailHealth, setEmailHealth] = useState<{
     status: string;
     details?: string;
@@ -176,7 +184,7 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  const uploadBrandingAsset = async (file: File, type: 'logo' | 'signature'): Promise<string> => {
+  const uploadBrandingAsset = async (file: File, type: 'logo' | 'signature' | 'qr'): Promise<string> => {
     let wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId && user?.id) {
       const { getCurrentWorkspace } = await import('@/backend/utilities/workspace');
@@ -213,7 +221,7 @@ export const SettingsView: React.FC = () => {
       throw new Error('Could not identify active workspace or account. Please try reloading the page.');
     }
 
-    const bucket = type === 'logo' ? 'logos' : 'signatures';
+    const bucket = type === 'signature' ? 'signatures' : 'logos';
     const res = await StorageHelper.uploadFile(bucket, effectiveWsId, 'branding', file);
     if (res.url) {
       return res.url;
@@ -254,6 +262,47 @@ export const SettingsView: React.FC = () => {
       setIsUploadingSignature(false);
       if (signatureInputRef.current) signatureInputRef.current.value = '';
     }
+  };
+
+  const handleQrCodeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingQr(true);
+    try {
+      const url = await uploadBrandingAsset(file, 'qr');
+      handleSettingsChange('upi_qr_code_url', url);
+      setSettings((prev) => ({
+        ...prev,
+        upi_qr_code_url: url,
+        payment_settings: {
+          ...prev.payment_settings,
+          upiQrCodeUrl: url,
+          upiEnabled: true,
+        },
+      }));
+      setDirty(true);
+      showToast('QR Code Uploaded', 'Custom payment QR has been saved and will appear on invoices.', 'success');
+    } catch (err) {
+      showToast('Upload Failed', err instanceof Error ? err.message : 'QR code upload failed.', 'error');
+    } finally {
+      setIsUploadingQr(false);
+      if (qrCodeInputRef.current) qrCodeInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveQrCode = () => {
+    handleSettingsChange('upi_qr_code_url', '');
+    setSettings((prev) => ({
+      ...prev,
+      upi_qr_code_url: '',
+      payment_settings: {
+        ...prev.payment_settings,
+        upiQrCodeUrl: '',
+      },
+    }));
+    setDirty(true);
+    showToast('QR Code Removed', 'Reverted to dynamic UPI QR code generator.', 'info');
   };
 
   const handleSave = async (e?: React.FormEvent) => {
@@ -324,6 +373,31 @@ export const SettingsView: React.FC = () => {
           comment_alerts: settings.comment_alerts,
           weekly_digest: settings.weekly_digest,
           default_deliverable_niche: settings.default_deliverable_niche,
+          payment_settings: {
+            bankTransferEnabled: settings.payment_settings?.bankTransferEnabled ?? true,
+            upiEnabled: settings.payment_settings?.upiEnabled ?? false,
+            razorpayLinkEnabled: settings.payment_settings?.razorpayLinkEnabled ?? false,
+            upiId: settings.upi_id || settings.payment_settings?.upiId || '',
+            upiQrCodeUrl: settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || '',
+            bankDetails: {
+              accountHolderName: settings.account_holder_name || settings.payment_settings?.bankDetails?.accountHolderName || '',
+              bankName: settings.bank_name || settings.payment_settings?.bankDetails?.bankName || '',
+              accountNumber: settings.account_number || settings.payment_settings?.bankDetails?.accountNumber || '',
+              ifscCode: settings.ifsc_code || settings.payment_settings?.bankDetails?.ifscCode || '',
+              branchName: settings.branch_name || settings.payment_settings?.bankDetails?.branchName || '',
+              upiId: settings.upi_id || settings.payment_settings?.bankDetails?.upiId || '',
+            },
+            razorpayPaymentLink: settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink || '',
+            defaultPaymentInstructions: settings.payment_settings?.defaultPaymentInstructions || '',
+          },
+          upi_id: settings.upi_id,
+          upi_qr_code_url: settings.upi_qr_code_url,
+          bank_name: settings.bank_name,
+          account_holder_name: settings.account_holder_name,
+          account_number: settings.account_number,
+          ifsc_code: settings.ifsc_code,
+          branch_name: settings.branch_name,
+          razorpay_payment_link: settings.razorpay_payment_link,
         });
       } catch (settingsErr) {
         console.warn('UserSettingsService.saveUserSettings notice:', settingsErr);
@@ -1152,6 +1226,281 @@ export const SettingsView: React.FC = () => {
                       <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                     </label>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Payment Methods & Payout Setup (Dual Payment Options) */}
+            <Card variant="crystal">
+              <CardHeader>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="w-5 h-5 text-emerald-400" />
+                      <CardTitle>Payment Methods & Client Payout Instructions</CardTitle>
+                    </div>
+                    <CardDescription className="mt-1">
+                      Configure your direct payment methods (Bank Transfer, UPI) and your external Razorpay Payment Link. These will automatically populate on new invoices and client portals.
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Method A: Manual Payment Instructions */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-white/10">
+                    <Building2 className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-sm font-semibold text-white">Method A: Direct Bank Transfer</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      label="Account Holder Name"
+                      value={settings.account_holder_name || ''}
+                      onChange={(e) => {
+                        handleSettingsChange('account_holder_name', e.target.value);
+                      }}
+                      placeholder="e.g. Acme Studio LLC or John Doe"
+                    />
+                    <Input
+                      label="Bank Name"
+                      value={settings.bank_name || ''}
+                      onChange={(e) => {
+                        handleSettingsChange('bank_name', e.target.value);
+                      }}
+                      placeholder="e.g. HDFC Bank, Chase, Barclays"
+                    />
+                    <Input
+                      label="Account Number / IBAN"
+                      value={settings.account_number || ''}
+                      onChange={(e) => {
+                        handleSettingsChange('account_number', e.target.value);
+                      }}
+                      placeholder="e.g. 50100234567890"
+                    />
+                    <Input
+                      label="IFSC / Routing / SWIFT Code"
+                      value={settings.ifsc_code || ''}
+                      onChange={(e) => {
+                        handleSettingsChange('ifsc_code', e.target.value);
+                      }}
+                      placeholder="e.g. HDFC0001234 or CHASUS33"
+                    />
+                    <div className="sm:col-span-2">
+                      <Input
+                        label="Branch Name (Optional)"
+                        value={settings.branch_name || ''}
+                        onChange={(e) => {
+                          handleSettingsChange('branch_name', e.target.value);
+                        }}
+                        placeholder="e.g. Indiranagar, Bangalore"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* UPI Direct Transfer & Custom QR Upload */}
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <QrCode className="w-4 h-4 text-emerald-400" />
+                      <h3 className="text-sm font-semibold text-white">UPI Payment & Direct QR Upload</h3>
+                    </div>
+                    {settings.upi_qr_code_url ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        Custom QR Active
+                      </span>
+                    ) : settings.upi_id ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                        Dynamic QR Active
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Hidden file input for QR code */}
+                  <input
+                    type="file"
+                    ref={qrCodeInputRef}
+                    onChange={handleQrCodeUpload}
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    className="hidden"
+                  />
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2 space-y-4">
+                      <div>
+                        <Input
+                          label="UPI ID / VPA (Optional if uploading QR directly)"
+                          value={settings.upi_id || ''}
+                          onChange={(e) => {
+                            handleSettingsChange('upi_id', e.target.value.trim());
+                          }}
+                          placeholder="e.g. studio@okaxis, yourname@upi"
+                        />
+                        <p className="text-xs text-zinc-400 mt-1">
+                          Clients can copy this UPI address or scan your QR code directly from their invoice portal and PDF exports.
+                        </p>
+                      </div>
+
+                      {/* Direct QR Upload Action Bar */}
+                      <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/10 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs font-semibold text-white">Direct QR Code Upload</p>
+                            <p className="text-[11px] text-zinc-400">
+                              Upload a screenshot of your PhonePe, Google Pay, Paytm, or Bank QR code to use directly.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => qrCodeInputRef.current?.click()}
+                            disabled={isUploadingQr}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-colors cursor-pointer disabled:opacity-50 shadow-sm shrink-0"
+                          >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>{isUploadingQr ? 'Uploading...' : settings.upi_qr_code_url ? 'Replace QR' : 'Upload QR'}</span>
+                          </button>
+                        </div>
+
+                        {settings.upi_qr_code_url && (
+                          <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                            <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Custom QR image linked
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleRemoveQrCode}
+                              className="text-[11px] text-zinc-400 hover:text-rose-400 transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Remove / Use Dynamic QR</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* QR Code Preview Box */}
+                    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col items-center justify-center text-center">
+                      {settings.upi_qr_code_url ? (
+                        <div className="space-y-2 flex flex-col items-center">
+                          <div className="p-2 bg-white rounded-xl shadow-lg border border-zinc-200">
+                            <QRCode
+                              src={settings.upi_qr_code_url}
+                              size={120}
+                              alt="Uploaded Payment QR"
+                            />
+                          </div>
+                          <span className="text-[10px] font-mono text-emerald-400 font-semibold uppercase tracking-wider">
+                            Uploaded QR Preview
+                          </span>
+                        </div>
+                      ) : settings.upi_id ? (
+                        <div className="space-y-2 flex flex-col items-center">
+                          <div className="p-2.5 bg-white rounded-xl shadow-lg border border-zinc-200">
+                            <QRCode
+                              value={`upi://pay?pa=${encodeURIComponent(settings.upi_id)}&pn=${encodeURIComponent(profile.companyName || profile.name || 'FlowDesk')}&cu=${encodeURIComponent(profile.currency || 'INR')}`}
+                              size={110}
+                              darkColor="#000000"
+                              lightColor="#ffffff"
+                            />
+                          </div>
+                          <span className="text-[10px] font-mono text-cyan-400 font-semibold uppercase tracking-wider">
+                            Live Dynamic QR Preview
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="py-6 text-center space-y-2">
+                          <div className="w-12 h-12 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center mx-auto text-zinc-500">
+                            <QrCode className="w-6 h-6" />
+                          </div>
+                          <p className="text-xs text-zinc-400 font-medium">No QR Configured</p>
+                          <p className="text-[11px] text-zinc-500 max-w-[180px]">
+                            Upload your payment QR image or enter a UPI ID to preview.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Method B: Razorpay Payment Link */}
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <ExternalLink className="w-4 h-4 text-cyan-400" />
+                      <h3 className="text-sm font-semibold text-white">Method B: Freelancer Razorpay Payment Link</h3>
+                    </div>
+                    {settings.razorpay_payment_link && isApprovedRazorpayUrl(settings.razorpay_payment_link) && (
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        Approved Razorpay Link
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <Input
+                      label="Your Razorpay Payment Page URL / Link"
+                      value={settings.razorpay_payment_link || ''}
+                      onChange={(e) => {
+                        handleSettingsChange('razorpay_payment_link', e.target.value.trim());
+                      }}
+                      placeholder="e.g. https://rzp.io/l/your-link or https://pages.razorpay.com/your-page"
+                    />
+
+                    {settings.razorpay_payment_link && (
+                      <div>
+                        {isApprovedRazorpayUrl(settings.razorpay_payment_link) ? (
+                          <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                            <span className="text-xs text-emerald-300">
+                              Valid Razorpay URL detected. Clients will see a &quot;Pay Online&quot; button.
+                            </span>
+                            <a
+                              href={settings.razorpay_payment_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 transition-colors shrink-0"
+                            >
+                              <span>Test Link</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                            Must be a valid HTTPS link hosted on an approved Razorpay domain (rzp.io, pages.razorpay.com, or razorpay.me).
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-500/20 text-xs text-cyan-200/90 space-y-1">
+                      <p className="font-semibold text-cyan-300">Direct Freelancer Merchant Settlement</p>
+                      <p className="text-cyan-200/80 leading-relaxed">
+                        FlowDesk is not a payment collector or escrow service. Funds paid through this link settle directly into your personal or corporate Razorpay merchant account according to your own Razorpay settlement schedule. No API secret keys required.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Default Payment Instructions / Terms */}
+                <div className="space-y-2 pt-4 border-t border-white/10">
+                  <label className="block text-xs font-medium text-zinc-300">
+                    Default Payment Instructions for Clients
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={settings.payment_settings?.defaultPaymentInstructions || ''}
+                    onChange={(e) => {
+                      const updated = {
+                        ...(settings.payment_settings || {}),
+                        defaultPaymentInstructions: e.target.value,
+                      };
+                      handleSettingsChange('payment_settings', updated);
+                    }}
+                    placeholder="e.g. Please quote the invoice number in the transfer description. After transferring, click 'Notify Payment' in the client portal to alert our studio."
+                    className="w-full px-3 py-2 border border-white/10 rounded-xl bg-zinc-900 text-white text-xs focus:outline-none focus:border-white/30 resize-none leading-relaxed"
+                  />
                 </div>
               </CardContent>
             </Card>

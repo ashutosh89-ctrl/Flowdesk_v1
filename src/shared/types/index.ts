@@ -369,6 +369,46 @@ export type InvoiceWorkflowStatus = 'draft' | 'sent' | 'viewed' | 'cancelled';
 export type InvoicePaymentStatus = 'pending' | 'paid' | 'partially_paid' | 'refunded' | 'failed';
 export type PaymentMethod = 'razorpay' | 'bank_transfer' | 'cash' | 'cheque' | 'online' | 'other';
 
+export interface BankDetails {
+  accountHolderName?: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  branchName?: string;
+  upiId?: string;
+}
+
+export interface PaymentMethodsConfig {
+  bankTransferEnabled?: boolean;
+  upiEnabled?: boolean;
+  razorpayLinkEnabled?: boolean;
+  upiQrCodeUrl?: string;
+}
+
+export interface ClientPaymentNotification {
+  notifiedAt: string;
+  amount: number;
+  paymentMethod: 'upi' | 'bank_transfer' | 'razorpay' | 'other';
+  transactionReference: string;
+  notes?: string;
+  status: 'awaiting_verification' | 'confirmed' | 'rejected';
+  confirmedAt?: string;
+  confirmedBy?: string;
+}
+
+export interface FreelancerPaymentSettings {
+  bankTransferEnabled?: boolean;
+  upiEnabled?: boolean;
+  razorpayLinkEnabled?: boolean;
+  upiId?: string;
+  upiQrCodeUrl?: string;
+  bankDetails?: BankDetails;
+  razorpayPaymentLink?: string;
+  defaultInstructions?: string;
+  defaultPaymentInstructions?: string;
+  methodsConfig?: PaymentMethodsConfig;
+}
+
 export interface InvoiceBranding {
   businessName: string;
   freelancerName: string;
@@ -378,6 +418,11 @@ export interface InvoiceBranding {
   country?: string;
   logoUrl?: string;
   signatureUrl?: string;
+  bankDetails?: BankDetails;
+  upiId?: string;
+  upiQrCodeUrl?: string;
+  razorpayPaymentLink?: string;
+  paymentMethods?: PaymentMethodsConfig;
 }
 
 export interface InvoiceItem {
@@ -494,6 +539,12 @@ export interface Invoice {
   timeline?: InvoiceTimelineItem[];
   activityLog?: InvoiceActivity[];
   history?: InvoiceHistory[];
+  paymentMethods?: PaymentMethodsConfig;
+  upiId?: string;
+  upiQrCodeUrl?: string;
+  bankDetails?: BankDetails;
+  razorpayPaymentLink?: string;
+  paymentNotification?: ClientPaymentNotification;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -734,6 +785,8 @@ export interface UserProfile {
   avatarUrl: string;
   logoUrl?: string;
   signatureUrl?: string;
+  upiId?: string;
+  upiQrCodeUrl?: string;
   currency: string;
   companyName: string;
   hourlyRate: number;
@@ -752,6 +805,8 @@ export interface SupabaseProfile {
   avatar_url: string | null;
   logo_url?: string | null;
   signature_url?: string | null;
+  upi_id?: string | null;
+  upi_qr_code_url?: string | null;
   business_name: string | null;
   profession: string | null;
   phone: string | null;
@@ -806,6 +861,15 @@ export interface UserSettings {
   comment_alerts?: boolean;
   weekly_digest?: boolean;
   default_deliverable_niche?: 'software_development' | 'others';
+  payment_settings?: FreelancerPaymentSettings;
+  upi_id?: string;
+  upi_qr_code_url?: string;
+  bank_name?: string;
+  account_holder_name?: string;
+  account_number?: string;
+  ifsc_code?: string;
+  branch_name?: string;
+  razorpay_payment_link?: string;
 }
 
 export interface OnboardingData {

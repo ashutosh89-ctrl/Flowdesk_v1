@@ -94,6 +94,15 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     if (updates.taxName !== undefined) dbPayload.tax_name = updates.taxName;
     if (updates.defaultPaymentTerms !== undefined) dbPayload.default_payment_terms = updates.defaultPaymentTerms;
     if (updates.defaultDeliverableNiche !== undefined) dbPayload.default_deliverable_niche = updates.defaultDeliverableNiche;
+    if (updates.paymentSettings !== undefined) dbPayload.payment_settings = updates.paymentSettings;
+    if (updates.upiId !== undefined) dbPayload.upi_id = updates.upiId;
+    if (updates.upiQrCodeUrl !== undefined) dbPayload.upi_qr_code_url = updates.upiQrCodeUrl;
+    if (updates.bankName !== undefined) dbPayload.bank_name = updates.bankName;
+    if (updates.accountHolderName !== undefined) dbPayload.account_holder_name = updates.accountHolderName;
+    if (updates.accountNumber !== undefined) dbPayload.account_number = updates.accountNumber;
+    if (updates.ifscCode !== undefined) dbPayload.ifsc_code = updates.ifscCode;
+    if (updates.branchName !== undefined) dbPayload.branch_name = updates.branchName;
+    if (updates.razorpayPaymentLink !== undefined) dbPayload.razorpay_payment_link = updates.razorpayPaymentLink;
 
     let { data: updated, error: upsertErr } = await supabaseAdmin
       .from('user_settings')

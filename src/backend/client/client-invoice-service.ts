@@ -1,6 +1,6 @@
 import { supabase, isDemoModeActive } from '@/backend/utilities/supabase';
 import { Invoice } from '@/shared/types';
-import { derivePaymentStatus, calculateRemainingBalance } from '@/shared/utils/invoice-calculations';
+import { derivePaymentStatus, calculateRemainingBalance, isInvoiceOverdue } from '@/shared/utils/invoice-calculations';
 import { DemoDataProvider } from '@/backend/utilities/demo-data-provider';
 import { FlowDeskStore } from '@/backend/store/storage-store';
 
@@ -33,6 +33,7 @@ export const ClientInvoiceService = {
           const paidAmt = Number(i.paid_amount) || 0;
           const totalAmt = Number(i.total_amount) || 0;
           const paymentStatus = derivePaymentStatus(totalAmt, paidAmt);
+          const isOverdue = isInvoiceOverdue(i.due_date, paymentStatus, i.status || 'sent');
 
           const persistedReceipts = (i.receipts || []).map((r: any) => ({
             id: r.id,
@@ -82,7 +83,7 @@ export const ClientInvoiceService = {
             dueDate: i.due_date,
             workflowStatus: (i.status as any) || 'sent',
             paymentStatus,
-            status: i.status || 'sent',
+            status: isOverdue ? 'overdue' : (i.status || 'sent'),
             items: (i.invoice_items || []).map((item: any) => ({
               id: item.id,
               description: item.description,
@@ -101,6 +102,12 @@ export const ClientInvoiceService = {
             currency: i.currency || 'USD',
             notes: i.notes || '',
             paymentInstructions: i.payment_instructions || '',
+            paymentMethods: i.payment_methods || undefined,
+            upiId: i.upi_id || undefined,
+            upiQrCodeUrl: i.upi_qr_code_url || i.payment_methods?.upiQrCodeUrl || undefined,
+            bankDetails: i.bank_details || undefined,
+            razorpayPaymentLink: i.razorpay_payment_link || undefined,
+            paymentNotification: i.payment_notification || undefined,
             receipts,
           } as Invoice;
         });
