@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/frontend/shared/ui/button';
 import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 import { ArrowRight, Menu, X } from 'lucide-react';
+import Magnet from './Magnet';
 
 export interface LandingNavProps {
   onOpenAuth: (view: 'login' | 'signup') => void;
@@ -80,15 +81,17 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onOpenAuth, onLaunchApp 
         <Button variant="ghost" size="md" className="text-base font-medium text-[#A6B4AE] hover:text-[#F5F5F0]" onClick={() => onOpenAuth('login')}>
           Sign In
         </Button>
-        <Button
-          variant="primary"
-          size="md"
-          className="text-base font-bold px-5 py-2.5 shadow-sm"
-          onClick={() => onOpenAuth('signup')}
-          rightIcon={<ArrowRight className="w-4 h-4" />}
-        >
-          Start for Free
-        </Button>
+        <Magnet padding={40} magnetStrength={3}>
+          <Button
+            variant="primary"
+            size="md"
+            className="text-base font-bold px-5 py-2.5 shadow-sm"
+            onClick={() => onOpenAuth('signup')}
+            rightIcon={<ArrowRight className="w-4 h-4" />}
+          >
+            Start for Free
+          </Button>
+        </Magnet>
       </div>
 
       {/* Mobile Menu Toggle Button */}

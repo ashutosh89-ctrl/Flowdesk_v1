@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Button } from '@/frontend/shared/ui/button';
 import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
+import Magnet from './Magnet';
 
 export interface LandingFooterProps {
   onLaunchApp?: () => void;
@@ -35,23 +36,27 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onLaunchApp, onOpe
               Bring your clients, projects, deliverables, approvals, documents, and payments together. Spend less time managing work and more time growing your business.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => onOpenAuth?.('signup')}
-                className="text-base sm:text-lg font-semibold px-9 py-4 bg-[#43D6B0] text-[#101312] hover:bg-[#43D6B0]/90 shadow-[0_0_24px_rgba(67,214,176,0.3)] hover:shadow-[0_0_36px_rgba(67,214,176,0.45)] transition-all duration-300"
-                rightIcon={<ArrowRight className="w-5 h-5" />}
-              >
-                Create Your Free Workspace
-              </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={() => onOpenAuth?.('login')}
-                className="text-base sm:text-lg font-medium px-9 py-4 bg-[#191F1D] text-[#F5F5F0] border border-[#176B5B]/40 hover:border-[#43D6B0]/60 transition-all duration-300"
-              >
-                Sign In
-              </Button>
+              <Magnet padding={70} magnetStrength={2.5}>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => onOpenAuth?.('signup')}
+                  className="text-base sm:text-lg font-semibold px-9 py-4 bg-[#43D6B0] text-[#101312] hover:bg-[#43D6B0]/90 shadow-[0_0_24px_rgba(67,214,176,0.3)] hover:shadow-[0_0_36px_rgba(67,214,176,0.45)] transition-all duration-300"
+                  rightIcon={<ArrowRight className="w-5 h-5" />}
+                >
+                  Create Your Free Workspace
+                </Button>
+              </Magnet>
+              <Magnet padding={70} magnetStrength={2.5}>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => onOpenAuth?.('login')}
+                  className="text-base sm:text-lg font-medium px-9 py-4 bg-[#191F1D] text-[#F5F5F0] border border-[#176B5B]/40 hover:border-[#43D6B0]/60 transition-all duration-300"
+                >
+                  Sign In
+                </Button>
+              </Magnet>
             </div>
           </div>
         </motion.div>

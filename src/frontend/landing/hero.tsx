@@ -4,6 +4,8 @@ import React, { useRef } from 'react';
 import { motion, useScroll, useTransform, useReducedMotion } from 'motion/react';
 import { Button } from '@/frontend/shared/ui/button';
 import { ArrowRight, Sparkles } from 'lucide-react';
+import GlowCursor from './GlowCursor';
+import Magnet from './Magnet';
 
 export interface HeroProps {
   onLaunchApp: () => void;
@@ -42,10 +44,27 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
       ref={heroRef}
       className="relative w-full overflow-hidden bg-[#101312] pt-24 pb-20 px-6 lg:px-12 flex flex-col items-center text-center"
     >
-      {/* Restrained subtle ambient gradient background (no synthetic glow or particles) */}
+      {/* Interactive WebGL Glow Cursor Background from React Bits */}
       <motion.div
         style={{ opacity: bgOpacity }}
-        className="absolute inset-0 pointer-events-none select-none overflow-hidden"
+        className="absolute inset-0 z-0 overflow-hidden"
+        aria-hidden="true"
+      >
+        <GlowCursor
+          color="#43D6B0"
+          secondaryColor="#176B5B"
+          intensity={0.85}
+          trailWidth={3.5}
+          linger={1.5}
+          glow={1.0}
+          theme="dark"
+        />
+      </motion.div>
+
+      {/* Restrained subtle ambient gradient background */}
+      <motion.div
+        style={{ opacity: bgOpacity }}
+        className="absolute inset-0 pointer-events-none select-none overflow-hidden z-[1]"
         aria-hidden="true"
       >
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-[#176B5B]/15 rounded-full blur-[140px]" />
@@ -99,27 +118,31 @@ export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
           transition={{ duration: 0.6, delay: 0.24, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-wrap items-center justify-center gap-4 mt-10"
         >
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => onOpenAuth('signup')}
-            className="text-base sm:text-lg font-bold px-8 py-4 shadow-lg shadow-[#43D6B0]/15 hover:shadow-xl hover:shadow-[#43D6B0]/25 transition-all duration-200"
-            rightIcon={<ArrowRight className="w-5 h-5" />}
-          >
-            Start Managing Your Work — Free
-          </Button>
-          <Button
-            variant="secondary"
-            size="lg"
-            onClick={() => {
-              const el = document.getElementById('features');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-              else onLaunchApp();
-            }}
-            className="text-base sm:text-lg font-medium px-8 py-4 bg-[#191F1D] text-[#F5F5F0] border border-[#176B5B]/40 hover:border-[#43D6B0]/60 hover:text-white transition-all duration-200"
-          >
-            Explore FlowDesk
-          </Button>
+          <Magnet padding={80} magnetStrength={2.5}>
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => onOpenAuth('signup')}
+              className="text-base sm:text-lg font-bold px-8 py-4 shadow-lg shadow-[#43D6B0]/15 hover:shadow-xl hover:shadow-[#43D6B0]/25 transition-all duration-200"
+              rightIcon={<ArrowRight className="w-5 h-5" />}
+            >
+              Start Managing Your Work — Free
+            </Button>
+          </Magnet>
+          <Magnet padding={80} magnetStrength={2.5}>
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={() => {
+                const el = document.getElementById('features');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                else onLaunchApp();
+              }}
+              className="text-base sm:text-lg font-medium px-8 py-4 bg-[#191F1D] text-[#F5F5F0] border border-[#176B5B]/40 hover:border-[#43D6B0]/60 hover:text-white transition-all duration-200"
+            >
+              Explore FlowDesk
+            </Button>
+          </Magnet>
         </motion.div>
       </motion.div>
     </section>
