@@ -422,7 +422,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
                 onClick={() => setActiveTab('online')}
                 className={`py-2 px-2.5 rounded-lg flex items-center justify-center gap-1.5 font-bold transition-all text-xs cursor-pointer ${
                   activeTab === 'online'
-                    ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300 shadow-sm'
+                    ? 'bg-[#176B5B]/20 border border-[#176B5B]/50 text-[#43D6B0] shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border border-transparent'
                 }`}
               >
@@ -610,23 +610,23 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
             {/* TAB 3: ONLINE RAZORPAY PAYMENT */}
             {activeTab === 'online' && (
               <div className="p-4 rounded-xl bg-zinc-900/70 border border-white/10 space-y-4">
-                <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-between">
+                <div className="p-3 rounded-lg bg-[#176B5B]/15 border border-[#176B5B]/30 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-blue-400" />
-                    <span className="font-semibold text-white">256-Bit Encrypted Online Checkout</span>
+                    <ShieldCheck className="w-4 h-4 text-[#43D6B0]" />
+                    <span className="font-semibold text-[#F5F5F0]">256-Bit Encrypted Online Checkout</span>
                   </div>
-                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold">
+                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[#176B5B]/25 text-[#43D6B0] font-bold">
                     Credit / Debit / NetBanking
                   </span>
                 </div>
 
-                <p className="text-zinc-300 text-xs">
+                <p className="text-[#A6B4AE] text-xs">
                   Click below to open the Razorpay gateway modal. You can pay using domestic or international cards, net banking, or verified UPI accounts.
                 </p>
 
                 <Button
                   variant="primary"
-                  className="w-full justify-center py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold"
+                  className="w-full justify-center py-2.5 font-bold"
                   onClick={handleStartPayment}
                   disabled={remainingBalance <= 0}
                   leftIcon={<CreditCard className="w-4 h-4" />}

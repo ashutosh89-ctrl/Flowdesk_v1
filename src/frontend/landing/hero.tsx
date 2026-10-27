@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
+'use client';
+
+import React, { useRef } from 'react';
+import { motion, useScroll, useTransform, useReducedMotion } from 'motion/react';
 import { Button } from '@/frontend/shared/ui/button';
-import { ArrowRight } from 'lucide-react';
-import GlowCursor from './GlowCursor';
+import { ArrowRight, Sparkles } from 'lucide-react';
 
 export interface HeroProps {
   onLaunchApp: () => void;
@@ -10,104 +11,117 @@ export interface HeroProps {
 }
 
 export const Hero: React.FC<HeroProps> = ({ onLaunchApp, onOpenAuth }) => {
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0, px: 0, py: 0 });
+  const heroRef = useRef<HTMLDivElement>(null);
+  const shouldReduceMotion = useReducedMotion();
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
-    setMousePos({ x, y, px, py });
-  };
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
 
-  const handleMouseLeave = () => {
-    setMousePos({ x: 0, y: 0, px: 0, py: 0 });
-  };
+  const contentY = useTransform(
+    scrollYProgress,
+    [0, 1],
+    shouldReduceMotion ? [0, 0] : [0, -50]
+  );
+
+  const contentOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.85],
+    shouldReduceMotion ? [1, 1] : [1, 0.1]
+  );
+
+  const bgOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.75],
+    shouldReduceMotion ? [1, 1] : [1, 0]
+  );
 
   return (
     <section
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className="relative w-full overflow-hidden"
+      ref={heroRef}
+      className="relative w-full overflow-hidden bg-[#101312] pt-24 pb-20 px-6 lg:px-12 flex flex-col items-center text-center"
     >
-      <GlowCursor
-        color="#2563EB"
-        intensity={0.9}
-        trailWidth={3}
-        linger={3.4}
-        glow={1.8}
-        clickBurst
-        theme="dark"
-        className="w-full min-h-[90vh] pt-32 pb-28 px-6 lg:px-12 flex flex-col items-center text-center select-none"
-      >
-        <div className="w-full flex flex-col items-center text-center">
-
-      {/* Subtle Premium Badge */}
+      {/* Restrained subtle ambient gradient background (no synthetic glow or particles) */}
       <motion.div
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="inline-flex items-center gap-2.5 px-4.5 py-2 rounded-full bg-[#0A0A0A]/90 border border-[#2563EB]/40 backdrop-blur-2xl text-sm sm:text-[14px] font-medium text-zinc-200 mb-8 shadow-[0_8px_32px_rgba(0,71,171,0.25),inset_0_1px_0_0_rgba(37,99,235,0.3)]"
+        style={{ opacity: bgOpacity }}
+        className="absolute inset-0 pointer-events-none select-none overflow-hidden"
+        aria-hidden="true"
       >
-        <span className="w-2.5 h-2.5 rounded-full bg-[#2563EB] shadow-[0_0_12px_rgba(37,99,235,1)] animate-pulse" />
-        <span className="tracking-widest uppercase font-mono text-[13px] sm:text-[14px] text-[#E8F0FF] font-semibold">Operating System for Freelancers</span>
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-[#176B5B]/15 rounded-full blur-[140px]" />
       </motion.div>
 
-      {/* Headline */}
-      <motion.h1
-        initial={{ opacity: 0, y: 22 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-        className="text-5xl sm:text-7xl lg:text-[76px] font-extrabold tracking-tight text-white max-w-5xl leading-[1.08]"
-      >
-        Run Your Freelance Business.{' '}
-        <span className="block text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-zinc-400 font-extrabold mt-2 tracking-tight">
-          All in One Place.
-        </span>
-      </motion.h1>
-
-      {/* Subtitle */}
-      <motion.p
-        initial={{ opacity: 0, y: 22 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="text-xl sm:text-2xl text-zinc-200 max-w-3xl mt-7 leading-relaxed font-normal"
-      >
-        From your first client conversation to final payment, manage projects, deliverables, approvals, documents, and invoices through one seamless workspace.
-      </motion.p>
-
-      {/* CTAs */}
+      {/* Scroll-Linked Hero Content Container */}
       <motion.div
-        initial={{ opacity: 0, y: 22 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="flex flex-wrap items-center justify-center gap-4 mt-10 z-20"
+        style={{ y: contentY, opacity: contentOpacity }}
+        className="w-full max-w-5xl flex flex-col items-center text-center relative z-10"
       >
-        <Button
-          variant="primary"
-          size="lg"
-          onClick={() => onOpenAuth('signup')}
-          className="text-base sm:text-lg font-semibold shadow-[0_0_30px_rgba(0,71,171,0.4)] hover:shadow-[0_0_45px_rgba(0,71,171,0.6)] transition-all duration-300 px-8 py-4"
-          rightIcon={<ArrowRight className="w-5 h-5" />}
+        {/* Subtle Restrained Category Badge */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-[#191F1D] border border-[#176B5B]/40 text-xs sm:text-sm font-medium text-[#A6B4AE] mb-8 shadow-sm"
         >
-          Start Managing Your Work — Free
-        </Button>
-        <Button
-          variant="secondary"
-          size="lg"
-          onClick={() => {
-            const el = document.getElementById('features');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-            else onLaunchApp();
-          }}
-          className="text-base sm:text-lg font-medium hover:border-[#0047AB]/50 transition-all duration-300 px-8 py-4"
+          <span className="w-2 h-2 rounded-full bg-[#43D6B0]" />
+          <span className="tracking-wider uppercase font-mono text-[12px] sm:text-[13px] text-[#F5F5F0] font-medium">
+            Freelancer Operating System
+          </span>
+        </motion.div>
+
+        {/* Editorial Headline with Instrument Serif Accent */}
+        <motion.h1
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+          className="text-5xl sm:text-7xl lg:text-[76px] font-bold tracking-tight text-[#F5F5F0] max-w-5xl leading-[1.08]"
         >
-          Explore FlowDesk
-        </Button>
+          Run Your Freelance Business.{' '}
+          <span className="block font-serif italic text-[#43D6B0] mt-2 font-normal">
+            All in One Place.
+          </span>
+        </motion.h1>
+
+        {/* Subtitle in Clean Manrope */}
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.16, ease: [0.16, 1, 0.3, 1] }}
+          className="text-lg sm:text-xl lg:text-2xl text-[#A6B4AE] max-w-3xl mt-7 leading-relaxed font-normal"
+        >
+          From client intake to final payment, manage projects, deliverables, approvals, documents, and invoices through one connected workspace.
+        </motion.p>
+
+        {/* CTAs */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.24, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-wrap items-center justify-center gap-4 mt-10"
+        >
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => onOpenAuth('signup')}
+            className="text-base sm:text-lg font-bold px-8 py-4 shadow-lg shadow-[#43D6B0]/15 hover:shadow-xl hover:shadow-[#43D6B0]/25 transition-all duration-200"
+            rightIcon={<ArrowRight className="w-5 h-5" />}
+          >
+            Start Managing Your Work — Free
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => {
+              const el = document.getElementById('features');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+              else onLaunchApp();
+            }}
+            className="text-base sm:text-lg font-medium px-8 py-4 bg-[#191F1D] text-[#F5F5F0] border border-[#176B5B]/40 hover:border-[#43D6B0]/60 hover:text-white transition-all duration-200"
+          >
+            Explore FlowDesk
+          </Button>
+        </motion.div>
       </motion.div>
-      </div>
-    </GlowCursor>
-  </section>
+    </section>
   );
 };

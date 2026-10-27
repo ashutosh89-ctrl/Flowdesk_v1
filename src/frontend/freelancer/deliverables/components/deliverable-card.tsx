@@ -116,7 +116,7 @@ export const DeliverableCard: React.FC<DeliverableCardProps> = ({
                 {
                   id: 'duplicate',
                   label: 'Duplicate',
-                  icon: <Copy className="w-4 h-4 text-blue-400" />,
+                  icon: <Copy className="w-4 h-4 text-[#43D6B0]" />,
                   onClick: () => onDuplicate(del.id),
                 },
                 {

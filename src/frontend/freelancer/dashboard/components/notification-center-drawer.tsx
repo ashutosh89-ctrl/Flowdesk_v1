@@ -80,24 +80,24 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-            className="relative w-full max-w-md bg-[#0A0A0A] border-l border-[#2A2A2A] backdrop-blur-3xl h-full shadow-2xl z-10 flex flex-col justify-between"
+            className="relative w-full max-w-md bg-[#191F1D] border-l border-[#176B5B]/30 backdrop-blur-3xl h-full shadow-2xl z-10 flex flex-col justify-between"
           >
             <div>
               {/* Header */}
-              <div className="p-5 border-b border-[#2A2A2A] flex items-center justify-between">
+              <div className="p-5 border-b border-[#176B5B]/25 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-[#0047AB]/20 border border-[#2563EB]/30 text-[#2563EB]">
+                  <div className="p-2 rounded-xl bg-[#176B5B]/25 border border-[#176B5B]/40 text-[#43D6B0]">
                     <Bell className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white tracking-tight">Notification Center</h3>
-                    <p className="text-xs text-zinc-400">Real-time portal updates &amp; activity alerts.</p>
+                    <h3 className="text-base font-bold text-[#F5F5F0] tracking-tight">Notification Center</h3>
+                    <p className="text-xs text-[#A6B4AE]">Real-time portal updates &amp; activity alerts.</p>
                   </div>
                 </div>
 
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+                  className="p-1.5 rounded-lg text-[#A6B4AE] hover:text-[#F5F5F0] hover:bg-[#176B5B]/20 transition-colors"
                   aria-label="Close notifications"
                 >
                   <X className="w-4 h-4" />
@@ -105,13 +105,13 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
               </div>
 
               {/* Action Bar */}
-              <div className="p-3 px-5 border-b border-[#2A2A2A] bg-[#111111]/80 flex items-center justify-between text-xs">
+              <div className="p-3 px-5 border-b border-[#176B5B]/20 bg-[#141817] flex items-center justify-between text-xs">
                 <button
                   onClick={() => setFilterUnread(!filterUnread)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
                     filterUnread
-                      ? 'bg-[#0047AB] text-white border border-[#2563EB]'
-                      : 'text-zinc-400 hover:text-white'
+                      ? 'bg-[#176B5B]/30 text-[#43D6B0] border border-[#176B5B]/50'
+                      : 'text-[#A6B4AE] hover:text-[#F5F5F0]'
                   }`}
                 >
                   {filterUnread ? 'Showing Unread Only' : 'Filter Unread'}
@@ -119,7 +119,7 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
 
                 <button
                   onClick={handleMarkAllRead}
-                  className="text-xs font-semibold text-[#2563EB] hover:text-[#0047AB] flex items-center gap-1"
+                  className="text-xs font-semibold text-[#43D6B0] hover:text-[#43D6B0]/80 flex items-center gap-1"
                 >
                   <Check className="w-3.5 h-3.5" /> Mark All Read
                 </button>
@@ -128,7 +128,7 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
               {/* List */}
               <div className="p-4 space-y-2 max-h-[calc(100vh-180px)] overflow-y-auto">
                 {displayed.length === 0 ? (
-                  <div className="p-12 text-center text-xs text-zinc-500">
+                  <div className="p-12 text-center text-xs text-[#A6B4AE]">
                     No notifications to show.
                   </div>
                 ) : (
@@ -156,28 +156,28 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
                       }}
                       className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
                         !n.read
-                          ? 'bg-[#111111] border-[#0047AB]/40 shadow-sm'
-                          : 'bg-[#0A0A0A] border-[#2A2A2A] text-zinc-400 opacity-75'
+                          ? 'bg-[#141817] border-[#176B5B]/40 shadow-sm'
+                          : 'bg-[#191F1D] border-[#176B5B]/20 text-[#A6B4AE] opacity-75'
                       }`}
                     >
                       <div className="flex items-start gap-3 min-w-0">
-                        <div className="p-2 rounded-lg bg-white/5 border border-[#2A2A2A] shrink-0 mt-0.5">
+                        <div className="p-2 rounded-lg bg-white/5 border border-[#176B5B]/30 shrink-0 mt-0.5">
                           {getNotificationIcon(n)}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
-                            <h4 className="text-xs font-bold text-white truncate">{n.title}</h4>
-                            {!n.read && <span className="w-2 h-2 rounded-full bg-[#2563EB] shrink-0" />}
+                            <h4 className="text-xs font-bold text-[#F5F5F0] truncate">{n.title}</h4>
+                            {!n.read && <span className="w-2 h-2 rounded-full bg-[#43D6B0] shrink-0" />}
                           </div>
-                          <p className="text-xs text-zinc-400 line-clamp-2">{n.message}</p>
-                          <span className="text-[10px] font-mono text-zinc-500 mt-1 block">{n.timestamp}</span>
+                          <p className="text-xs text-[#A6B4AE] line-clamp-2">{n.message}</p>
+                          <span className="text-[10px] font-mono text-[#A6B4AE]/70 mt-1 block">{n.timestamp}</span>
                         </div>
                       </div>
 
                       <button
                         onClick={(e) => handleToggleRead(n.id, e)}
                         title={n.read ? 'Mark unread' : 'Mark read'}
-                        className="p-1 rounded text-zinc-500 hover:text-white transition-colors shrink-0"
+                        className="p-1 rounded text-[#A6B4AE] hover:text-[#F5F5F0] transition-colors shrink-0"
                       >
                         <Check className={`w-3.5 h-3.5 ${n.read ? 'text-emerald-400' : ''}`} />
                       </button>

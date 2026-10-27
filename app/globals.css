@@ -1,171 +1,132 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Space+Grotesk:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@300;400;500;600;700;800&display=swap');
 
 /* ============================================================
    TYPOGRAPHY SYSTEM
-   Primary UI: Plus Jakarta Sans (Unique Geometric Neo-Grotesque)
-   Display / Headlines / Stats: Space Grotesk (Architectural Modernist)
-   Editorial Accent: Instrument Serif
+   Primary UI & Body: Manrope (Clean, Architectural, Distinctive)
+   Display / Editorial Headlines: Instrument Serif
+   Technical Metadata / Code / Badges: JetBrains Mono
    ============================================================ */
 
 @font-face {
-  font-family: 'Plus Jakarta Sans';
-  src: local('Plus Jakarta Sans'),
-       local('PlusJakartaSans-Regular'),
-       url('/fonts/plus-jakarta-sans/PlusJakartaSans-Regular.ttf') format('truetype');
+  font-family: 'Instrument Serif';
+  src: local('Instrument Serif'),
+       local('InstrumentSerif-Regular'),
+       url('/fonts/instrument-serif/InstrumentSerif-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Plus Jakarta Sans';
-  src: local('Plus Jakarta Sans Medium'),
-       local('PlusJakartaSans-Medium'),
-       url('/fonts/plus-jakarta-sans/PlusJakartaSans-Medium.ttf') format('truetype');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  src: local('Plus Jakarta Sans SemiBold'),
-       local('PlusJakartaSans-SemiBold'),
-       url('/fonts/plus-jakarta-sans/PlusJakartaSans-SemiBold.ttf') format('truetype');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  src: local('Plus Jakarta Sans Bold'),
-       local('PlusJakartaSans-Bold'),
-       url('/fonts/plus-jakarta-sans/PlusJakartaSans-Bold.ttf') format('truetype');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Space Grotesk';
-  src: local('Space Grotesk'),
-       local('SpaceGrotesk-Regular'),
-       url('/fonts/space-grotesk/SpaceGrotesk-Regular.ttf') format('truetype');
+  font-family: 'Instrument Serif';
+  src: local('Instrument Serif Italic'),
+       local('InstrumentSerif-Italic'),
+       url('/fonts/instrument-serif/InstrumentSerif-Italic.ttf') format('truetype');
   font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Space Grotesk';
-  src: local('Space Grotesk SemiBold'),
-       local('SpaceGrotesk-SemiBold'),
-       url('/fonts/space-grotesk/SpaceGrotesk-SemiBold.ttf') format('truetype');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Space Grotesk';
-  src: local('Space Grotesk Bold'),
-       local('SpaceGrotesk-Bold'),
-       url('/fonts/space-grotesk/SpaceGrotesk-Bold.ttf') format('truetype');
-  font-weight: 700;
-  font-style: normal;
+  font-style: italic;
   font-display: swap;
 }
 
 @theme {
-  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Manrope', sans-serif;
   --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  --color-primary-black: #000000;
-  --color-near-black: #0A0A0A;
-  --color-dark-surface: #111111;
-  --color-elevated-dark: #181818;
+  /* FlowDesk 6-Color Global Palette */
+  --color-primary-bg: #101312;
+  --color-card-panel: #191F1D;
+  --color-secondary-accent: #176B5B;
+  --color-primary-accent: #43D6B0;
+  --color-primary-text: #F5F5F0;
+  --color-secondary-text: #A6B4AE;
 
-  --color-primary-white: #FFFFFF;
-  --color-soft-white: #F5F7FA;
-
-  --color-cobalt: #0047AB;
-  --color-cobalt-hover: #003A8C;
-  --color-cobalt-bright: #2563EB;
-  --color-cobalt-tint: #E8F0FF;
-
-  --color-border-light: #D9DEE8;
-  --color-border-dark: #2A2A2A;
-
-  --color-focus: #2563EB;
+  /* Compatibility aliases */
+  --color-near-black: #101312;
+  --color-dark-surface: #191F1D;
+  --color-elevated-dark: #191F1D;
+  --color-primary-white: #F5F5F0;
+  --color-soft-white: #F5F5F0;
+  --color-border-dark: rgba(23, 107, 91, 0.3);
+  --color-focus: #43D6B0;
 }
 
 @layer base {
   :root {
-    --color-black: #000000;
-    --color-near-black: #0A0A0A;
-    --color-dark-surface: #111111;
-    --color-elevated-dark: #181818;
+    /* 6-Color System Tokens */
+    --color-bg-primary: #101312;
+    --color-card-panel: #191F1D;
+    --color-secondary-accent: #176B5B;
+    --color-primary-accent: #43D6B0;
+    --color-primary-text: #F5F5F0;
+    --color-secondary-text: #A6B4AE;
 
-    --color-white: #FFFFFF;
-    --color-soft-white: #F5F7FA;
+    /* Theme Aliases */
+    --color-near-black: #101312;
+    --color-dark-surface: #191F1D;
+    --color-elevated-dark: #191F1D;
+    --color-white: #F5F5F0;
+    --color-soft-white: #F5F5F0;
 
-    --color-cobalt: #0047AB;
-    --color-cobalt-hover: #003A8C;
-    --color-cobalt-bright: #2563EB;
-    --color-cobalt-tint: #E8F0FF;
+    --color-accent-primary: #43D6B0;
+    --color-accent-secondary: #176B5B;
 
-    --color-border-light: #D9DEE8;
-    --color-border-dark: #2A2A2A;
+    --color-border-light: rgba(23, 107, 91, 0.2);
+    --color-border-dark: rgba(23, 107, 91, 0.3);
 
-    --color-text-primary: #FFFFFF;
-    --color-text-secondary: #A1A1AA;
-    --color-text-inverse: #0A0A0A;
+    --color-text-primary: #F5F5F0;
+    --color-text-secondary: #A6B4AE;
+    --color-text-inverse: #101312;
 
-    --color-focus: #2563EB;
+    --color-focus: #43D6B0;
 
-    --bg-ultra-charcoal: #0A0A0A;
-    --bg-graphite: #111111;
-    --border-soft: #2A2A2A;
+    --bg-ultra-charcoal: #101312;
+    --bg-graphite: #191F1D;
+    --border-soft: rgba(23, 107, 91, 0.3);
   }
 
   html {
     font-size: 16px;
     -webkit-text-size-adjust: 100%;
+    direction: ltr;
   }
 
   html, body {
-    background-color: var(--color-near-black);
-    color: var(--color-soft-white);
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    background-color: #101312;
+    color: #F5F5F0;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     font-size: 16px;
     line-height: 1.6;
     overflow-x: hidden;
     color-scheme: dark;
-    letter-spacing: -0.012em;
+    direction: ltr;
+    letter-spacing: -0.011em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
+  ::selection {
+    background-color: #43D6B0;
+    color: #101312;
+  }
+
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
-    letter-spacing: -0.025em;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    letter-spacing: -0.02em;
   }
 
   button, input, optgroup, select, textarea {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   .font-sans {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
   }
 
   .font-display {
-    font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif !important;
-    letter-spacing: -0.025em;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    letter-spacing: -0.02em;
   }
 
   .font-serif {
@@ -173,87 +134,88 @@
   }
 
   .font-mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
-    letter-spacing: 0.02em;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    letter-spacing: 0.01em;
   }
 }
 
-/* Crystal Glass Utility Classes */
+/* Glass & Card Utility Classes */
 .crystal-card {
-  background: rgba(17, 17, 17, 0.75);
+  background: #191F1D;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid #2A2A2A;
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(23, 107, 91, 0.3);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
 }
 
 .crystal-card-interactive {
-  background: rgba(17, 17, 17, 0.75);
+  background: #191F1D;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid #2A2A2A;
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(23, 107, 91, 0.3);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crystal-card-interactive:hover {
-  background: rgba(24, 24, 24, 0.9);
-  border-color: rgba(37, 99, 235, 0.45);
-  box-shadow: 0 16px 40px -10px rgba(0, 71, 171, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  background: #1E2523;
+  border-color: rgba(67, 214, 176, 0.5);
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(67, 214, 176, 0.1);
   transform: translateY(-2px);
 }
 
 .crystal-btn-primary {
-  background: #0047AB;
-  color: #FFFFFF;
-  font-weight: 600;
-  border: 1px solid rgba(37, 99, 235, 0.7);
-  box-shadow: 0 4px 20px rgba(0, 71, 171, 0.35), inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
+  background: #43D6B0;
+  color: #101312;
+  font-weight: 700;
+  border: 1px solid #43D6B0;
+  box-shadow: 0 4px 20px rgba(67, 214, 176, 0.25);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crystal-btn-primary:hover {
-  background: #003A8C;
-  border-color: #2563EB;
-  box-shadow: 0 8px 28px rgba(0, 71, 171, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
+  background: #38c29e;
+  border-color: #38c29e;
+  box-shadow: 0 8px 28px rgba(67, 214, 176, 0.4);
   transform: translateY(-1px);
 }
 
 .crystal-btn-primary:active {
   transform: translateY(0);
-  background: #002D6E;
+  background: #2ea888;
 }
 
 .crystal-btn-secondary {
-  background: #181818;
-  color: #F5F7FA;
-  border: 1px solid #2A2A2A;
+  background: #191F1D;
+  color: #F5F5F0;
+  border: 1px solid rgba(23, 107, 91, 0.4);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crystal-btn-secondary:hover {
-  background: #222222;
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1), 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: #222B28;
+  border-color: rgba(67, 214, 176, 0.4);
+  color: #FFFFFF;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 4px 12px rgba(0, 0, 0, 0.3);
   transform: translateY(-1px);
 }
 
 .crystal-input {
-  background: rgba(17, 17, 17, 0.7);
-  border: 1px solid #2A2A2A;
-  color: #FFFFFF;
+  background: rgba(25, 31, 29, 0.7);
+  border: 1px solid rgba(23, 107, 91, 0.35);
+  color: #F5F5F0;
   backdrop-filter: blur(8px);
   transition: all 0.2s ease;
 }
 
 .crystal-input:focus {
-  background: rgba(24, 24, 24, 0.85);
-  border-color: #2563EB;
+  background: #191F1D;
+  border-color: #43D6B0;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 0 0 2px rgba(67, 214, 176, 0.25);
 }
 
 /* Custom scrollbars */
@@ -263,16 +225,16 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #0A0A0A;
+  background: #101312;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2A2A2A;
+  background: rgba(23, 107, 91, 0.4);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #0047AB;
+  background: #43D6B0;
 }
 
 /* ============================================================
@@ -404,28 +366,4 @@
   }
 }
 
-/* React Bits - GlowCursor Component Styles */
-.glow-cursor {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-.glow-cursor__canvas {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  user-select: none;
-}
-
-.glow-cursor__content {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-}
 

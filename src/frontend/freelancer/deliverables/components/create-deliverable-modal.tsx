@@ -302,7 +302,7 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-blue-400" />
+              <Layers className="w-3.5 h-3.5 text-[#43D6B0]" />
               <span>Deliverable Workflow Type</span>
             </label>
             <span className="text-[11px] text-zinc-500">Configure workflow fields for your deliverable</span>
@@ -314,25 +314,25 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
               onClick={() => setNiche('software_development')}
               className={`p-3.5 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
                 niche === 'software_development'
-                  ? 'bg-[#2563EB]/15 border-[#2563EB] shadow-[0_0_15px_rgba(37,99,235,0.15)] ring-1 ring-[#2563EB]/50'
-                  : 'bg-zinc-900/60 border-white/10 hover:border-white/20 hover:bg-zinc-900'
+                  ? 'bg-[#176B5B]/15 border-[#176B5B] shadow-[0_0_15px_rgba(23,107,91,0.2)] ring-1 ring-[#43D6B0]/50'
+                  : 'bg-[#191F1D] border-[#176B5B]/30 hover:border-[#176B5B]/60'
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
                     <div className={`p-1.5 rounded-lg ${
-                      niche === 'software_development' ? 'bg-[#2563EB]/25 text-[#60A5FA]' : 'bg-white/5 text-zinc-400'
+                      niche === 'software_development' ? 'bg-[#176B5B]/30 text-[#43D6B0]' : 'bg-white/5 text-[#A6B4AE]'
                     }`}>
                       <Code2 className="w-4 h-4" />
                     </div>
-                    <span className="text-xs font-semibold text-white">Software Developer</span>
+                    <span className="text-xs font-semibold text-[#F5F5F0]">Software Developer</span>
                   </div>
                   {niche === 'software_development' && (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#60A5FA]" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#43D6B0]" />
                   )}
                 </div>
-                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                <p className="text-[11px] text-[#A6B4AE] leading-relaxed">
                   Reveals technical fields: repository URL, branch, pull request, and deployment preview.
                 </p>
               </div>
@@ -344,25 +344,25 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
               onClick={() => setNiche('others')}
               className={`p-3.5 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
                 niche !== 'software_development'
-                  ? 'bg-[#2563EB]/15 border-[#2563EB] shadow-[0_0_15px_rgba(37,99,235,0.15)] ring-1 ring-[#2563EB]/50'
-                  : 'bg-zinc-900/60 border-white/10 hover:border-white/20 hover:bg-zinc-900'
+                  ? 'bg-[#176B5B]/15 border-[#176B5B] shadow-[0_0_15px_rgba(23,107,91,0.2)] ring-1 ring-[#43D6B0]/50'
+                  : 'bg-[#191F1D] border-[#176B5B]/30 hover:border-[#176B5B]/60'
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
                     <div className={`p-1.5 rounded-lg ${
-                      niche !== 'software_development' ? 'bg-[#2563EB]/25 text-[#60A5FA]' : 'bg-white/5 text-zinc-400'
+                      niche !== 'software_development' ? 'bg-[#176B5B]/30 text-[#43D6B0]' : 'bg-white/5 text-[#A6B4AE]'
                     }`}>
                       <Briefcase className="w-4 h-4" />
                     </div>
-                    <span className="text-xs font-semibold text-white">Others</span>
+                    <span className="text-xs font-semibold text-[#F5F5F0]">Others</span>
                   </div>
                   {niche !== 'software_development' && (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#60A5FA]" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#43D6B0]" />
                   )}
                 </div>
-                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                <p className="text-[11px] text-[#A6B4AE] leading-relaxed">
                   Standard workflow for design, video, copy, marketing, consulting, and all creative services.
                 </p>
               </div>
@@ -372,10 +372,10 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
 
         {/* Specialized Niche Fields */}
         {niche === 'software_development' && (
-          <div className="p-4 rounded-xl bg-blue-500/[0.04] border border-blue-500/20 space-y-4">
+          <div className="p-4 rounded-xl bg-[#176B5B]/10 border border-[#176B5B]/30 space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-semibold text-blue-300">
-                <Code2 className="w-4 h-4 text-blue-400" />
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#43D6B0]">
+                <Code2 className="w-4 h-4 text-[#43D6B0]" />
                 <span>Software Developer Specifications</span>
               </div>
               <span className="text-[10px] text-zinc-400">GitHub optional • Standard files supported</span>

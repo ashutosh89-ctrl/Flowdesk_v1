@@ -328,10 +328,10 @@ export const BillingPlanPanel: React.FC = () => {
           <div className="space-y-3">
             <h4 className="text-xs font-mono uppercase tracking-wider text-zinc-400">Workspace Quotas & Usage</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {renderUsageBar('Active Clients', usage.activeClients, limits.activeClients, <Users className="w-4 h-4 text-emerald-400" />)}
-              {renderUsageBar('Active Projects', usage.activeProjects, limits.activeProjects, <FolderKanban className="w-4 h-4 text-blue-400" />)}
-              {renderUsageBar('Monthly Invoices', usage.invoicesPerMonth, limits.invoicesPerMonth, <Receipt className="w-4 h-4 text-amber-400" />)}
-              {renderUsageBar('Storage Allocation', usage.storageMb, limits.storageMb, <HardDrive className="w-4 h-4 text-purple-400" />, 'MB')}
+              {renderUsageBar('Active Clients', usage.activeClients, limits.activeClients, <Users className="w-4 h-4 text-[#43D6B0]" />)}
+              {renderUsageBar('Active Projects', usage.activeProjects, limits.activeProjects, <FolderKanban className="w-4 h-4 text-[#43D6B0]" />)}
+              {renderUsageBar('Monthly Invoices', usage.invoicesPerMonth, limits.invoicesPerMonth, <Receipt className="w-4 h-4 text-[#43D6B0]" />)}
+              {renderUsageBar('Storage Allocation', usage.storageMb, limits.storageMb, <HardDrive className="w-4 h-4 text-[#43D6B0]" />, 'MB')}
             </div>
           </div>
 

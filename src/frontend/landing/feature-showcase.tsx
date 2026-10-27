@@ -59,13 +59,13 @@ export const FeatureShowcase: React.FC = () => {
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         className="text-center max-w-3xl mx-auto mb-16 space-y-4"
       >
-        <span className="text-xs sm:text-[13px] font-mono uppercase tracking-widest text-[#E8F0FF] bg-[#0047AB]/20 px-4 py-1.5 rounded-full border border-[#2563EB]/30 font-semibold">
+        <span className="text-xs sm:text-[13px] font-mono uppercase tracking-widest text-[#43D6B0] bg-[#191F1D] px-4 py-1.5 rounded-full border border-[#176B5B]/40 font-medium">
           Complete Workspace Features
         </span>
-        <h2 className="text-4xl sm:text-5xl lg:text-[50px] font-extrabold text-white tracking-tight leading-tight">
+        <h2 className="text-4xl sm:text-5xl lg:text-[50px] font-extrabold text-[#F5F5F0] tracking-tight leading-tight">
           Everything You Need to Run Your Freelance Business
         </h2>
-        <p className="text-lg sm:text-xl lg:text-[22px] text-zinc-300 max-w-3xl mx-auto leading-relaxed font-normal">
+        <p className="text-lg sm:text-xl lg:text-[22px] text-[#A6B4AE] max-w-3xl mx-auto leading-relaxed font-normal">
           One connected workspace for managing clients, delivering great work, collecting approvals, and getting paid on time.
         </p>
       </motion.div>
@@ -86,23 +86,23 @@ export const FeatureShowcase: React.FC = () => {
             }}
             className="relative"
           >
-            <Card interactive className="group h-full relative overflow-hidden transition-all duration-300 hover:border-[#2563EB]/40 p-6 sm:p-7">
+            <Card interactive className="group h-full relative overflow-hidden transition-all duration-300 hover:border-[#43D6B0]/40 p-6 sm:p-7">
               {hoveredIdx === idx && (
                 <div
                   className="absolute inset-0 pointer-events-none transition-opacity duration-300"
                   style={{
-                    background: `radial-gradient(circle 220px at ${mousePos.x}px ${mousePos.y}px, rgba(37, 99, 235, 0.12), transparent 70%)`,
+                    background: `radial-gradient(circle 220px at ${mousePos.x}px ${mousePos.y}px, rgba(23, 107, 91, 0.2), transparent 70%)`,
                   }}
                 />
               )}
               <CardHeader className="mb-3">
-                <div className="w-12 h-12 rounded-xl bg-[#0047AB]/10 border border-[#2563EB]/25 flex items-center justify-center mb-3 group-hover:scale-110 group-hover:bg-[#0047AB] group-hover:text-white transition-all duration-300">
+                <div className="w-12 h-12 rounded-xl bg-[#176B5B]/15 border border-[#176B5B]/35 text-[#43D6B0] flex items-center justify-center mb-3 group-hover:scale-105 group-hover:bg-[#176B5B]/30 group-hover:border-[#43D6B0]/50 transition-all duration-300">
                   {feat.icon}
                 </div>
-                <CardTitle className="text-2xl font-bold text-white tracking-tight">{feat.title}</CardTitle>
+                <CardTitle className="text-2xl font-bold text-[#F5F5F0] tracking-tight">{feat.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-base sm:text-lg text-zinc-300 leading-relaxed font-normal">{feat.description}</CardDescription>
+                <CardDescription className="text-base sm:text-lg text-[#A6B4AE] leading-relaxed font-normal">{feat.description}</CardDescription>
               </CardContent>
             </Card>
           </motion.div>

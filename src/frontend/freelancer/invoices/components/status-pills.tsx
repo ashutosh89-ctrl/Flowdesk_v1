@@ -4,10 +4,10 @@ import { calculateDueIndicator } from '@/shared/utils/due-indicator';
 
 export function WorkflowStatusPill({ status }: { status: InvoiceWorkflowStatus }) {
   const styles: Record<InvoiceWorkflowStatus, string> = {
-    draft: 'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700',
-    sent: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/50',
-    viewed: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800/50',
-    cancelled: 'bg-zinc-100 text-zinc-500 border-zinc-200 line-through dark:bg-zinc-900 dark:text-zinc-500 dark:border-zinc-800',
+    draft: 'bg-zinc-800/40 text-[#A6B4AE] border-[#176B5B]/30',
+    sent: 'bg-[#176B5B]/20 text-[#43D6B0] border-[#176B5B]/40',
+    viewed: 'bg-[#176B5B]/15 text-[#A6B4AE] border-[#176B5B]/30',
+    cancelled: 'bg-zinc-900 text-zinc-500 border-zinc-800 line-through',
   };
 
   const labels: Record<InvoiceWorkflowStatus, string> = {
@@ -92,10 +92,10 @@ export function RecurringInvoiceBadge({ scheduleId }: { scheduleId?: string | nu
   if (!scheduleId) return null;
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium border rounded-full bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
+      className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium border rounded-full bg-[#176B5B]/20 text-[#43D6B0] border-[#176B5B]/40"
       title="Created by recurring invoice schedule"
     >
-      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+      <span className="w-1.5 h-1.5 rounded-full bg-[#43D6B0] animate-pulse" />
       Recurring
     </span>
   );

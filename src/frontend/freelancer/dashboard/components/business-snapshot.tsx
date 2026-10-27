@@ -44,9 +44,9 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Active Clients',
       value: safeMetrics.activeClientsCount.toString(),
       subtext: 'Active client accounts',
-      icon: <Users className="w-5 h-5 text-[#2563EB]" />,
-      color: 'from-[#0047AB]/15 to-transparent',
-      borderColor: 'border-[#2563EB]/30',
+      icon: <Users className="w-5 h-5 text-[#43D6B0]" />,
+      color: 'from-[#176B5B]/15 to-transparent',
+      borderColor: 'border-[#176B5B]/30',
       actionView: 'clients',
     },
     {
@@ -54,9 +54,9 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Active Projects',
       value: safeMetrics.activeProjectsCount.toString(),
       subtext: `${safeMetrics.completionRate}% avg completion`,
-      icon: <FolderKanban className="w-5 h-5 text-[#2563EB]" />,
-      color: 'from-[#0047AB]/15 to-transparent',
-      borderColor: 'border-[#2563EB]/30',
+      icon: <FolderKanban className="w-5 h-5 text-[#43D6B0]" />,
+      color: 'from-[#176B5B]/15 to-transparent',
+      borderColor: 'border-[#176B5B]/30',
       actionView: 'projects',
     },
     {
@@ -64,9 +64,9 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Pending Deliverables',
       value: safeMetrics.pendingDeliverablesCount.toString(),
       subtext: 'Packages in review',
-      icon: <FileCheck className="w-5 h-5 text-emerald-400" />,
-      color: 'from-emerald-500/10 to-transparent',
-      borderColor: 'border-emerald-500/20',
+      icon: <FileCheck className="w-5 h-5 text-[#43D6B0]" />,
+      color: 'from-[#176B5B]/15 to-transparent',
+      borderColor: 'border-[#176B5B]/30',
       actionView: 'deliverables',
     },
     {
@@ -84,9 +84,9 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Monthly Revenue',
       value: formatCurrency(safeMetrics.monthlyRevenue, currency),
       subtext: `+${safeMetrics.revenueGrowthPct}% vs last month`,
-      icon: <TrendingUp className="w-5 h-5 text-emerald-400" />,
-      color: 'from-emerald-500/10 to-transparent',
-      borderColor: 'border-emerald-500/20',
+      icon: <TrendingUp className="w-5 h-5 text-[#43D6B0]" />,
+      color: 'from-[#176B5B]/15 to-transparent',
+      borderColor: 'border-[#176B5B]/30',
       actionView: 'invoices',
     },
     {
@@ -114,21 +114,21 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Workspace Health',
       value: `${safeMetrics.workspaceHealthScore}/100`,
       subtext: 'Optimal operational score',
-      icon: <ShieldCheck className="w-5 h-5 text-[#2563EB]" />,
-      color: 'from-[#0047AB]/15 to-transparent',
-      borderColor: 'border-[#2563EB]/30',
+      icon: <ShieldCheck className="w-5 h-5 text-[#43D6B0]" />,
+      color: 'from-[#176B5B]/15 to-transparent',
+      borderColor: 'border-[#176B5B]/30',
       actionView: 'dashboard',
     },
   ];
 
   return (
-    <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
+    <div className="bg-[#191F1D] border border-[#176B5B]/30 rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold font-display text-white tracking-tight flex items-center gap-2.5">
-            <Activity className="w-6 h-6 text-[#2563EB]" /> Business Intelligence Snapshot
+          <h2 className="text-xl sm:text-2xl font-bold font-display text-[#F5F5F0] tracking-tight flex items-center gap-2.5">
+            <Activity className="w-6 h-6 text-[#43D6B0]" /> Business Intelligence Snapshot
           </h2>
-          <p className="text-sm text-zinc-300 font-medium mt-1">High-level financial &amp; operational metrics across all client hubs.</p>
+          <p className="text-sm text-[#A6B4AE] font-medium mt-1">High-level financial &amp; operational metrics across all client hubs.</p>
         </div>
       </div>
 
@@ -137,21 +137,21 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
           <div
             key={card.id}
             onClick={() => onNavigate(card.actionView)}
-            className={`p-5 rounded-xl bg-gradient-to-br ${card.color} bg-[#181818]/80 border ${card.borderColor} hover:border-[#0047AB]/50 transition-all cursor-pointer group flex flex-col justify-between`}
+            className={`p-5 rounded-xl bg-gradient-to-br ${card.color} bg-[#191F1D] border ${card.borderColor} hover:border-[#43D6B0]/60 transition-all cursor-pointer group flex flex-col justify-between`}
           >
             <div className="flex items-start justify-between mb-3.5">
               <span className="p-2.5 rounded-lg bg-white/5 border border-white/10 group-hover:scale-105 transition-transform">
                 {card.icon}
               </span>
-              <ArrowUpRight className="w-5 h-5 text-zinc-500 group-hover:text-white transition-colors" />
+              <ArrowUpRight className="w-5 h-5 text-[#A6B4AE] group-hover:text-white transition-colors" />
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-zinc-300">{card.label}</p>
-              <h3 className="text-2xl sm:text-3xl font-extrabold font-display text-white tracking-tight my-1 group-hover:text-amber-300 transition-colors">
+              <p className="text-sm font-semibold text-[#A6B4AE]">{card.label}</p>
+              <h3 className="text-2xl sm:text-3xl font-extrabold font-display text-[#F5F5F0] tracking-tight my-1 group-hover:text-[#43D6B0] transition-colors">
                 {card.value}
               </h3>
-              <p className="text-xs sm:text-sm text-zinc-400 font-medium">{card.subtext}</p>
+              <p className="text-xs sm:text-sm text-[#A6B4AE] font-medium">{card.subtext}</p>
             </div>
           </div>
         ))}

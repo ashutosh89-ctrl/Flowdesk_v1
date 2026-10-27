@@ -68,19 +68,19 @@ export const TestimonialsSection: React.FC = () => {
   ];
 
   return (
-    <section className="py-24 px-6 lg:px-12 bg-zinc-950/70 border-y border-white/10 relative overflow-hidden">
-      {/* Background Flowing Light Effect */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-white/[0.02] rounded-full blur-[160px] pointer-events-none" />
+    <section className="py-24 px-6 lg:px-12 bg-[#101312] border-y border-[#176B5B]/20 relative overflow-hidden">
+      {/* Background Accent Effect */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-[#176B5B]/05 rounded-full blur-[160px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+          <span className="text-[11px] font-mono uppercase tracking-widest text-[#43D6B0] bg-[#176B5B]/20 px-3.5 py-1 rounded-full border border-[#176B5B]/40">
             Lifecycle Blueprint
           </span>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#F5F5F0] tracking-tight">
             How FlowDesk Works
           </h2>
-          <p className="text-sm text-zinc-400 leading-relaxed">
+          <p className="text-base text-[#A6B4AE] leading-relaxed">
             A structured workflow connecting client work from project kickoff to payment tracking.
           </p>
         </div>
@@ -88,9 +88,9 @@ export const TestimonialsSection: React.FC = () => {
         {/* Scrollable Horizontal Step Stream */}
         <div className="relative mb-12">
           {/* Progress Connecting Line */}
-          <div className="hidden lg:block absolute top-[44px] left-8 right-8 h-0.5 bg-white/10 -z-0">
+          <div className="hidden lg:block absolute top-[44px] left-8 right-8 h-0.5 bg-[#176B5B]/25 -z-0">
             <motion.div
-              className="h-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.8)]"
+              className="h-full bg-[#43D6B0] shadow-[0_0_12px_rgba(67,214,176,0.6)]"
               initial={{ width: '0%' }}
               whileInView={{ width: `${(activeStep / (steps.length - 1)) * 100}%` }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -108,8 +108,8 @@ export const TestimonialsSection: React.FC = () => {
                   whileTap={{ scale: 0.98 }}
                   className={`p-4 rounded-2xl border transition-all duration-300 cursor-pointer flex flex-col justify-between ${
                     isActive
-                      ? 'bg-zinc-900 border-white/40 shadow-[0_10px_30px_rgba(255,255,255,0.1)] ring-1 ring-white/20'
-                      : 'bg-zinc-950/80 border-white/10 hover:border-white/20 hover:bg-zinc-900/40'
+                      ? 'bg-[#191F1D] border-[#43D6B0]/60 shadow-[0_10px_30px_rgba(67,214,176,0.1)] ring-1 ring-[#43D6B0]/30'
+                      : 'bg-[#191F1D]/60 border-[#176B5B]/20 hover:border-[#176B5B]/50 hover:bg-[#191F1D]'
                   }`}
                 >
                   <div>
@@ -117,22 +117,22 @@ export const TestimonialsSection: React.FC = () => {
                       <div
                         className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs transition-colors ${
                           isActive
-                            ? 'bg-white text-zinc-950 shadow-[0_0_16px_rgba(255,255,255,0.5)]'
-                            : 'bg-white/10 text-white border border-white/10'
+                            ? 'bg-[#43D6B0] text-[#101312] shadow-[0_0_16px_rgba(67,214,176,0.4)]'
+                            : 'bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/30'
                         }`}
                       >
                         {step.icon}
                       </div>
-                      <span className="text-[9px] font-mono text-zinc-400">{idx + 1} / 7</span>
+                      <span className="text-[10px] font-mono text-[#A6B4AE]">{idx + 1} / 7</span>
                     </div>
 
-                    <h4 className="text-xs font-bold text-white tracking-tight mb-1">{step.title}</h4>
-                    <p className="text-[10px] text-zinc-400 leading-normal line-clamp-2">{step.desc}</p>
+                    <h4 className="text-xs font-bold text-[#F5F5F0] tracking-tight mb-1">{step.title}</h4>
+                    <p className="text-[11px] text-[#A6B4AE] leading-normal line-clamp-2">{step.desc}</p>
                   </div>
 
-                  <div className="mt-4 pt-2 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-[9px] font-mono text-zinc-400">{step.tag}</span>
-                    {isActive && <ArrowRight className="w-3 h-3 text-white" />}
+                  <div className="mt-4 pt-2 border-t border-[#176B5B]/20 flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-[#A6B4AE]">{step.tag}</span>
+                    {isActive && <ArrowRight className="w-3 h-3 text-[#43D6B0]" />}
                   </div>
                 </motion.div>
               );
@@ -146,21 +146,21 @@ export const TestimonialsSection: React.FC = () => {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="p-6 sm:p-8 rounded-2xl bg-zinc-900/80 border border-white/15 backdrop-blur-2xl shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
+          className="p-6 sm:p-8 rounded-2xl bg-[#191F1D] border border-[#176B5B]/30 backdrop-blur-2xl shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
         >
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-white text-zinc-950 flex items-center justify-center font-bold shrink-0 shadow-lg">
+            <div className="w-12 h-12 rounded-2xl bg-[#43D6B0] text-[#101312] flex items-center justify-center font-bold shrink-0 shadow-lg">
               {steps[activeStep].icon}
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-mono uppercase text-zinc-400 bg-white/10 px-2.5 py-0.5 rounded-full border border-white/10">
+                <span className="text-[10px] font-mono uppercase text-[#43D6B0] bg-[#176B5B]/20 px-2.5 py-0.5 rounded-full border border-[#176B5B]/30">
                   {steps[activeStep].tag}
                 </span>
-                <span className="text-xs text-zinc-400 font-mono">Stage {activeStep + 1} of 7</span>
+                <span className="text-xs text-[#A6B4AE] font-mono">Stage {activeStep + 1} of 7</span>
               </div>
-              <h3 className="text-xl font-bold text-white tracking-tight">{steps[activeStep].title}</h3>
-              <p className="text-xs sm:text-sm text-zinc-300 mt-1 max-w-2xl leading-relaxed">
+              <h3 className="text-xl font-bold text-[#F5F5F0] tracking-tight">{steps[activeStep].title}</h3>
+              <p className="text-sm text-[#A6B4AE] mt-1 max-w-2xl leading-relaxed">
                 {steps[activeStep].detail}
               </p>
             </div>
@@ -169,13 +169,13 @@ export const TestimonialsSection: React.FC = () => {
           <div className="flex items-center gap-2 self-end md:self-center">
             <button
               onClick={() => setActiveStep((prev) => (prev > 0 ? prev - 1 : steps.length - 1))}
-              className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-zinc-300 hover:text-white hover:bg-white/10 transition-colors font-mono"
+              className="px-3 py-1.5 rounded-xl bg-[#191F1D] border border-[#176B5B]/40 text-xs text-[#A6B4AE] hover:text-[#F5F5F0] hover:bg-[#176B5B]/20 transition-colors font-mono"
             >
               Prev
             </button>
             <button
               onClick={() => setActiveStep((prev) => (prev < steps.length - 1 ? prev + 1 : 0))}
-              className="px-3 py-1.5 rounded-xl bg-white text-zinc-950 font-semibold text-xs hover:bg-zinc-200 transition-colors shadow-md"
+              className="px-3.5 py-1.5 rounded-xl bg-[#43D6B0] text-[#101312] font-semibold text-xs hover:bg-[#43D6B0]/90 transition-colors shadow-md"
             >
               Next Step
             </button>

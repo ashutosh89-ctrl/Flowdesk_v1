@@ -29,12 +29,12 @@ export const ActivityPanel: React.FC<ActivityPanelProps> = ({ activities }) => {
       case 'revision':
         return <RotateCcw className="w-4 h-4 text-amber-400" />;
       case 'invoice':
-        return <CreditCard className="w-4 h-4 text-indigo-400" />;
+        return <CreditCard className="w-4 h-4 text-[#43D6B0]" />;
       case 'document':
       case 'file_request':
-        return <FileText className="w-4 h-4 text-blue-400" />;
+        return <FileText className="w-4 h-4 text-[#43D6B0]" />;
       case 'comment':
-        return <MessageSquare className="w-4 h-4 text-indigo-300" />;
+        return <MessageSquare className="w-4 h-4 text-[#43D6B0]" />;
       default:
         return <Clock className="w-4 h-4 text-zinc-400" />;
     }

@@ -155,13 +155,13 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white font-sans antialiased flex flex-col lg:flex-row selection:bg-white selection:text-zinc-950">
+    <div className="min-h-screen bg-[#101312] text-[#F5F5F0] font-sans antialiased flex flex-col lg:flex-row selection:bg-[#43D6B0] selection:text-[#101312]">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-4 right-4 z-50 p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold backdrop-blur-xl shadow-2xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="fixed top-4 right-4 z-50 p-4 rounded-xl bg-[#176B5B]/20 border border-[#176B5B]/50 text-[#43D6B0] text-xs font-semibold backdrop-blur-xl shadow-2xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 className="w-4 h-4 text-[#43D6B0] shrink-0" />
           <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="ml-2 text-zinc-400 hover:text-white">
+          <button onClick={() => setToastMessage(null)} className="ml-2 text-[#A6B4AE] hover:text-[#F5F5F0]">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>

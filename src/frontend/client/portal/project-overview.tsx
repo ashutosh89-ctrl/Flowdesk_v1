@@ -101,7 +101,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, acti
 
           <div className="p-4 rounded-2xl bg-zinc-900/80 border border-white/10 space-y-1">
             <div className="flex items-center gap-2 text-zinc-400 text-xs font-mono">
-              <Calendar className="w-3.5 h-3.5 text-blue-400" />
+              <Calendar className="w-3.5 h-3.5 text-[#43D6B0]" />
               <span>Target Launch Date</span>
             </div>
             <p className="text-lg font-bold text-white font-mono">{activeProject.dueDate}</p>
@@ -110,7 +110,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, acti
 
           <div className="p-4 rounded-2xl bg-zinc-900/80 border border-white/10 space-y-1">
             <div className="flex items-center gap-2 text-zinc-400 text-xs font-mono">
-              <DollarSign className="w-3.5 h-3.5 text-indigo-400" />
+              <DollarSign className="w-3.5 h-3.5 text-[#43D6B0]" />
               <span>Agreed Budget</span>
             </div>
             <p className="text-2xl font-extrabold text-white font-mono">
@@ -167,7 +167,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, acti
         {/* Project Timeline */}
         <div>
           <h3 className="text-sm font-bold text-white tracking-tight mb-4 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-blue-400" />
+            <Clock className="w-4 h-4 text-[#43D6B0]" />
             Client Timeline History
           </h3>
 

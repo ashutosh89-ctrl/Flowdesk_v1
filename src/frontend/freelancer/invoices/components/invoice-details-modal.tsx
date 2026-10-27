@@ -236,7 +236,7 @@ export function InvoiceDetailsModal({
               onClick={() => onOpenPortalView(currentInvoice)}
               className="px-3 py-1.5 rounded-xl border border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 hover:text-white font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+              <ExternalLink className="w-3.5 h-3.5 text-[#43D6B0]" />
               Portal Preview
             </button>
 

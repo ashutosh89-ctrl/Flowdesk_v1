@@ -98,10 +98,7 @@ export const WorkflowSection: React.FC = () => {
   ];
 
   return (
-    <section id="workflow" className="py-24 px-6 lg:px-12 bg-[#0A0A0A] border-y border-[#2A2A2A] relative z-10 overflow-hidden">
-      {/* Background Flowing Light Effect */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-[#0047AB]/[0.04] rounded-full blur-[160px] pointer-events-none" />
-
+    <section id="workflow" className="py-24 px-6 lg:px-12 bg-[#101312] border-y border-[#176B5B]/30 relative z-10 overflow-hidden">
       <div className="max-w-7xl mx-auto relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }}
@@ -110,13 +107,13 @@ export const WorkflowSection: React.FC = () => {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="text-center max-w-3xl mx-auto mb-16 space-y-4"
         >
-          <span className="text-xs sm:text-[13px] font-mono uppercase tracking-widest text-[#E8F0FF] bg-[#0047AB]/20 px-4 py-1.5 rounded-full border border-[#2563EB]/30 font-semibold">
+          <span className="text-xs sm:text-[13px] font-mono uppercase tracking-widest text-[#43D6B0] bg-[#191F1D] px-4 py-1.5 rounded-full border border-[#176B5B]/40 font-medium">
             Lifecycle Blueprint
           </span>
-          <h2 className="text-4xl sm:text-5xl lg:text-[50px] font-extrabold text-white tracking-tight leading-tight">
+          <h2 className="text-4xl sm:text-5xl lg:text-[50px] font-extrabold text-[#F5F5F0] tracking-tight leading-tight">
             From Client Onboarding to Payment — One Connected Workflow
           </h2>
-          <p className="text-lg sm:text-xl lg:text-[22px] text-zinc-300 max-w-3xl mx-auto leading-relaxed font-normal">
+          <p className="text-lg sm:text-xl lg:text-[22px] text-[#A6B4AE] max-w-3xl mx-auto leading-relaxed font-normal">
             Move every project forward with a structured process that keeps you and your clients aligned at every stage.
           </p>
         </motion.div>
@@ -124,9 +121,9 @@ export const WorkflowSection: React.FC = () => {
         {/* Step Tabs Row */}
         <div className="relative mb-10">
           {/* Progress Connecting Line on Desktop - Staged in dedicated lower layer */}
-          <div className="hidden lg:block absolute top-[34px] left-[5%] right-[5%] h-0.5 bg-[#1C1C21] z-0 pointer-events-none overflow-hidden">
+          <div className="hidden lg:block absolute top-[34px] left-[5%] right-[5%] h-0.5 bg-[#191F1D] z-0 pointer-events-none overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-[#0047AB] via-[#2563EB] to-[#3B82F6] shadow-[0_0_12px_rgba(37,99,235,0.8)]"
+              className="h-full bg-gradient-to-r from-[#176B5B] to-[#43D6B0]"
               initial={{ width: '0%' }}
               animate={{ width: `${(activeStep / (steps.length - 1)) * 100}%` }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
@@ -143,8 +140,8 @@ export const WorkflowSection: React.FC = () => {
                   onClick={() => setActiveStep(idx)}
                   className={`p-4 rounded-2xl border transition-all duration-300 text-left flex flex-col justify-between relative z-10 ${
                     isActive
-                      ? 'bg-[#18181C] border-[#2563EB]/60 shadow-[0_10px_30px_rgba(0,71,171,0.3)] ring-1 ring-[#2563EB]/50'
-                      : 'bg-[#121214] border-[#2A2A2A] hover:border-[#2563EB]/40 hover:bg-[#18181C]'
+                      ? 'bg-[#191F1D] border-[#43D6B0]/70 shadow-lg shadow-black/40 ring-1 ring-[#43D6B0]/40'
+                      : 'bg-[#101312] border-[#176B5B]/30 hover:border-[#43D6B0]/40 hover:bg-[#191F1D]'
                   }`}
                 >
                   <div>
@@ -152,22 +149,22 @@ export const WorkflowSection: React.FC = () => {
                       <div
                         className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition-colors ${
                           isActive
-                            ? 'bg-[#0047AB] text-white shadow-[0_0_16px_rgba(37,99,235,0.7)]'
-                            : 'bg-[#18181C] text-zinc-300 border border-[#2A2A2A]'
+                            ? 'bg-[#43D6B0] text-[#101312]'
+                            : 'bg-[#191F1D] text-[#A6B4AE] border border-[#176B5B]/30'
                         }`}
                       >
                         {step.icon}
                       </div>
-                      <span className="text-xs font-mono text-zinc-300 font-bold">0{idx + 1}</span>
+                      <span className="text-xs font-mono text-[#A6B4AE] font-semibold">0{idx + 1}</span>
                     </div>
 
-                    <h4 className="text-base sm:text-[17px] font-bold text-white tracking-tight mb-1">{step.label}</h4>
-                    <p className="text-xs sm:text-sm text-zinc-300 leading-normal line-clamp-2">{step.desc}</p>
+                    <h4 className="text-base sm:text-[17px] font-bold text-[#F5F5F0] tracking-tight mb-1">{step.label}</h4>
+                    <p className="text-xs sm:text-sm text-[#A6B4AE] leading-normal line-clamp-2">{step.desc}</p>
                   </div>
 
-                  <div className="mt-4 pt-2 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-[11px] font-mono uppercase text-zinc-400 font-semibold">{step.stage}</span>
-                    {isActive && <ArrowRight className="w-4 h-4 text-white" />}
+                  <div className="mt-4 pt-2 border-t border-[#176B5B]/20 flex items-center justify-between">
+                    <span className="text-[11px] font-mono uppercase text-[#A6B4AE] font-semibold">{step.stage}</span>
+                    {isActive && <ArrowRight className="w-4 h-4 text-[#43D6B0]" />}
                   </div>
                 </button>
               );
@@ -183,25 +180,25 @@ export const WorkflowSection: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25 }}
-            className="p-6 sm:p-9 rounded-2xl bg-[#111111]/90 border border-[#2A2A2A] backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
+            className="p-6 sm:p-9 rounded-2xl bg-[#191F1D] border border-[#176B5B]/40 shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
           >
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-[#0047AB] text-white flex items-center justify-center font-bold shrink-0 shadow-lg shadow-[#0047AB]/25">
+              <div className="w-14 h-14 rounded-2xl bg-[#43D6B0] text-[#101312] flex items-center justify-center font-bold shrink-0 shadow-md">
                 {steps[activeStep].icon}
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-mono uppercase text-[#E8F0FF] bg-[#0047AB]/20 px-3.5 py-1 rounded-full border border-[#2563EB]/30 font-semibold">
+                  <span className="text-xs font-mono uppercase text-[#43D6B0] bg-[#176B5B]/20 px-3.5 py-1 rounded-full border border-[#176B5B]/40 font-semibold">
                     {steps[activeStep].stage}
                   </span>
-                  <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3.5 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1 font-semibold">
+                  <span className="text-xs font-mono text-[#43D6B0] bg-[#176B5B]/15 px-3.5 py-1 rounded-full border border-[#176B5B]/30 flex items-center gap-1 font-semibold">
                     <ShieldCheck className="w-4 h-4" />
                     {steps[activeStep].featureTag}
                   </span>
-                  <span className="text-xs sm:text-sm text-zinc-400 font-mono">Stage {activeStep + 1} of 7</span>
+                  <span className="text-xs sm:text-sm text-[#A6B4AE] font-mono">Stage {activeStep + 1} of 7</span>
                 </div>
-                <h3 className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-white tracking-tight">{steps[activeStep].title}</h3>
-                <p className="text-base sm:text-lg lg:text-xl text-zinc-300 max-w-3xl leading-relaxed">
+                <h3 className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-[#F5F5F0] tracking-tight">{steps[activeStep].title}</h3>
+                <p className="text-base sm:text-lg lg:text-xl text-[#A6B4AE] max-w-3xl leading-relaxed">
                   {steps[activeStep].detail}
                 </p>
               </div>
@@ -211,14 +208,14 @@ export const WorkflowSection: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveStep((prev) => (prev > 0 ? prev - 1 : steps.length - 1))}
-                className="px-5 py-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-base text-zinc-300 hover:text-white hover:border-[#0047AB]/40 transition-colors flex items-center gap-2 font-medium"
+                className="px-5 py-3 rounded-xl bg-[#101312] border border-[#176B5B]/40 text-base text-[#A6B4AE] hover:text-[#F5F5F0] hover:border-[#43D6B0]/50 transition-colors flex items-center gap-2 font-medium"
               >
                 <ArrowLeft className="w-4 h-4" /> Previous
               </button>
               <button
                 type="button"
                 onClick={() => setActiveStep((prev) => (prev < steps.length - 1 ? prev + 1 : 0))}
-                className="px-5 py-3 rounded-xl bg-[#0047AB] hover:bg-[#003A8C] text-white font-semibold text-base transition-colors shadow-md shadow-[#0047AB]/25 flex items-center gap-2"
+                className="px-5 py-3 rounded-xl bg-[#43D6B0] hover:bg-[#38c29e] text-[#101312] font-bold text-base transition-colors shadow-sm flex items-center gap-2"
               >
                 Next <ArrowRight className="w-4 h-4" />
               </button>

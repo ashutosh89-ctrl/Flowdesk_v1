@@ -28,34 +28,35 @@ export const TopNav: React.FC<TopNavProps> = ({
   const currentTitle = breadcrumbItems[breadcrumbItems.length - 1]?.label || 'Dashboard';
 
   return (
-    <header className="w-full h-16 px-4 md:px-8 border-b border-[#2A2A2A] bg-[#0A0A0A]/90 backdrop-blur-xl flex items-center justify-between sticky top-0 z-30 select-none">
+    <header className="w-full h-16 px-4 md:px-8 border-b border-[#176B5B]/25 bg-[#101312]/95 backdrop-blur-xl flex items-center justify-between sticky top-0 z-30 select-none">
       {/* Left Section: Mobile Toggle & Page Title */}
       <div className="flex items-center gap-3">
         <button
           onClick={onOpenMobileSidebar}
-          className="p-2 text-zinc-400 hover:text-white md:hidden rounded-lg hover:bg-white/10 transition-colors"
+          className="p-2 text-[#A6B4AE] hover:text-[#F5F5F0] md:hidden rounded-lg hover:bg-[#176B5B]/20 transition-colors"
+          aria-label="Toggle navigation menu"
         >
           <Menu className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2.5">
-          <h2 className="text-base sm:text-lg font-bold font-display text-white tracking-tight">{currentTitle}</h2>
-          <span className="hidden sm:inline-block w-2 h-2 rounded-full bg-emerald-400" />
+          <h2 className="text-base sm:text-lg font-bold font-display text-[#F5F5F0] tracking-tight">{currentTitle}</h2>
+          <span className="hidden sm:inline-block w-2 h-2 rounded-full bg-[#43D6B0]" />
         </div>
       </div>
 
-      {/* Center Section: Modern OS ⌘K Glass Search Bar */}
+      {/* Center Section: Modern OS ⌘K Search Bar */}
       <div className="flex-1 max-w-[540px] mx-4 hidden md:block">
         <button
           onClick={onOpenSearch}
-          className="w-full h-10 px-4 rounded-xl bg-[#111111] border border-[#2A2A2A] hover:border-[#2563EB]/40 hover:bg-[#181818] backdrop-blur-md flex items-center justify-between text-sm text-zinc-400 hover:text-white transition-all duration-200 shadow-inner group"
+          className="w-full h-10 px-4 rounded-xl bg-[#191F1D] border border-[#176B5B]/30 hover:border-[#43D6B0]/50 hover:bg-[#191F1D]/80 backdrop-blur-md flex items-center justify-between text-sm text-[#A6B4AE] hover:text-[#F5F5F0] transition-all duration-200 group"
         >
           <div className="flex items-center gap-2.5">
-            <Search className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" />
-            <span className="font-medium text-zinc-300 group-hover:text-white">
+            <Search className="w-4 h-4 text-[#A6B4AE] group-hover:text-[#43D6B0] transition-colors" />
+            <span className="font-medium text-[#A6B4AE] group-hover:text-[#F5F5F0]">
               Search clients, invoices, deliverables, documents...
             </span>
           </div>
-          <kbd className="px-2 py-0.5 text-xs font-mono font-medium bg-[#181818] border border-[#2A2A2A] rounded text-zinc-300 shadow-sm">
+          <kbd className="px-2 py-0.5 text-xs font-mono font-medium bg-[#101312] border border-[#176B5B]/30 rounded text-[#A6B4AE] shadow-sm">
             ⌘K
           </kbd>
         </button>
@@ -66,7 +67,8 @@ export const TopNav: React.FC<TopNavProps> = ({
         {/* Mobile Search Icon Button */}
         <button
           onClick={onOpenSearch}
-          className="md:hidden p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+          className="md:hidden p-2 text-[#A6B4AE] hover:text-[#F5F5F0] rounded-lg hover:bg-[#176B5B]/20 transition-colors"
+          aria-label="Search"
         >
           <Search className="w-4 h-4" />
         </button>
@@ -90,8 +92,9 @@ export const TopNav: React.FC<TopNavProps> = ({
         {/* Settings Shortcut Button */}
         <button
           onClick={() => onNavigate('settings')}
-          className="p-2 text-zinc-400 hover:text-white rounded-xl bg-[#111111] border border-[#2A2A2A] hover:border-[#2563EB]/40 hover:bg-[#181818] transition-all"
+          className="p-2 text-[#A6B4AE] hover:text-[#F5F5F0] rounded-xl bg-[#191F1D] border border-[#176B5B]/30 hover:border-[#43D6B0]/50 hover:bg-[#176B5B]/20 transition-all"
           title="Settings"
+          aria-label="Settings"
         >
           <Settings className="w-4 h-4" />
         </button>
@@ -99,7 +102,7 @@ export const TopNav: React.FC<TopNavProps> = ({
         {/* Notifications Popover */}
         <NotificationMenu />
 
-        <div className="h-4 w-px bg-white/10 mx-1 hidden sm:block" />
+        <div className="h-4 w-px bg-[#176B5B]/30 mx-1 hidden sm:block" />
 
         {/* User Profile Dropdown Menu */}
         <UserProfileMenu

@@ -118,50 +118,50 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       label: 'Documents',
       icon: FileText,
       badge: pendingDocumentsCount > 0 ? pendingDocumentsCount : undefined,
-      badgeColor: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+      badgeColor: 'bg-[#176B5B]/20 text-[#43D6B0] border-[#176B5B]/40',
     },
     {
       id: 'invoices',
       label: 'Invoices',
       icon: CreditCard,
       badge: unpaidInvoicesCount > 0 ? unpaidInvoicesCount : undefined,
-      badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+      badgeColor: 'bg-[#176B5B]/20 text-[#43D6B0] border-[#176B5B]/40',
     },
     {
       id: 'comments',
       label: 'Comments',
       icon: MessageSquare,
       badge: unreadCommentsCount > 0 ? unreadCommentsCount : undefined,
-      badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+      badgeColor: 'bg-[#176B5B]/20 text-[#43D6B0] border-[#176B5B]/40',
     },
     { id: 'activity', label: 'Activity', icon: Clock },
     { id: 'profile', label: 'Profile', icon: User },
   ];
 
   const content = (
-    <div className="h-full flex flex-col justify-between p-4 bg-[#0A0A0A] backdrop-blur-2xl border-r border-[#2A2A2A] w-64 text-white font-sans">
+    <div className="h-full flex flex-col justify-between p-4 bg-[#101312] backdrop-blur-2xl border-r border-[#176B5B]/30 w-64 text-[#F5F5F0] font-sans">
       <div className="space-y-6">
         {/* Brand / Client Workspace Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#2A2A2A]">
+        <div className="flex items-center justify-between pb-4 border-b border-[#176B5B]/20">
           <div className="flex items-center gap-3">
             {logoUrl && isSafeImageUrl(logoUrl) ? (
-              <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center p-1.5 shadow-lg shadow-black/40 shrink-0 overflow-hidden">
+              <div className="w-9 h-9 rounded-xl bg-[#191F1D] border border-[#176B5B]/30 flex items-center justify-center p-1.5 shadow-lg shadow-black/40 shrink-0 overflow-hidden">
                 <img src={logoUrl} alt={companyName || 'Logo'} className="w-full h-full object-contain" />
               </div>
             ) : (
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0047AB] to-[#2563EB] text-white font-extrabold flex items-center justify-center text-base shadow-lg shadow-[#0047AB]/25 shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-[#176B5B] text-[#F5F5F0] font-extrabold flex items-center justify-center text-base shadow-lg shadow-[#176B5B]/25 shrink-0">
                 {companyName ? companyName.charAt(0) : 'C'}
               </div>
             )}
             <div className="min-w-0">
-              <h2 className="text-sm font-bold text-white tracking-tight truncate">{companyName}</h2>
-              <p className="text-[11px] text-zinc-400 truncate">Client Portal</p>
+              <h2 className="text-sm font-bold text-[#F5F5F0] tracking-tight truncate">{companyName}</h2>
+              <p className="text-[11px] text-[#A6B4AE] truncate">Client Portal</p>
             </div>
           </div>
           {onCloseMobile && (
             <button
               onClick={onCloseMobile}
-              className="lg:hidden p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+              className="lg:hidden p-1.5 rounded-lg text-[#A6B4AE] hover:text-[#F5F5F0] hover:bg-[#176B5B]/20 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -169,17 +169,17 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         </div>
 
         {/* Client Welcome Tag */}
-        <div className="px-3 py-2.5 rounded-xl bg-[#111111] border border-[#2A2A2A] flex items-center gap-2.5">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+        <div className="px-3 py-2.5 rounded-xl bg-[#191F1D] border border-[#176B5B]/30 flex items-center gap-2.5">
+          <div className="w-2 h-2 rounded-full bg-[#43D6B0] animate-pulse shrink-0" />
           <div className="min-w-0">
-            <p className="text-[10px] uppercase font-mono text-zinc-400 font-semibold tracking-wider">Logged in as</p>
-            <p className="text-xs font-semibold text-white truncate">{clientName}</p>
+            <p className="text-[10px] uppercase font-mono text-[#A6B4AE] font-semibold tracking-wider">Logged in as</p>
+            <p className="text-xs font-semibold text-[#F5F5F0] truncate">{clientName}</p>
           </div>
         </div>
 
         {/* Client Portal Main Nav */}
         <nav className="space-y-1" role="navigation" aria-label="Portal Navigation">
-          <p className="px-3 text-[10px] font-mono text-zinc-500 uppercase tracking-widest font-semibold mb-2">
+          <p className="px-3 text-[10px] font-mono text-[#A6B4AE] uppercase tracking-widest font-semibold mb-2">
             Workspace Nav
           </p>
           {navItems.map((item) => {
@@ -193,34 +193,34 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                   onTabChange(item.id);
                   if (onCloseMobile) onCloseMobile();
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 group relative text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-180 group relative text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#43D6B0]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#101312] ${
                   isActive
-                    ? 'bg-[#0047AB] text-white font-bold shadow-md shadow-[#0047AB]/30 border border-[#2563EB]/40'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.06] border border-transparent hover:border-white/5'
+                    ? 'bg-[#176B5B]/20 text-[#F5F5F0] font-semibold shadow-[0_2px_12px_rgba(23,107,91,0.25)] border border-[#176B5B]/50'
+                    : 'text-[#A6B4AE] hover:text-[#F5F5F0] hover:bg-[#191F1D] border border-transparent hover:border-[#176B5B]/30'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <div
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-180 ${
                       isActive
-                        ? 'bg-white/20 text-white border border-white/30 shadow-[0_0_10px_rgba(255,255,255,0.25)]'
-                        : 'bg-white/[0.03] border border-transparent text-zinc-400 group-hover:bg-[#2563EB]/15 group-hover:border-[#2563EB]/40 group-hover:text-[#60A5FA] group-hover:shadow-[0_0_10px_rgba(37,99,235,0.25)]'
+                        ? 'bg-[#176B5B]/30 text-[#43D6B0] border border-[#176B5B]/60 shadow-[0_0_10px_rgba(67,214,176,0.2)]'
+                        : 'bg-transparent text-[#A6B4AE] border border-transparent group-hover:bg-[#176B5B]/15 group-hover:border-[#176B5B]/30 group-hover:text-[#43D6B0]'
                     }`}
                   >
                     <Icon
-                      className={`w-3.5 h-3.5 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform group-hover:scale-125 group-hover:-rotate-6 motion-reduce:transform-none ${
-                        isActive ? 'text-white scale-110 drop-shadow-[0_0_6px_rgba(255,255,255,0.8)]' : 'group-hover:drop-shadow-[0_0_6px_rgba(59,130,246,0.8)]'
+                      className={`w-3.5 h-3.5 transition-transform duration-180 transform group-hover:scale-110 motion-reduce:transform-none ${
+                        isActive ? 'text-[#43D6B0] scale-105' : 'text-[#A6B4AE]'
                       }`}
                     />
                   </div>
-                  <span className="transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transform-none">
+                  <span className="transition-transform duration-180 group-hover:translate-x-0.5 motion-reduce:transform-none">
                     {item.label}
                   </span>
                 </div>
                 {item.badge !== undefined && item.badge > 0 && (
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono border font-bold transition-transform duration-200 group-hover:scale-105 ${
-                      isActive ? 'bg-[#003A8C] text-white border-white/20' : item.badgeColor
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono border font-bold transition-transform duration-180 group-hover:scale-105 ${
+                      isActive ? 'bg-[#176B5B]/40 text-[#43D6B0] border-[#176B5B]/60' : item.badgeColor
                     }`}
                   >
                     {item.badge}
@@ -233,7 +233,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       </div>
 
       {/* Switcher & Security Footer */}
-      <div className="pt-4 border-t border-[#2A2A2A] space-y-2.5">
+      <div className="pt-4 border-t border-[#176B5B]/20 space-y-2.5">
         {hasFreelancerAccess && (
           <button
             type="button"
@@ -245,17 +245,17 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           </button>
         )}
 
-        <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 flex items-start gap-2.5">
-          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+        <div className="p-3 rounded-xl bg-[#176B5B]/10 border border-[#176B5B]/25 flex items-start gap-2.5">
+          <ShieldCheck className="w-4 h-4 text-[#43D6B0] shrink-0 mt-0.5" />
           <div>
-            <p className="text-[11px] font-semibold text-emerald-300">Magic Access Security</p>
-            <p className="text-[10px] text-zinc-400 leading-relaxed mt-0.5">
+            <p className="text-[11px] font-semibold text-[#43D6B0]">Magic Access Security</p>
+            <p className="text-[10px] text-[#A6B4AE] leading-relaxed mt-0.5">
               Encrypted authenticated access provided by your service provider.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2 py-1 text-[11px] text-zinc-500 font-medium select-none">
+        <div className="flex items-center justify-center gap-2 py-1 text-[11px] text-[#A6B4AE] font-medium select-none">
           <img src="/branding/flowdesk-symbol.png" alt="FlowDesk" className="w-4 h-4 object-contain opacity-70" />
           <span className="tracking-wide">Powered by FlowDesk</span>
         </div>
@@ -263,7 +263,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white bg-[#181818] hover:bg-[#202020] border border-[#2A2A2A] transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-[#A6B4AE] hover:text-[#F5F5F0] bg-[#191F1D] hover:bg-[#176B5B]/20 border border-[#176B5B]/30 transition-colors"
         >
           <LogOut className="w-3.5 h-3.5" />
           Sign Out of Portal

@@ -49,7 +49,7 @@ export const AppShellContent: React.FC<AppShellProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col md:flex-row selection:bg-white selection:text-zinc-950 font-sans">
+    <div className="min-h-screen bg-[#101312] text-[#F5F5F0] flex flex-col md:flex-row selection:bg-[#43D6B0] selection:text-[#101312] font-sans">
       {/* Sidebar */}
       <Sidebar
         currentView={currentView}

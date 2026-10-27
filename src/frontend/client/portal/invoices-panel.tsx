@@ -286,7 +286,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedInvoiceModal(inv)}
-                        leftIcon={<Eye className="w-3.5 h-3.5 text-blue-400" />}
+                        leftIcon={<Eye className="w-3.5 h-3.5 text-[#43D6B0]" />}
                       >
                         Preview
                       </Button>
@@ -472,7 +472,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                       href={selectedInvoiceModal.razorpayPaymentLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition-colors shadow-sm cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#43D6B0] hover:bg-[#43D6B0]/90 text-[#101312] font-semibold text-xs transition-colors shadow-sm cursor-pointer"
                     >
                       <ShieldCheck className="w-3.5 h-3.5" />
                       <span>Pay Online (Razorpay)</span>
@@ -670,9 +670,9 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
 
             {/* External Razorpay Link */}
             {paymentInstructionsModal.razorpayPaymentLink && isApprovedRazorpayUrl(paymentInstructionsModal.razorpayPaymentLink) && (
-              <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 space-y-2">
+              <div className="p-4 rounded-xl bg-[#176B5B]/15 border border-[#176B5B]/35 space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-blue-400 font-semibold text-xs">
+                  <div className="flex items-center gap-2 text-[#43D6B0] font-semibold text-xs">
                     <ShieldCheck className="w-4 h-4" />
                     <span>External Razorpay Payment Page</span>
                   </div>
@@ -680,13 +680,13 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                     href={paymentInstructionsModal.razorpayPaymentLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs"
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded bg-[#43D6B0] hover:bg-[#43D6B0]/90 text-[#101312] font-semibold text-xs"
                   >
                     <span>Open Payment Link</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
-                <p className="text-zinc-400 text-[11px]">
+                <p className="text-[#A6B4AE] text-[11px]">
                   Pay securely with credit card, debit card, or net banking on freelancer&apos;s verified Razorpay page.
                 </p>
               </div>

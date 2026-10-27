@@ -15,9 +15,9 @@ export interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchApp, onOpenAuth }) => {
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-[#F5F7FA] selection:bg-[#0047AB] selection:text-white font-sans relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#101312] text-[#F5F5F0] selection:bg-[#43D6B0] selection:text-[#101312] font-sans relative overflow-x-hidden">
       <LandingNav onOpenAuth={onOpenAuth} onLaunchApp={onLaunchApp} />
-      <main className="pt-8 relative z-10">
+      <main className="pt-20 relative z-10">
         <Hero onLaunchApp={onLaunchApp} onOpenAuth={onOpenAuth} />
         <FeatureShowcase />
         <WorkflowSection />

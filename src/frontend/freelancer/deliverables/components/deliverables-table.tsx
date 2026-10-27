@@ -216,7 +216,7 @@ export const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
                         {
                           id: 'duplicate',
                           label: 'Duplicate',
-                          icon: <Copy className="w-4 h-4 text-blue-400" />,
+                          icon: <Copy className="w-4 h-4 text-[#43D6B0]" />,
                           onClick: () => onDuplicate(del.id),
                         },
                         {

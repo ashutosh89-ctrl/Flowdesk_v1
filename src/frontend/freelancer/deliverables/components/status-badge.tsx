@@ -42,13 +42,13 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     case 'ready_for_review':
     case 'ready':
       label = 'Ready for Review';
-      colorClasses = 'bg-blue-500/10 text-blue-300 border-blue-500/20 shadow-[0_0_12px_rgba(59,130,246,0.15)]';
+      colorClasses = 'bg-[#176B5B]/20 text-[#43D6B0] border-[#176B5B]/40';
       icon = <Sparkles className="w-3 h-3" />;
       break;
     case 'submitted':
     case 'in_review':
       label = 'Submitted';
-      colorClasses = 'bg-purple-500/10 text-purple-300 border-purple-500/20';
+      colorClasses = 'bg-[#176B5B]/15 text-[#A6B4AE] border-[#176B5B]/30';
       icon = <Send className="w-3 h-3" />;
       break;
     case 'approved':

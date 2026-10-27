@@ -31,21 +31,21 @@ export const StatusPill: React.FC<StatusPillProps> = ({ status, customLabel, cla
       case 'signed':
         return {
           label: customLabel || st.replace('_', ' '),
-          dot: 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)]',
-          container: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25',
+          dot: 'bg-[#43D6B0] shadow-[0_0_8px_rgba(67,214,176,0.8)]',
+          container: 'bg-[#176B5B]/20 text-[#43D6B0] border-[#176B5B]/40',
         };
       case 'active':
         return {
           label: customLabel || st.replace('_', ' '),
-          dot: 'bg-[#2563EB] shadow-[0_0_8px_rgba(37,99,235,0.8)]',
-          container: 'bg-[#0047AB]/15 text-[#E8F0FF] border-[#2563EB]/40',
+          dot: 'bg-[#43D6B0] shadow-[0_0_8px_rgba(67,214,176,0.8)]',
+          container: 'bg-[#176B5B]/20 text-[#43D6B0] border-[#176B5B]/50',
         };
       case 'in_progress':
       case 'in_review':
         return {
           label: customLabel || st.replace('_', ' '),
-          dot: 'bg-[#2563EB]',
-          container: 'bg-[#0047AB]/15 text-[#E8F0FF] border-[#2563EB]/35',
+          dot: 'bg-[#43D6B0]',
+          container: 'bg-[#176B5B]/20 text-[#43D6B0] border-[#176B5B]/40',
         };
       case 'pending':
         return {
@@ -64,8 +64,8 @@ export const StatusPill: React.FC<StatusPillProps> = ({ status, customLabel, cla
       case 'inactive':
         return {
           label: customLabel || st.replace('_', ' '),
-          dot: 'bg-zinc-500',
-          container: 'bg-[#181818] text-zinc-400 border-[#2A2A2A]',
+          dot: 'bg-[#A6B4AE]/60',
+          container: 'bg-[#191F1D] text-[#A6B4AE] border-[#176B5B]/30',
         };
       case 'pending_deletion':
         return {
@@ -76,8 +76,8 @@ export const StatusPill: React.FC<StatusPillProps> = ({ status, customLabel, cla
       default:
         return {
           label: customLabel || st.replace('_', ' '),
-          dot: 'bg-zinc-400',
-          container: 'bg-[#181818] text-zinc-300 border-[#2A2A2A]',
+          dot: 'bg-[#A6B4AE]',
+          container: 'bg-[#191F1D] text-[#A6B4AE] border-[#176B5B]/30',
         };
     }
   };

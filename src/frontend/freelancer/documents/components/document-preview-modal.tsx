@@ -137,14 +137,14 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
     >
       <div className="flex flex-col h-full -m-6 max-h-[88vh]">
         {/* Top Header Bar */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#176B5B]/30 bg-[#101312]/90 backdrop-blur-xl shrink-0">
           <div className="flex items-center gap-3 min-w-0 pr-4">
-            <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 shrink-0">
+            <div className="p-2 rounded-xl bg-[#176B5B]/20 border border-[#176B5B]/40 text-[#43D6B0] shrink-0">
               <FileText className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base font-bold text-white truncate max-w-xs sm:max-w-md">
+                <h3 className="text-base font-bold text-[#F5F5F0] truncate max-w-xs sm:max-w-md">
                   {doc.title}
                 </h3>
                 <StatusPill status={doc.status} />
@@ -247,7 +247,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
         <div className="relative flex-1 bg-zinc-950 p-4 sm:p-6 overflow-hidden flex flex-col justify-center items-center min-h-[520px] lg:min-h-[620px]">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center gap-3 text-zinc-400">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+              <Loader2 className="w-8 h-8 animate-spin text-[#43D6B0]" />
               <p className="text-xs font-mono">Loading document preview...</p>
               <span className="text-[10px] text-zinc-500">Preparing secure in-browser reader</span>
             </div>

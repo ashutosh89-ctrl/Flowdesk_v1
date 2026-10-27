@@ -136,15 +136,15 @@ export const CommentsTab: React.FC<CommentsTabProps> = ({ summary, onRefresh }) 
                   c.isInternal
                     ? 'bg-amber-500/[0.04] border-amber-500/25'
                     : c.isPinned
-                    ? 'bg-blue-500/[0.04] border-blue-500/30'
+                    ? 'bg-[#176B5B]/15 border-[#176B5B]/40'
                     : c.isOwner
                     ? 'bg-white/[0.04] border-white/15'
-                    : 'bg-zinc-900/60 border-white/10'
+                    : 'bg-[#191F1D] border-[#176B5B]/30'
                 }`}
               >
                 {/* Pinned Tag */}
                 {c.isPinned && (
-                  <div className="flex items-center gap-1 text-[10px] font-mono text-blue-400 font-bold uppercase mb-1">
+                  <div className="flex items-center gap-1 text-[10px] font-mono text-[#43D6B0] font-bold uppercase mb-1">
                     <Pin className="w-3 h-3" /> Pinned Workspace Message
                   </div>
                 )}
@@ -171,11 +171,11 @@ export const CommentsTab: React.FC<CommentsTabProps> = ({ summary, onRefresh }) 
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-white">{c.author}</span>
                         {c.isOwner ? (
-                          <span className="text-[9px] font-mono font-bold text-[#3B82F6] bg-[#0047AB]/20 border border-[#2563EB]/30 px-1.5 py-0.5 rounded">
+                          <span className="text-[9px] font-mono font-bold text-[#43D6B0] bg-[#176B5B]/20 border border-[#176B5B]/40 px-1.5 py-0.5 rounded">
                             Freelancer
                           </span>
                         ) : (
-                          <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                          <span className="text-[9px] font-mono font-bold text-[#A6B4AE] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded">
                             Client
                           </span>
                         )}

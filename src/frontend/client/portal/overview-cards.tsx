@@ -159,13 +159,13 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
         <Card
           variant="crystal"
           className={`p-5 transition-all cursor-pointer ${
-            pendingDocumentsCount > 0 ? 'border-blue-500/30 bg-blue-500/[0.03] hover:border-blue-500/50' : 'border-white/10 bg-zinc-900/50'
+            pendingDocumentsCount > 0 ? 'border-[#176B5B]/50 bg-[#176B5B]/10 hover:border-[#43D6B0]/50' : 'border-[#176B5B]/30 bg-[#191F1D]'
           }`}
           onClick={() => onNavigateTab('documents')}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono uppercase text-zinc-400 font-semibold tracking-wider">Document Requests</span>
-            <div className={`p-2 rounded-xl border ${pendingDocumentsCount > 0 ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-white/5 border-white/10 text-zinc-400'}`}>
+            <span className="text-xs font-mono uppercase text-[#A6B4AE] font-semibold tracking-wider">Document Requests</span>
+            <div className={`p-2 rounded-xl border ${pendingDocumentsCount > 0 ? 'bg-[#176B5B]/20 border-[#176B5B]/40 text-[#43D6B0]' : 'bg-white/5 border-white/10 text-zinc-400'}`}>
               <FileText className="w-4 h-4" />
             </div>
           </div>
@@ -320,23 +320,23 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
         {/* Right Column (1 Col): Activity & Document Requests */}
         <div className="space-y-6">
           {/* Outstanding File Requests */}
-          <Card variant="crystal" className="border-blue-500/20 bg-blue-500/[0.02]">
+          <Card variant="crystal" className="border-[#176B5B]/30 bg-[#191F1D]">
             <CardHeader>
-              <CardTitle className="text-blue-300">Requested Files</CardTitle>
-              <CardDescription>Documents requested by your freelancer</CardDescription>
+              <CardTitle className="text-[#F5F5F0]">Requested Files</CardTitle>
+              <CardDescription className="text-[#A6B4AE]">Documents requested by your freelancer</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {pendingDocs.length === 0 ? (
-                <p className="text-xs text-zinc-500 italic py-2">No pending document requests.</p>
+                <p className="text-xs text-[#A6B4AE] italic py-2">No pending document requests.</p>
               ) : (
                 pendingDocs.slice(0, 3).map((doc) => (
-                  <div key={doc.id} className="p-3.5 rounded-xl bg-zinc-900/80 border border-white/10 space-y-2">
+                  <div key={doc.id} className="p-3.5 rounded-xl bg-[#101312] border border-[#176B5B]/30 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h5 className="text-xs font-bold text-white">{doc.title}</h5>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">{doc.type.toUpperCase()} • Requested</p>
+                        <h5 className="text-xs font-bold text-[#F5F5F0]">{doc.title}</h5>
+                        <p className="text-[11px] text-[#A6B4AE] mt-0.5">{doc.type.toUpperCase()} • Requested</p>
                       </div>
-                      <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+                      <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/40 font-bold">
                         Pending Upload
                       </span>
                     </div>

@@ -213,18 +213,18 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({
       {/* File Requests Section */}
       <Card
         variant="crystal"
-        className="p-6 border-blue-500/20 bg-gradient-to-r from-blue-950/20 via-zinc-950 to-zinc-950 space-y-4"
+        className="p-6 border-[#176B5B]/30 bg-[#191F1D] space-y-4"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-white/10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#176B5B]/20">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono uppercase text-blue-400 font-bold">CLIENT ACTION REQUIRED</span>
-              <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-mono">
+              <span className="text-xs font-mono uppercase text-[#43D6B0] font-bold">CLIENT ACTION REQUIRED</span>
+              <span className="px-2 py-0.5 rounded bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/40 text-[10px] font-mono">
                 {fileRequests.filter((r) => r.status === 'pending').length} Outstanding Request(s)
               </span>
             </div>
-            <h2 className="text-lg font-bold text-white tracking-tight mt-1">Requested Document Checklist</h2>
-            <p className="text-xs text-zinc-300">Upload required brand assets, contracts, and references</p>
+            <h2 className="text-lg font-bold text-[#F5F5F0] tracking-tight mt-1">Requested Document Checklist</h2>
+            <p className="text-xs text-[#A6B4AE]">Upload required brand assets, contracts, and references</p>
           </div>
         </div>
 

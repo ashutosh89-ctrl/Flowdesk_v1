@@ -153,7 +153,7 @@ export function MarkPaidModal({
                     : 'border-white/10 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                 }`}
               >
-                <ArrowRightLeft className="w-4 h-4 text-blue-400 shrink-0" />
+                <ArrowRightLeft className="w-4 h-4 text-[#43D6B0] shrink-0" />
                 <span>Online Transfer</span>
               </button>
 

@@ -136,7 +136,7 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all"
                       >
-                        <Eye className="w-3.5 h-3.5 text-blue-400" />
+                        <Eye className="w-3.5 h-3.5 text-[#43D6B0]" />
                         <span>Preview</span>
                         <ExternalLink className="w-3 h-3 text-zinc-400" />
                       </a>

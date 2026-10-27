@@ -877,7 +877,7 @@ export const SettingsView: React.FC = () => {
                       isLoading={isUploadingSignature}
                       onClick={() => signatureInputRef.current?.click()}
                       className="w-full text-xs"
-                      leftIcon={<Upload className="w-3.5 h-3.5 text-cyan-400" />}
+                      leftIcon={<Upload className="w-3.5 h-3.5 text-[#43D6B0]" />}
                     >
                       {profile.signatureUrl ? 'Replace Signature' : 'Upload Signature'}
                     </Button>
@@ -890,7 +890,7 @@ export const SettingsView: React.FC = () => {
             <Card variant="crystal">
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-[#2563EB]" />
+                  <Layers className="w-5 h-5 text-[#43D6B0]" />
                   <CardTitle>Deliverable Preferences</CardTitle>
                 </div>
                 <CardDescription>
@@ -905,8 +905,8 @@ export const SettingsView: React.FC = () => {
                     onClick={() => handleSettingsChange('default_deliverable_niche', 'software_development')}
                     className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
                       (settings.default_deliverable_niche || 'software_development') === 'software_development'
-                        ? 'bg-[#2563EB]/10 border-[#2563EB] shadow-[0_0_15px_rgba(37,99,235,0.15)] ring-1 ring-[#2563EB]/50'
-                        : 'bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.04]'
+                        ? 'bg-[#176B5B]/15 border-[#176B5B] shadow-[0_0_15px_rgba(23,107,91,0.2)] ring-1 ring-[#43D6B0]/50'
+                        : 'bg-[#191F1D] border-[#176B5B]/30 hover:border-[#176B5B]/60'
                     }`}
                   >
                     <div>
@@ -914,23 +914,23 @@ export const SettingsView: React.FC = () => {
                         <div className="flex items-center gap-2.5">
                           <div className={`p-2 rounded-lg ${
                             (settings.default_deliverable_niche || 'software_development') === 'software_development'
-                              ? 'bg-[#2563EB]/20 text-[#60A5FA]'
-                              : 'bg-white/5 text-zinc-400'
+                              ? 'bg-[#176B5B]/30 text-[#43D6B0]'
+                              : 'bg-white/5 text-[#A6B4AE]'
                           }`}>
                             <Code2 className="w-4 h-4" />
                           </div>
-                          <span className="text-sm font-semibold text-white">Software Developer</span>
+                          <span className="text-sm font-semibold text-[#F5F5F0]">Software Developer</span>
                         </div>
                         {(settings.default_deliverable_niche || 'software_development') === 'software_development' && (
-                          <CheckCircle2 className="w-4 h-4 text-[#60A5FA]" />
+                          <CheckCircle2 className="w-4 h-4 text-[#43D6B0]" />
                         )}
                       </div>
-                      <p className="text-xs text-zinc-400 leading-relaxed mt-1">
+                      <p className="text-xs text-[#A6B4AE] leading-relaxed mt-1">
                         Preselects technical deliverable workflow with repository URL, branch, pull request, and deployment preview fields.
                       </p>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-wider">Default: Code & Tech</span>
+                    <div className="mt-3 pt-3 border-t border-[#176B5B]/20 flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-[#A6B4AE]/70 uppercase tracking-wider">Default: Code & Tech</span>
                     </div>
                   </button>
 
@@ -940,8 +940,8 @@ export const SettingsView: React.FC = () => {
                     onClick={() => handleSettingsChange('default_deliverable_niche', 'others')}
                     className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
                       settings.default_deliverable_niche === 'others'
-                        ? 'bg-[#2563EB]/10 border-[#2563EB] shadow-[0_0_15px_rgba(37,99,235,0.15)] ring-1 ring-[#2563EB]/50'
-                        : 'bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.04]'
+                        ? 'bg-[#176B5B]/15 border-[#176B5B] shadow-[0_0_15px_rgba(23,107,91,0.2)] ring-1 ring-[#43D6B0]/50'
+                        : 'bg-[#191F1D] border-[#176B5B]/30 hover:border-[#176B5B]/60'
                     }`}
                   >
                     <div>
@@ -949,18 +949,18 @@ export const SettingsView: React.FC = () => {
                         <div className="flex items-center gap-2.5">
                           <div className={`p-2 rounded-lg ${
                             settings.default_deliverable_niche === 'others'
-                              ? 'bg-[#2563EB]/20 text-[#60A5FA]'
-                              : 'bg-white/5 text-zinc-400'
+                              ? 'bg-[#176B5B]/30 text-[#43D6B0]'
+                              : 'bg-white/5 text-[#A6B4AE]'
                           }`}>
                             <Briefcase className="w-4 h-4" />
                           </div>
-                          <span className="text-sm font-semibold text-white">Others</span>
+                          <span className="text-sm font-semibold text-[#F5F5F0]">Others</span>
                         </div>
                         {settings.default_deliverable_niche === 'others' && (
-                          <CheckCircle2 className="w-4 h-4 text-[#60A5FA]" />
+                          <CheckCircle2 className="w-4 h-4 text-[#43D6B0]" />
                         )}
                       </div>
-                      <p className="text-xs text-zinc-400 leading-relaxed mt-1">
+                      <p className="text-xs text-[#A6B4AE] leading-relaxed mt-1">
                         Preselects general-purpose deliverable workflow for design, video editing, copywriting, marketing, consulting, and other creative services.
                       </p>
                     </div>

@@ -538,10 +538,10 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
 
               {/* Method 3: Razorpay Payment Link Block */}
               {methodsConfig.razorpayLinkEnabled !== false && razorpayLink && (
-                <div className="space-y-1.5 p-3 rounded-lg bg-blue-50/70 border border-blue-200 text-[11px]">
-                  <div className="flex items-center justify-between font-bold text-blue-900 uppercase text-[10px]">
+                <div className="space-y-1.5 p-3 rounded-lg bg-[#176B5B]/10 border border-[#176B5B]/30 text-[11px]">
+                  <div className="flex items-center justify-between font-bold text-[#176B5B] uppercase text-[10px]">
                     <span className="flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#176B5B]" />
                       Razorpay Online Payment Link
                     </span>
                   </div>
@@ -552,7 +552,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
                     href={razorpayLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-mono text-[11px] text-blue-700 hover:text-blue-900 underline break-all font-medium"
+                    className="inline-flex items-center gap-1 font-mono text-[11px] text-[#176B5B] hover:underline break-all font-medium"
                   >
                     <span>{razorpayLink}</span>
                     <ExternalLink className="w-3 h-3 shrink-0" />

@@ -57,7 +57,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const baseStyles =
-      'inline-flex items-center justify-center font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:ring-offset-2 focus:ring-offset-[#0A0A0A] disabled:opacity-50 disabled:cursor-not-allowed select-none rounded-xl relative overflow-hidden active:scale-[0.98] will-change-transform';
+      'inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#43D6B0] focus:ring-offset-2 focus:ring-offset-[#101312] disabled:opacity-50 disabled:cursor-not-allowed select-none rounded-xl relative overflow-hidden active:scale-[0.98] will-change-transform';
 
     const sizeStyles = {
       sm: 'px-3.5 py-2 text-sm font-semibold gap-2 min-h-[38px]',
@@ -67,15 +67,15 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary:
-        'bg-[#0047AB] text-white font-semibold border border-[#2563EB]/70 shadow-[0_4px_20px_rgba(0,71,171,0.35),inset_0_1px_0_0_rgba(255,255,255,0.25)] hover:bg-[#003A8C] hover:border-[#2563EB] hover:shadow-[0_8px_28px_rgba(0,71,171,0.55)] hover:-translate-y-[2px]',
+        'bg-[#43D6B0] text-[#101312] font-semibold border border-[#43D6B0] shadow-[0_4px_20px_rgba(67,214,176,0.3)] hover:bg-[#43D6B0]/90 hover:shadow-[0_8px_28px_rgba(67,214,176,0.45)] hover:-translate-y-[1px]',
       secondary:
-        'bg-[#181818] text-[#F5F7FA] border border-[#2A2A2A] backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:bg-[#222222] hover:border-white/20 hover:text-white hover:-translate-y-[2px]',
+        'bg-[#191F1D] text-[#F5F5F0] border border-[#176B5B]/40 shadow-[0_4px_16px_rgba(0,0,0,0.4)] hover:bg-[#1E2523] hover:border-[#176B5B]/80 hover:text-white hover:-translate-y-[1px]',
       outline:
-        'bg-transparent text-[#F5F7FA] border border-[#2A2A2A] hover:border-[#2563EB]/50 hover:bg-[#0047AB]/10 hover:text-white hover:-translate-y-[1px]',
+        'bg-transparent text-[#F5F5F0] border border-[#176B5B]/40 hover:border-[#43D6B0]/50 hover:bg-[#176B5B]/15 hover:text-white hover:-translate-y-[1px]',
       ghost:
-        'bg-transparent text-zinc-400 hover:text-white hover:bg-white/[0.08]',
+        'bg-transparent text-[#A6B4AE] hover:text-[#F5F5F0] hover:bg-[#176B5B]/15',
       icon:
-        'p-2 text-zinc-400 hover:text-white hover:bg-white/[0.08] hover:border-[#2563EB]/30 rounded-lg aspect-square',
+        'p-2 text-[#A6B4AE] hover:text-[#F5F5F0] hover:bg-[#176B5B]/15 hover:border-[#176B5B]/40 rounded-lg aspect-square',
       danger:
         'bg-rose-950/40 text-rose-200 border border-rose-500/35 hover:border-rose-500 hover:bg-rose-900/60 hover:text-white shadow-sm',
     };
@@ -90,13 +90,13 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={`${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
         {...props}
       >
-        {/* Crystal Glass Cursor Reflection Effect */}
+        {/* Subtle Cursor Reflection Effect */}
         {isHovered && coords.x >= 0 && (
           <span
             className="absolute inset-0 pointer-events-none transition-opacity duration-300"
             style={{
               background: `radial-gradient(circle 80px at ${coords.x}px ${coords.y}px, ${
-                variant === 'primary' ? 'rgba(37, 99, 235, 0.45)' : 'rgba(255, 255, 255, 0.15)'
+                variant === 'primary' ? 'rgba(67, 214, 176, 0.35)' : 'rgba(23, 107, 91, 0.2)'
               }, transparent 70%)`,
             }}
           />

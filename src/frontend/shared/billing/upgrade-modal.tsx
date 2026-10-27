@@ -118,14 +118,14 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
         {/* Interval Switcher */}
         <div className="flex justify-center">
-          <div className="inline-flex items-center p-1 bg-zinc-900 border border-white/10 rounded-xl">
+          <div className="inline-flex items-center p-1 bg-[#101312] border border-[#176B5B]/30 rounded-xl">
             <button
               type="button"
               onClick={() => setInterval('monthly')}
               className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 interval === 'monthly'
-                  ? 'bg-white/10 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-[#176B5B]/30 text-[#F5F5F0] shadow-sm'
+                  : 'text-[#A6B4AE] hover:text-[#F5F5F0]'
               }`}
             >
               Monthly Billing
@@ -135,12 +135,12 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
               onClick={() => setInterval('yearly')}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 interval === 'yearly'
-                  ? 'bg-white/10 text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-[#176B5B]/30 text-[#F5F5F0] shadow-sm'
+                  : 'text-[#A6B4AE] hover:text-[#F5F5F0]'
               }`}
             >
               <span>Yearly Billing</span>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full font-mono">
+              <span className="text-[10px] bg-[#176B5B]/20 text-[#43D6B0] px-1.5 py-0.5 rounded-full font-mono">
                 Save ~16%
               </span>
             </button>
@@ -152,76 +152,68 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           {(['free', 'pro', 'studio'] as PlanKey[]).map((planKey) => {
             const plan = BILLING_PLANS[planKey];
             const isCurrent = currentPlanKey === planKey;
-            const isTarget = targetPlanKey === planKey;
             const price = plan.pricing[interval].INR;
 
             return (
               <div
                 key={planKey}
-                className={`flex flex-col justify-between p-5 rounded-2xl border transition-all ${
-                  isTarget || planKey === 'pro'
-                    ? 'bg-white/[0.04] border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.1)]'
-                    : 'bg-zinc-900/60 border-white/10'
-                } ${isCurrent ? 'ring-1 ring-white/20' : ''}`}
+                className={`flex flex-col justify-between p-5 rounded-2xl border transition-all duration-200 bg-[#191F1D] border-[#176B5B]/30 hover:border-[#43D6B0]/60 hover:shadow-[0_4px_24px_rgba(23,107,91,0.2)] focus-within:border-[#43D6B0]/60 ${
+                  isCurrent ? 'ring-1 ring-[#43D6B0]/40' : ''
+                }`}
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-sm font-bold text-white tracking-tight">{plan.name}</span>
-                    {plan.badge && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        {plan.badge}
-                      </span>
-                    )}
+                    <span className="text-sm font-bold text-[#F5F5F0] tracking-tight">{plan.name}</span>
                     {isCurrent && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 border border-white/15">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/30">
                         Current
                       </span>
                     )}
                   </div>
 
-                  <p className="text-xs text-zinc-400 min-h-[32px] leading-relaxed mb-4">
+                  <p className="text-xs text-[#A6B4AE] min-h-[32px] leading-relaxed mb-4">
                     {plan.tagline}
                   </p>
 
                   <div className="mb-4">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-white tracking-tight">
+                      <span className="text-2xl font-bold text-[#F5F5F0] tracking-tight">
                         ₹{price.toLocaleString('en-IN')}
                       </span>
-                      <span className="text-xs text-zinc-400 font-mono">
+                      <span className="text-xs text-[#A6B4AE] font-mono">
                         /{interval === 'yearly' ? 'year' : 'month'}
                       </span>
                     </div>
-                    <span className="text-[10px] text-zinc-400">+ 18% GST</span>
+                    <span className="text-[10px] text-[#A6B4AE]">+ 18% GST</span>
                   </div>
 
                   {/* Limits bullets */}
-                  <ul className="space-y-2 pt-3 border-t border-white/10 text-xs text-zinc-300 mb-6">
+                  <ul className="space-y-2 pt-3 border-t border-[#176B5B]/20 text-xs text-[#A6B4AE] mb-6">
                     <li className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
                       <span>{plan.limits.activeClients} active clients</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
                       <span>{plan.limits.activeProjects} active projects</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
                       <span>{(plan.limits.storageMb / 1000).toFixed(0)} GB storage</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
                       <span>{plan.limits.invoicesPerMonth} invoices / month</span>
                     </li>
                     {plan.limits.brandedPortal && (
                       <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
                         <span>Custom branded client portal</span>
                       </li>
                     )}
                     {plan.limits.emailReminders && (
                       <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
                         <span>Automated payment reminders</span>
                       </li>
                     )}
@@ -240,12 +232,12 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                   ) : (
                     <Button
                       variant="primary"
-                      className="w-full text-xs shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+                      className="w-full text-xs"
                       onClick={() => handleCheckout(planKey)}
                       disabled={loadingPlan !== null}
                     >
                       {loadingPlan === planKey ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center gap-2">
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           <span>Preparing...</span>
                         </div>
@@ -260,9 +252,9 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           })}
         </div>
 
-        <div className="flex items-center justify-between text-xs text-zinc-400 pt-2 border-t border-white/10">
+        <div className="flex items-center justify-between text-xs text-[#A6B4AE] pt-2 border-t border-[#176B5B]/20">
           <div className="flex items-center gap-2">
-            <Shield className="w-3.5 h-3.5 text-emerald-400" />
+            <Shield className="w-3.5 h-3.5 text-[#43D6B0]" />
             <span>Secure recurring payments powered by Razorpay e-Mandate</span>
           </div>
           <span>Cancel anytime from settings</span>
