@@ -188,10 +188,10 @@ export default function ConnectInvitationPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6 selection:bg-emerald-500/30">
+      <div className="min-h-screen bg-[#101312] text-[#F5F5F0] flex items-center justify-center p-6 selection:bg-[#43D6B0] selection:text-[#101312]">
         <div className="text-center space-y-4">
-          <Loader2 className="w-9 h-9 animate-spin text-emerald-400 mx-auto" />
-          <p className="text-xs text-zinc-400 font-mono tracking-wider">Verifying Connection Link...</p>
+          <Loader2 className="w-9 h-9 animate-spin text-[#43D6B0] mx-auto" />
+          <p className="text-xs text-[#A6B4AE] font-mono tracking-wider">Verifying Connection Link...</p>
         </div>
       </div>
     );
@@ -199,14 +199,14 @@ export default function ConnectInvitationPage({ params }: PageProps) {
 
   if (details?.status === 'claimed') {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6 selection:bg-emerald-500/30">
-        <Card variant="crystal" className="max-w-md w-full p-8 text-center space-y-6 border-white/20 shadow-2xl">
+      <div className="min-h-screen bg-[#101312] text-[#F5F5F0] flex items-center justify-center p-6 selection:bg-[#43D6B0] selection:text-[#101312]">
+        <Card variant="crystal" className="max-w-md w-full p-8 text-center space-y-6 border-[#176B5B]/35 shadow-2xl bg-[#191F1D]">
           <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
             <Lock className="w-7 h-7" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-white tracking-tight">Connection Link Already Used</h2>
-            <p className="text-xs text-zinc-400 leading-relaxed">
+            <h2 className="text-xl font-bold text-[#F5F5F0] tracking-tight">Connection Link Already Used</h2>
+            <p className="text-xs text-[#A6B4AE] leading-relaxed">
               This connection link has already been used. If you are the client, use the shared FlowDesk login and you will be routed automatically to your workspace.
             </p>
           </div>
@@ -227,16 +227,16 @@ export default function ConnectInvitationPage({ params }: PageProps) {
     const isRevoked = details?.status === 'revoked';
 
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6 selection:bg-emerald-500/30">
-        <Card variant="crystal" className="max-w-md w-full p-8 text-center space-y-6 border-white/20 shadow-2xl">
-          <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-400">
+      <div className="min-h-screen bg-[#101312] text-[#F5F5F0] flex items-center justify-center p-6 selection:bg-[#43D6B0] selection:text-[#101312]">
+        <Card variant="crystal" className="max-w-md w-full p-8 text-center space-y-6 border-[#176B5B]/35 shadow-2xl bg-[#191F1D]">
+          <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto text-rose-400">
             <ShieldAlert className="w-7 h-7" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-white tracking-tight">
+            <h2 className="text-xl font-bold text-[#F5F5F0] tracking-tight">
               {isExpired ? 'Connection Link Expired' : isRevoked ? 'Connection Link Revoked' : 'Invalid Connection Link'}
             </h2>
-            <p className="text-xs text-zinc-400 leading-relaxed">
+            <p className="text-xs text-[#A6B4AE] leading-relaxed">
               {isExpired
                 ? 'This connection link has expired. Please contact your freelancer to request a new connection link.'
                 : isRevoked
@@ -254,61 +254,61 @@ export default function ConnectInvitationPage({ params }: PageProps) {
 
   if (claimSuccess) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6 selection:bg-emerald-500/30">
-        <Card variant="crystal" className="max-w-md w-full p-8 text-center space-y-5 border-emerald-500/40 shadow-2xl">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
+      <div className="min-h-screen bg-[#101312] text-[#F5F5F0] flex items-center justify-center p-6 selection:bg-[#43D6B0] selection:text-[#101312]">
+        <Card variant="crystal" className="max-w-md w-full p-8 text-center space-y-5 border-[#176B5B]/40 shadow-2xl bg-[#191F1D]">
+          <div className="w-16 h-16 rounded-2xl bg-[#176B5B]/20 border border-[#176B5B]/35 flex items-center justify-center mx-auto text-[#43D6B0]">
             <CheckCircle2 className="w-8 h-8" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-white tracking-tight">Connected Successfully!</h2>
-            <p className="text-xs text-zinc-400 leading-relaxed">
+            <h2 className="text-xl font-bold text-[#F5F5F0] tracking-tight">Connected Successfully!</h2>
+            <p className="text-xs text-[#A6B4AE] leading-relaxed">
               Your account has been connected to <strong>{details.freelancerName}</strong>. Opening your portal workspace...
             </p>
           </div>
-          <Loader2 className="w-5 h-5 animate-spin text-emerald-400 mx-auto mt-2" />
+          <Loader2 className="w-5 h-5 animate-spin text-[#43D6B0] mx-auto mt-2" />
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-4 sm:p-6 selection:bg-emerald-500/30">
+    <div className="min-h-screen bg-[#101312] text-[#F5F5F0] flex flex-col items-center justify-center p-4 sm:p-6 selection:bg-[#43D6B0] selection:text-[#101312]">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
           <div className="inline-block">
             <FlowDeskLogo className="h-8 w-auto mx-auto" />
           </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#176B5B]/20 border border-[#176B5B]/40 text-[#43D6B0] text-xs font-mono">
             <Sparkles className="w-3.5 h-3.5" /> Client Portal Connection
           </div>
         </div>
 
-        <Card variant="crystal" className="p-6 sm:p-8 space-y-6 border-white/20 shadow-2xl backdrop-blur-xl">
-          <div className="p-4 rounded-xl bg-zinc-900/80 border border-white/10 space-y-2.5">
+        <Card variant="crystal" className="p-6 sm:p-8 space-y-6 border-[#176B5B]/35 shadow-2xl backdrop-blur-xl bg-[#191F1D]">
+          <div className="p-4 rounded-xl bg-[#101312]/60 border border-[#176B5B]/30 space-y-2.5">
             <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+              <div className="p-2.5 rounded-lg bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/35 shrink-0">
                 <Building2 className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[11px] font-mono uppercase tracking-wider text-zinc-400">Invited By</p>
-                <h3 className="text-sm font-bold text-white">{details.freelancerName}</h3>
+                <p className="text-[11px] font-mono uppercase tracking-wider text-[#A6B4AE]">Invited By</p>
+                <h3 className="text-sm font-bold text-[#F5F5F0]">{details.freelancerName}</h3>
                 {details.companyName && (
-                  <p className="text-xs text-zinc-400 mt-0.5">
-                    For client workspace: <span className="text-zinc-200 font-medium">{details.companyName}</span>
+                  <p className="text-xs text-[#A6B4AE] mt-0.5">
+                    For client workspace: <span className="text-[#F5F5F0] font-medium">{details.companyName}</span>
                   </p>
                 )}
               </div>
             </div>
             {details.maskedEmail && (
-              <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 font-mono pt-1 border-t border-white/5">
-                <Mail className="w-3 h-3 text-zinc-500" />
+              <div className="flex items-center gap-1.5 text-[11px] text-[#A6B4AE] font-mono pt-1 border-t border-[#176B5B]/20">
+                <Mail className="w-3 h-3 text-[#A6B4AE]" />
                 <span>Sent to: {details.maskedEmail}</span>
               </div>
             )}
           </div>
 
           {authError && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{authError}</span>
             </div>
@@ -316,9 +316,9 @@ export default function ConnectInvitationPage({ params }: PageProps) {
 
           {currentUser ? (
             <div className="space-y-4">
-              <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-white/10 text-xs text-zinc-300 flex items-center justify-between">
-                <span>Signed in as: <strong className="text-white">{currentUser.email}</strong></span>
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Authenticated</span>
+              <div className="p-3.5 rounded-xl bg-[#101312]/60 border border-[#176B5B]/30 text-xs text-[#A6B4AE] flex items-center justify-between">
+                <span>Signed in as: <strong className="text-[#F5F5F0]">{currentUser.email}</strong></span>
+                <span className="text-[10px] font-mono text-[#43D6B0] bg-[#176B5B]/20 px-2 py-0.5 rounded border border-[#176B5B]/40">Authenticated</span>
               </div>
               <Button
                 variant="primary"
@@ -332,25 +332,25 @@ export default function ConnectInvitationPage({ params }: PageProps) {
           ) : (
             <div className="space-y-5">
               <div>
-                <h2 className="text-base font-semibold text-white">Create your client account</h2>
-                <p className="text-xs text-zinc-500 mt-1">
+                <h2 className="text-base font-semibold text-[#F5F5F0]">Create your client account</h2>
+                <p className="text-xs text-[#A6B4AE] mt-1">
                   New to FlowDesk? Create your account here and this connection will be attached automatically.
                 </p>
               </div>
 
               <form onSubmit={handleSignUpAndConnect} className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-300">Your Full Name</label>
+                  <label className="text-xs font-medium text-[#A6B4AE]">Your Full Name</label>
                   <Input placeholder="e.g. Eleanor Vance" value={fullName} onChange={(e) => setFullName(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-300">Email Address</label>
+                  <label className="text-xs font-medium text-[#A6B4AE]">Email Address</label>
                   <Input type="email" required placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-zinc-300">Choose a Password</label>
+                  <label className="text-xs font-medium text-[#A6B4AE]">Choose a Password</label>
                   <Input type="password" required placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
-                  <p className="text-[10px] text-zinc-500">Minimum 6 characters</p>
+                  <p className="text-[10px] text-[#A6B4AE]/70">Minimum 6 characters</p>
                 </div>
 
                 <Button type="submit" variant="primary" className="w-full justify-center gap-2 mt-2 py-2.5" isLoading={isSubmitting}>
@@ -358,8 +358,8 @@ export default function ConnectInvitationPage({ params }: PageProps) {
                 </Button>
               </form>
 
-              <div className="pt-3 border-t border-white/5 text-center space-y-2">
-                <p className="text-[11px] text-zinc-500">Already have a FlowDesk account?</p>
+              <div className="pt-3 border-t border-[#176B5B]/20 text-center space-y-2">
+                <p className="text-[11px] text-[#A6B4AE]">Already have a FlowDesk account?</p>
                 <Button
                   type="button"
                   variant="secondary"
@@ -372,8 +372,8 @@ export default function ConnectInvitationPage({ params }: PageProps) {
             </div>
           )}
 
-          <div className="text-center pt-1 border-t border-white/5">
-            <p className="text-[11px] text-zinc-500">
+          <div className="text-center pt-1 border-t border-[#176B5B]/20">
+            <p className="text-[11px] text-[#A6B4AE]/80">
               Your connection is secured by FlowDesk&apos;s one-time invitation link.
             </p>
           </div>

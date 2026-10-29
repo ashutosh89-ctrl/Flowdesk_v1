@@ -124,20 +124,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   collapsedMode ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5'
                 } ${
                   isActive
-                    ? 'bg-[#176B5B]/20 text-[#F5F5F0] shadow-[0_2px_12px_rgba(23,107,91,0.25)] border border-[#176B5B]/50'
+                    ? 'bg-[#176B5B]/20 text-[#F5F5F0] border border-[#176B5B]/50'
                     : 'text-[#A6B4AE] hover:text-[#F5F5F0] hover:bg-[#191F1D] border border-transparent hover:border-[#176B5B]/30'
                 }`}
               >
                 {/* Active Indicator Bar on the left */}
                 {isActive && (
-                  <span className="absolute left-1 top-2 bottom-2 w-1 rounded-full bg-[#43D6B0] shadow-[0_0_8px_rgba(67,214,176,0.8)]" />
+                  <span className="absolute left-1 top-2 bottom-2 w-1 rounded-full bg-[#43D6B0]" />
                 )}
 
                 {/* Live Icon Container */}
                 <div
                   className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-180 ${
                     isActive
-                      ? 'bg-[#176B5B]/30 text-[#43D6B0] border border-[#176B5B]/60 shadow-[0_0_10px_rgba(67,214,176,0.2)]'
+                      ? 'bg-[#176B5B]/30 text-[#43D6B0] border border-[#176B5B]/60'
                       : 'bg-transparent text-[#A6B4AE] border border-transparent group-hover:bg-[#176B5B]/15 group-hover:text-[#43D6B0] group-hover:border-[#176B5B]/30'
                   }`}
                 >
@@ -152,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       {item.label}
                     </span>
                     {isActive && (
-                      <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#43D6B0] shadow-[0_0_6px_rgba(67,214,176,0.8)]" />
+                      <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#43D6B0]" />
                     )}
                   </>
                 )}

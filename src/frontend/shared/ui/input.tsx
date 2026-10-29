@@ -69,7 +69,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
           {/* Left Icon */}
           {!isCurrency && (leftIcon || isSearch) && (
-            <span className="absolute left-3.5 z-20 pointer-events-none flex items-center justify-center transition-all duration-200 text-[#A6B4AE] group-focus-within:text-[#43D6B0] [&_svg]:w-4 [&_svg]:h-4 [&_svg]:text-[#A6B4AE] group-focus-within:[&_svg]:text-[#43D6B0] [&_svg]:stroke-[2] group-focus-within:[&_svg]:drop-shadow-[0_0_8px_rgba(67,214,176,0.6)]">
+            <span className="absolute left-3.5 z-20 pointer-events-none flex items-center justify-center transition-colors duration-150 text-[#A6B4AE] group-focus-within:text-[#43D6B0] [&_svg]:w-4 [&_svg]:h-4 [&_svg]:text-[#A6B4AE] group-focus-within:[&_svg]:text-[#43D6B0] [&_svg]:stroke-[2]">
               {leftIcon || <Search className="w-4 h-4 text-[#A6B4AE] group-focus-within:text-[#43D6B0]" />}
             </span>
           )}
