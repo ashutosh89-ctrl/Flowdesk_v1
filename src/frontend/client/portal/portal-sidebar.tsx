@@ -170,7 +170,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
 
         {/* Client Welcome Tag */}
         <div className="px-3 py-2.5 rounded-xl bg-[#191F1D] border border-[#176B5B]/30 flex items-center gap-2.5">
-          <div className="w-2 h-2 rounded-full bg-[#43D6B0] shrink-0" />
+          <div className="w-2 h-2 rounded-full bg-[#43D6B0] animate-pulse shrink-0" />
           <div className="min-w-0">
             <p className="text-[10px] uppercase font-mono text-[#A6B4AE] font-semibold tracking-wider">Logged in as</p>
             <p className="text-xs font-semibold text-[#F5F5F0] truncate">{clientName}</p>
@@ -195,7 +195,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-180 group relative text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#43D6B0]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#101312] ${
                   isActive
-                    ? 'bg-[#176B5B]/20 text-[#F5F5F0] font-semibold border border-[#176B5B]/50'
+                    ? 'bg-[#176B5B]/20 text-[#F5F5F0] font-semibold shadow-[0_2px_12px_rgba(23,107,91,0.25)] border border-[#176B5B]/50'
                     : 'text-[#A6B4AE] hover:text-[#F5F5F0] hover:bg-[#191F1D] border border-transparent hover:border-[#176B5B]/30'
                 }`}
               >
@@ -203,7 +203,7 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
                   <div
                     className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-180 ${
                       isActive
-                        ? 'bg-[#176B5B]/30 text-[#43D6B0] border border-[#176B5B]/60'
+                        ? 'bg-[#176B5B]/30 text-[#43D6B0] border border-[#176B5B]/60 shadow-[0_0_10px_rgba(67,214,176,0.2)]'
                         : 'bg-transparent text-[#A6B4AE] border border-transparent group-hover:bg-[#176B5B]/15 group-hover:border-[#176B5B]/30 group-hover:text-[#43D6B0]'
                     }`}
                   >

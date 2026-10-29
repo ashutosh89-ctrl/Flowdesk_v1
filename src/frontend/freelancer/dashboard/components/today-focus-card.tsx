@@ -42,25 +42,25 @@ export const TodayFocusCard: React.FC<TodayFocusCardProps> = ({ items, onAction,
     switch (priority) {
       case 'critical':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
             <AlertTriangle className="w-3 h-3" /> Critical
           </span>
         );
       case 'high':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
             <AlertCircle className="w-3 h-3" /> High Priority
           </span>
         );
       case 'medium':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/40">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-sky-500/10 text-sky-400 border border-sky-500/20">
             <Clock className="w-3 h-3" /> Medium
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#101312] text-[#A6B4AE] border border-[#176B5B]/30">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">
             Normal
           </span>
         );
@@ -74,27 +74,30 @@ export const TodayFocusCard: React.FC<TodayFocusCardProps> = ({ items, onAction,
       case 'revision_requested':
         return <AlertCircle className="w-4 h-4 text-amber-400" />;
       case 'missing_file':
-        return <FileSearch className="w-4 h-4 text-[#43D6B0]" />;
+        return <FileSearch className="w-4 h-4 text-sky-400" />;
       case 'approval_waiting':
-        return <Clock className="w-4 h-4 text-[#43D6B0]" />;
+        return <Clock className="w-4 h-4 text-emerald-400" />;
       case 'comment_unanswered':
-        return <MessageSquare className="w-4 h-4 text-[#43D6B0]" />;
+        return <MessageSquare className="w-4 h-4 text-purple-400" />;
       default:
-        return <Sparkles className="w-4 h-4 text-[#A6B4AE]" />;
+        return <Sparkles className="w-4 h-4 text-zinc-400" />;
     }
   };
 
   return (
-    <div className="bg-[#191F1D] border border-[#176B5B]/30 rounded-2xl p-6 shadow-sm relative overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden group">
+      {/* Top Ambient Glow */}
+      <div className="absolute -top-24 -left-24 w-72 h-72 bg-gradient-to-br from-amber-500/10 via-rose-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="p-1.5 rounded-lg bg-[#176B5B]/20 border border-[#176B5B]/35 text-[#43D6B0]">
+            <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
               <Sparkles className="w-4 h-4" />
             </div>
-            <h2 className="text-lg font-bold text-[#F5F5F0] tracking-tight">Today&apos;s Focus & Priorities</h2>
+            <h2 className="text-lg font-bold text-white tracking-tight">Today&apos;s Focus & Priorities</h2>
           </div>
-          <p className="text-xs text-[#A6B4AE]">
+          <p className="text-xs text-zinc-400">
             {activeItems.length === 0
               ? 'All critical priorities resolved! Your workspace is on schedule.'
               : `${activeItems.length} action item${activeItems.length === 1 ? '' : 's'} requiring attention today.`}
@@ -102,20 +105,20 @@ export const TodayFocusCard: React.FC<TodayFocusCardProps> = ({ items, onAction,
         </div>
 
         {/* Priority Filter Chips */}
-        <div className="flex items-center gap-1.5 bg-[#101312] p-1 border border-[#176B5B]/30 rounded-xl self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 bg-zinc-900/80 p-1 border border-white/10 rounded-xl self-start sm:self-auto">
           <button
             onClick={() => setFilterPriority('all')}
             className={`px-2.5 py-1 text-[11px] font-medium rounded-lg transition-all ${
               filterPriority === 'all'
-                ? 'bg-[#43D6B0] text-[#101312] font-semibold shadow-sm'
-                : 'text-[#A6B4AE] hover:text-[#F5F5F0]'
+                ? 'bg-white text-zinc-950 font-semibold shadow-sm'
+                : 'text-zinc-400 hover:text-white'
             }`}
           >
             All ({activeItems.length})
           </button>
           <button
             onClick={() => setFilterPriority('critical')}
-            className={`px-2.5 py-1 text-[11px] font-medium rounded-lg transition-all ${
+            className={`px-2 py-1 text-[11px] font-medium rounded-lg transition-all ${
               filterPriority === 'critical'
                 ? 'bg-rose-500 text-white font-semibold'
                 : 'text-rose-400 hover:bg-rose-500/10'
@@ -125,9 +128,9 @@ export const TodayFocusCard: React.FC<TodayFocusCardProps> = ({ items, onAction,
           </button>
           <button
             onClick={() => setFilterPriority('high')}
-            className={`px-2.5 py-1 text-[11px] font-medium rounded-lg transition-all ${
+            className={`px-2 py-1 text-[11px] font-medium rounded-lg transition-all ${
               filterPriority === 'high'
-                ? 'bg-amber-500 text-[#101312] font-semibold'
+                ? 'bg-amber-500 text-white font-semibold'
                 : 'text-amber-400 hover:bg-amber-500/10'
             }`}
           >
@@ -137,12 +140,12 @@ export const TodayFocusCard: React.FC<TodayFocusCardProps> = ({ items, onAction,
       </div>
 
       {/* Item List */}
-      <div className="space-y-3">
+      <div className="space-y-3 relative z-10">
         {filteredItems.length === 0 ? (
-          <div className="py-12 text-center bg-[#101312]/40 border border-dashed border-[#176B5B]/30 rounded-xl p-6">
-            <CheckCircle2 className="w-10 h-10 text-[#43D6B0] mx-auto mb-3 opacity-80" />
-            <h3 className="text-sm font-semibold text-[#F5F5F0]">No Action Items Pending</h3>
-            <p className="text-xs text-[#A6B4AE] mt-1 max-w-sm mx-auto">
+          <div className="py-12 text-center bg-zinc-900/40 border border-dashed border-white/10 rounded-xl p-6">
+            <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-3 opacity-80" />
+            <h3 className="text-sm font-semibold text-white">No Action Items Pending</h3>
+            <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
               {filterPriority === 'all'
                 ? 'Great job! You have cleared all overdue invoices, pending approvals, and requested revisions.'
                 : `No items matched the ${filterPriority} priority filter.`}
@@ -153,29 +156,29 @@ export const TodayFocusCard: React.FC<TodayFocusCardProps> = ({ items, onAction,
             <div
               key={item.id}
               onClick={() => onAction(item)}
-              className="p-4 rounded-xl bg-[#101312]/60 hover:bg-[#101312] border border-[#176B5B]/30 hover:border-[#43D6B0]/50 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group/item shadow-sm"
+              className="p-4 rounded-xl bg-zinc-900/60 hover:bg-zinc-900 border border-white/10 hover:border-white/20 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group/item shadow-sm hover:shadow-md"
             >
               <div className="flex items-start gap-3 min-w-0">
                 <button
                   onClick={(e) => handleToggleComplete(item.id, e)}
                   title="Mark as done"
-                  className="mt-0.5 p-1 rounded-md border border-[#176B5B]/40 bg-[#191F1D] text-[#A6B4AE] hover:text-[#43D6B0] hover:border-[#43D6B0]/60 transition-colors shrink-0"
+                  className="mt-0.5 p-1 rounded-md border border-zinc-700 bg-zinc-800 text-zinc-500 hover:text-emerald-400 hover:border-emerald-500/50 transition-colors shrink-0"
                 >
                   <Check className="w-3.5 h-3.5" />
                 </button>
 
-                <div className="p-2 rounded-xl bg-[#191F1D] border border-[#176B5B]/30 shrink-0">
+                <div className="p-2 rounded-xl bg-zinc-800/80 border border-white/10 shrink-0">
                   {getCategoryIcon(item.category)}
                 </div>
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <h4 className="text-xs font-bold text-[#F5F5F0] group-hover/item:text-[#43D6B0] transition-colors truncate">
+                    <h4 className="text-xs font-bold text-white group-hover/item:text-amber-300 transition-colors truncate">
                       {item.title}
                     </h4>
                     {getPriorityBadge(item.priority)}
                   </div>
-                  <p className="text-xs text-[#A6B4AE] line-clamp-1">{item.description}</p>
+                  <p className="text-xs text-zinc-400 line-clamp-1">{item.description}</p>
                 </div>
               </div>
 
@@ -185,7 +188,7 @@ export const TodayFocusCard: React.FC<TodayFocusCardProps> = ({ items, onAction,
                     e.stopPropagation();
                     onAction(item);
                   }}
-                  className="px-3 py-1.5 text-xs font-medium bg-[#176B5B]/20 hover:bg-[#43D6B0] text-[#F5F5F0] hover:text-[#101312] border border-[#176B5B]/40 hover:border-[#43D6B0] rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
+                  className="px-3 py-1.5 text-xs font-medium bg-white/10 hover:bg-white text-white hover:text-zinc-950 border border-white/15 rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
                 >
                   <span>{item.actionText}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -198,11 +201,11 @@ export const TodayFocusCard: React.FC<TodayFocusCardProps> = ({ items, onAction,
 
       {/* Completed Footer Notice */}
       {completedIds.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-[#176B5B]/20 flex items-center justify-between text-xs text-[#A6B4AE]">
+        <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-zinc-500">
           <span>{completedIds.length} item(s) resolved this session. (Session-only — refresh resets.)</span>
           <button
             onClick={() => setCompletedIds([])}
-            className="text-[#43D6B0] hover:underline text-[11px]"
+            className="text-amber-400 hover:underline text-[11px]"
           >
             Reset resolved
           </button>

@@ -127,25 +127,21 @@ function OnboardingContent() {
 
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-[#101312] text-[#F5F5F0] flex items-center justify-center p-4">
-        <Loader2 className="w-8 h-8 animate-spin text-[#43D6B0]" />
+      <div className="min-h-screen bg-[#09090b] text-white flex items-center justify-center p-4">
+        <Loader2 className="w-8 h-8 animate-spin text-white" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#101312] text-[#F5F5F0] flex flex-col items-center justify-center p-4 selection:bg-[#43D6B0] selection:text-[#101312] relative overflow-hidden">
-      {/* Subtle ambient lighting */}
-      <div className="absolute top-1/4 -left-32 w-80 h-80 bg-[#176B5B]/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-32 w-80 h-80 bg-[#176B5B]/10 rounded-full blur-[100px] pointer-events-none" />
-
-      <div className="max-w-md w-full p-8 rounded-3xl bg-[#191F1D] border border-[#176B5B]/30 shadow-2xl backdrop-blur-xl space-y-6 relative z-10">
+    <div className="min-h-screen bg-[#09090b] text-white flex flex-col items-center justify-center p-4 selection:bg-white selection:text-zinc-950">
+      <div className="max-w-md w-full p-8 rounded-3xl bg-zinc-900/80 border border-white/10 shadow-2xl backdrop-blur-xl space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-[#176B5B]/20 border border-[#176B5B]/35 flex items-center justify-center mx-auto text-[#43D6B0]">
+          <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center mx-auto text-amber-300">
             <Sparkles className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-[#F5F5F0]">Welcome to FlowDesk</h1>
-          <p className="text-xs text-[#A6B4AE]">Complete your profile and initialize your workspace.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight">Welcome to FlowDesk</h1>
+          <p className="text-xs text-zinc-400">Complete your profile and initialize your workspace.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

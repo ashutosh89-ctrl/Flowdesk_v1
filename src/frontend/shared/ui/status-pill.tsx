@@ -31,13 +31,13 @@ export const StatusPill: React.FC<StatusPillProps> = ({ status, customLabel, cla
       case 'signed':
         return {
           label: customLabel || st.replace('_', ' '),
-          dot: 'bg-[#43D6B0]',
+          dot: 'bg-[#43D6B0] shadow-[0_0_8px_rgba(67,214,176,0.8)]',
           container: 'bg-[#176B5B]/20 text-[#43D6B0] border-[#176B5B]/40',
         };
       case 'active':
         return {
           label: customLabel || st.replace('_', ' '),
-          dot: 'bg-[#43D6B0]',
+          dot: 'bg-[#43D6B0] shadow-[0_0_8px_rgba(67,214,176,0.8)]',
           container: 'bg-[#176B5B]/20 text-[#43D6B0] border-[#176B5B]/50',
         };
       case 'in_progress':
@@ -56,7 +56,7 @@ export const StatusPill: React.FC<StatusPillProps> = ({ status, customLabel, cla
       case 'overdue':
         return {
           label: customLabel || 'Overdue',
-          dot: 'bg-rose-400',
+          dot: 'bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.6)]',
           container: 'bg-rose-950/40 text-rose-300 border-rose-500/35',
         };
       case 'draft':
@@ -70,7 +70,7 @@ export const StatusPill: React.FC<StatusPillProps> = ({ status, customLabel, cla
       case 'pending_deletion':
         return {
           label: customLabel || 'Pending Deletion',
-          dot: 'bg-rose-400',
+          dot: 'bg-rose-400 animate-pulse',
           container: 'bg-rose-950/40 text-rose-300 border-rose-500/30',
         };
       default:
