@@ -381,6 +381,8 @@ export const FlowDeskStore = {
       approvalStatus: delData.approvalStatus || 'pending',
       priority: delData.priority || 'medium',
       version: delData.version || 'v1.0.0',
+      previewImageUrl: delData.previewImageUrl || (delData.nicheMetadata as any)?.previewImageUrl || (delData.fileUrl && /\.(png|jpe?g|webp|gif|svg)($|\?)/i.test(delData.fileUrl) ? delData.fileUrl : undefined) || (delData.fileUrl?.startsWith('data:image/') ? delData.fileUrl : undefined),
+      thumbnailUrl: delData.thumbnailUrl || (delData.nicheMetadata as any)?.thumbnailUrl || undefined,
       createdAt: today,
       updatedAt: today,
       filesCount: delData.files ? delData.files.length : (delData.fileUrl || delData.fileName) ? 1 : 0,
@@ -1890,9 +1892,10 @@ export const FlowDeskStore = {
     const proj = projects.find((p) => p.id === invoiceData.projectId);
 
     const subtotal = invoiceData.subtotal ?? invoiceData.items.reduce((s, it) => s + (it.amount || it.quantity * it.rate), 0);
-    const tax = invoiceData.tax ?? 0;
+    const taxPercentage = invoiceData.taxPercentage || 0;
+    const tax = invoiceData.tax ?? (taxPercentage > 0 ? Math.round((subtotal * taxPercentage / 100) * 100) / 100 : 0);
     const discount = invoiceData.discount ?? 0;
-    const total = invoiceData.total ?? Math.max(0, subtotal + tax - discount);
+    const total = invoiceData.total ?? Math.max(0, Math.round((subtotal + tax - discount) * 100) / 100);
 
     const invCount = invoices.length + 1;
     const defaultNumber = `FD-2026-${invCount.toString().padStart(4, '0')}`;

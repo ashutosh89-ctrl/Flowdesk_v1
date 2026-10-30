@@ -119,9 +119,19 @@ export const DeliverablesTable: React.FC<DeliverablesTableProps> = ({
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-300 shrink-0 group-hover:border-white/20 group-hover:text-white transition-all">
-                        <Layers className="w-4 h-4" />
-                      </div>
+                      {(() => {
+                        const previewImg = del.previewImageUrl || (del.nicheMetadata as any)?.previewImageUrl || (del.fileUrl && (del.fileUrl.startsWith('data:image/') || /\.(png|jpe?g|webp|gif|svg)($|\?)/i.test(del.fileUrl)) ? del.fileUrl : null);
+                        if (previewImg) {
+                          return (
+                            <img src={previewImg} alt={del.title} className="w-9 h-9 rounded-xl object-cover border border-white/10 shrink-0" />
+                          );
+                        }
+                        return (
+                          <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-zinc-300 shrink-0 group-hover:border-white/20 group-hover:text-white transition-all">
+                            <Layers className="w-4 h-4" />
+                          </div>
+                        );
+                      })()}
                       <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-white truncate hover:underline">

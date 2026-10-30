@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   Lock,
   MessageSquare,
+  Eye,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 import { useAuth } from '@/frontend/auth/auth-context';
@@ -82,6 +84,7 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
   const [fileName, setFileName] = useState('');
   const [fileSize, setFileSize] = useState('3.5 MB');
   const [fileUrl, setFileUrl] = useState('');
+  const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { userSettings } = useAuth();
   const [internalNotes, setInternalNotes] = useState('');
@@ -100,7 +103,7 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
     }
   }, [isOpen, userSettings?.default_deliverable_niche]);
 
-  // Software Development Technical Fields
+  // Project & Development Fields (Available across deliverables)
   const [repoUrl, setRepoUrl] = useState('');
   const [branchName, setBranchName] = useState('');
   const [prUrl, setPrUrl] = useState('');
@@ -120,18 +123,19 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
   };
 
   const buildNicheMetadata = (): DeliverableNicheMetadata => {
-    if (niche === 'software_development') {
-      return {
-        repositoryUrl: repoUrl.trim() || undefined,
-        branchName: branchName.trim() || undefined,
-        pullRequestUrl: prUrl.trim() || undefined,
-        releaseVersion: version || undefined,
-        previewUrl: previewUrl.trim() || undefined,
-        technicalStatus,
-        buildStatus: 'not_connected',
-      };
-    }
-    return {};
+    return {
+      repositoryUrl: repoUrl.trim() || undefined,
+      repoUrl: repoUrl.trim() || undefined,
+      previewUrl: previewUrl.trim() || undefined,
+      projectUrl: previewUrl.trim() || undefined,
+      liveProjectUrl: previewUrl.trim() || undefined,
+      previewImageUrl: previewImageUrl.trim() || undefined,
+      branchName: branchName.trim() || undefined,
+      pullRequestUrl: prUrl.trim() || undefined,
+      releaseVersion: version || undefined,
+      technicalStatus,
+      buildStatus: 'not_connected',
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -145,6 +149,8 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
 
     setIsSubmitting(true);
     try {
+      const resolvedFileUrl = fileUrl.trim() || (selectedFile && selectedFile.type.startsWith('image/') ? previewImageUrl : '') || previewImageUrl.trim() || (selectedFile ? '' : `https://flowdesk.app/deliverables/${title.toLowerCase().replace(/\s+/g, '-')}`);
+
       const payload = {
         clientId: effectiveClientId || 'cli-1',
         projectId: effectiveProjectId || 'proj-1',
@@ -156,7 +162,8 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
         priority,
         fileName: fileName || (selectedFile ? selectedFile.name : `${title.toLowerCase().replace(/\s+/g, '-')}-v1.pdf`),
         fileSize: selectedFile ? formatFileSize(selectedFile.size) : (fileSize || '3.5 MB'),
-        fileUrl: fileUrl || (selectedFile ? '' : `https://flowdesk.app/deliverables/${title.toLowerCase().replace(/\s+/g, '-')}`),
+        fileUrl: resolvedFileUrl,
+        previewImageUrl: previewImageUrl.trim() || (resolvedFileUrl.startsWith('data:image/') || /\.(png|jpe?g|webp|gif|svg)($|\?)/i.test(resolvedFileUrl) ? resolvedFileUrl : undefined),
         file: selectedFile || undefined,
         internalNotes: internalNotes.trim(),
         submissionMessage: submissionMessage.trim(),
@@ -190,6 +197,7 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
     setPriority('medium');
     setFileName('');
     setFileUrl('');
+    setPreviewImageUrl('');
     setSelectedFile(null);
     setInternalNotes('');
     setSubmissionMessage('');
@@ -370,42 +378,42 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
           </div>
         </div>
 
-        {/* Specialized Niche Fields */}
-        {niche === 'software_development' && (
-          <div className="p-4 rounded-xl bg-[#176B5B]/10 border border-[#176B5B]/30 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#43D6B0]">
-                <Code2 className="w-4 h-4 text-[#43D6B0]" />
-                <span>Software Developer Specifications</span>
-              </div>
-              <span className="text-[10px] text-zinc-400">GitHub optional • Standard files supported</span>
+        {/* Project Links & Repository Details (Always available & client-facing) */}
+        <div className="p-4 rounded-xl bg-[#176B5B]/10 border border-[#176B5B]/30 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold text-[#43D6B0]">
+              <Code2 className="w-4 h-4 text-[#43D6B0]" />
+              <span>Project Details & Deployment Links (Client Facing)</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input
-                label="Repository URL"
-                placeholder="https://github.com/org/repo"
-                value={repoUrl}
-                onChange={(e) => setRepoUrl(e.target.value)}
-              />
-              <Input
-                label="Branch Name"
-                placeholder="main or feature/deliverable-v1"
-                value={branchName}
-                onChange={(e) => setBranchName(e.target.value)}
-              />
-              <Input
-                label="Pull Request URL"
-                placeholder="https://github.com/org/repo/pull/42"
-                value={prUrl}
-                onChange={(e) => setPrUrl(e.target.value)}
-              />
-              <Input
-                label="Preview / Deployment URL"
-                placeholder="https://staging.app.com or Vercel preview"
-                value={previewUrl}
-                onChange={(e) => setPreviewUrl(e.target.value)}
-              />
-            </div>
+            <span className="text-[10px] text-zinc-400">Live preview & repository links</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Input
+              label="Live Project / Preview URL"
+              placeholder="https://staging.example.com, Figma, or demo"
+              value={previewUrl}
+              onChange={(e) => setPreviewUrl(e.target.value)}
+            />
+            <Input
+              label="Repository URL (e.g. GitHub)"
+              placeholder="https://github.com/organization/repository"
+              value={repoUrl}
+              onChange={(e) => setRepoUrl(e.target.value)}
+            />
+            <Input
+              label="Branch Name (Optional)"
+              placeholder="main, production, or feature-v1"
+              value={branchName}
+              onChange={(e) => setBranchName(e.target.value)}
+            />
+            <Input
+              label="Pull Request URL (Optional)"
+              placeholder="https://github.com/organization/repo/pull/42"
+              value={prUrl}
+              onChange={(e) => setPrUrl(e.target.value)}
+            />
+          </div>
+          {niche === 'software_development' && (
             <div>
               <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1">
                 Technical Build / Review Status
@@ -422,8 +430,86 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
                 <option value="in_development">In Active Development</option>
               </select>
             </div>
+          )}
+        </div>
+
+        {/* Deliverable Preview Image / Visual Showcase */}
+        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
+              <Eye className="w-4 h-4 text-[#43D6B0]" />
+              <span>Deliverable Preview Image / Screenshot</span>
+            </div>
+            <span className="text-[10px] text-zinc-400">Rendered on client portal</span>
           </div>
-        )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1">
+                Upload Preview Image
+              </label>
+              <input
+                type="file"
+                id="deliverable-preview-image-upload"
+                className="hidden"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === 'string') {
+                        setPreviewImageUrl(reader.result);
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+              <label
+                htmlFor="deliverable-preview-image-upload"
+                className="flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-white/20 hover:border-[#43D6B0]/50 rounded-xl bg-zinc-900 text-xs text-zinc-300 cursor-pointer transition-colors"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-[#43D6B0]" />
+                <span>Select Screenshot or Graphic Image</span>
+              </label>
+            </div>
+
+            <Input
+              label="Or Paste Preview Image URL"
+              placeholder="https://.../preview.png or image link"
+              value={previewImageUrl.startsWith('data:') ? '(Image file uploaded)' : previewImageUrl}
+              onChange={(e) => setPreviewImageUrl(e.target.value)}
+              disabled={previewImageUrl.startsWith('data:')}
+            />
+          </div>
+
+          {/* Live Preview of the Image */}
+          {previewImageUrl && (
+            <div className="relative mt-2 p-2.5 rounded-xl bg-black/40 border border-[#43D6B0]/30 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <img
+                  src={previewImageUrl}
+                  alt="Deliverable Preview"
+                  className="w-16 h-12 object-cover rounded-lg border border-white/10 shrink-0"
+                />
+                <div className="min-w-0">
+                  <span className="text-xs font-bold text-[#43D6B0] block">Preview Image Active</span>
+                  <span className="text-[10px] text-zinc-400 block truncate">
+                    Ready to display to the client in the portal
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewImageUrl('')}
+                className="text-xs text-rose-400 hover:text-rose-300 transition-colors px-2 py-1 rounded hover:bg-rose-500/10 shrink-0"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
@@ -464,6 +550,15 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
                   setSelectedFile(file);
                   setFileName(file.name);
                   setFileSize(formatFileSize(file.size));
+                  if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      if (typeof reader.result === 'string') {
+                        setPreviewImageUrl(reader.result);
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  }
                 }
               }}
               accept=".pdf,.zip,.rar,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.svg,.figma,.sketch"

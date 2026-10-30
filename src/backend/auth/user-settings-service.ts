@@ -6,7 +6,7 @@ const LOCAL_SETTINGS_PREFIX = 'flowdesk_user_settings_';
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
   id: 'usr-default',
-  currency: 'USD',
+  currency: 'INR',
   timezone: 'America/New_York',
   date_format: 'MM/DD/YYYY',
   week_start: 'Monday',

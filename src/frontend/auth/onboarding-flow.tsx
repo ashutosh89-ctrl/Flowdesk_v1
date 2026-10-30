@@ -373,8 +373,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) =>
       {/* STEP 5: Finish & Celebration */}
       {step === 5 && (
         <div className="space-y-4 text-center py-2">
-          <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center mx-auto text-white shadow-xl">
-            <Sparkles className="w-7 h-7 text-amber-300" />
+          <div className="w-14 h-14 rounded-2xl bg-[#43D6B0]/10 border border-[#43D6B0]/20 flex items-center justify-center mx-auto text-[#43D6B0] shadow-xl">
+            <CheckCircle2 className="w-7 h-7 text-[#43D6B0]" />
           </div>
 
           <div>

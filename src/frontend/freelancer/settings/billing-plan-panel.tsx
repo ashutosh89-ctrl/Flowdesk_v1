@@ -4,8 +4,10 @@ import { Button } from '@/frontend/shared/ui/button';
 import { UpgradeModal } from '@/frontend/shared/billing/upgrade-modal';
 import { WorkspaceEntitlements } from '@/backend/billing/entitlements';
 import { useToast } from '@/frontend/shared/ui/toast';
+import { Progress } from '@/frontend/shared/ui/progress';
 import {
-  Sparkles,
+  Crown,
+  Zap,
   CreditCard,
   AlertTriangle,
   Clock,
@@ -229,12 +231,12 @@ export const BillingPlanPanel: React.FC = () => {
 
     if (status === 'trialing') {
       return (
-        <div className="flex items-center justify-between p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-300">
+        <div className="flex items-center justify-between p-4 bg-[#43D6B0]/10 border border-[#43D6B0]/20 rounded-2xl text-xs text-[#43D6B0]">
           <div className="flex items-center gap-3">
-            <Sparkles className="w-5 h-5 text-emerald-400 shrink-0" />
+            <Crown className="w-5 h-5 text-[#43D6B0] shrink-0" />
             <div>
-              <p className="font-bold text-emerald-200">Free Pro Trial Active</p>
-              <p className="text-emerald-400/80 text-[11px] mt-0.5">
+              <p className="font-bold text-white">Free Pro Trial Active</p>
+              <p className="text-zinc-400 text-[11px] mt-0.5">
                 Enjoy full access to Pro freelancer features during your trial period.
               </p>
             </div>
@@ -257,8 +259,6 @@ export const BillingPlanPanel: React.FC = () => {
     unit: string = ''
   ) => {
     const pct = limit > 0 ? Math.min(Math.round((current / limit) * 100), 100) : 0;
-    const isNearLimit = pct >= 80;
-    const isAtLimit = pct >= 100;
 
     return (
       <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 space-y-2">
@@ -272,14 +272,7 @@ export const BillingPlanPanel: React.FC = () => {
           </span>
         </div>
 
-        <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-amber-400' : 'bg-emerald-400'
-            }`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        <Progress value={pct} size="xs" />
       </div>
     );
   };
@@ -293,12 +286,11 @@ export const BillingPlanPanel: React.FC = () => {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-mono mb-2">
-                <Sparkles className="w-3.5 h-3.5" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#43D6B0]/10 text-[#43D6B0] border border-[#43D6B0]/20 text-xs font-mono mb-2">
+                <Zap className="w-3.5 h-3.5" />
                 <span>{planName}</span>
               </div>
               <CardTitle className="text-xl">Platform Subscription</CardTitle>
-              <CardDescription>Manage your FlowDesk workspace tier, usage limits, and invoices</CardDescription>
             </div>
 
             <div className="flex items-center gap-2">

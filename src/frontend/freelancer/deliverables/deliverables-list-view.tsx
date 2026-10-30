@@ -91,12 +91,12 @@ export const DeliverablesListView: React.FC<DeliverablesListViewProps> = ({
   useEffect(() => {
     loadData();
 
-    // 1. Proactive Polling: Checks every 12 seconds
+    // 1. Proactive Polling: Checks every 90 seconds (Realtime handles instant events)
     const intervalId = setInterval(() => {
       if (document.visibilityState === 'visible') {
         loadData();
       }
-    }, 12000);
+    }, 90000);
 
     // 2. Window Focus & Visibility Change: Instantly re-queries when returning to tab
     const onWindowFocus = () => {
@@ -237,8 +237,11 @@ export const DeliverablesListView: React.FC<DeliverablesListViewProps> = ({
 
   // Single Actions
   const handleCreateDeliverable = async (delData: any) => {
-    await DeliverableService.addDeliverable(delData);
+    const created = await DeliverableService.addDeliverable(delData);
     showToast('Deliverable Created', `Created package "${delData.title}" (${delData.version})`, 'success');
+    if (created) {
+      setDeliverables((prev) => [created, ...prev]);
+    }
     loadData();
   };
 
@@ -246,11 +249,13 @@ export const DeliverablesListView: React.FC<DeliverablesListViewProps> = ({
     const cloned = await DeliverableService.duplicateDeliverable(id);
     if (cloned) {
       showToast('Deliverable Duplicated', `Created clone "${cloned.title}"`, 'success');
+      setDeliverables((prev) => [cloned, ...prev]);
       loadData();
     }
   };
 
   const handleArchive = async (id: string) => {
+    setDeliverables((prev) => prev.map((d) => d.id === id ? { ...d, isArchived: !d.isArchived } : d));
     const updated = await DeliverableService.archiveDeliverable(id);
     if (updated) {
       showToast('Status Updated', updated.isArchived ? 'Deliverable archived' : 'Deliverable restored', 'info');
@@ -264,26 +269,31 @@ export const DeliverablesListView: React.FC<DeliverablesListViewProps> = ({
 
   const confirmDelete = async () => {
     if (deleteTargetId) {
-      await DeliverableService.deleteDeliverable(deleteTargetId);
-      showToast('Deliverable Deleted', 'Deliverable removed permanently.', 'info');
+      const idToDelete = deleteTargetId;
       setDeleteTargetId(null);
+      setDeliverables((prev) => prev.filter((d) => d.id !== idToDelete));
+      await DeliverableService.deleteDeliverable(idToDelete);
+      showToast('Deliverable Deleted', 'Deliverable removed permanently.', 'info');
       loadData();
     }
   };
 
   const handleSubmitForReview = async (id: string) => {
+    setDeliverables((prev) => prev.map((d) => d.id === id ? { ...d, status: 'ready_for_review', approvalStatus: 'pending' } : d));
     await DeliverableService.submitDeliverableClientReview(id, {});
     showToast('Submitted for Review', 'Deliverable package sent to client.', 'success');
     loadData();
   };
 
   const handleApprove = async (id: string) => {
+    setDeliverables((prev) => prev.map((d) => d.id === id ? { ...d, status: 'approved', approvalStatus: 'approved' } : d));
     await DeliverableService.approveDeliverable(id, 'Approved via quick action');
     showToast('Deliverable Approved', 'Client approval recorded.', 'success');
     loadData();
   };
 
   const handleRequestRevision = async (id: string) => {
+    setDeliverables((prev) => prev.map((d) => d.id === id ? { ...d, status: 'revision_requested', approvalStatus: 'revision_requested' } : d));
     await DeliverableService.requestDeliverableRevision(id, 'Revision requested via quick action');
     showToast('Revision Requested', 'Revisions logged for deliverable.', 'info');
     loadData();

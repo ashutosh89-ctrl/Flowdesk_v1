@@ -5,6 +5,8 @@ import { StatusPill } from '@/frontend/shared/ui/status-pill';
 import { HealthBadge } from '@/frontend/shared/ui/health-badge';
 import { Button } from '@/frontend/shared/ui/button';
 import { Client } from '@/shared/types';
+import { useAuth } from '@/frontend/auth/auth-context';
+import { formatCurrency } from '@/shared/utils/currency';
 import {
   ArrowUpRight,
   Mail,
@@ -50,6 +52,9 @@ export const ClientTable: React.FC<ClientTableProps> = ({
   onCopyConnectionLink,
   onInviteEmail,
 }) => {
+  const { profile, userSettings } = useAuth();
+  const studioCurrency = userSettings?.currency || profile?.currency || 'INR';
+
   return (
     <Card variant="crystal" className="p-0 overflow-hidden border-white/10">
       <div className="overflow-x-auto">
@@ -115,40 +120,25 @@ export const ClientTable: React.FC<ClientTableProps> = ({
                   </td>
 
                   {/* Outstanding Balance */}
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 align-middle">
                     <span className="font-bold text-amber-400 text-xs font-mono">
-                      ${(client.outstandingBalance || 0).toLocaleString()}
+                      {formatCurrency(client.outstandingBalance || 0, client.currency || studioCurrency)}
                     </span>
                   </td>
 
                   {/* Lifetime Revenue */}
-                  <td className="py-4 px-6 font-bold text-white text-sm font-mono">
-                    ${client.totalBilled.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  <td className="py-4 px-6 font-bold text-white text-xs font-mono align-middle">
+                    {formatCurrency(client.totalBilled || 0, client.currency || studioCurrency)}
                   </td>
 
                   {/* Health */}
-                  <td className="py-4 px-6">
+                  <td className="py-4 px-6 align-middle">
                     <HealthBadge level={client.healthBadge} />
                   </td>
 
                   {/* Status */}
-                  <td className="py-4 px-6 space-y-1">
+                  <td className="py-4 px-6 align-middle">
                     <StatusPill status={client.status} />
-                    <div>
-                      {client.userId ? (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
-                          Connected
-                        </span>
-                      ) : client.portalToken ? (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded">
-                          Invite Pending
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[9px] font-mono text-zinc-500 bg-zinc-900 border border-white/5 px-1.5 py-0.5 rounded">
-                          Not Connected
-                        </span>
-                      )}
-                    </div>
                   </td>
 
                   {/* Actions */}

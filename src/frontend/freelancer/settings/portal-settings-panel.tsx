@@ -277,15 +277,12 @@ export const PortalSettingsPanel: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Link2 className="w-5 h-5 text-emerald-400" />
+                <Link2 className="w-5 h-5 text-[#43D6B0]" />
                 Permanent Client Portal Link
               </CardTitle>
-              <CardDescription>
-                Share this stable, permanent link with clients on WhatsApp, email, proposal decks, or social profiles.
-              </CardDescription>
             </div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono self-start sm:self-auto">
-              <Sparkles className="w-3.5 h-3.5" /> Stable Identifier
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#43D6B0]/10 border border-[#43D6B0]/20 text-[#43D6B0] text-xs font-mono self-start sm:self-auto">
+              <Link2 className="w-3.5 h-3.5" /> Permanent Link
             </div>
           </div>
         </CardHeader>

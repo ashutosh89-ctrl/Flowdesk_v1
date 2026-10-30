@@ -65,10 +65,6 @@ export default function ChooseRolePage() {
       <div className="w-full max-w-2xl space-y-8">
         <div className="text-center space-y-4">
           <FlowDeskLogo variant="full" size="md" className="mx-auto" priority />
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] text-zinc-400">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            One account · Dual workspaces detected
-          </div>
           <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Where do you want to go?</h1>
             <p className="text-sm text-zinc-400">Choose the FlowDesk workspace you want to open right now.</p>

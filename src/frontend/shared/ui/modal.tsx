@@ -44,7 +44,7 @@ export const Modal: React.FC<ModalProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -60,14 +60,14 @@ export const Modal: React.FC<ModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-            className={`relative w-full ${sizeWidths[size]} bg-[#191F1D] border border-[#176B5B]/35 backdrop-blur-2xl rounded-2xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.9)] overflow-hidden z-10 flex flex-col max-h-[90vh]`}
+            className={`relative w-full ${sizeWidths[size]} bg-[#191F1D] border border-[#176B5B]/35 backdrop-blur-2xl rounded-2xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.9)] overflow-hidden z-10 flex flex-col max-h-[94vh] sm:max-h-[90vh]`}
           >
             {/* Header */}
             {(title || description) && (
-              <div className="flex items-start justify-between p-6 pb-4 border-b border-[#176B5B]/25 shrink-0">
-                <div className="pr-6">
-                  {title && <h2 className="text-2xl font-bold font-display text-[#F5F5F0] tracking-tight">{title}</h2>}
-                  {description && <p className="text-base text-[#A6B4AE] mt-1.5">{description}</p>}
+              <div className="flex items-start justify-between p-4 sm:p-6 pb-3 sm:pb-4 border-b border-[#176B5B]/25 shrink-0">
+                <div className="pr-4 sm:pr-6">
+                  {title && <h2 className="text-lg sm:text-2xl font-bold font-display text-[#F5F5F0] tracking-tight">{title}</h2>}
+                  {description && <p className="text-xs sm:text-sm text-[#A6B4AE] mt-1">{description}</p>}
                 </div>
                 <button
                   onClick={onClose}
@@ -83,7 +83,7 @@ export const Modal: React.FC<ModalProps> = ({
             {!title && !description && (
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 z-20 p-1.5 text-[#A6B4AE] hover:text-[#F5F5F0] hover:bg-[#176B5B]/20 rounded-lg transition-colors"
+                className="absolute top-3 right-3 z-20 p-1.5 text-[#A6B4AE] hover:text-[#F5F5F0] hover:bg-[#176B5B]/20 rounded-lg transition-colors"
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
@@ -91,7 +91,7 @@ export const Modal: React.FC<ModalProps> = ({
             )}
 
             {/* Scrollable Body */}
-            <div className="p-6 overflow-y-auto flex-1">{children}</div>
+            <div className="p-3.5 sm:p-6 overflow-y-auto flex-1">{children}</div>
           </motion.div>
         </div>
       )}

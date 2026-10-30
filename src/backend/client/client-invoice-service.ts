@@ -24,8 +24,8 @@ export const ClientInvoiceService = {
         .order('issue_date', { ascending: false });
 
       if (error) {
-        console.error('[ClientInvoiceService] Database error fetching invoices:', error);
-        return [];
+        console.warn('[ClientInvoiceService] Database error fetching invoices, using store fallback:', error);
+        return FlowDeskStore.getInvoices(clientId);
       }
 
       if (data && data.length > 0) {
@@ -160,10 +160,15 @@ export const ClientInvoiceService = {
         });
       }
 
+      const localInvoices = FlowDeskStore.getInvoices(clientId);
+      if (localInvoices.length > 0) {
+        return localInvoices;
+      }
+
       return [];
     } catch (err) {
-      console.error('[ClientInvoiceService] Error fetching client invoices from Supabase:', err);
-      return [];
+      console.warn('[ClientInvoiceService] Error fetching client invoices from Supabase, using store fallback:', err);
+      return FlowDeskStore.getInvoices(clientId);
     }
   },
 

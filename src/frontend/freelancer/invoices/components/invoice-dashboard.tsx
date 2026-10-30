@@ -1,9 +1,9 @@
 import React from 'react';
 import { FinancialDashboardMetrics, Invoice } from '@/shared/types';
 import { formatCurrency } from '@/shared/utils/currency';
-import { DueIndicatorBadge, PaymentStatusPill, WorkflowStatusPill } from './status-pills';
+import { DueIndicatorBadge } from './status-pills';
+import { Progress } from '@/frontend/shared/ui/progress';
 import {
-  DollarSign,
   Clock,
   CheckCircle2,
   AlertCircle,
@@ -11,9 +11,8 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Calendar,
-  FileText,
+  Receipt,
 } from 'lucide-react';
-
 import { useAuth } from '@/frontend/auth/auth-context';
 
 interface InvoiceDashboardProps {
@@ -25,7 +24,8 @@ interface InvoiceDashboardProps {
 
 export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice, currency: propCurrency }: InvoiceDashboardProps) {
   const { profile, userSettings } = useAuth();
-  const currency = propCurrency || userSettings?.currency || profile?.currency || 'USD';
+  const currency = propCurrency || userSettings?.currency || profile?.currency || 'INR';
+
   const safeMetrics: FinancialDashboardMetrics = {
     lifetimeRevenue: metrics?.lifetimeRevenue ?? 0,
     outstandingBalance: metrics?.outstandingBalance ?? 0,
@@ -48,162 +48,144 @@ export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice, cu
     paymentTrend: metrics?.paymentTrend ?? [],
   };
 
+  const pendingInvoiceCount = safeMetrics.agingReport.reduce((acc, r) => acc + r.count, 0);
+
   return (
     <div className="space-y-6 select-none">
-      {/* Metrics Cards Grid */}
+      {/* Executive Financial Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Lifetime Revenue */}
-        <div className="p-5 rounded-2xl border border-white/10 bg-zinc-950/80 shadow-2xl backdrop-blur-xl space-y-2.5">
+        <div className="p-5 rounded-2xl border border-white/10 bg-[#16181B] hover:border-white/20 transition-all space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">Lifetime Revenue</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-              <DollarSign className="w-4 h-4" />
-            </div>
+            <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Lifetime Revenue</span>
+            <Receipt className="w-4 h-4 text-zinc-400" />
           </div>
-          <div className="text-2xl font-bold tracking-tight text-white">
+          <div className="text-2xl font-bold tracking-tight text-white font-mono">
             {formatCurrency(safeMetrics.lifetimeRevenue, currency)}
           </div>
-          <div className="flex items-center justify-between text-xs text-zinc-400">
-            <span>Avg: {formatCurrency(safeMetrics.averageInvoiceValue, currency)}</span>
-            <span className="text-emerald-400 font-medium flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5" /> Settled
-            </span>
-          </div>
+          <p className="text-xs text-zinc-400">
+            Avg. {formatCurrency(safeMetrics.averageInvoiceValue, currency)} per invoice
+          </p>
         </div>
 
         {/* Outstanding Balance */}
-        <div className="p-5 rounded-2xl border border-white/10 bg-zinc-950/80 shadow-2xl backdrop-blur-xl space-y-2.5">
+        <div className="p-5 rounded-2xl border border-white/10 bg-[#16181B] hover:border-white/20 transition-all space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">Outstanding Balance</span>
-            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-              <Clock className="w-4 h-4" />
-            </div>
+            <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Outstanding Balance</span>
+            <Clock className="w-4 h-4 text-zinc-400" />
           </div>
-          <div className="text-2xl font-bold tracking-tight text-white">
+          <div className="text-2xl font-bold tracking-tight text-white font-mono">
             {formatCurrency(safeMetrics.outstandingBalance, currency)}
           </div>
-          <div className="flex items-center justify-between text-xs text-zinc-400">
-            <span>Pending: {formatCurrency(safeMetrics.pendingPayments, currency)}</span>
-            <span className="text-amber-400 font-medium">Awaiting Payout</span>
-          </div>
+          <p className="text-xs text-zinc-400">
+            {pendingInvoiceCount} {pendingInvoiceCount === 1 ? 'invoice' : 'invoices'} pending settlement
+          </p>
         </div>
 
         {/* Paid This Month */}
-        <div className="p-5 rounded-2xl border border-white/10 bg-zinc-950/80 shadow-2xl backdrop-blur-xl space-y-2.5">
+        <div className="p-5 rounded-2xl border border-white/10 bg-[#16181B] hover:border-white/20 transition-all space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">Paid This Month</span>
-            <div className="p-2 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
+            <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Paid This Month</span>
+            <CheckCircle2 className="w-4 h-4 text-[#43D6B0]" />
           </div>
-          <div className="text-2xl font-bold tracking-tight text-white">
+          <div className="text-2xl font-bold tracking-tight text-white font-mono">
             {formatCurrency(safeMetrics.paidThisMonth, currency)}
           </div>
-          <div className="flex items-center justify-between text-xs text-zinc-400">
-            <span>Collection Rate</span>
-            <span className="text-sky-400 font-medium">{safeMetrics.paymentCollectionRate}%</span>
-          </div>
+          <p className="text-xs text-zinc-400">
+            {safeMetrics.paymentCollectionRate}% collection rate
+          </p>
         </div>
 
         {/* Overdue Amount */}
-        <div className="p-5 rounded-2xl border border-white/10 bg-zinc-950/80 shadow-2xl backdrop-blur-xl space-y-2.5">
+        <div className="p-5 rounded-2xl border border-white/10 bg-[#16181B] hover:border-white/20 transition-all space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">Overdue Amount</span>
-            <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
-              <AlertCircle className="w-4 h-4" />
-            </div>
+            <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Overdue Amount</span>
+            <AlertCircle className={`w-4 h-4 ${safeMetrics.overdueAmount > 0 ? 'text-rose-400' : 'text-zinc-500'}`} />
           </div>
-          <div className="text-2xl font-bold tracking-tight text-rose-400">
+          <div className={`text-2xl font-bold tracking-tight font-mono ${safeMetrics.overdueAmount > 0 ? 'text-rose-400' : 'text-white'}`}>
             {formatCurrency(safeMetrics.overdueAmount, currency)}
           </div>
-          <div className="flex items-center justify-between text-xs text-zinc-400">
-            <span>Action Required</span>
-            <span className="text-rose-400 font-medium">Follow Up</span>
-          </div>
+          <p className="text-xs text-zinc-400">
+            {safeMetrics.overdueAmount > 0 ? 'Requires client follow-up' : 'All invoices current'}
+          </p>
         </div>
       </div>
 
-      {/* Main Grid: Aging Report + Recent Activity */}
+      {/* Main Grid: Aging Breakdown + Upcoming Invoices */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Aging Report (2 cols) */}
-        <div className="lg:col-span-2 p-6 rounded-2xl border border-white/10 bg-zinc-950/80 shadow-2xl backdrop-blur-xl space-y-5">
-          <div className="flex items-center justify-between">
+        {/* Aging Breakdown (2 cols) */}
+        <div className="lg:col-span-2 p-6 rounded-2xl border border-white/10 bg-[#16181B] space-y-6">
+          <div className="flex items-center justify-between pb-4 border-b border-white/10">
             <div>
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <ShieldCheck className="w-4 h-4 text-[#43D6B0]" />
                 Invoicing Aging Breakdown
               </h3>
               <p className="text-xs text-zinc-400 mt-0.5">
                 Outstanding balances categorized by payment latency
               </p>
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-zinc-300 font-mono">
+            <span className="text-xs px-2.5 py-1 rounded-lg bg-[#121417] border border-white/10 text-zinc-300 font-mono font-medium">
               Total: {formatCurrency(safeMetrics.outstandingBalance, currency)}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+          {/* Aging Items List */}
+          <div className="space-y-4">
             {safeMetrics.agingReport.map((item) => (
               <div
                 key={item.range}
-                className="p-4 rounded-xl border border-white/10 bg-zinc-900/60 space-y-2"
+                className="p-3.5 rounded-xl border border-white/10 bg-[#121417] space-y-2.5"
               >
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-zinc-200">{item.range}</span>
-                  <span className="text-zinc-400 font-mono text-[11px]">{item.count} invoice{item.count === 1 ? '' : 's'}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-white">{item.range}</span>
+                    <span className="text-[11px] text-zinc-400 font-mono">
+                      ({item.count} {item.count === 1 ? 'invoice' : 'invoices'})
+                    </span>
+                  </div>
+                  <span className="font-mono font-bold text-white text-sm">
+                    {formatCurrency(item.amount, currency)}
+                  </span>
                 </div>
-                <div className="text-lg font-bold text-white">
-                  {formatCurrency(item.amount, currency)}
-                </div>
-                <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-300 ${
-                      item.range === '30+ Days'
-                        ? 'bg-rose-500'
-                        : item.range === '16-30 Days'
-                        ? 'bg-amber-500'
-                        : item.range === '8-15 Days'
-                        ? 'bg-sky-500'
-                        : 'bg-emerald-500'
-                    }`}
-                    style={{ width: `${Math.min(100, Math.max(5, item.percentage))}%` }}
-                  />
-                </div>
+                <Progress value={item.percentage} size="xs" />
               </div>
             ))}
           </div>
 
-          {/* Monthly Trend Mini Visualizer */}
-          <div className="pt-4 border-t border-white/10">
-            <h4 className="text-xs font-semibold text-zinc-300 mb-3">
-              Quarterly Revenue vs Pending Trend
-            </h4>
-            <div className="grid grid-cols-4 gap-2">
-              {safeMetrics.paymentTrend.map((t) => (
-                <div key={t.month} className="p-2.5 rounded-xl border border-white/10 bg-zinc-900/40 text-center">
-                  <div className="text-xs text-zinc-400 mb-1">{t.month}</div>
-                  <div className="text-xs font-bold text-emerald-400 font-mono">
-                    {formatCurrency(t.paid, currency)}
+          {/* Monthly Trend Clean Row */}
+          {safeMetrics.paymentTrend.length > 0 && (
+            <div className="pt-4 border-t border-white/10 space-y-3">
+              <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                Quarterly Revenue & Pending Trend
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {safeMetrics.paymentTrend.map((t) => (
+                  <div key={t.month} className="p-3 rounded-xl border border-white/10 bg-[#121417] text-center space-y-1">
+                    <div className="text-xs text-zinc-400 font-medium">{t.month}</div>
+                    <div className="text-xs font-bold text-white font-mono">
+                      {formatCurrency(t.paid, currency)}
+                    </div>
+                    <div className="text-[11px] text-zinc-400 font-mono">
+                      {t.pending > 0 ? `${formatCurrency(t.pending, currency)} pending` : 'Settled'}
+                    </div>
                   </div>
-                  <div className="text-[10px] text-amber-400 font-mono mt-0.5">
-                    {formatCurrency(t.pending, currency)} pending
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Upcoming Due Dates & Action Panel (1 col) */}
-        <div className="p-6 rounded-2xl border border-white/10 bg-zinc-950/80 shadow-2xl backdrop-blur-xl space-y-4">
-          <div className="flex items-center justify-between">
+        {/* Upcoming Due Dates Panel (1 col) */}
+        <div className="p-6 rounded-2xl border border-white/10 bg-[#16181B] space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-white/10">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-amber-400" />
+              <Calendar className="w-4 h-4 text-zinc-400" />
               Upcoming Due Invoices
             </h3>
             <button
               onClick={onCreateInvoice}
-              className="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1 transition-colors"
+              className="text-xs text-[#43D6B0] hover:text-[#52e8c2] font-semibold flex items-center gap-1 transition-colors"
             >
               + Create <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
@@ -219,10 +201,10 @@ export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice, cu
                 <div
                   key={inv.id}
                   onClick={() => onSelectInvoice(inv)}
-                  className="p-3.5 rounded-xl border border-white/10 hover:border-white/20 bg-zinc-900/60 hover:bg-zinc-900/90 cursor-pointer transition-all space-y-1.5 group"
+                  className="p-3.5 rounded-xl border border-white/10 hover:border-white/20 bg-[#121417] hover:bg-[#181a1f] cursor-pointer transition-all space-y-2 group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold font-mono text-white group-hover:text-amber-300 transition-colors">
+                    <span className="text-xs font-bold font-mono text-white group-hover:text-[#43D6B0] transition-colors">
                       {inv.invoiceNumber}
                     </span>
                     <DueIndicatorBadge
@@ -234,7 +216,7 @@ export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice, cu
                   <div className="flex items-center justify-between text-xs text-zinc-400">
                     <span className="truncate max-w-[140px]">{inv.clientName}</span>
                     <span className="font-bold text-white font-mono">
-                      {formatCurrency(inv.total, inv.currency)}
+                      {formatCurrency(inv.total, inv.currency || currency)}
                     </span>
                   </div>
                 </div>
@@ -242,8 +224,8 @@ export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice, cu
             )}
           </div>
 
-          <div className="pt-2 border-t border-white/10 text-xs text-zinc-400 flex items-center justify-between">
-            <span>Total Issued Invoices:</span>
+          <div className="pt-3 border-t border-white/10 text-xs text-zinc-400 flex items-center justify-between">
+            <span>Total Issued Invoices</span>
             <span className="font-mono font-bold text-white">
               {safeMetrics.recentInvoices.length} Active
             </span>
@@ -253,3 +235,5 @@ export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice, cu
     </div>
   );
 }
+
+export default InvoiceDashboard;

@@ -1,72 +1,63 @@
-import React, { useState } from 'react';
+'use client';
+
+import React from 'react';
 import { motion } from 'motion/react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/frontend/shared/ui/card';
-import { Users, FolderKanban, FileText, CheckSquare, Receipt, ShieldCheck, Activity, GitFork } from 'lucide-react';
+import { Users, FolderKanban, CheckSquare, GitFork, Receipt, ShieldCheck } from 'lucide-react';
 
 export const FeatureShowcase: React.FC = () => {
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-
   const features = [
     {
-      icon: <Users className="w-5 h-5 text-white" />,
-      title: 'Client Workspaces',
-      description: 'Keep every client, conversation, project, and document organized in its own dedicated workspace.',
+      icon: <Users className="w-5 h-5 text-[#43D6B0]" />,
+      title: 'Dedicated Client Workspaces',
+      description: 'Keep each client, their projects, conversation notes, and documents organized in its own isolated workspace.',
+      benefit: 'Replaces scattered Slack, WhatsApp, and email threads.',
     },
     {
-      icon: <FolderKanban className="w-5 h-5 text-white" />,
-      title: 'Projects & Milestones',
-      description: 'Stay on top of deadlines, project budgets, milestones, and progress without losing track of important work.',
+      icon: <CheckSquare className="w-5 h-5 text-[#43D6B0]" />,
+      title: 'Deliverables & Version Control',
+      description: 'Share work with clear version tags and release changelogs so clients always review the latest approved file.',
+      benefit: 'Replaces lost Google Drive and Dropbox file links.',
     },
     {
-      icon: <CheckSquare className="w-5 h-5 text-white" />,
-      title: 'Deliverable Versioning',
-      description: 'Share work confidently with organized file versions, clear updates, and complete revision history.',
+      icon: <GitFork className="w-5 h-5 text-[#43D6B0]" />,
+      title: 'Formal Approvals & Sign-Offs',
+      description: 'Collect explicit client approvals or structured revision requests tied directly to specific deliverable versions.',
+      benefit: 'Eliminates endless scope creep and ambiguous verbal feedback.',
     },
     {
-      icon: <GitFork className="w-5 h-5 text-white" />,
-      title: 'Approvals & Revisions',
-      description: 'Collect client feedback, manage revision requests, and get work approved without endless back-and-forth.',
+      icon: <Receipt className="w-5 h-5 text-[#43D6B0]" />,
+      title: 'Itemized Invoicing & Settlements',
+      description: 'Generate client-ready invoices with flexible taxes, discounts, multi-currency support, and crisp PDF exports.',
+      benefit: 'Replaces manual spreadsheet calculations and payment chasing.',
     },
     {
-      icon: <FileText className="w-5 h-5 text-white" />,
-      title: 'Documents & File Requests',
-      description: 'Keep essential documents, shared files, and client requests organized exactly where they belong.',
+      icon: <ShieldCheck className="w-5 h-5 text-[#43D6B0]" />,
+      title: 'Password-Free Client Portal',
+      description: 'Clients access their dedicated review portal using direct, secure magic links without needing to create an account.',
+      benefit: 'Zero login friction for your clients and faster turnaround.',
     },
     {
-      icon: <Receipt className="w-5 h-5 text-white" />,
-      title: 'Professional Invoicing',
-      description: 'Create professional invoices with flexible taxes, discounts, currencies, and payment terms.',
-    },
-    {
-      icon: <ShieldCheck className="w-5 h-5 text-white" />,
-      title: 'Client Portal',
-      description: 'Give clients a dedicated space to review deliverables, share feedback, access documents, and track invoices.',
-    },
-    {
-      icon: <Activity className="w-5 h-5 text-white" />,
-      title: 'Activity Timeline',
-      description: 'See every important update, approval, comment, and payment event in one transparent activity history.',
+      icon: <FolderKanban className="w-5 h-5 text-[#43D6B0]" />,
+      title: 'Project Milestones & Budgets',
+      description: 'Track phases, deadlines, deliverables, and financial budget allocation in one unified view.',
+      benefit: 'Stay ahead of upcoming deadlines with complete clarity.',
     },
   ];
 
   return (
-    <section id="features" className="py-24 px-6 lg:px-12 max-w-7xl mx-auto relative z-10">
+    <section id="features" className="py-20 px-6 lg:px-12 max-w-7xl mx-auto relative z-10">
       <motion.div
-        initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }}
-        whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-        viewport={{ once: false, amount: 0.2 }}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        className="text-center max-w-3xl mx-auto mb-16 space-y-4"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="text-center max-w-3xl mx-auto mb-14 space-y-3"
       >
-        <span className="text-xs sm:text-[13px] font-mono uppercase tracking-widest text-[#43D6B0] bg-[#191F1D] px-4 py-1.5 rounded-full border border-[#176B5B]/40 font-medium">
-          Complete Workspace Features
-        </span>
-        <h2 className="text-4xl sm:text-5xl lg:text-[50px] font-extrabold text-[#F5F5F0] tracking-tight leading-tight">
-          Everything You Need to Run Your Freelance Business
+        <h2 className="text-3xl sm:text-5xl font-extrabold text-[#F8F9FA] tracking-tight leading-tight">
+          Everything You Need to Run Client Work
         </h2>
-        <p className="text-lg sm:text-xl lg:text-[22px] text-[#A6B4AE] max-w-3xl mx-auto leading-relaxed font-normal">
-          One connected workspace for managing clients, delivering great work, collecting approvals, and getting paid on time.
+        <p className="text-base sm:text-lg text-[#9CA3AF] max-w-2xl mx-auto leading-relaxed">
+          One unified system connecting client management, deliverable reviews, invoicing, and payment tracking.
         </p>
       </motion.div>
 
@@ -74,37 +65,28 @@ export const FeatureShowcase: React.FC = () => {
         {features.map((feat, idx) => (
           <motion.div
             key={idx}
-            initial={{ opacity: 0, y: 24, filter: 'blur(4px)' }}
-            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-            viewport={{ once: false, amount: 0.15 }}
-            transition={{ duration: 0.5, delay: idx * 0.08, ease: [0.16, 1, 0.3, 1] }}
-            onMouseEnter={() => setHoveredIdx(idx)}
-            onMouseLeave={() => setHoveredIdx(null)}
-            onMouseMove={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-            }}
-            className="relative"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: idx * 0.06, ease: [0.16, 1, 0.3, 1] }}
+            className="flex flex-col justify-between p-7 rounded-2xl bg-[#16181B] border border-white/[0.08] hover:border-[#43D6B0]/40 transition-colors duration-200"
           >
-            <Card interactive className="group h-full relative overflow-hidden transition-all duration-300 hover:border-[#43D6B0]/40 p-6 sm:p-7">
-              {hoveredIdx === idx && (
-                <div
-                  className="absolute inset-0 pointer-events-none transition-opacity duration-300"
-                  style={{
-                    background: `radial-gradient(circle 220px at ${mousePos.x}px ${mousePos.y}px, rgba(23, 107, 91, 0.2), transparent 70%)`,
-                  }}
-                />
-              )}
-              <CardHeader className="mb-3">
-                <div className="w-12 h-12 rounded-xl bg-[#176B5B]/15 border border-[#176B5B]/35 text-[#43D6B0] flex items-center justify-center mb-3 group-hover:scale-105 group-hover:bg-[#176B5B]/30 group-hover:border-[#43D6B0]/50 transition-all duration-300">
-                  {feat.icon}
-                </div>
-                <CardTitle className="text-2xl font-bold text-[#F5F5F0] tracking-tight">{feat.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-base sm:text-lg text-[#A6B4AE] leading-relaxed font-normal">{feat.description}</CardDescription>
-              </CardContent>
-            </Card>
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[#43D6B0] flex items-center justify-center mb-5">
+                {feat.icon}
+              </div>
+              <h3 className="text-xl font-bold text-[#F8F9FA] tracking-tight mb-2.5">
+                {feat.title}
+              </h3>
+              <p className="text-sm text-[#9CA3AF] leading-relaxed mb-6 font-normal">
+                {feat.description}
+              </p>
+            </div>
+            <div className="pt-4 border-t border-white/[0.08]">
+              <span className="text-xs text-[#43D6B0] font-medium leading-normal block">
+                {feat.benefit}
+              </span>
+            </div>
           </motion.div>
         ))}
       </div>

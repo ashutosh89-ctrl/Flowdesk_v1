@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Clock,
+  Globe,
+  Code2,
 } from 'lucide-react';
 import { Dropdown } from '@/frontend/shared/ui/dropdown';
 
@@ -137,6 +139,25 @@ export const DeliverableCard: React.FC<DeliverableCardProps> = ({
           </div>
         </div>
 
+        {/* Deliverable Preview Image (if uploaded/provided) */}
+        {(() => {
+          const previewImg =
+            del.previewImageUrl ||
+            (del.nicheMetadata as any)?.previewImageUrl ||
+            (del.fileUrl && (del.fileUrl.startsWith('data:image/') || /\.(png|jpe?g|webp|gif|svg)($|\?)/i.test(del.fileUrl)) ? del.fileUrl : null);
+          if (!previewImg) return null;
+          return (
+            <div className="mb-3 rounded-xl overflow-hidden border border-white/10 bg-black/40 h-28 w-full flex items-center justify-center">
+              <img
+                src={previewImg}
+                alt={del.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                loading="lazy"
+              />
+            </div>
+          );
+        })()}
+
         {/* Deliverable Icon & Title */}
         <div className="flex items-start gap-3 mb-3">
           <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 group-hover:scale-105 group-hover:border-white/20 transition-all shadow-inner">
@@ -153,7 +174,7 @@ export const DeliverableCard: React.FC<DeliverableCardProps> = ({
         </div>
 
         {/* Client & Project */}
-        <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1 mb-4">
+        <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1 mb-3">
           <div className="flex justify-between items-center text-xs">
             <span className="text-zinc-500">Client</span>
             <span className="font-semibold text-zinc-200">{clientName}</span>
@@ -163,6 +184,30 @@ export const DeliverableCard: React.FC<DeliverableCardProps> = ({
             <span className="font-medium text-zinc-400 truncate max-w-[150px]">{projectName}</span>
           </div>
         </div>
+
+        {/* Project Links Indicator (Repo & Live Preview) */}
+        {(() => {
+          const meta = (del.nicheMetadata || {}) as Record<string, any>;
+          const repo = meta.repositoryUrl || meta.repoUrl;
+          const live = meta.previewUrl || meta.liveProjectUrl || meta.projectUrl;
+          if (!repo && !live) return null;
+          return (
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              {live && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#43D6B0]/10 border border-[#43D6B0]/20 text-[10px] font-mono text-[#43D6B0]">
+                  <Globe className="w-3 h-3" />
+                  <span>Live Preview</span>
+                </span>
+              )}
+              {repo && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[10px] font-mono text-zinc-300">
+                  <Code2 className="w-3 h-3 text-[#43D6B0]" />
+                  <span>Repo Attached</span>
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Badges */}
         <div className="flex flex-wrap items-center gap-2 mb-4">

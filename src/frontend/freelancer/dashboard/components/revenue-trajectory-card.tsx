@@ -30,7 +30,7 @@ export const RevenueTrajectoryCard: React.FC<RevenueTrajectoryCardProps> = ({
   const hasHistory = totalRevenue > 0 || maxHistoryAmount > 0;
 
   return (
-    <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
+    <div className="bg-[#191F1D] border border-white/10 rounded-2xl p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
@@ -105,7 +105,7 @@ export const RevenueTrajectoryCard: React.FC<RevenueTrajectoryCardProps> = ({
 
                   {/* Bar */}
                   <div
-                    className="w-full max-w-[42px] bg-gradient-to-t from-emerald-600/80 to-emerald-400 group-hover/bar:from-emerald-500 group-hover/bar:to-emerald-300 rounded-t-lg transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                    className="w-full max-w-[42px] bg-[#43D6B0] hover:bg-[#38c29e] rounded-t-lg transition-all duration-300"
                     style={{ height: `${Math.max(heightPct, 4)}%` }}
                   />
                 </div>

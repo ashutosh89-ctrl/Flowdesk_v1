@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Archive,
-  Sparkles,
+  Eye,
   CheckCheck,
 } from 'lucide-react';
 
@@ -43,7 +43,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     case 'ready':
       label = 'Ready for Review';
       colorClasses = 'bg-[#176B5B]/20 text-[#43D6B0] border-[#176B5B]/40';
-      icon = <Sparkles className="w-3 h-3" />;
+      icon = <Eye className="w-3 h-3" />;
       break;
     case 'submitted':
     case 'in_review':

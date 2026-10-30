@@ -15,12 +15,13 @@ export const SUPPORTED_CURRENCIES: CurrencyInfo[] = [
   { code: 'JPY', symbol: '¥', name: 'Japanese Yen (JPY)' },
 ];
 
-export function formatCurrency(amount: number = 0, currency: string = 'USD'): string {
-  const curr = SUPPORTED_CURRENCIES.find((c) => c.code.toUpperCase() === (currency || 'USD').toUpperCase()) || SUPPORTED_CURRENCIES[0];
+export function formatCurrency(amount: number = 0, currency: string = 'INR'): string {
+  const curr = SUPPORTED_CURRENCIES.find((c) => c.code.toUpperCase() === (currency || 'INR').toUpperCase()) || SUPPORTED_CURRENCIES[3];
   const num = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
   const isZeroDecimal = curr.code === 'JPY';
+  const locale = curr.code === 'INR' ? 'en-IN' : 'en-US';
   
-  const formattedNumber = num.toLocaleString('en-US', {
+  const formattedNumber = num.toLocaleString(locale, {
     minimumFractionDigits: isZeroDecimal ? 0 : 2,
     maximumFractionDigits: isZeroDecimal ? 0 : 2,
   });
@@ -31,7 +32,7 @@ export function formatCurrency(amount: number = 0, currency: string = 'USD'): st
   return `${curr.symbol}${formattedNumber}`;
 }
 
-export function getCurrencySymbol(currency: string = 'USD'): string {
-  const curr = SUPPORTED_CURRENCIES.find((c) => c.code.toUpperCase() === (currency || 'USD').toUpperCase());
-  return curr?.symbol || '$';
+export function getCurrencySymbol(currency: string = 'INR'): string {
+  const curr = SUPPORTED_CURRENCIES.find((c) => c.code.toUpperCase() === (currency || 'INR').toUpperCase());
+  return curr?.symbol || '₹';
 }

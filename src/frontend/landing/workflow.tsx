@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   Receipt,
   CreditCard,
-  Sparkles,
+  Eye,
   ArrowRight,
   ArrowLeft,
   ShieldCheck,
@@ -56,7 +56,7 @@ export const WorkflowSection: React.FC = () => {
       label: 'Approval',
       stage: '04. SIGN-OFF',
       title: 'Formal Approvals & Revisions',
-      icon: <Sparkles className="w-4 h-4" />,
+      icon: <Eye className="w-4 h-4" />,
       desc: 'Structured feedback and sign-offs.',
       detail:
         'Clients review work in their private portal to submit formal approvals or itemized revision requests connected to specific versions.',

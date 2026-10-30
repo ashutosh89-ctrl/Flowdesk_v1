@@ -35,6 +35,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // Demo Mode Handler
   if (isDemoModeActive()) {
     const localProf = FlowDeskStore.getUserProfile() || {};
+    const bankDetails = (localProf as any).bankDetails || {
+      bankName: (localProf as any).bankName || '',
+      accountHolderName: (localProf as any).accountHolderName || localProf.name || '',
+      accountNumber: (localProf as any).accountNumber || '',
+      ifscCode: (localProf as any).ifscCode || '',
+      branchName: (localProf as any).branchName || '',
+      upiId: localProf.upiId || '',
+    };
+    const hasBank = Boolean(bankDetails.accountNumber || bankDetails.bankName);
+
     const demoBranding: InvoiceBranding = {
       businessName: (DEMO_WORKSPACE.name && DEMO_WORKSPACE.name !== 'My Workspace')
         ? DEMO_WORKSPACE.name
@@ -44,6 +54,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       phone: localProf.phone || '',
       logoUrl: DEMO_WORKSPACE.logoUrl || localProf.logoUrl || '/branding/flowdesk-symbol.png',
       signatureUrl: DEMO_WORKSPACE.signatureUrl || localProf.signatureUrl || '',
+      upiQrCodeUrl: localProf.upiQrCodeUrl || (localProf as any).paymentMethods?.upiQrCodeUrl || '',
+      upiId: localProf.upiId || '',
+      bankDetails: hasBank ? bankDetails : undefined,
+      razorpayPaymentLink: (localProf as any).razorpayPaymentLink || '',
+      paymentMethods: {
+        bankTransferEnabled: true,
+        upiEnabled: Boolean(localProf.upiId || localProf.upiQrCodeUrl),
+        razorpayLinkEnabled: Boolean((localProf as any).razorpayPaymentLink),
+        upiQrCodeUrl: localProf.upiQrCodeUrl,
+      },
     };
     return NextResponse.json({ success: true, branding: demoBranding });
   }
@@ -232,9 +252,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
           const bankDetails =
             userSettingsData?.payment_settings?.bankDetails ||
-            (userSettingsData?.bank_name
+            (userSettingsData?.bank_name || userSettingsData?.account_number
               ? {
-                  bankName: userSettingsData.bank_name,
+                  bankName: userSettingsData.bank_name || '',
                   accountHolderName: userSettingsData.account_holder_name || '',
                   accountNumber: userSettingsData.account_number || '',
                   ifscCode: userSettingsData.ifsc_code || '',
@@ -244,6 +264,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
               : undefined);
           if (bankDetails) {
             branding.bankDetails = bankDetails;
+            (branding as any).bankName = bankDetails.bankName;
+            (branding as any).accountNumber = bankDetails.accountNumber;
+            (branding as any).accountHolderName = bankDetails.accountHolderName;
+            (branding as any).ifscCode = bankDetails.ifscCode;
+            (branding as any).branchName = bankDetails.branchName;
           }
 
           const razorpayPaymentLink =

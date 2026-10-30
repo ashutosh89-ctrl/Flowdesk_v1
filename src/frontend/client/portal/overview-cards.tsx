@@ -14,10 +14,12 @@ import {
   Download,
   Upload,
   MessageSquare,
-  Sparkles,
   TrendingUp,
   Folder,
+  ShieldCheck,
 } from 'lucide-react';
+import { Progress } from '@/frontend/shared/ui/progress';
+import { formatCurrency } from '@/shared/utils/currency';
 import {
   Client,
   Project,
@@ -70,14 +72,11 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}
-      <Card variant="crystal" className="p-6 sm:p-8 border-white/20 bg-gradient-to-r from-zinc-900/90 via-zinc-950 to-zinc-900/90 relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-          <Sparkles className="w-32 h-32 text-white" />
-        </div>
+      <Card variant="crystal" className="p-6 sm:p-8 border-white/20 bg-[#16181B] relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-zinc-300 font-mono">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <ShieldCheck className="w-3.5 h-3.5 text-[#43D6B0]" />
               <span>Workspace Active • {client.company}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
@@ -245,17 +244,12 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
                         <span>Milestone Progress</span>
                         <span className="font-bold text-white">{p.completionPercentage}%</span>
                       </div>
-                      <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-white h-1.5 rounded-full transition-all duration-500"
-                          style={{ width: `${p.completionPercentage}%` }}
-                        />
-                      </div>
+                      <Progress value={p.completionPercentage} size="xs" />
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[11px] text-zinc-400 font-mono">
                       <span>Target Launch: {p.dueDate}</span>
-                      <span>Budget: ${p.budget?.toLocaleString()}</span>
+                      <span>Budget: {formatCurrency(p.budget || 0, client.currency || 'INR')}</span>
                     </div>
                   </div>
                 ))

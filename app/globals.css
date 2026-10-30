@@ -34,56 +34,56 @@
   --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* FlowDesk 6-Color Global Palette */
-  --color-primary-bg: #101312;
-  --color-card-panel: #191F1D;
-  --color-secondary-accent: #176B5B;
+  /* Charcoal Black and Neon Global Palette */
+  --color-primary-bg: #0D0E10;
+  --color-card-panel: #16181B;
+  --color-secondary-accent: #1E2228;
   --color-primary-accent: #43D6B0;
-  --color-primary-text: #F5F5F0;
-  --color-secondary-text: #A6B4AE;
+  --color-primary-text: #F8F9FA;
+  --color-secondary-text: #9CA3AF;
 
   /* Compatibility aliases */
-  --color-near-black: #101312;
-  --color-dark-surface: #191F1D;
-  --color-elevated-dark: #191F1D;
-  --color-primary-white: #F5F5F0;
-  --color-soft-white: #F5F5F0;
-  --color-border-dark: rgba(23, 107, 91, 0.3);
+  --color-near-black: #0D0E10;
+  --color-dark-surface: #16181B;
+  --color-elevated-dark: #1C1F23;
+  --color-primary-white: #F8F9FA;
+  --color-soft-white: #F8F9FA;
+  --color-border-dark: rgba(255, 255, 255, 0.08);
   --color-focus: #43D6B0;
 }
 
 @layer base {
   :root {
-    /* 6-Color System Tokens */
-    --color-bg-primary: #101312;
-    --color-card-panel: #191F1D;
-    --color-secondary-accent: #176B5B;
+    /* Charcoal Black and Neon Tokens */
+    --color-bg-primary: #0D0E10;
+    --color-card-panel: #16181B;
+    --color-secondary-accent: #1E2228;
     --color-primary-accent: #43D6B0;
-    --color-primary-text: #F5F5F0;
-    --color-secondary-text: #A6B4AE;
+    --color-primary-text: #F8F9FA;
+    --color-secondary-text: #9CA3AF;
 
     /* Theme Aliases */
-    --color-near-black: #101312;
-    --color-dark-surface: #191F1D;
-    --color-elevated-dark: #191F1D;
-    --color-white: #F5F5F0;
-    --color-soft-white: #F5F5F0;
+    --color-near-black: #0D0E10;
+    --color-dark-surface: #16181B;
+    --color-elevated-dark: #1C1F23;
+    --color-white: #F8F9FA;
+    --color-soft-white: #F8F9FA;
 
     --color-accent-primary: #43D6B0;
-    --color-accent-secondary: #176B5B;
+    --color-accent-secondary: #1E2228;
 
-    --color-border-light: rgba(23, 107, 91, 0.2);
-    --color-border-dark: rgba(23, 107, 91, 0.3);
+    --color-border-light: rgba(255, 255, 255, 0.06);
+    --color-border-dark: rgba(255, 255, 255, 0.09);
 
-    --color-text-primary: #F5F5F0;
-    --color-text-secondary: #A6B4AE;
-    --color-text-inverse: #101312;
+    --color-text-primary: #F8F9FA;
+    --color-text-secondary: #9CA3AF;
+    --color-text-inverse: #0D0E10;
 
     --color-focus: #43D6B0;
 
-    --bg-ultra-charcoal: #101312;
-    --bg-graphite: #191F1D;
-    --border-soft: rgba(23, 107, 91, 0.3);
+    --bg-ultra-charcoal: #0D0E10;
+    --bg-graphite: #16181B;
+    --border-soft: rgba(255, 255, 255, 0.08);
   }
 
   html {
@@ -93,8 +93,8 @@
   }
 
   html, body {
-    background-color: #101312;
-    color: #F5F5F0;
+    background-color: #0D0E10;
+    color: #F8F9FA;
     font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     font-size: 16px;
     line-height: 1.6;
@@ -139,44 +139,40 @@
   }
 }
 
-/* Glass & Card Utility Classes */
+/* Sophisticated Charcoal Black & Neon Utility Classes */
 .crystal-card {
-  background: #191F1D;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(23, 107, 91, 0.3);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  background: #16181B;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.6);
 }
 
 .crystal-card-interactive {
-  background: #191F1D;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(23, 107, 91, 0.3);
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  background: #16181B;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.6);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crystal-card-interactive:hover {
-  background: #1E2523;
-  border-color: rgba(67, 214, 176, 0.5);
-  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(67, 214, 176, 0.1);
+  background: #1C1F23;
+  border-color: rgba(67, 214, 176, 0.4);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.8);
   transform: translateY(-2px);
 }
 
 .crystal-btn-primary {
   background: #43D6B0;
-  color: #101312;
+  color: #0D0E10;
   font-weight: 700;
   border: 1px solid #43D6B0;
-  box-shadow: 0 4px 20px rgba(67, 214, 176, 0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crystal-btn-primary:hover {
   background: #38c29e;
   border-color: #38c29e;
-  box-shadow: 0 8px 28px rgba(67, 214, 176, 0.4);
+  box-shadow: 0 4px 12px rgba(67, 214, 176, 0.25);
   transform: translateY(-1px);
 }
 
@@ -186,33 +182,30 @@
 }
 
 .crystal-btn-secondary {
-  background: #191F1D;
-  color: #F5F5F0;
-  border: 1px solid rgba(23, 107, 91, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  background: #16181B;
+  color: #F8F9FA;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .crystal-btn-secondary:hover {
-  background: #222B28;
+  background: #1E2226;
   border-color: rgba(67, 214, 176, 0.4);
   color: #FFFFFF;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   transform: translateY(-1px);
 }
 
 .crystal-input {
-  background: rgba(25, 31, 29, 0.7);
-  border: 1px solid rgba(23, 107, 91, 0.35);
-  color: #F5F5F0;
-  backdrop-filter: blur(8px);
+  background: #16181B;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #F8F9FA;
   transition: all 0.2s ease;
 }
 
 .crystal-input:focus {
-  background: #191F1D;
+  background: #131417;
   border-color: #43D6B0;
   outline: none;
   box-shadow: 0 0 0 2px rgba(67, 214, 176, 0.25);
@@ -235,6 +228,30 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #43D6B0;
+}
+
+/* Hide scrollbars completely on landing page */
+html.no-scrollbar,
+body.no-scrollbar,
+.no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+html.no-scrollbar::-webkit-scrollbar,
+body.no-scrollbar::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* ============================================================
+   SOPHISTICATED SOLID DARK — ELIMINATE GLASSMORPHISM & BLUR
+   ============================================================ */
+[class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* ============================================================

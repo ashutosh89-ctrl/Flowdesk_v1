@@ -25,7 +25,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   onSuccess,
 }) => {
   const { profile, userSettings } = useAuth();
-  const currencySymbol = getCurrencySymbol(userSettings?.currency || profile?.currency || 'USD');
+  const currencySymbol = getCurrencySymbol(userSettings?.currency || profile?.currency || 'INR');
   const { showToast } = useToast();
 
   const [fetchedClients, setFetchedClients] = useState<Client[]>([]);

@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   Receipt,
   CreditCard,
-  Sparkles,
+  Eye,
   ArrowRight,
   ShieldCheck,
 } from 'lucide-react';
@@ -46,7 +46,7 @@ export const TestimonialsSection: React.FC = () => {
     },
     {
       title: 'Client Review',
-      icon: <Sparkles className="w-4 h-4" />,
+      icon: <Eye className="w-4 h-4" />,
       tag: '05. REVIEW',
       desc: 'Clients can approve work or request revisions with clear feedback.',
       detail: 'Clients review deliverables in their portal to sign off approvals or submit structured revision requests.',

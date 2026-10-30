@@ -11,7 +11,7 @@ import {
   Plus,
   FileText,
   ArrowRight,
-  Sparkles,
+  Terminal,
   CornerDownLeft,
 } from 'lucide-react';
 
@@ -282,14 +282,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
             </div>
 
             {/* Modal Bottom Footer Navigation Hint */}
-            <div className="p-3 px-4 border-t border-[#176B5B]/20 bg-[#101312] flex items-center justify-between text-[10px] text-[#A6B4AE] font-mono">
+            <div className="p-3 px-4 border-t border-white/10 bg-[#121417] flex items-center justify-between text-[10px] text-zinc-400 font-mono">
               <div className="flex items-center gap-3">
                 <span>↑↓ Navigate</span>
                 <span>↵ Select</span>
                 <span>ESC Close</span>
               </div>
-              <span className="flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-[#43D6B0]" /> FlowDesk OS Core
+              <span className="flex items-center gap-1.5 text-zinc-300">
+                <Terminal className="w-3 h-3 text-[#43D6B0]" /> FlowDesk OS Core
               </span>
             </div>
           </motion.div>

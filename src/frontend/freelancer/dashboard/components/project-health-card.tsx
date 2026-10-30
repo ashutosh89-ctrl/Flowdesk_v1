@@ -1,6 +1,7 @@
 import React from 'react';
 import { FolderKanban, AlertTriangle, CheckCircle2, ChevronRight, Clock, ShieldAlert } from 'lucide-react';
 import { ProjectHealthSummary } from '@/shared/types';
+import { Progress } from '@/frontend/shared/ui/progress';
 
 interface ProjectHealthCardProps {
   summaries: ProjectHealthSummary[];
@@ -22,7 +23,7 @@ export const ProjectHealthCard: React.FC<ProjectHealthCardProps> = ({ summaries,
   };
 
   return (
-    <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
+    <div className="bg-[#16181B] border border-white/10 rounded-2xl p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
@@ -77,18 +78,7 @@ export const ProjectHealthCard: React.FC<ProjectHealthCardProps> = ({ summaries,
                     <span>Milestone Completion</span>
                     <span className="font-bold text-white">{item.completionPercentage}%</span>
                   </div>
-                  <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-500 ${
-                        item.completionPercentage === 100
-                          ? 'bg-emerald-400'
-                          : item.status === 'Critical'
-                          ? 'bg-rose-500'
-                          : 'bg-sky-400'
-                      }`}
-                      style={{ width: `${item.completionPercentage}%` }}
-                    />
-                  </div>
+                  <Progress value={item.completionPercentage} size="xs" />
                 </div>
 
                 {/* Reasons / Risk Triggers */}

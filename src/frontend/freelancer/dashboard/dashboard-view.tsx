@@ -19,6 +19,7 @@ import { PinnedItemsCard } from './components/pinned-items-card';
 import { RecentWorkCard } from './components/recent-work-card';
 import { GlobalActivityCard } from './components/global-activity-card';
 import { TodayFocusItem, PinnedItem, RecentItem, ProjectHealthSummary, WorkspaceHealth } from '@/shared/types';
+import { formatCurrency } from '@/shared/utils/currency';
 
 export interface DashboardViewProps {
   onNavigate: (view: string) => void;
@@ -62,7 +63,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   onOpenClientWorkspace,
 }) => {
-  const { user, profile } = useAuth();
+  const { user, profile, userSettings } = useAuth();
   const [metrics, setMetrics] = useState<any>(emptyMetrics);
   const [todayItems, setTodayItems] = useState<TodayFocusItem[]>([]);
   const [health, setHealth] = useState<WorkspaceHealth>(initialHealth);
@@ -141,7 +142,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           derived.push({
             id: `focus-inv-${invoice.id}`,
             title: `${invoice.status === 'overdue' ? 'Overdue' : 'Pending'} Invoice #${invoice.invoiceNumber || invoice.invoice_number || invoice.id}`,
-            description: `$${Number(invoice.total || invoice.total_amount || 0).toLocaleString()} due on ${invoice.dueDate || invoice.due_date || 'no due date'}.`,
+            description: `${formatCurrency(Number(invoice.total || invoice.total_amount || 0), invoice.currency || userSettings?.currency || profile?.currency || 'INR')} due on ${invoice.dueDate || invoice.due_date || 'no due date'}.`,
             category: 'overdue_invoice',
             priority: invoice.status === 'overdue' ? 'critical' : 'high',
             dueDate: invoice.dueDate || invoice.due_date,
@@ -328,21 +329,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   useEffect(() => {
     refreshData();
 
-    // 1. Proactive Polling: Checks every 12 seconds when freelancer is viewing the dashboard
+    // Proactive background revalidation with a calm 90-second interval (Realtime channel handles instant updates)
     const intervalId = setInterval(() => {
       if (document.visibilityState === 'visible') {
         refreshData();
       }
-    }, 12000);
+    }, 90000);
 
-    // 2. Window Focus & Visibility Change: Instantly re-queries when returning to tab
+    // Debounced focus event so it doesn't storm
+    let focusTimer: any = null;
     const onWindowFocus = () => {
-      refreshData();
+      clearTimeout(focusTimer);
+      focusTimer = setTimeout(() => {
+        refreshData();
+      }, 500);
     };
     window.addEventListener('focus', onWindowFocus);
-    document.addEventListener('visibilitychange', onWindowFocus);
 
-    // 3. Supabase Realtime Channel: Instantly sync when client actions occur
+    // Supabase Realtime Channel: Instantly sync when client actions occur
     let channel: any = null;
     try {
       channel = supabase
@@ -366,8 +370,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     return () => {
       clearInterval(intervalId);
+      clearTimeout(focusTimer);
       window.removeEventListener('focus', onWindowFocus);
-      document.removeEventListener('visibilitychange', onWindowFocus);
       if (channel) {
         try {
           supabase.removeChannel(channel);
@@ -375,7 +379,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       }
     };
   }, []);
-
 
   const handleActionFromFocus = (item: TodayFocusItem) => {
     if (item.actionType === 'pay_invoice') onNavigate('invoices');
@@ -391,11 +394,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const computeGreeting = () => {
     const hour = new Date().getHours();
-    // After 12 o'clock midnight (00:00 to 11:59) -> Good morning
     if (hour >= 0 && hour < 12) return 'Good morning';
-    // 12:00 noon to 17:59 -> Good afternoon
     if (hour >= 12 && hour < 18) return 'Good afternoon';
-    // 18:00 to 23:59 (evening/night) -> Good evening
     return 'Good evening';
   };
 
@@ -404,7 +404,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   useEffect(() => {
     const update = () => setGreeting(computeGreeting());
     update();
-    const timer = setInterval(update, 30000);
+    const timer = setInterval(update, 60000);
     return () => clearInterval(timer);
   }, []);
 
@@ -413,16 +413,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-8 select-none">
-      <div className="pb-6 border-b border-white/10">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-            MISSION CONTROL • FLOWDESK OS
-          </span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+      <div className="pb-6 border-b border-[#176B5B]/25">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#F5F5F0] tracking-tight">
           {greeting}, {displayName}
         </h1>
-        <p className="text-xs text-zinc-400 mt-1">{displayCompany} Workspace</p>
+        <p className="text-xs text-[#A6B4AE] mt-1">{displayCompany} Workspace</p>
       </div>
 
       <TodayFocusCard items={todayItems} onAction={handleActionFromFocus} onNavigate={onNavigate} />

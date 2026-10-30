@@ -213,16 +213,16 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-3 sm:flex items-center gap-2 w-full sm:w-auto">
             {[
-              { id: 'all', label: 'All Invoices' },
+              { id: 'all', label: 'All' },
               { id: 'unpaid', label: 'Unpaid' },
               { id: 'paid', label: 'Paid' },
             ].map((t) => (
               <button
                 key={t.id}
                 onClick={() => setFilter(t.id as any)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center justify-center ${
                   filter === t.id
                     ? 'bg-white text-zinc-950 font-bold shadow-md'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5'
@@ -248,23 +248,30 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
         ) : (
           filteredInvoices.map((inv) => {
             const isPaid = inv.paymentStatus === 'paid' || inv.status === 'paid';
-            const invQrUrl = inv.upiQrCodeUrl || effectiveBranding?.upiQrCodeUrl;
+            const invQrUrl =
+              inv.upiQrCodeUrl ||
+              inv.paymentMethods?.upiQrCodeUrl ||
+              (effectiveBranding as any)?.upiQrCodeUrl ||
+              (effectiveBranding as any)?.upi_qr_code_url;
             const invUpiId =
               inv.upiId ||
+              inv.paymentMethods?.upiId ||
               inv.bankDetails?.upiId ||
-              effectiveBranding?.upiId ||
-              effectiveBranding?.bankDetails?.upiId;
+              (effectiveBranding as any)?.upiId ||
+              (effectiveBranding as any)?.upi_id ||
+              (effectiveBranding as any)?.bankDetails?.upiId;
             const hasInvQr = Boolean(invQrUrl || invUpiId);
             const remaining = inv.remainingBalance ?? inv.total;
             const upiDeepLink = invUpiId
-              ? `upi://pay?pa=${encodeURIComponent(invUpiId)}&pn=${encodeURIComponent(effectiveBranding?.businessName || 'FlowDesk')}&am=${remaining}&cu=${inv.currency || 'INR'}&tn=${encodeURIComponent(`Invoice ${inv.invoiceNumber}`)}`
+              ? `upi://pay?pa=${encodeURIComponent(invUpiId)}&pn=${encodeURIComponent((effectiveBranding as any)?.businessName || 'FlowDesk')}&am=${remaining}&cu=${inv.currency || 'INR'}&tn=${encodeURIComponent(`Invoice ${inv.invoiceNumber}`)}`
               : '';
 
             return (
-              <Card key={inv.id} variant="crystal" className="p-5 border-white/15 hover:border-white/25 transition-all">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <Card key={inv.id} variant="crystal" className="p-4 sm:p-5 border-white/15 hover:border-white/25 transition-all space-y-3.5">
+                {/* Header & Amount row */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-bold text-white font-mono">{inv.invoiceNumber}</span>
                       <StatusPill status={inv.paymentStatus || inv.status || 'pending'} />
                     </div>
@@ -273,76 +280,89 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-4 flex-wrap shrink-0">
+                  <div className="flex items-baseline sm:items-end justify-between sm:justify-start gap-2 pt-1 sm:pt-0 border-t border-white/5 sm:border-0">
+                    <span className="text-xs text-zinc-400 sm:hidden">Statement Total:</span>
                     <div className="text-right font-mono">
-                      <span className="text-lg font-extrabold text-white">
+                      <span className="text-xl sm:text-lg font-extrabold text-[#43D6B0] sm:text-white">
                         {formatCurrency(inv.total, inv.currency)}
                       </span>
                       <span className="text-[10px] text-zinc-500 block uppercase">{inv.currency}</span>
                     </div>
+                  </div>
+                </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedInvoiceModal(inv)}
-                        leftIcon={<Eye className="w-3.5 h-3.5 text-[#43D6B0]" />}
-                      >
-                        Preview
-                      </Button>
+                {/* Actions row: Clean on phone & desktop */}
+                <div className="pt-2.5 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full sm:w-auto justify-center text-xs"
+                      onClick={() => setSelectedInvoiceModal(inv)}
+                      leftIcon={<Eye className="w-3.5 h-3.5 text-[#43D6B0]" />}
+                    >
+                      Preview
+                    </Button>
 
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onDownloadClick(inv)}
-                        leftIcon={<Download className="w-3.5 h-3.5 text-emerald-400" />}
-                      >
-                        PDF
-                      </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full sm:w-auto justify-center text-xs"
+                      onClick={() => onDownloadClick(inv)}
+                      leftIcon={<Download className="w-3.5 h-3.5 text-emerald-400" />}
+                    >
+                      PDF
+                    </Button>
 
-                      {!isPaid ? (
-                        <>
-                          {hasInvQr && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onPayClick(inv)}
-                              leftIcon={<QrCode className="w-3.5 h-3.5 text-emerald-400" />}
-                            >
-                              QR
-                            </Button>
-                          )}
+                    {!isPaid && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full sm:w-auto justify-center text-xs"
+                          onClick={() => setPaymentInstructionsModal(inv)}
+                          leftIcon={<Landmark className="w-3.5 h-3.5 text-amber-400" />}
+                        >
+                          Bank Details
+                        </Button>
+
+                        {hasInvQr && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setPaymentInstructionsModal(inv)}
-                            leftIcon={<Landmark className="w-3.5 h-3.5 text-amber-400" />}
-                          >
-                            Bank Details
-                          </Button>
-                          <Button
-                            variant="primary"
-                            size="sm"
+                            className="w-full sm:w-auto justify-center text-xs"
                             onClick={() => onPayClick(inv)}
-                            leftIcon={<CreditCard className="w-3.5 h-3.5" />}
+                            leftIcon={<QrCode className="w-3.5 h-3.5 text-emerald-400" />}
                           >
-                            Pay Securely
+                            QR Code
                           </Button>
-                        </>
-                      ) : (
-                        <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Paid
-                        </span>
-                      )}
-                    </div>
+                        )}
+                      </>
+                    )}
                   </div>
+
+                  {!isPaid ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="w-full sm:w-auto justify-center font-bold shadow-md text-xs py-2 sm:py-1.5"
+                      onClick={() => onPayClick(inv)}
+                      leftIcon={<CreditCard className="w-4 h-4" />}
+                    >
+                      Pay Securely
+                    </Button>
+                  ) : (
+                    <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5 self-stretch sm:self-auto">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Paid
+                    </span>
+                  )}
                 </div>
 
                 {/* Direct Attached QR Code Section on Invoice Card */}
                 {hasInvQr && !isPaid && (
-                  <div className="mt-3 pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02] p-3 rounded-xl border border-white/5">
-                    <div className="flex items-center gap-3">
+                  <div className="mt-3 pt-3 border-t border-white/10 flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3 bg-white/[0.02] p-3 rounded-xl border border-white/5">
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
                       <div
                         onClick={() => onPayClick(inv)}
                         className="w-14 h-14 p-1 bg-white rounded-lg shadow shrink-0 flex items-center justify-center overflow-hidden cursor-pointer hover:scale-105 transition-transform"
@@ -354,7 +374,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                           <QRCode value={upiDeepLink} size={48} darkColor="#000000" lightColor="#ffffff" />
                         )}
                       </div>
-                      <div className="space-y-0.5">
+                      <div className="space-y-0.5 flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[10px] font-mono uppercase font-bold text-emerald-400">
                             Attached QR Payment
@@ -370,7 +390,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                               ) : (
                                 <Copy className="w-2.5 h-2.5" />
                               )}
-                              <span className="font-mono text-[10px]">{invUpiId}</span>
+                              <span className="font-mono text-[10px] truncate max-w-[140px] sm:max-w-none">{invUpiId}</span>
                             </button>
                           )}
                         </div>
@@ -381,10 +401,11 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="w-full sm:w-auto justify-center"
                         onClick={() => onPayClick(inv)}
                         leftIcon={<QrCode className="w-3.5 h-3.5 text-emerald-400" />}
                       >
@@ -561,112 +582,188 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
               </div>
             </div>
 
-            {/* Bank Transfer Details */}
-            {paymentInstructionsModal.bankDetails && (paymentInstructionsModal.bankDetails.bankName || paymentInstructionsModal.bankDetails.accountNumber) && (
-              <div className="p-4 rounded-xl bg-zinc-900/60 border border-white/10 space-y-3">
-                <div className="flex items-center gap-2 text-zinc-200 font-bold text-xs">
-                  <Landmark className="w-4 h-4 text-emerald-400" />
-                  <span>Direct Bank Wire Details</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                  {paymentInstructionsModal.bankDetails.accountHolderName && (
-                    <div className="p-2 rounded bg-black/40 border border-white/5">
-                      <span className="text-zinc-400 block text-[10px]">Beneficiary Name</span>
-                      <span className="font-semibold text-zinc-200">{paymentInstructionsModal.bankDetails.accountHolderName}</span>
-                    </div>
-                  )}
-                  {paymentInstructionsModal.bankDetails.bankName && (
-                    <div className="p-2 rounded bg-black/40 border border-white/5">
-                      <span className="text-zinc-400 block text-[10px]">Bank Name</span>
-                      <span className="font-semibold text-zinc-200">{paymentInstructionsModal.bankDetails.bankName}</span>
-                    </div>
-                  )}
-                  {paymentInstructionsModal.bankDetails.accountNumber && (
-                    <div className="p-2 rounded bg-black/40 border border-white/5 flex items-center justify-between">
-                      <div>
-                        <span className="text-zinc-400 block text-[10px]">Account Number</span>
-                        <span className="font-mono font-bold text-zinc-100">{paymentInstructionsModal.bankDetails.accountNumber}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => copyText(paymentInstructionsModal.bankDetails?.accountNumber || '', 'accNum')}
-                        className="p-1 rounded bg-white/5 hover:bg-white/15 text-zinc-300"
-                        title="Copy Account Number"
-                      >
-                        {copiedField === 'accNum' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                  )}
-                  {paymentInstructionsModal.bankDetails.ifscCode && (
-                    <div className="p-2 rounded bg-black/40 border border-white/5 flex items-center justify-between">
-                      <div>
-                        <span className="text-zinc-400 block text-[10px]">IFSC / SWIFT</span>
-                        <span className="font-mono font-bold text-zinc-100">{paymentInstructionsModal.bankDetails.ifscCode}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => copyText(paymentInstructionsModal.bankDetails?.ifscCode || '', 'ifsc')}
-                        className="p-1 rounded bg-white/5 hover:bg-white/15 text-zinc-300"
-                        title="Copy IFSC"
-                      >
-                        {copiedField === 'ifsc' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Bank Transfer Details & UPI Payment Blocks */}
+            {(() => {
+              const bDetails =
+                paymentInstructionsModal.bankDetails ||
+                paymentInstructionsModal.paymentMethods?.bankDetails ||
+                (effectiveBranding as any)?.bankDetails ||
+                (effectiveBranding as any)?.payment_settings?.bankDetails ||
+                {};
+              const bName =
+                bDetails.bankName ||
+                bDetails.bank_name ||
+                (effectiveBranding as any)?.bankName ||
+                (effectiveBranding as any)?.bank_name ||
+                '';
+              const bAcc =
+                bDetails.accountNumber ||
+                bDetails.account_number ||
+                (effectiveBranding as any)?.accountNumber ||
+                (effectiveBranding as any)?.account_number ||
+                '';
+              const bHolder =
+                bDetails.accountHolderName ||
+                bDetails.account_holder_name ||
+                (effectiveBranding as any)?.accountHolderName ||
+                (effectiveBranding as any)?.account_holder_name ||
+                (effectiveBranding as any)?.name ||
+                '';
+              const bIfsc =
+                bDetails.ifscCode ||
+                bDetails.ifsc_code ||
+                bDetails.swiftCode ||
+                bDetails.swift_code ||
+                (effectiveBranding as any)?.ifscCode ||
+                (effectiveBranding as any)?.ifsc_code ||
+                '';
+              const bBranch =
+                bDetails.branchName ||
+                bDetails.branch_name ||
+                (effectiveBranding as any)?.branchName ||
+                (effectiveBranding as any)?.branch_name ||
+                '';
 
-            {/* UPI Payment Block */}
-            {(paymentInstructionsModal.upiId || paymentInstructionsModal.upiQrCodeUrl) && (
-              <div className="p-4 rounded-xl bg-zinc-900/60 border border-white/10 space-y-3">
-                <div className="flex items-center justify-between text-zinc-200 font-bold text-xs">
-                  <span>
-                    {paymentInstructionsModal.upiQrCodeUrl && !paymentInstructionsModal.upiId
-                      ? 'Scan & Pay QR (Instant)'
-                      : 'UPI Direct Payment (Instant)'}
-                  </span>
-                  {paymentInstructionsModal.upiId && (
-                    <button
-                      type="button"
-                      onClick={() => copyText(paymentInstructionsModal.upiId || '', 'upiId')}
-                      className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white"
-                    >
-                      {copiedField === 'upiId' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                      <span>{copiedField === 'upiId' ? 'Copied' : 'Copy VPA'}</span>
-                    </button>
+              const mUpiId =
+                paymentInstructionsModal.upiId ||
+                paymentInstructionsModal.paymentMethods?.upiId ||
+                bDetails.upiId ||
+                bDetails.upi_id ||
+                (effectiveBranding as any)?.upiId ||
+                (effectiveBranding as any)?.upi_id ||
+                (effectiveBranding as any)?.payment_settings?.upiId ||
+                '';
+
+              const mQrUrl =
+                paymentInstructionsModal.upiQrCodeUrl ||
+                paymentInstructionsModal.paymentMethods?.upiQrCodeUrl ||
+                bDetails.upiQrCodeUrl ||
+                bDetails.upi_qr_code_url ||
+                (effectiveBranding as any)?.upiQrCodeUrl ||
+                (effectiveBranding as any)?.upi_qr_code_url ||
+                (effectiveBranding as any)?.payment_settings?.upiQrCodeUrl ||
+                '';
+
+              const hasBankInfo = Boolean(bName || bAcc);
+              const hasUpiInfo = Boolean(mUpiId || mQrUrl);
+
+              return (
+                <>
+                  {/* Bank Transfer Details */}
+                  {hasBankInfo && (
+                    <div className="p-4 rounded-xl bg-zinc-900/60 border border-white/10 space-y-3">
+                      <div className="flex items-center gap-2 text-zinc-200 font-bold text-xs">
+                        <Landmark className="w-4 h-4 text-emerald-400" />
+                        <span>Direct Bank Wire Details</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                        {bHolder && (
+                          <div className="p-2 rounded bg-black/40 border border-white/5">
+                            <span className="text-zinc-400 block text-[10px]">Beneficiary Name</span>
+                            <span className="font-semibold text-zinc-200">{bHolder}</span>
+                          </div>
+                        )}
+                        {bName && (
+                          <div className="p-2 rounded bg-black/40 border border-white/5">
+                            <span className="text-zinc-400 block text-[10px]">Bank Name</span>
+                            <span className="font-semibold text-zinc-200">{bName}</span>
+                          </div>
+                        )}
+                        {bAcc && (
+                          <div className="p-2 rounded bg-black/40 border border-white/5 flex items-center justify-between">
+                            <div>
+                              <span className="text-zinc-400 block text-[10px]">Account Number</span>
+                              <span className="font-mono font-bold text-zinc-100">{bAcc}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => copyText(bAcc, 'accNum')}
+                              className="p-1 rounded bg-white/5 hover:bg-white/15 text-zinc-300 transition-colors"
+                              title="Copy Account Number"
+                            >
+                              {copiedField === 'accNum' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        )}
+                        {bIfsc && (
+                          <div className="p-2 rounded bg-black/40 border border-white/5 flex items-center justify-between">
+                            <div>
+                              <span className="text-zinc-400 block text-[10px]">IFSC / SWIFT</span>
+                              <span className="font-mono font-bold text-zinc-100">{bIfsc}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => copyText(bIfsc, 'ifsc')}
+                              className="p-1 rounded bg-white/5 hover:bg-white/15 text-zinc-300 transition-colors"
+                              title="Copy IFSC"
+                            >
+                              {copiedField === 'ifsc' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        )}
+                        {bBranch && (
+                          <div className="p-2 rounded bg-black/40 border border-white/5 sm:col-span-2">
+                            <span className="text-zinc-400 block text-[10px]">Branch</span>
+                            <span className="text-zinc-300">{bBranch}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="p-1.5 bg-white rounded-lg shadow shrink-0 w-[108px] h-[108px] flex items-center justify-center overflow-hidden">
-                    {paymentInstructionsModal.upiQrCodeUrl ? (
-                      <img
-                        src={paymentInstructionsModal.upiQrCodeUrl}
-                        alt="Payment QR Code"
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <QRCode
-                        value={`upi://pay?pa=${encodeURIComponent(paymentInstructionsModal.upiId || '')}&pn=${encodeURIComponent(effectiveBranding.businessName || 'FlowDesk')}&am=${paymentInstructionsModal.remainingBalance ?? paymentInstructionsModal.total}&cu=${paymentInstructionsModal.currency || 'INR'}`}
-                        size={96}
-                        darkColor="#000000"
-                        lightColor="#ffffff"
-                      />
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    {paymentInstructionsModal.upiId && (
-                      <p className="font-mono text-zinc-100 font-bold text-xs">{paymentInstructionsModal.upiId}</p>
-                    )}
-                    <p className="text-zinc-400 text-[11px]">
-                      {paymentInstructionsModal.upiQrCodeUrl
-                        ? 'Scan with any UPI / Banking app (PhonePe, GPay, Paytm).'
-                        : 'Scan with Google Pay, PhonePe, Paytm, or BHIM.'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+
+                  {/* UPI Payment Block */}
+                  {hasUpiInfo && (
+                    <div className="p-4 rounded-xl bg-zinc-900/60 border border-white/10 space-y-3">
+                      <div className="flex items-center justify-between text-zinc-200 font-bold text-xs">
+                        <span>
+                          {mQrUrl && !mUpiId
+                            ? 'Scan & Pay QR (Instant)'
+                            : 'UPI Direct Payment (Instant)'}
+                        </span>
+                        {mUpiId && (
+                          <button
+                            type="button"
+                            onClick={() => copyText(mUpiId, 'upiId')}
+                            className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white transition-colors"
+                          >
+                            {copiedField === 'upiId' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedField === 'upiId' ? 'Copied' : 'Copy VPA'}</span>
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="p-1.5 bg-white rounded-lg shadow shrink-0 w-[108px] h-[108px] flex items-center justify-center overflow-hidden">
+                          {mQrUrl ? (
+                            <img
+                              src={mQrUrl}
+                              alt="Payment QR Code"
+                              className="w-full h-full object-contain"
+                            />
+                          ) : (
+                            <QRCode
+                              value={`upi://pay?pa=${encodeURIComponent(mUpiId)}&pn=${encodeURIComponent((effectiveBranding as any)?.businessName || 'FlowDesk')}&am=${paymentInstructionsModal.remainingBalance ?? paymentInstructionsModal.total}&cu=${paymentInstructionsModal.currency || 'INR'}`}
+                              size={96}
+                              darkColor="#000000"
+                              lightColor="#ffffff"
+                            />
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          {mUpiId && (
+                            <p className="font-mono text-zinc-100 font-bold text-xs">{mUpiId}</p>
+                          )}
+                          <p className="text-zinc-400 text-[11px]">
+                            {mQrUrl
+                              ? 'Scan with any UPI / Banking app (PhonePe, GPay, Paytm).'
+                              : 'Scan with Google Pay, PhonePe, Paytm, or BHIM.'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* External Razorpay Link */}
             {paymentInstructionsModal.razorpayPaymentLink && isApprovedRazorpayUrl(paymentInstructionsModal.razorpayPaymentLink) && (

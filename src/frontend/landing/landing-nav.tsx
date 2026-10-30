@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/frontend/shared/ui/button';
 import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 import { ArrowRight, Menu, X } from 'lucide-react';
-import Magnet from './Magnet';
 
 export interface LandingNavProps {
   onOpenAuth: (view: 'login' | 'signup') => void;
@@ -14,10 +13,8 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onOpenAuth, onLaunchApp 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { label: 'Features', href: '#features' },
-    { label: 'Workflow', href: '#workflow' },
-    { label: 'Benefits', href: '#benefits' },
     { label: 'Pricing', href: '#pricing' },
+    { label: 'Features', href: '#features' },
     { label: 'FAQ', href: '#faq' },
   ];
 
@@ -53,22 +50,19 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onOpenAuth, onLaunchApp 
   };
 
   return (
-    <header className="w-full h-20 px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 bg-[#101312]/90 backdrop-blur-3xl border-b border-[#176B5B]/30 flex items-center justify-between shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
+    <header className="w-full h-20 px-6 lg:px-12 fixed top-0 left-0 right-0 z-50 bg-[#0D0E10]/95 border-b border-white/[0.08] flex items-center justify-between">
       {/* Brand Logo */}
-      <div className="flex items-center gap-2.5 cursor-pointer group" onClick={onLaunchApp}>
+      <div className="flex items-center cursor-pointer group" onClick={onLaunchApp}>
         <FlowDeskLogo variant="full" size="sm" priority className="group-hover:opacity-90 transition-opacity" />
-        <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-[#191F1D] text-[#A6B4AE] border border-[#176B5B]/40 font-medium">
-          v1.0
-        </span>
       </div>
 
-      {/* Desktop Nav Links with Illumination Underline Micro-Motion */}
-      <nav className="hidden md:flex items-center gap-8 text-[16px] font-medium text-[#A6B4AE]">
+      {/* Desktop Nav Links Perfectly Centered in Viewport */}
+      <nav className="hidden md:flex items-center gap-8 text-[15px] font-medium text-[#9CA3AF] absolute left-1/2 -translate-x-1/2">
         {navItems.map((item) => (
           <a
             key={item.label}
             href={item.href}
-            className="relative py-1 text-[#A6B4AE] hover:text-[#F5F5F0] transition-colors duration-200 group"
+            className="relative py-1 text-[#9CA3AF] hover:text-white transition-colors duration-200 group"
           >
             <span>{item.label}</span>
             <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#43D6B0] group-hover:w-full transition-all duration-300 ease-out" />
@@ -81,17 +75,15 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onOpenAuth, onLaunchApp 
         <Button variant="ghost" size="md" className="text-base font-medium text-[#A6B4AE] hover:text-[#F5F5F0]" onClick={() => onOpenAuth('login')}>
           Sign In
         </Button>
-        <Magnet padding={40} magnetStrength={3}>
-          <Button
-            variant="primary"
-            size="md"
-            className="text-base font-bold px-5 py-2.5 shadow-sm"
-            onClick={() => onOpenAuth('signup')}
-            rightIcon={<ArrowRight className="w-4 h-4" />}
-          >
-            Start for Free
-          </Button>
-        </Magnet>
+        <Button
+          variant="primary"
+          size="md"
+          className="text-base font-bold px-5 py-2.5 shadow-sm"
+          onClick={() => onOpenAuth('signup')}
+          rightIcon={<ArrowRight className="w-4 h-4" />}
+        >
+          Start for Free
+        </Button>
       </div>
 
       {/* Mobile Menu Toggle Button */}
@@ -123,7 +115,7 @@ export const LandingNav: React.FC<LandingNavProps> = ({ onOpenAuth, onLaunchApp 
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="md:hidden fixed top-20 left-0 right-0 bg-[#101312]/95 backdrop-blur-3xl border-b border-[#176B5B]/30 px-6 py-6 shadow-2xl flex flex-col gap-5 z-40 max-h-[calc(100vh-5rem)] overflow-y-auto"
+            className="md:hidden fixed top-20 left-0 right-0 bg-[#101312] border-b border-[#176B5B]/30 px-6 py-6 shadow-2xl flex flex-col gap-5 z-40 max-h-[calc(100vh-5rem)] overflow-y-auto"
           >
             <nav className="flex flex-col gap-3">
               {navItems.map((item) => (

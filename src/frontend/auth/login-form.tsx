@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation';
 import { Input } from '@/frontend/shared/ui/input';
 import { Button } from '@/frontend/shared/ui/button';
 import { OAuthButtons } from '@/frontend/shared/common/oauth-buttons';
-import { Mail, Lock, ArrowRight, AlertCircle, Briefcase, Building2, Sparkles, ArrowUpRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, Briefcase, Building2, Play, ArrowUpRight } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import { useAuth } from '@/frontend/auth/auth-context';
 import { ClientAuthService } from '@/backend/client';
@@ -160,7 +160,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         <div className="space-y-2 p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 shadow-inner">
           <div className="flex items-center justify-between px-1">
             <span className="text-[11px] font-semibold tracking-wider text-zinc-300 uppercase flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Demo Environments
+              <Play className="w-3.5 h-3.5 text-[#43D6B0]" /> Demo Environments
             </span>
             <span className="text-[10px] text-zinc-500 font-mono">No signup needed</span>
           </div>

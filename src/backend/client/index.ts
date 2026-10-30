@@ -496,6 +496,16 @@ export const ClientPortalService = {
 
     // 8. Freelancer Studio Branding for Invoices & PDF
     const localProf = FlowDeskStore.getUserProfile();
+    const localBankDetails = (localProf as any).bankDetails || {
+      bankName: (localProf as any).bankName || '',
+      accountHolderName: (localProf as any).accountHolderName || localProf?.name || '',
+      accountNumber: (localProf as any).accountNumber || '',
+      ifscCode: (localProf as any).ifscCode || '',
+      branchName: (localProf as any).branchName || '',
+      upiId: localProf?.upiId || '',
+    };
+    const hasLocalBank = Boolean(localBankDetails.accountNumber || localBankDetails.bankName);
+
     let branding: any = {
       businessName: localProf?.companyName || localProf?.name || 'FlowDesk Freelance Studio',
       freelancerName: localProf?.name || 'Studio Lead',
@@ -503,6 +513,9 @@ export const ClientPortalService = {
       phone: localProf?.phone || '',
       logoUrl: localProf?.logoUrl || '/branding/flowdesk-symbol.png',
       signatureUrl: localProf?.signatureUrl || '',
+      upiQrCodeUrl: localProf?.upiQrCodeUrl || '',
+      upiId: localProf?.upiId || '',
+      bankDetails: hasLocalBank ? localBankDetails : undefined,
     };
 
     let brandingResolved = false;
@@ -627,9 +640,9 @@ export const ClientPortalService = {
 
               const bankDetails =
                 userSettingsData?.payment_settings?.bankDetails ||
-                (userSettingsData?.bank_name
+                (userSettingsData?.bank_name || userSettingsData?.account_number
                   ? {
-                      bankName: userSettingsData.bank_name,
+                      bankName: userSettingsData.bank_name || '',
                       accountHolderName: userSettingsData.account_holder_name || '',
                       accountNumber: userSettingsData.account_number || '',
                       ifscCode: userSettingsData.ifsc_code || '',
@@ -639,6 +652,11 @@ export const ClientPortalService = {
                   : undefined);
               if (bankDetails) {
                 branding.bankDetails = bankDetails;
+                (branding as any).bankName = bankDetails.bankName;
+                (branding as any).accountNumber = bankDetails.accountNumber;
+                (branding as any).accountHolderName = bankDetails.accountHolderName;
+                (branding as any).ifscCode = bankDetails.ifscCode;
+                (branding as any).branchName = bankDetails.branchName;
               }
 
               const razorpayPaymentLink =

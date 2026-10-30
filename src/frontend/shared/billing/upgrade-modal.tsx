@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Modal } from '@/frontend/shared/ui/modal';
 import { Button } from '@/frontend/shared/ui/button';
 import { BILLING_PLANS, PlanKey, BillingInterval } from '@/shared/billing';
-import { Check, Sparkles, Shield, AlertCircle, Loader2 } from 'lucide-react';
+import { Check, Zap, Shield, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 
 export interface UpgradeModalProps {
@@ -103,8 +103,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
     >
       <div className="space-y-6 pt-2">
         {featureNotice && (
-          <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-300">
-            <Sparkles className="w-4 h-4 shrink-0 text-emerald-400" />
+          <div className="flex items-center gap-2 p-3 bg-[#43D6B0]/10 border border-[#43D6B0]/20 rounded-xl text-xs text-[#43D6B0]">
+            <Zap className="w-4 h-4 shrink-0 text-[#43D6B0]" />
             <span>{featureNotice}</span>
           </div>
         )}

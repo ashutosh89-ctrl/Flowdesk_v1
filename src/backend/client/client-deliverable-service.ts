@@ -30,7 +30,7 @@ export const ClientDeliverableService = {
 
       if (error) {
         console.warn('Error fetching client deliverables:', error.message);
-        return [];
+        return FlowDeskStore.getDeliverables(clientId).map(({ internalNotes, ...rest }) => rest as Deliverable);
       }
 
       if (data && data.length > 0) {
@@ -51,6 +51,11 @@ export const ClientDeliverableService = {
           rejectionReason: d.rejection_reason || undefined,
           niche: d.niche || 'general',
           nicheMetadata: d.metadata || {},
+          fileUrl: d.file_url || d.metadata?.fileUrl || undefined,
+          fileName: d.file_name || d.metadata?.fileName || undefined,
+          fileSize: d.file_size || d.metadata?.fileSize || undefined,
+          previewImageUrl: d.preview_image_url || d.metadata?.previewImageUrl || undefined,
+          thumbnailUrl: d.thumbnail_url || d.metadata?.thumbnailUrl || undefined,
           commentsCount: d.comments_count || 0,
           filesCount: d.files_count || 0,
           createdAt: d.created_at,
@@ -59,6 +64,12 @@ export const ClientDeliverableService = {
       }
     } catch (err) {
       console.warn('Error fetching client deliverables:', err);
+      return FlowDeskStore.getDeliverables(clientId).map(({ internalNotes, ...rest }) => rest as Deliverable);
+    }
+
+    const localDeliverables = FlowDeskStore.getDeliverables(clientId);
+    if (localDeliverables.length > 0) {
+      return localDeliverables.map(({ internalNotes, ...rest }) => rest as Deliverable);
     }
 
     return [];
@@ -151,6 +162,11 @@ export const ClientDeliverableService = {
         rejectionReason: data.rejection_reason || undefined,
         niche: data.niche || 'general',
         nicheMetadata: data.metadata || {},
+        fileUrl: data.file_url || data.metadata?.fileUrl || (files[0]?.fileUrl) || undefined,
+        fileName: data.file_name || data.metadata?.fileName || (files[0]?.fileName) || undefined,
+        fileSize: data.file_size || data.metadata?.fileSize || (files[0]?.fileSize) || undefined,
+        previewImageUrl: data.preview_image_url || data.metadata?.previewImageUrl || undefined,
+        thumbnailUrl: data.thumbnail_url || data.metadata?.thumbnailUrl || undefined,
         files,
         versionHistory: versions,
         comments,

@@ -31,7 +31,8 @@ export interface ProjectsListViewProps {
 
 export const ProjectsListView: React.FC<ProjectsListViewProps> = ({ onOpenWorkspace }) => {
   const { profile, userSettings } = useAuth();
-  const currencySymbol = getCurrencySymbol(userSettings?.currency || profile?.currency || 'USD');
+  const studioCurrency = userSettings?.currency || profile?.currency || 'INR';
+  const currencySymbol = getCurrencySymbol(studioCurrency);
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
@@ -204,7 +205,7 @@ export const ProjectsListView: React.FC<ProjectsListViewProps> = ({ onOpenWorksp
 
               <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs text-zinc-400">
                 <span className="flex items-center gap-1 font-mono text-white font-bold">
-                  <DollarSign className="w-3.5 h-3.5 text-zinc-500" /> ${p.budget.toLocaleString()}
+                  {currencySymbol} {p.budget.toLocaleString('en-IN')}
                 </span>
 
                 <div className="flex items-center gap-2">

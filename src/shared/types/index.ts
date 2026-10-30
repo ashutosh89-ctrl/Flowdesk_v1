@@ -316,6 +316,10 @@ export interface Deliverable {
   fileUrl?: string;
   fileName?: string;
   fileSize?: string;
+  previewImageUrl?: string;
+  thumbnailUrl?: string;
+  repoUrl?: string;
+  previewUrl?: string;
   version: string;
   niche?: DeliverableNiche;
   nicheMetadata?: DeliverableNicheMetadata;
@@ -383,6 +387,8 @@ export interface PaymentMethodsConfig {
   upiEnabled?: boolean;
   razorpayLinkEnabled?: boolean;
   upiQrCodeUrl?: string;
+  upiId?: string;
+  bankDetails?: BankDetails;
 }
 
 export interface ClientPaymentNotification {

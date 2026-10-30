@@ -76,10 +76,10 @@ export function ClientInvoicePortalModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-      <div className="relative w-full max-w-5xl bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 backdrop-blur-2xl text-white">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="relative w-full max-w-5xl bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden my-2 sm:my-6 backdrop-blur-2xl text-white">
         {/* Top Portal Banner */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-3.5 bg-white/[0.03] border-b border-white/10 text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-3.5 sm:px-6 py-2.5 sm:py-3.5 bg-white/[0.03] border-b border-white/10 text-xs">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-emerald-400 shrink-0" />
             <span className="font-semibold tracking-wide uppercase text-[11px] text-zinc-300">
@@ -150,7 +150,7 @@ export function ClientInvoicePortalModal({
         </div>
 
         {/* Invoice Document Canvas */}
-        <div className="p-6 max-h-[80vh] overflow-y-auto bg-zinc-950/90 flex justify-center">
+        <div className="p-2 sm:p-6 max-h-[80vh] overflow-y-auto bg-zinc-950/90 flex justify-center">
           <InvoiceDocument
             ref={documentRef}
             invoice={invoice}

@@ -1073,10 +1073,10 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
                 </div>
 
                 {/* Quick Client Sign-off Trigger */}
-                <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-3">
+                <div className="p-5 rounded-2xl bg-[#43D6B0]/10 border border-[#43D6B0]/20 space-y-3">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-emerald-400" />
-                    <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
+                    <CheckCircle2 className="w-4 h-4 text-[#43D6B0]" />
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
                       Client Sign-Off Quick Actions
                     </h4>
                   </div>

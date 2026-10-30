@@ -597,6 +597,11 @@ export const FreelancerDeliverableService = {
         submissionMessage: d.submission_message || '',
         niche: d.niche || 'general',
         nicheMetadata: d.metadata || {},
+        fileUrl: d.file_url || d.metadata?.fileUrl || undefined,
+        fileName: d.file_name || d.metadata?.fileName || undefined,
+        fileSize: d.file_size || d.metadata?.fileSize || undefined,
+        previewImageUrl: d.preview_image_url || d.metadata?.previewImageUrl || undefined,
+        thumbnailUrl: d.thumbnail_url || d.metadata?.thumbnailUrl || undefined,
         commentsCount: d.comments_count || 0,
         filesCount: d.files_count || 0,
         isArchived: d.status === 'archived',
@@ -682,6 +687,11 @@ export const FreelancerDeliverableService = {
         rejectionReason: data.rejection_reason || undefined,
         niche: data.niche || 'general',
         nicheMetadata: data.metadata || {},
+        fileUrl: data.file_url || data.metadata?.fileUrl || (files[0]?.fileUrl) || undefined,
+        fileName: data.file_name || data.metadata?.fileName || (files[0]?.fileName) || undefined,
+        fileSize: data.file_size || data.metadata?.fileSize || (files[0]?.fileSize) || undefined,
+        previewImageUrl: data.preview_image_url || data.metadata?.previewImageUrl || undefined,
+        thumbnailUrl: data.thumbnail_url || data.metadata?.thumbnailUrl || undefined,
         commentsCount: data.comments_count || comments.length,
         filesCount: data.files_count || files.length,
         files,
@@ -1410,6 +1420,54 @@ import {
   generateNextInvoiceNumber,
 } from '@/shared/utils/invoice-calculations';
 
+function mapApiInvoiceData(raw: any, fallback?: Partial<Invoice>): Invoice {
+  const calcTotal = Number(raw.total_amount ?? raw.total ?? fallback?.total) || 0;
+  const calcPaid = Number(raw.paid_amount ?? raw.paidAmount ?? fallback?.paidAmount) || 0;
+  const rawStatus = raw.status || raw.workflow_status || raw.workflowStatus || fallback?.workflowStatus || 'draft';
+  const isOverdue = raw.due_date && rawStatus !== 'paid' && new Date(raw.due_date) < new Date();
+
+  return {
+    id: raw.id || fallback?.id || '',
+    invoiceNumber: raw.invoice_number || raw.invoiceNumber || fallback?.invoiceNumber || '',
+    clientId: raw.client_id || raw.clientId || fallback?.clientId || '',
+    clientName: raw.client_name || raw.clientName || fallback?.clientName || 'Client Workspace',
+    clientEmail: raw.client_email || raw.clientEmail || fallback?.clientEmail || 'client@example.com',
+    projectId: raw.project_id || raw.projectId || fallback?.projectId || undefined,
+    projectName: raw.project_name || raw.projectName || fallback?.projectName || undefined,
+    issueDate: raw.issue_date || raw.issueDate || fallback?.issueDate || new Date().toISOString().split('T')[0],
+    dueDate: raw.due_date || raw.dueDate || fallback?.dueDate || new Date().toISOString().split('T')[0],
+    workflowStatus: (raw.workflow_status || raw.workflowStatus || raw.status || fallback?.workflowStatus || 'draft') as any,
+    paymentStatus: (raw.payment_status || raw.paymentStatus || (rawStatus === 'paid' ? 'paid' : 'pending')) as any,
+    status: isOverdue ? 'overdue' : (raw.status || fallback?.status || 'draft'),
+    items: (raw.items || raw.invoice_items || fallback?.items || []).map((it: any) => ({
+      id: it.id,
+      description: it.description || 'Item',
+      quantity: Number(it.quantity) || 1,
+      rate: Number(it.rate ?? it.unit_price) || 0,
+      amount: Number(it.amount ?? ((Number(it.quantity) || 1) * (Number(it.rate ?? it.unit_price) || 0))) || 0,
+    })),
+    subtotal: Number(raw.subtotal ?? fallback?.subtotal) || 0,
+    discount: Number(raw.discount ?? fallback?.discount) || 0,
+    taxName: raw.tax_name || raw.taxName || fallback?.taxName || 'Tax',
+    taxPercentage: Number(raw.tax_percentage ?? raw.taxPercentage ?? fallback?.taxPercentage) || 0,
+    tax: Number(raw.tax_amount ?? raw.tax ?? fallback?.tax) || 0,
+    total: calcTotal,
+    paidAmount: calcPaid,
+    remainingBalance: calculateRemainingBalance(calcTotal, calcPaid),
+    currency: raw.currency || fallback?.currency || 'USD',
+    notes: raw.notes || fallback?.notes || '',
+    paymentInstructions: raw.payment_instructions || raw.paymentInstructions || fallback?.paymentInstructions || '',
+    internalNotes: raw.internal_notes || raw.internalNotes || fallback?.internalNotes || '',
+    paymentMethods: raw.payment_methods || raw.paymentMethods || fallback?.paymentMethods || undefined,
+    upiId: raw.upi_id || raw.upiId || fallback?.upiId || undefined,
+    upiQrCodeUrl: raw.upi_qr_code_url || raw.upiQrCodeUrl || raw.payment_methods?.upiQrCodeUrl || fallback?.upiQrCodeUrl || undefined,
+    bankDetails: raw.bank_details || raw.bankDetails || fallback?.bankDetails || undefined,
+    razorpayPaymentLink: raw.razorpay_payment_link || raw.razorpayPaymentLink || fallback?.razorpayPaymentLink || undefined,
+    receipts: raw.receipts || fallback?.receipts || [],
+    reminders: raw.reminders || fallback?.reminders || [],
+  };
+}
+
 export const FreelancerInvoiceService = {
   getInvoices: async (clientId?: string): Promise<Invoice[]> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
@@ -1716,6 +1774,7 @@ export const FreelancerInvoiceService = {
           internalNotes: invoice.internalNotes,
           paymentMethods: invoice.paymentMethods,
           upiId: invoice.upiId,
+          upiQrCodeUrl: invoice.upiQrCodeUrl || invoice.paymentMethods?.upiQrCodeUrl,
           bankDetails: invoice.bankDetails,
           razorpayPaymentLink: invoice.razorpayPaymentLink,
         }),
@@ -1724,7 +1783,10 @@ export const FreelancerInvoiceService = {
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Failed to create invoice.');
       }
-      const fetched = await FreelancerInvoiceService.getInvoiceById(data.invoice.id);
+      if (data.invoice) {
+        return mapApiInvoiceData(data.invoice, invoice);
+      }
+      const fetched = await FreelancerInvoiceService.getInvoiceById(data.invoice?.id);
       return fetched || (data.invoice as any);
     }
 
@@ -1985,6 +2047,11 @@ export const FreelancerInvoiceService = {
           notes: inv.notes,
           paymentInstructions: invoice.paymentInstructions || inv.payment_instructions || '',
           internalNotes: invoice.internalNotes || inv.internal_notes || '',
+          paymentMethods: inv.payment_methods || invoice.paymentMethods,
+          upiId: inv.upi_id || invoice.upiId,
+          upiQrCodeUrl: inv.upi_qr_code_url || invoice.upiQrCodeUrl,
+          bankDetails: inv.bank_details || invoice.bankDetails,
+          razorpayPaymentLink: inv.razorpay_payment_link || invoice.razorpayPaymentLink,
           receipts: [],
         };
       }
@@ -2112,6 +2179,9 @@ export const FreelancerInvoiceService = {
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Failed to update invoice.');
+      }
+      if (data.invoice) {
+        return mapApiInvoiceData(data.invoice, updates);
       }
       return FreelancerInvoiceService.getInvoiceById(id);
     }

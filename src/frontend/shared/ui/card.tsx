@@ -8,15 +8,14 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ children, variant = 'crystal', interactive = false, className = '', ...props }, ref) => {
     const variantStyles = {
-      crystal:
-        'bg-[#191F1D] backdrop-blur-xl border border-[#176B5B]/30 shadow-[0_10px_30px_-5px_rgba(0,0,0,0.6)] relative overflow-hidden',
-      subtle: 'bg-[#191F1D]/80 border border-[#176B5B]/25 backdrop-blur-md',
-      outline: 'bg-transparent border border-[#176B5B]/30',
-      flat: 'bg-[#191F1D] border border-[#176B5B]/30',
+      crystal: 'bg-[#191F1D] border border-[#176B5B]/25 shadow-md relative overflow-hidden',
+      subtle: 'bg-[#151A18] border border-[#176B5B]/20',
+      outline: 'bg-transparent border border-[#176B5B]/25',
+      flat: 'bg-[#191F1D] border border-[#176B5B]/25',
     };
 
     const interactiveStyles = interactive
-      ? 'cursor-pointer hover:border-[#43D6B0]/50 hover:bg-[#1E2523] hover:shadow-[0_16px_40px_-10px_rgba(23,107,91,0.2)] transition-all duration-200 hover:-translate-y-0.5'
+      ? 'cursor-pointer hover:border-[#43D6B0]/50 hover:bg-[#1E2523] transition-colors duration-200'
       : '';
 
     return (

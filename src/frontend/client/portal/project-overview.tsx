@@ -14,7 +14,10 @@ import {
   Layers,
   ChevronRight,
   TrendingUp,
+  Receipt,
 } from 'lucide-react';
+import { Progress } from '@/frontend/shared/ui/progress';
+import { formatCurrency } from '@/shared/utils/currency';
 
 interface ProjectOverviewProps {
   projects: Project[];
@@ -91,12 +94,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, acti
               <span>Overall Completion</span>
             </div>
             <p className="text-2xl font-extrabold text-white font-mono">{activeProject.completionPercentage}%</p>
-            <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-              <div
-                className="bg-emerald-400 h-1.5 rounded-full"
-                style={{ width: `${activeProject.completionPercentage}%` }}
-              />
-            </div>
+            <Progress value={activeProject.completionPercentage} size="xs" />
           </div>
 
           <div className="p-4 rounded-2xl bg-zinc-900/80 border border-white/10 space-y-1">
@@ -110,11 +108,11 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, acti
 
           <div className="p-4 rounded-2xl bg-zinc-900/80 border border-white/10 space-y-1">
             <div className="flex items-center gap-2 text-zinc-400 text-xs font-mono">
-              <DollarSign className="w-3.5 h-3.5 text-[#43D6B0]" />
+              <Receipt className="w-3.5 h-3.5 text-[#43D6B0]" />
               <span>Agreed Budget</span>
             </div>
             <p className="text-2xl font-extrabold text-white font-mono">
-              ${activeProject.budget?.toLocaleString()}
+              {formatCurrency(activeProject.budget || 0, 'INR')}
             </p>
             <p className="text-[11px] text-zinc-500">Fixed Milestone Agreement</p>
           </div>

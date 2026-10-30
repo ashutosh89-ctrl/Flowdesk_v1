@@ -13,6 +13,7 @@
   height: 100%;
   pointer-events: none;
   user-select: none;
+  z-index: 20;
 }
 
 .glow-cursor__content {

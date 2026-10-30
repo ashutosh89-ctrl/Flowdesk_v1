@@ -31,6 +31,7 @@ import {
   Copy,
   Activity,
   Settings,
+  Link2,
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 
@@ -58,12 +59,12 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
   useEffect(() => {
     loadSummary();
 
-    // 1. Proactive Polling: Checks every 12 seconds
+    // 1. Proactive Polling: Checks every 90 seconds (Supabase realtime handles instant events)
     const intervalId = setInterval(() => {
       if (document.visibilityState === 'visible') {
         loadSummary();
       }
-    }, 12000);
+    }, 90000);
 
     // 2. Window Focus & Visibility Change: Instantly re-queries when returning to tab
     const onWindowFocus = () => {
@@ -145,6 +146,8 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
     { id: 'invoices', label: 'Invoices', count: summary.invoices.length, icon: <Receipt className="w-4 h-4" /> },
     { id: 'comments', label: 'Messages', count: summary.comments.length, icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'history', label: 'History', icon: <Clock className="w-4 h-4" /> },
+    { id: 'portal', label: 'Portal', icon: <Link2 className="w-4 h-4" /> },
+    { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
   const handleCopyPortalLink = () => {
@@ -164,14 +167,14 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full min-w-0 pb-8">
       {/* Workspace Header */}
       <div className="pb-6 border-b border-white/10 space-y-4">
         <button
           onClick={onBackToClients}
-          className="text-xs text-zinc-400 hover:text-white inline-flex items-center gap-1 transition-colors font-mono"
+          className="text-xs text-zinc-400 hover:text-white inline-flex items-center gap-1.5 transition-colors font-mono py-1.5 px-2 -ml-2 rounded-lg hover:bg-white/5 active:bg-white/10 cursor-pointer"
         >
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to Clients Directory
+          <ArrowLeft className="w-3.5 h-3.5 text-[#43D6B0]" /> Back to Clients Directory
         </button>
 
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -198,10 +201,11 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
           </div>
 
           {/* Quick Action Bar for Client */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <Button
               variant="secondary"
               size="sm"
+              className="flex-1 sm:flex-initial"
               onClick={handleCopyPortalLink}
               leftIcon={<Copy className="w-3.5 h-3.5" />}
             >
@@ -210,6 +214,7 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
             <Button
               variant="primary"
               size="sm"
+              className="flex-1 sm:flex-initial"
               onClick={() => setActiveTab('deliverables')}
               leftIcon={<Plus className="w-3.5 h-3.5" />}
             >
@@ -219,8 +224,14 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
         </div>
 
         {/* Workspace Nav Tabs */}
-        <div className="pt-2">
-          <Tabs items={tabItems} activeTab={activeTab} onChange={setActiveTab} variant="glass" />
+        <div className="pt-2 w-full max-w-full min-w-0">
+          <Tabs
+            id="client-workspace"
+            items={tabItems}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            variant="glass"
+          />
         </div>
       </div>
 

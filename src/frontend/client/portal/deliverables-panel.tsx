@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/frontend/shared/ui/card';
+import { Card } from '@/frontend/shared/ui/card';
 import { Button } from '@/frontend/shared/ui/button';
 import { StatusPill } from '@/frontend/shared/ui/status-pill';
 import { Deliverable } from '@/shared/types';
@@ -12,12 +12,16 @@ import {
   Eye,
   History,
   RotateCcw,
-  MessageSquare,
-  Clock,
-  Sparkles,
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  Code2,
+  GitBranch,
+  GitPullRequest,
+  Globe,
+  X,
+  ZoomIn,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 import { isSafeHttpUrl } from '@/shared/utils/safe-url';
@@ -37,6 +41,7 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
 }) => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'revision'>('all');
   const [expandedVersionId, setExpandedVersionId] = useState<string | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<{ src: string; title: string } | null>(null);
 
   const filteredDeliverables = deliverables.filter((d) => {
     if (filter === 'pending') return d.status === 'ready_for_review' || d.status === 'submitted' || d.status === 'preparing';
@@ -51,7 +56,7 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-white/10">
         <div>
           <h2 className="text-lg font-bold text-white tracking-tight">Deliverables & Work Sign-Off</h2>
-          <p className="text-xs text-zinc-400">Review assets, inspect version history, and approve milestones</p>
+          <p className="text-xs text-zinc-400">Review assets, inspect live project links, repository code, and approve milestones</p>
         </div>
 
         <div className="flex items-center gap-1.5 p-1 rounded-xl bg-zinc-900 border border-white/10">
@@ -91,10 +96,16 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
             const isVersionExpanded = expandedVersionId === deliv.id;
             const isApproved = deliv.status === 'approved' || deliv.status === 'completed';
 
-            const clientPreviewUrl = (() => {
-              const meta = (deliv.nicheMetadata || {}) as Record<string, any>;
+            const meta = (deliv.nicheMetadata || {}) as Record<string, any>;
+            
+            // Extract Project URLs and Repository Links
+            const repoUrl = meta.repositoryUrl || meta.repoUrl;
+            const liveProjectUrl = (() => {
               const url =
                 meta.previewUrl ||
+                meta.liveProjectUrl ||
+                meta.projectUrl ||
+                meta.deploymentUrl ||
                 meta.designPreviewUrl ||
                 meta.videoPreviewUrl ||
                 meta.documentUrl ||
@@ -102,6 +113,21 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                 meta.socialPreviewUrl ||
                 meta.publishingUrl;
               return url && isSafeHttpUrl(url) ? url : null;
+            })();
+            const branchName = meta.branchName;
+            const prUrl = meta.pullRequestUrl || meta.prUrl;
+
+            // Extract Preview Image (uploaded base64 data, remote URL, or image file attachment)
+            const previewImg = (() => {
+              if (deliv.previewImageUrl && deliv.previewImageUrl.trim()) return deliv.previewImageUrl.trim();
+              if (deliv.thumbnailUrl && deliv.thumbnailUrl.trim()) return deliv.thumbnailUrl.trim();
+              if (meta.previewImageUrl && typeof meta.previewImageUrl === 'string') return meta.previewImageUrl.trim();
+              if (meta.thumbnailUrl && typeof meta.thumbnailUrl === 'string') return meta.thumbnailUrl.trim();
+              if (deliv.fileUrl) {
+                if (deliv.fileUrl.startsWith('data:image/')) return deliv.fileUrl;
+                if (/\.(png|jpe?g|webp|gif|svg)($|\?)/i.test(deliv.fileUrl)) return deliv.fileUrl;
+              }
+              return null;
             })();
 
             return (
@@ -129,16 +155,16 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-wrap shrink-0">
-                    {clientPreviewUrl && (
+                    {liveProjectUrl && (
                       <a
-                        href={clientPreviewUrl}
+                        href={liveProjectUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#43D6B0]/15 hover:bg-[#43D6B0]/25 text-[#43D6B0] border border-[#43D6B0]/30 transition-all shadow-sm"
                       >
-                        <Eye className="w-3.5 h-3.5 text-[#43D6B0]" />
-                        <span>Preview</span>
-                        <ExternalLink className="w-3 h-3 text-zinc-400" />
+                        <Globe className="w-3.5 h-3.5" />
+                        <span>Live Preview</span>
+                        <ExternalLink className="w-3 h-3 opacity-70" />
                       </a>
                     )}
 
@@ -149,7 +175,7 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                         onClick={() => onDownloadClick(deliv)}
                         leftIcon={<Download className="w-3.5 h-3.5" />}
                       >
-                        Download
+                        Download Asset
                       </Button>
                     ) : (
                       <Button
@@ -191,6 +217,129 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                     )}
                   </div>
                 </div>
+
+                {/* Deliverable Preview Image Card (Prominent & Scannable) */}
+                {previewImg && (
+                  <div className="p-3.5 rounded-xl bg-zinc-950/60 border border-white/10 space-y-2">
+                    <div className="flex items-center justify-between text-xs text-zinc-400">
+                      <span className="flex items-center gap-1.5 font-medium text-zinc-300">
+                        <ImageIcon className="w-3.5 h-3.5 text-[#43D6B0]" />
+                        <span>Visual Preview Showcase</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setLightboxImage({ src: previewImg, title: deliv.title })}
+                        className="inline-flex items-center gap-1 text-[11px] text-[#43D6B0] hover:underline"
+                      >
+                        <ZoomIn className="w-3.5 h-3.5" />
+                        <span>Expand Fullscreen</span>
+                      </button>
+                    </div>
+
+                    <div
+                      onClick={() => setLightboxImage({ src: previewImg, title: deliv.title })}
+                      className="group/img relative rounded-lg overflow-hidden border border-white/10 bg-black/60 cursor-pointer max-h-80 flex items-center justify-center"
+                    >
+                      <img
+                        src={previewImg}
+                        alt={`Preview of ${deliv.title}`}
+                        className="w-full object-contain max-h-80 rounded-lg transition-transform duration-300 group-hover/img:scale-[1.01]"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/80 border border-white/20 text-xs text-white font-medium shadow-xl">
+                          <Eye className="w-4 h-4 text-[#43D6B0]" />
+                          <span>Click to Inspect Image</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Project Details & Technical Repository Section */}
+                {(repoUrl || liveProjectUrl || branchName || prUrl) && (
+                  <div className="p-3.5 rounded-xl bg-[#176B5B]/10 border border-[#176B5B]/30 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono uppercase text-[#43D6B0] font-bold tracking-wider flex items-center gap-1.5">
+                        <Code2 className="w-3.5 h-3.5" />
+                        <span>Project Details & Deployment Links</span>
+                      </span>
+                      <span className="text-[10px] text-zinc-400">Verified client resources</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      {liveProjectUrl && (
+                        <a
+                          href={liveProjectUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900/80 border border-white/10 hover:border-[#43D6B0]/50 hover:bg-zinc-900 text-zinc-200 transition-all group"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <Globe className="w-4 h-4 text-[#43D6B0] shrink-0" />
+                            <div className="truncate">
+                              <span className="text-[10px] text-zinc-400 block">Live Project / Preview</span>
+                              <span className="font-mono text-xs font-semibold text-white truncate block">
+                                {liveProjectUrl.replace(/^https?:\/\//, '')}
+                              </span>
+                            </div>
+                          </div>
+                          <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-[#43D6B0] shrink-0 ml-2" />
+                        </a>
+                      )}
+
+                      {repoUrl && (
+                        <a
+                          href={repoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900/80 border border-white/10 hover:border-[#43D6B0]/50 hover:bg-zinc-900 text-zinc-200 transition-all group"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <Code2 className="w-4 h-4 text-[#43D6B0] shrink-0" />
+                            <div className="truncate">
+                              <span className="text-[10px] text-zinc-400 block">Repository</span>
+                              <span className="font-mono text-xs font-semibold text-white truncate block">
+                                {repoUrl.replace(/^https?:\/\/(www\.)?github\.com\//, '')}
+                              </span>
+                            </div>
+                          </div>
+                          <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-[#43D6B0] shrink-0 ml-2" />
+                        </a>
+                      )}
+
+                      {branchName && (
+                        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-zinc-900/80 border border-white/10 text-zinc-300">
+                          <GitBranch className="w-4 h-4 text-purple-400 shrink-0" />
+                          <div>
+                            <span className="text-[10px] text-zinc-400 block">Active Branch</span>
+                            <span className="font-mono text-xs font-medium text-purple-300">{branchName}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {prUrl && (
+                        <a
+                          href={prUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900/80 border border-white/10 hover:border-emerald-400/50 hover:bg-zinc-900 text-zinc-200 transition-all group"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <GitPullRequest className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <div className="truncate">
+                              <span className="text-[10px] text-zinc-400 block">Pull Request</span>
+                              <span className="font-mono text-xs font-semibold text-emerald-300 truncate block">
+                                {prUrl.replace(/^https?:\/\/(www\.)?github\.com\//, '')}
+                              </span>
+                            </div>
+                          </div>
+                          <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-emerald-400 shrink-0 ml-2" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Submission Notes */}
                 {deliv.submissionMessage && (
@@ -252,6 +401,35 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
           })
         )}
       </div>
+
+      {/* Lightbox Modal for inspecting Preview Images in full detail */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div className="relative max-w-5xl w-full max-h-[90vh] flex flex-col items-center">
+            <div className="w-full flex items-center justify-between p-3 bg-zinc-950/80 border-b border-white/10 rounded-t-xl text-white">
+              <span className="text-xs font-bold truncate max-w-md">{lightboxImage.title} — Visual Preview</span>
+              <button
+                type="button"
+                onClick={() => setLightboxImage(null)}
+                className="p-1 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="bg-black/95 p-2 rounded-b-xl border border-white/10 border-t-0 flex items-center justify-center overflow-auto max-h-[80vh] w-full">
+              <img
+                src={lightboxImage.src}
+                alt={lightboxImage.title}
+                className="max-h-[75vh] w-auto max-w-full object-contain rounded-lg shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

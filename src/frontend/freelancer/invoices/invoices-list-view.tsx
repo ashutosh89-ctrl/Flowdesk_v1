@@ -149,6 +149,11 @@ export const InvoicesListView: React.FC = () => {
         `Invoice ${payload.invoiceNumber} ${invoiceToEdit ? 'updated' : 'created and recorded'}.`,
         'success'
       );
+      if (invoiceToEdit) {
+        setInvoices((prev) => prev.map((inv) => (inv.id === payload.id ? { ...inv, ...payload } : inv)));
+      } else if (payload?.id) {
+        setInvoices((prev) => [payload, ...prev]);
+      }
       await refreshData();
     } catch (err) {
       showToast('Error', err instanceof Error ? err.message : 'Unable to refresh invoices.', 'error');
@@ -354,7 +359,7 @@ export const InvoicesListView: React.FC = () => {
               </div>
 
               {/* Filter Selectors */}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
                 {/* Workflow Status Filter */}
                 <select
                   value={workflowFilter}
@@ -430,9 +435,133 @@ export const InvoicesListView: React.FC = () => {
             )}
           </div>
 
-          {/* Directory Table */}
-          <div className="border border-[#176B5B]/30 rounded-2xl overflow-hidden bg-[#191F1D] shadow-2xl backdrop-blur-xl">
-            <table className="w-full text-left border-collapse text-xs">
+          {/* Mobile Invoices Card List (Phone < 768px) */}
+          <div className="block md:hidden space-y-3">
+            {sortedInvoices.length === 0 ? (
+              <div className="p-10 text-center text-xs text-[#A6B4AE] border border-[#176B5B]/30 rounded-2xl bg-[#191F1D]">
+                No invoices found matching current criteria
+              </div>
+            ) : (
+              sortedInvoices.map((inv) => {
+                const isSelected = selectedIds.includes(inv.id);
+                return (
+                  <div
+                    key={inv.id}
+                    onClick={() => handleOpenDetails(inv)}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer bg-[#191F1D] shadow-lg space-y-3 ${
+                      isSelected ? 'border-[#43D6B0] bg-[#176B5B]/15' : 'border-[#176B5B]/30 hover:border-[#176B5B]/60'
+                    }`}
+                  >
+                    {/* Header: Checkbox + Number + Badges */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => handleToggleSelect(inv.id, e as any)}
+                          className="rounded border-[#176B5B]/40 bg-[#101312] text-[#43D6B0] focus:ring-[#43D6B0]/40 accent-[#43D6B0] w-4 h-4 cursor-pointer"
+                        />
+                        <div>
+                          <div className="font-bold font-mono text-white text-sm flex items-center gap-1.5">
+                            <span>{inv.invoiceNumber}</span>
+                            <RecurringInvoiceBadge scheduleId={(inv as any).recurringScheduleId || (inv as any).recurring_schedule_id} />
+                          </div>
+                          <div className="text-xs text-zinc-400 font-medium">{inv.clientName}</div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <PaymentStatusPill status={inv.paymentStatus} />
+                        <WorkflowStatusPill status={inv.workflowStatus} />
+                      </div>
+                    </div>
+
+                    {/* Middle: Project & Due Date & Amount */}
+                    <div className="pt-2 border-t border-[#176B5B]/20 flex items-center justify-between text-xs">
+                      <div className="space-y-1">
+                        {inv.projectName && (
+                          <div className="text-zinc-300 font-medium max-w-[180px] truncate text-[11px]">
+                            📁 {inv.projectName}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <DueIndicatorBadge
+                            dueDate={inv.dueDate}
+                            paymentStatus={inv.paymentStatus}
+                            workflowStatus={inv.workflowStatus}
+                          />
+                          <span className="text-[10px] text-zinc-500 font-mono">Due: {inv.dueDate}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-base font-extrabold font-mono text-[#43D6B0]">
+                          {formatCurrency(inv.total, inv.currency)}
+                        </div>
+                        <div className="text-[10px] text-zinc-500 font-mono uppercase">{inv.currency}</div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Actions Row */}
+                    <div
+                      className="pt-2 border-t border-[#176B5B]/20 flex items-center justify-end gap-1.5 flex-wrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDetails(inv)}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-200 text-xs font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-[#43D6B0]" /> Details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenPortal(inv, e)}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-200 text-xs font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-[#43D6B0]" /> Portal
+                      </button>
+                      {inv.paymentStatus !== 'paid' && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenMarkPaid(inv, e)}
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center gap-1 transition-colors"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Pay
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenEdit(inv, e)}
+                        className="p-1.5 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+                        title="Edit Invoice"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Delete invoice ${inv.invoiceNumber}?`)) {
+                            await InvoiceService.deleteInvoice(inv.id);
+                            showToast('Deleted', `Invoice ${inv.invoiceNumber} removed.`, 'info');
+                            await refreshData();
+                          }
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 transition-colors"
+                        title="Delete Invoice"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop Directory Table */}
+          <div className="hidden md:block border border-[#176B5B]/30 rounded-2xl overflow-x-auto w-full bg-[#191F1D] shadow-2xl backdrop-blur-xl">
+            <table className="w-full text-left border-collapse text-xs min-w-[720px]">
               <thead>
                 <tr className="bg-[#141817] border-b border-[#176B5B]/30 font-bold text-[#A6B4AE]">
                   <th className="p-4 w-10 text-center">
@@ -621,11 +750,13 @@ export const InvoicesListView: React.FC = () => {
         }}
         onDelete={async (id) => {
           try {
+            setInvoices((prev) => prev.filter((item) => item.id !== id));
             await InvoiceService.deleteInvoice(id);
             showToast('Invoice Deleted', 'Invoice has been deleted.', 'info');
             await refreshData();
           } catch (err) {
             showToast('Error', 'Unable to delete invoice.', 'error');
+            await refreshData();
           }
         }}
       />

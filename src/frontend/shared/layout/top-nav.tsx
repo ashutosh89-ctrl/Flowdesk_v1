@@ -28,19 +28,18 @@ export const TopNav: React.FC<TopNavProps> = ({
   const currentTitle = breadcrumbItems[breadcrumbItems.length - 1]?.label || 'Dashboard';
 
   return (
-    <header className="w-full h-16 px-4 md:px-8 border-b border-[#176B5B]/25 bg-[#101312]/95 backdrop-blur-xl flex items-center justify-between sticky top-0 z-30 select-none">
+    <header className="w-full h-16 px-4 md:px-8 border-b border-white/10 bg-[#0D0E11] flex items-center justify-between sticky top-0 z-30 select-none shrink-0">
       {/* Left Section: Mobile Toggle & Page Title */}
       <div className="flex items-center gap-3">
         <button
           onClick={onOpenMobileSidebar}
-          className="p-2 text-[#A6B4AE] hover:text-[#F5F5F0] md:hidden rounded-lg hover:bg-[#176B5B]/20 transition-colors"
+          className="p-2 text-zinc-400 hover:text-white md:hidden rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
           aria-label="Toggle navigation menu"
         >
           <Menu className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2.5">
-          <h2 className="text-base sm:text-lg font-bold font-display text-[#F5F5F0] tracking-tight">{currentTitle}</h2>
-          <span className="hidden sm:inline-block w-2 h-2 rounded-full bg-[#43D6B0]" />
+          <h2 className="text-base sm:text-lg font-bold font-display text-white tracking-tight">{currentTitle}</h2>
         </div>
       </div>
 
@@ -48,15 +47,15 @@ export const TopNav: React.FC<TopNavProps> = ({
       <div className="flex-1 max-w-[540px] mx-4 hidden md:block">
         <button
           onClick={onOpenSearch}
-          className="w-full h-10 px-4 rounded-xl bg-[#191F1D] border border-[#176B5B]/30 hover:border-[#43D6B0]/50 hover:bg-[#191F1D]/80 backdrop-blur-md flex items-center justify-between text-sm text-[#A6B4AE] hover:text-[#F5F5F0] transition-all duration-200 group"
+          className="w-full h-10 px-4 rounded-xl bg-[#131518] border border-white/10 hover:border-white/20 hover:bg-[#181A1F] flex items-center justify-between text-sm text-zinc-400 hover:text-white transition-all duration-200 group cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
-            <Search className="w-4 h-4 text-[#A6B4AE] group-hover:text-[#43D6B0] transition-colors" />
-            <span className="font-medium text-[#A6B4AE] group-hover:text-[#F5F5F0]">
+            <Search className="w-4 h-4 text-zinc-400 group-hover:text-[#43D6B0] transition-colors" />
+            <span className="font-medium text-zinc-400 group-hover:text-zinc-200">
               Search clients, invoices, deliverables, documents...
             </span>
           </div>
-          <kbd className="px-2 py-0.5 text-xs font-mono font-medium bg-[#101312] border border-[#176B5B]/30 rounded text-[#A6B4AE] shadow-sm">
+          <kbd className="px-2 py-0.5 text-xs font-mono font-medium bg-[#0D0E11] border border-white/10 rounded text-zinc-400 shadow-sm">
             ⌘K
           </kbd>
         </button>
@@ -67,7 +66,7 @@ export const TopNav: React.FC<TopNavProps> = ({
         {/* Mobile Search Icon Button */}
         <button
           onClick={onOpenSearch}
-          className="md:hidden p-2 text-[#A6B4AE] hover:text-[#F5F5F0] rounded-lg hover:bg-[#176B5B]/20 transition-colors"
+          className="md:hidden p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
           aria-label="Search"
         >
           <Search className="w-4 h-4" />
@@ -83,7 +82,7 @@ export const TopNav: React.FC<TopNavProps> = ({
             }
           }}
           leftIcon={<Plus className="w-3.5 h-3.5" />}
-          className="text-xs font-semibold shadow-md"
+          className="text-xs font-semibold shadow-sm"
           aria-label="Open quick actions"
         >
           <span className="hidden sm:inline">New</span>
@@ -92,7 +91,7 @@ export const TopNav: React.FC<TopNavProps> = ({
         {/* Settings Shortcut Button */}
         <button
           onClick={() => onNavigate('settings')}
-          className="p-2 text-[#A6B4AE] hover:text-[#F5F5F0] rounded-xl bg-[#191F1D] border border-[#176B5B]/30 hover:border-[#43D6B0]/50 hover:bg-[#176B5B]/20 transition-all"
+          className="p-2 text-zinc-400 hover:text-white rounded-xl bg-[#131518] border border-white/10 hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer"
           title="Settings"
           aria-label="Settings"
         >
@@ -102,7 +101,7 @@ export const TopNav: React.FC<TopNavProps> = ({
         {/* Notifications Popover */}
         <NotificationMenu />
 
-        <div className="h-4 w-px bg-[#176B5B]/30 mx-1 hidden sm:block" />
+        <div className="h-4 w-px bg-white/10 mx-1 hidden sm:block" />
 
         {/* User Profile Dropdown Menu */}
         <UserProfileMenu

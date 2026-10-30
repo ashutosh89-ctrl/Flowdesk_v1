@@ -21,7 +21,7 @@ import {
   Settings,
   ShieldCheck,
   MessageSquare,
-  Sparkles,
+  LayoutGrid,
 } from 'lucide-react';
 
 export interface WorkspaceHeaderProps {
@@ -42,7 +42,7 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
   onRefresh,
 }) => {
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: <Sparkles className="w-3.5 h-3.5" /> },
+    { id: 'overview', label: 'Overview', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
     { id: 'projects', label: `Projects (${summary.projects.length})`, icon: <FolderKanban className="w-3.5 h-3.5" /> },
     { id: 'invoices', label: `Invoices (${summary.invoices.length})`, icon: <Receipt className="w-3.5 h-3.5" /> },
     { id: 'deliverables', label: `Deliverables (${summary.deliverables.length})`, icon: <Layers className="w-3.5 h-3.5" /> },

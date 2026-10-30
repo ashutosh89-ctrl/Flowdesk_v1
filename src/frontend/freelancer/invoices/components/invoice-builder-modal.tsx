@@ -70,7 +70,7 @@ export function InvoiceBuilderModal({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // Loading state
-  const [isSaving, setIsSaving] = useState(false);
+  const [savingAction, setSavingAction] = useState<'draft' | 'issue' | null>(null);
 
   // Synchronize state when modal opens or invoiceToEdit changes
   useEffect(() => {
@@ -295,7 +295,7 @@ export function InvoiceBuilderModal({
     const client = clients.find((c) => c.id === selectedClientId);
     const proj = projects.find((p) => p.id === selectedProjectId);
 
-    setIsSaving(true);
+    setSavingAction(isDraft ? 'draft' : 'issue');
     try {
       const payload = {
         invoiceNumber,
@@ -345,15 +345,15 @@ export function InvoiceBuilderModal({
     } catch (err) {
       setValidationErrors([err instanceof Error ? err.message : 'Failed to save invoice.']);
     } finally {
-      setIsSaving(false);
+      setSavingAction(null);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-zinc-950/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden my-8 backdrop-blur-2xl text-white">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="relative w-full max-w-4xl bg-zinc-950/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden my-2 sm:my-8 backdrop-blur-2xl text-white">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/[0.02]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/10 bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-amber-400" />
             <h2 className="text-base font-semibold text-white">
@@ -369,7 +369,7 @@ export function InvoiceBuilderModal({
         </div>
 
         {/* Form Body */}
-        <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+        <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 max-h-[74vh] sm:max-h-[75vh] overflow-y-auto">
           {/* Metadata Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div>
@@ -480,8 +480,8 @@ export function InvoiceBuilderModal({
               </button>
             </div>
 
-            <div className="border border-white/10 rounded-xl overflow-hidden bg-zinc-950/60">
-              <table className="w-full text-left border-collapse">
+            <div className="border border-white/10 rounded-xl overflow-x-auto w-full bg-zinc-950/60 pb-1">
+              <table className="w-full text-left border-collapse min-w-[560px]">
                 <thead>
                   <tr className="bg-white/[0.04] border-b border-white/10 text-[11px] font-semibold text-zinc-400">
                     <th className="py-2.5 px-3 w-[45%]">Description</th>
@@ -840,32 +840,38 @@ export function InvoiceBuilderModal({
         )}
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-white/10 bg-zinc-950/80">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 px-4 sm:px-6 py-3.5 sm:py-4 border-t border-white/10 bg-zinc-950/80">
           <button
             type="button"
             onClick={onClose}
-            disabled={isSaving}
-            className="px-4 py-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
+            disabled={Boolean(savingAction)}
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors disabled:opacity-50 text-center"
           >
             Cancel
           </button>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => handleSubmit(true)}
-              disabled={isSaving}
-              className="px-4 py-2 text-xs font-semibold border border-white/10 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white transition-all shadow-sm disabled:opacity-50"
+              disabled={Boolean(savingAction)}
+              className="w-full sm:w-auto justify-center px-4 py-2.5 sm:py-2 text-xs font-semibold border border-white/10 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white transition-all shadow-sm disabled:opacity-50 text-center"
             >
-              {isSaving ? 'Saving...' : 'Save as Draft'}
+              {savingAction === 'draft' ? 'Saving Draft...' : 'Save as Draft'}
             </button>
             <button
               type="button"
               onClick={() => handleSubmit(false)}
-              disabled={isSaving}
-              className="px-4 py-2 text-xs font-bold rounded-xl bg-white hover:bg-amber-400 text-zinc-950 transition-all flex items-center gap-1.5 shadow-md disabled:opacity-50 cursor-pointer"
+              disabled={Boolean(savingAction)}
+              className="w-full sm:w-auto justify-center px-4 py-2.5 sm:py-2 text-xs font-bold rounded-xl bg-[#43D6B0] hover:bg-[#38c29e] text-[#0D0E10] transition-all flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50 cursor-pointer text-center"
             >
-              {isSaving ? 'Saving...' : <><Check className="w-4 h-4" /> Save & Issue Invoice</>}
+              {savingAction === 'issue' ? (
+                'Issuing Invoice...'
+              ) : (
+                <>
+                  <Check className="w-4 h-4" /> Save & Issue Invoice
+                </>
+              )}
             </button>
           </div>
         </div>

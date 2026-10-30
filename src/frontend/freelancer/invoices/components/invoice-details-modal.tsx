@@ -164,8 +164,8 @@ export function InvoiceDetailsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-      <div className="relative w-full max-w-5xl bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 backdrop-blur-2xl text-white">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="relative w-full max-w-5xl bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden my-2 sm:my-6 backdrop-blur-2xl text-white">
         {/* Toast Feedback */}
         {reminderToast && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg bg-zinc-900 text-white text-xs shadow-lg flex items-center gap-2 border border-white/10 print-no-display">
@@ -175,7 +175,7 @@ export function InvoiceDetailsModal({
         )}
 
         {/* Modal Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 border-b border-white/10 bg-white/[0.02]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-white/10 bg-white/[0.02]">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-lg font-bold font-mono text-white">
@@ -210,7 +210,7 @@ export function InvoiceDetailsModal({
         </div>
 
         {/* Action Toolbar */}
-        <div className="px-6 py-3 border-b border-white/10 bg-white/[0.02] flex flex-wrap items-center justify-between gap-3 text-xs print-no-display">
+        <div className="px-3.5 sm:px-6 py-2.5 sm:py-3 border-b border-white/10 bg-white/[0.02] flex flex-wrap items-center justify-between gap-2.5 text-xs print-no-display">
           <div className="flex flex-wrap items-center gap-2">
             {currentInvoice.paymentStatus !== 'paid' && (
               <button
@@ -311,7 +311,7 @@ export function InvoiceDetailsModal({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-white/10 px-6 bg-zinc-950/80 text-xs print-no-display overflow-x-auto">
+        <div className="flex border-b border-white/10 px-3.5 sm:px-6 bg-zinc-950/80 text-xs print-no-display overflow-x-auto">
           <button
             onClick={() => setActiveTab('items')}
             className={`py-3 px-4 font-semibold border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap ${
@@ -371,7 +371,7 @@ export function InvoiceDetailsModal({
         </div>
 
         {/* Tab Content */}
-        <div className="p-6 max-h-[75vh] overflow-y-auto text-xs bg-zinc-950/60">
+        <div className="p-3.5 sm:p-6 max-h-[75vh] overflow-y-auto text-xs bg-zinc-950/60">
           {activeTab === 'items' && (
             <div className="space-y-4">
               {/* Payment Notification Awaiting Verification Banner */}

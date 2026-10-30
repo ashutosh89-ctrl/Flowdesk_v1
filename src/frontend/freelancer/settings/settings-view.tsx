@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/fro
 import { Button } from '@/frontend/shared/ui/button';
 import { Input } from '@/frontend/shared/ui/input';
 import { Modal } from '@/frontend/shared/ui/modal';
+import { Tabs, TabItem } from '@/frontend/shared/ui/tabs';
 import { SettingsService, FreelancerWorkspaceService } from '@/backend/freelancer';
 import { UserSettingsService, DEFAULT_USER_SETTINGS } from '@/backend/auth/user-settings-service';
 import { AuthService } from '@/backend/auth/auth-service';
@@ -19,7 +20,7 @@ import {
   Shield,
   Save,
   Loader2,
-  Sparkles,
+  TrendingUp,
   Mail,
   AlertTriangle,
   KeyRound,
@@ -583,15 +584,21 @@ export const SettingsView: React.FC = () => {
     );
   }
 
+  const settingsTabItems: TabItem[] = [
+    { id: 'profile', label: 'Studio Profile', icon: <User className="w-4 h-4" /> },
+    { id: 'portal', label: 'Client Portal', icon: <Link2 className="w-4 h-4" /> },
+    { id: 'billing', label: 'Rates & Invoicing', icon: <DollarSign className="w-4 h-4" /> },
+    { id: 'automations', label: 'Automations', icon: <RefreshCw className="w-4 h-4" /> },
+    { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
+    { id: 'security', label: 'Security & Danger Zone', icon: <Shield className="w-4 h-4" /> },
+  ];
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto w-full min-w-0 pb-12">
       {/* Top Header */}
       <div className="pb-6 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Settings & Preferences</h1>
-          <p className="text-sm text-zinc-400 mt-1">
-            Configure studio branding, hourly rates, invoices, and workspace alerts.
-          </p>
         </div>
 
         {dirty && (
@@ -608,85 +615,14 @@ export const SettingsView: React.FC = () => {
         )}
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex border-b border-white/10 gap-1 overflow-x-auto pb-1 text-xs">
-        <button
-          type="button"
-          onClick={() => setActiveTab('profile')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
-            activeTab === 'profile'
-              ? 'bg-white/10 text-white shadow-sm border border-white/15'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <User className="w-4 h-4 text-emerald-400" />
-          <span>Studio Profile & Branding</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('portal')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
-            activeTab === 'portal'
-              ? 'bg-white/10 text-white shadow-sm border border-white/15'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <Link2 className="w-4 h-4 text-emerald-400" />
-          <span>Client Portal & Link</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('billing')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
-            activeTab === 'billing'
-              ? 'bg-white/10 text-white shadow-sm border border-white/15'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <DollarSign className="w-4 h-4 text-emerald-400" />
-          <span>Rates & Invoicing</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('automations')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
-            activeTab === 'automations'
-              ? 'bg-white/10 text-white shadow-sm border border-white/15'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <RefreshCw className="w-4 h-4 text-cyan-400" />
-          <span>Automations & Jobs</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('notifications')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
-            activeTab === 'notifications'
-              ? 'bg-white/10 text-white shadow-sm border border-white/15'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <Bell className="w-4 h-4 text-amber-400" />
-          <span>Notifications & Alerts</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('security')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
-            activeTab === 'security'
-              ? 'bg-white/10 text-white shadow-sm border border-white/15'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <Shield className="w-4 h-4 text-cyan-400" />
-          <span>Security & Danger Zone</span>
-        </button>
+      {/* Tabs Navigation (Uniform Black & White Lucid Style) */}
+      <div className="pt-1 w-full max-w-full min-w-0">
+        <Tabs
+          id="settings"
+          items={settingsTabItems}
+          activeTab={activeTab}
+          onChange={(tabId) => setActiveTab(tabId as any)}
+        />
       </div>
 
       {/* TAB: PERMANENT CLIENT PORTAL LINK */}
@@ -699,7 +635,6 @@ export const SettingsView: React.FC = () => {
             <Card variant="crystal">
               <CardHeader>
                 <CardTitle>Studio Profile</CardTitle>
-                <CardDescription>Information displayed on client portals, deliverables, and invoice headers</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -761,7 +696,6 @@ export const SettingsView: React.FC = () => {
             <Card variant="crystal">
               <CardHeader>
                 <CardTitle>Studio Branding & PDF Identity</CardTitle>
-                <CardDescription>Upload your studio logo and signature to be embedded automatically in PDF invoices</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -893,9 +827,6 @@ export const SettingsView: React.FC = () => {
                   <Layers className="w-5 h-5 text-[#43D6B0]" />
                   <CardTitle>Deliverable Preferences</CardTitle>
                 </div>
-                <CardDescription>
-                  Choose the default workflow for creating deliverables. You can change this preference at any time.
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -983,7 +914,6 @@ export const SettingsView: React.FC = () => {
             <Card variant="crystal">
               <CardHeader>
                 <CardTitle>Rates & Financial Defaults</CardTitle>
-                <CardDescription>Default currency, tax rates, and standard payment terms for new invoices</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1583,14 +1513,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Client Invitation Emails */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <UserPlus className="w-4 h-4 text-violet-400" />
-                      <span className="text-sm font-semibold text-white">Client Invitation Emails</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Send transactional email invitations containing secure one-time onboarding links when adding new clients.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <UserPlus className="w-4 h-4 text-violet-400" />
+                    <span className="text-sm font-semibold text-white">Client Invitation Emails</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1605,14 +1530,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Deliverable Emails */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      <span className="text-sm font-semibold text-white">Deliverable Approval & Revision Emails</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Send email notifications when deliverables are submitted for review, approved by clients, or when revisions are requested.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-semibold text-white">Deliverable Approval & Revision Emails</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1627,14 +1547,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Document Upload Emails */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <Upload className="w-4 h-4 text-cyan-400" />
-                      <span className="text-sm font-semibold text-white">Document Intake Notifications</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Receive an instant email summary whenever a client uploads a document, brief, or required contract asset.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <Upload className="w-4 h-4 text-cyan-400" />
+                    <span className="text-sm font-semibold text-white">Document Intake Notifications</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1649,14 +1564,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Invoice & Payment Emails */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-emerald-400" />
-                      <span className="text-sm font-semibold text-white">Invoice & Payment Receipts</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Email official invoice notifications to clients upon issue, payment confirmations, and automated receipt vouchers.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <DollarSign className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-semibold text-white">Invoice & Payment Receipts</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1671,17 +1581,12 @@ export const SettingsView: React.FC = () => {
 
                 {/* Security & Account Lifecycle Alerts (Always Active) */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-zinc-950/50 border border-white/10 opacity-90">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-amber-400" />
-                      <span className="text-sm font-semibold text-white">Security & Account Lifecycle Alerts</span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        Always Enabled
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Password resets, account deletion grace period notices, and security alerts cannot be disabled for compliance.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <Shield className="w-4 h-4 text-amber-400" />
+                    <span className="text-sm font-semibold text-white">Security & Account Lifecycle Alerts</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      Always Enabled
+                    </span>
                   </div>
                   <label className="relative inline-flex items-center cursor-not-allowed">
                     <input
@@ -1700,19 +1605,13 @@ export const SettingsView: React.FC = () => {
             <Card variant="crystal">
               <CardHeader>
                 <CardTitle>In-App Alerts & Dashboard Feeds</CardTitle>
-                <CardDescription>Manage real-time in-app badges, dashboard alerts, and activity feed logging</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Workspace Notifications */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-emerald-400" />
-                      <span className="text-sm font-semibold text-white">In-App Banner Notifications</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Receive top-bar banner notifications on client approvals, document uploads, and milestone updates.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-zinc-400" />
+                    <span className="text-sm font-semibold text-white">In-App Banner Notifications</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1727,14 +1626,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Invoice Reminders */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-amber-400" />
-                      <span className="text-sm font-semibold text-white">Automated Overdue Tracking</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Flag approaching due dates automatically on the financial dashboard and highlight overdue statements.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-zinc-400" />
+                    <span className="text-sm font-semibold text-white">Automated Overdue Tracking</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1749,14 +1643,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Comment & Review Alerts */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-cyan-400" />
-                      <span className="text-sm font-semibold text-white">Deliverable Review & Comment Badges</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Badge deliverable cards and sidebar items when clients leave feedback or request revisions.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-zinc-400" />
+                    <span className="text-sm font-semibold text-white">Deliverable Review & Comment Badges</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1771,14 +1660,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Weekly Digest */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-purple-400" />
-                      <span className="text-sm font-semibold text-white">Weekly Revenue & Pipeline Digest</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Compute weekly revenue totals and completed milestone summaries on Monday morning dashboard.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-zinc-400" />
+                    <span className="text-sm font-semibold text-white">Weekly Revenue & Pipeline Digest</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1802,7 +1686,6 @@ export const SettingsView: React.FC = () => {
             <Card variant="crystal">
               <CardHeader>
                 <CardTitle>Account & Authentication</CardTitle>
-                <CardDescription>Security credentials and authentication state</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 space-y-3">
@@ -2100,6 +1983,26 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Floating Save Action Bar for Mobile Viewports */}
+      {dirty && (
+        <div className="fixed bottom-20 md:hidden left-4 right-4 z-40 p-3 bg-[#131518]/95 backdrop-blur-xl border border-[#43D6B0]/40 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#43D6B0] animate-pulse" />
+            <span className="text-xs text-zinc-300 font-medium">Unsaved changes</span>
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            isLoading={saving}
+            onClick={() => handleSave()}
+            leftIcon={<Save className="w-3.5 h-3.5" />}
+          >
+            Save Changes
+          </Button>
+        </div>
       )}
     </div>
   );
