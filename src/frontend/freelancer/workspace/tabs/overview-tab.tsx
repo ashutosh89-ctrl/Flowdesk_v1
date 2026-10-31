@@ -73,15 +73,15 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ summary, onRefresh, on
         <Card variant="crystal">
           <span className="text-xs text-zinc-400 uppercase font-mono">Total Billed</span>
           <p className="text-2xl font-bold text-white mt-1">
-            {formatCurrency(client.totalBilled, client.currency || 'USD')}
+            {formatCurrency(client.totalBilled, client.currency || 'INR')}
           </p>
-          <p className="text-xs text-zinc-400 mt-1">{client.currency} Account</p>
+          <p className="text-xs text-zinc-400 mt-1">{client.currency || 'INR'} Account</p>
         </Card>
 
         <Card variant="crystal">
           <span className="text-xs text-zinc-400 uppercase font-mono">Outstanding Balance</span>
           <p className="text-2xl font-bold text-white mt-1">
-            {formatCurrency(outstandingTotal, client.currency || 'USD')}
+            {formatCurrency(outstandingTotal, client.currency || 'INR')}
           </p>
           <p className="text-xs text-zinc-400 mt-1">Due invoices</p>
         </Card>
@@ -217,7 +217,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ summary, onRefresh, on
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400 pt-2 border-t border-white/5 font-mono">
-                      <span>Budget: <strong className="text-white">${p.budget.toLocaleString()}</strong></span>
+                      <span>Budget: <strong className="text-white">{formatCurrency(p.budget, client.currency || 'INR')}</strong></span>
                       <span>Due: <strong className="text-white">{p.dueDate}</strong></span>
                     </div>
                   </div>

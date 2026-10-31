@@ -1434,12 +1434,19 @@ export const DeliverableWorkspaceModal: React.FC<DeliverableWorkspaceModalProps>
                   rows={3}
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Type a feedback comment or internal note..."
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleAddComment(e);
+                    }
+                  }}
+                  placeholder="Type a feedback comment or internal note... (Press Enter ↵ to send, Shift+Enter for new line)"
                   maxLength={2000}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30"
                 />
-                <div className="text-right text-[10px] text-zinc-500">
-                  {commentText.length}/2000 characters
+                <div className="flex items-center justify-between text-[10px] text-zinc-500">
+                  <span>Enter ↵ to send • Shift+Enter for newline</span>
+                  <span>{commentText.length}/2000 characters</span>
                 </div>
 
                 <div className="flex items-center justify-between">

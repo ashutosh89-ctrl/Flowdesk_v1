@@ -110,7 +110,7 @@ export const PaymentService = {
         if (requestedAmount !== undefined && requestedAmount !== null && requestedAmount > rem) {
           return {
             success: false,
-            error: `Payment amount (${demoInv.currency || 'USD'} ${requestedAmount}) exceeds the outstanding balance (${demoInv.currency || 'USD'} ${rem}).`,
+            error: `Payment amount (${demoInv.currency || 'INR'} ${requestedAmount}) exceeds the outstanding balance (${demoInv.currency || 'INR'} ${rem}).`,
           };
         }
 
@@ -123,15 +123,15 @@ export const PaymentService = {
           workspaceId: (demoInv as any).workspaceId,
           clientId: demoInv.clientId,
           amount: payAmt,
-          currency: demoInv.currency || 'USD',
+          currency: demoInv.currency || 'INR',
         });
 
         return {
           success: true,
           orderId: genOrderId,
           amount: payAmt,
-          amountSubunits: Number(toSubunits(payAmt, demoInv.currency || 'USD')),
-          currency: demoInv.currency || 'USD',
+          amountSubunits: Number(toSubunits(payAmt, demoInv.currency || 'INR')),
+          currency: demoInv.currency || 'INR',
           keyId: getRazorpayKeyId() || '',
           invoiceId: demoInv.id,
           invoiceNumber: demoInv.invoiceNumber,
@@ -820,7 +820,7 @@ export const PaymentService = {
       invoiceId: r.invoice_id,
       invoiceNumber: invoice.invoice_number,
       amount: Number(r.amount) || 0,
-      currency: r.currency || invoice.currency || 'USD',
+      currency: r.currency || invoice.currency || 'INR',
       paymentDate: r.payment_date || r.created_at,
       paymentMethod: r.payment_method || 'razorpay',
       razorpayPaymentId: r.razorpay_payment_id,
@@ -836,7 +836,7 @@ export const PaymentService = {
           invoiceId: p.invoice_id,
           invoiceNumber: invoice.invoice_number,
           amount: Number(p.amount) || 0,
-          currency: p.currency || invoice.currency || 'USD',
+          currency: p.currency || invoice.currency || 'INR',
           paymentDate: p.payment_date || p.created_at,
           paymentMethod: p.payment_method || 'razorpay',
           gateway: p.gateway || 'manual',
@@ -851,7 +851,7 @@ export const PaymentService = {
       totalAmount: total,
       paidAmount: paid,
       remainingBalance: remaining,
-      currency: invoice.currency || 'USD',
+      currency: invoice.currency || 'INR',
       status: invoice.status || 'sent',
       paymentStatus,
       receipts,

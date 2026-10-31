@@ -355,7 +355,13 @@ export const CommentsTab: React.FC<CommentsTabProps> = ({ summary, onRefresh }) 
               value={newComment}
               disabled={isSubmitting}
               onChange={(e) => setNewComment(e.target.value)}
-              placeholder={isInternal ? "Write a private freelancer note (never visible to client)..." : "Write a message or project update for the client..."}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handlePostComment(e);
+                }
+              }}
+              placeholder={isInternal ? "Write a private freelancer note (Enter ↵ to save, Shift+Enter for new line)..." : "Write a message or project update for the client... (Enter ↵ to send, Shift+Enter for new line)"}
               className={`flex-1 border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none transition-colors ${
                 isInternal
                   ? 'bg-amber-500/[0.03] border-amber-500/30 focus:border-amber-500/50 placeholder-amber-400/40'
@@ -372,6 +378,9 @@ export const CommentsTab: React.FC<CommentsTabProps> = ({ summary, onRefresh }) 
             >
               {isSubmitting ? 'Posting...' : isInternal ? 'Save Note' : 'Send'}
             </Button>
+          </div>
+          <div className="flex justify-end pr-1 text-[10px] font-mono text-zinc-500">
+            <span>Press <kbd className="px-1 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-300">Enter ↵</kbd> to send • <kbd className="px-1 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-300">Shift + Enter</kbd> for newline</span>
           </div>
         </form>
       </CardContent>

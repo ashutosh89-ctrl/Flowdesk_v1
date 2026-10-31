@@ -45,7 +45,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
   const [phone, setPhone] = useState(client.phone || '');
   const [industry, setIndustry] = useState(client.industry || '');
   const [country, setCountry] = useState(client.country || 'India');
-  const [currency, setCurrency] = useState(client.currency || 'USD');
+  const [currency, setCurrency] = useState(client.currency || 'INR');
   const [notes, setNotes] = useState(client.notes || '');
 
   // Custom Fields manager

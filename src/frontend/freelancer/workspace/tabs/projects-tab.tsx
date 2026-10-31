@@ -207,7 +207,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ summary, onRefresh }) 
                 <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-zinc-400 pt-2 border-t border-white/10">
                   <span className="flex items-center gap-1">
                     <DollarSign className="w-3.5 h-3.5 text-zinc-500" />
-                    Budget: <strong className="text-white">{formatCurrency(proj.budget, client.currency || 'USD')}</strong>
+                    Budget: <strong className="text-white">{formatCurrency(proj.budget, client.currency || 'INR')}</strong>
                   </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5 text-zinc-500" />

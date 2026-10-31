@@ -412,7 +412,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const displayCompany = profile?.companyName || 'My Workspace';
 
   return (
-    <div className="space-y-8 select-none">
+    <div className="w-full space-y-8 select-none">
       <div className="pb-6 border-b border-[#176B5B]/25">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-[#F5F5F0] tracking-tight">
           {greeting}, {displayName}

@@ -211,26 +211,19 @@
   box-shadow: 0 0 0 2px rgba(67, 214, 176, 0.25);
 }
 
-/* Custom scrollbars */
+/* Global scrollbar display suppression while keeping scrolling 100% functional */
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+*::-webkit-scrollbar,
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
-::-webkit-scrollbar-track {
-  background: #101312;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(23, 107, 91, 0.4);
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #43D6B0;
-}
-
-/* Hide scrollbars completely on landing page */
 html.no-scrollbar,
 body.no-scrollbar,
 .no-scrollbar {

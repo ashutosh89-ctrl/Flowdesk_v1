@@ -18,14 +18,14 @@ export const mockUserProfile: UserProfile = {
   companyName: '',
   title: '',
   avatarUrl: '',
-  currency: 'USD',
+  currency: 'INR',
   hourlyRate: 0,
   onboardingCompleted: false,
 };
 
 export const mockUserSettings: UserSettings = {
   id: '',
-  currency: 'USD',
+  currency: 'INR',
   timezone: 'UTC',
   date_format: 'YYYY-MM-DD',
   week_start: 'monday',

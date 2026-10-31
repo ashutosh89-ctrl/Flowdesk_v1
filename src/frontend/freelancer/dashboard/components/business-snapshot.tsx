@@ -23,7 +23,7 @@ interface BusinessSnapshotProps {
 
 export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onNavigate, currency: propCurrency }) => {
   const { profile, userSettings } = useAuth();
-  const currency = propCurrency || userSettings?.currency || profile?.currency || 'USD';
+  const currency = propCurrency || userSettings?.currency || profile?.currency || 'INR';
   const safeMetrics = {
     activeClientsCount: metrics?.activeClientsCount ?? 0,
     activeProjectsCount: metrics?.activeProjectsCount ?? 0,
@@ -122,36 +122,39 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
   ];
 
   return (
-    <div className="bg-[#16181B] border border-white/[0.08] rounded-2xl p-6 shadow-md">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-[#16181B] border border-white/[0.08] rounded-2xl p-4 sm:p-6 shadow-md">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold font-display text-[#F8F9FA] tracking-tight flex items-center gap-2.5">
             <Activity className="w-5 h-5 text-[#43D6B0]" /> Business Snapshot
           </h2>
-          <p className="text-sm text-[#9CA3AF] mt-1">High-level financial &amp; operational metrics across client hubs.</p>
+          <p className="text-xs sm:text-sm text-[#9CA3AF] mt-1">High-level financial &amp; operational metrics across client hubs.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {cards.map((card) => (
           <div
             key={card.id}
             onClick={() => onNavigate(card.actionView)}
-            className="p-5 rounded-xl bg-[#131518] border border-white/[0.06] hover:border-[#43D6B0]/40 transition-colors cursor-pointer group flex flex-col justify-between"
+            className="p-3.5 sm:p-5 rounded-xl bg-[#131518] border border-white/[0.06] hover:border-[#43D6B0]/40 transition-colors cursor-pointer group flex flex-col justify-between min-w-0 overflow-hidden"
           >
-            <div className="flex items-start justify-between mb-3.5">
-              <span className="p-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] group-hover:scale-105 transition-transform">
+            <div className="flex items-start justify-between mb-2.5 sm:mb-3.5">
+              <span className="p-2 sm:p-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] group-hover:scale-105 transition-transform">
                 {card.icon}
               </span>
               <ArrowUpRight className="w-4 h-4 text-[#9CA3AF] group-hover:text-white transition-colors" />
             </div>
 
-            <div>
-              <p className="text-sm font-semibold text-[#9CA3AF]">{card.label}</p>
-              <h3 className="text-2xl sm:text-3xl font-extrabold font-display text-[#F8F9FA] tracking-tight my-1 group-hover:text-[#43D6B0] transition-colors">
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm font-semibold text-[#9CA3AF] truncate" title={card.label}>{card.label}</p>
+              <h3
+                title={card.value}
+                className="text-base xs:text-lg sm:text-2xl lg:text-3xl font-extrabold font-display text-[#F8F9FA] tracking-tight my-1 group-hover:text-[#43D6B0] transition-colors truncate tabular-nums"
+              >
                 {card.value}
               </h3>
-              <p className="text-xs sm:text-sm text-[#9CA3AF] font-medium">{card.subtext}</p>
+              <p className="text-[11px] sm:text-xs md:text-sm text-[#9CA3AF] font-medium truncate" title={card.subtext}>{card.subtext}</p>
             </div>
           </div>
         ))}

@@ -1768,7 +1768,7 @@ export const FreelancerInvoiceService = {
           taxPercentage: invoice.taxPercentage,
           taxName: invoice.taxName,
           discount: invoice.discount,
-          currency: invoice.currency || 'USD',
+          currency: invoice.currency || 'INR',
           notes: invoice.notes,
           paymentInstructions: invoice.paymentInstructions,
           internalNotes: invoice.internalNotes,
@@ -1857,12 +1857,12 @@ export const FreelancerInvoiceService = {
         due_date: invoice.dueDate || new Date().toISOString().split('T')[0],
         subtotal: calc.subtotal,
         tax_percentage: calc.taxPercentage,
-        tax_name: invoice.taxName || 'Tax',
+        tax_name: invoice.taxName || 'GST',
         tax_amount: calc.taxAmount,
         total_amount: calc.total,
         discount: calc.discount,
         paid_amount: 0,
-        currency: invoice.currency || 'USD',
+        currency: invoice.currency || 'INR',
         notes: invoice.notes || '',
         payment_instructions: invoice.paymentInstructions || '',
         internal_notes: invoice.internalNotes || '',
@@ -1887,12 +1887,6 @@ export const FreelancerInvoiceService = {
           invoice.upiId ||
           settings?.upi_id ||
           settings?.payment_settings?.upiId ||
-          null,
-        upi_qr_code_url:
-          invoice.upiQrCodeUrl ||
-          invoice.paymentMethods?.upiQrCodeUrl ||
-          settings?.upi_qr_code_url ||
-          settings?.payment_settings?.upiQrCodeUrl ||
           null,
         bank_details:
           invoice.bankDetails ||
@@ -2802,38 +2796,75 @@ export const ActivityService = FreelancerActivityService;
 
 export const CommentService = {
   getComments: async (clientId: string): Promise<WorkspaceComment[]> => {
-    const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return [];
+    if (!clientId) return [];
 
+    // 1. Try server API route first
     try {
-      const { data, error } = await supabase
+      const res = await fetch(`/api/comments?clientId=${encodeURIComponent(clientId)}&role=freelancer`, {
+        cache: 'no-store',
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.comments) && json.comments.length > 0) {
+          return json.comments.map((c: any) => ({
+            id: c.id,
+            clientId: c.client_id || c.clientId,
+            author: c.author,
+            avatar: c.avatar || c.author_avatar || '',
+            time: c.created_at?.split('T')[0] || c.time || new Date().toISOString().split('T')[0],
+            text: c.text,
+            isOwner: Boolean(c.is_owner ?? c.isOwner),
+            isInternal: Boolean(c.is_internal ?? c.isInternal),
+            replyToId: c.reply_to_id || c.replyToId || undefined,
+            replyToAuthor: c.reply_to_author || c.replyToAuthor || undefined,
+            replyToText: c.reply_to_text || c.replyToText || undefined,
+            mentions: c.mentions || [],
+            attachments: c.attachments || [],
+            isPinned: Boolean(c.is_pinned ?? c.isPinned),
+          }));
+        }
+      }
+    } catch {
+      // API non-blocking
+    }
+
+    // 2. Direct Supabase query
+    try {
+      const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+      let query = supabase
         .from('workspace_comments')
         .select('*')
-        .eq('workspace_id', wsId)
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: true });
+        .eq('client_id', clientId);
 
-      if (error || !data) return [];
+      if (wsId) {
+        query = query.or(`workspace_id.eq.${wsId},workspace_id.is.null`);
+      }
 
-      return data.map((c) => ({
-        id: c.id,
-        clientId: c.client_id,
-        author: c.author,
-        avatar: c.avatar || '',
-        time: c.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-        text: c.text,
-        isOwner: Boolean(c.is_owner),
-        isInternal: Boolean(c.is_internal),
-        replyToId: c.reply_to_id || undefined,
-        replyToAuthor: c.reply_to_author || undefined,
-        replyToText: c.reply_to_text || undefined,
-        mentions: c.mentions || [],
-        attachments: c.attachments || [],
-        isPinned: Boolean(c.is_pinned),
-      }));
+      const { data, error } = await query.order('created_at', { ascending: true });
+
+      if (data && data.length > 0) {
+        return data.map((c) => ({
+          id: c.id,
+          clientId: c.client_id,
+          author: c.author,
+          avatar: c.avatar || c.author_avatar || '',
+          time: c.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          text: c.text,
+          isOwner: Boolean(c.is_owner),
+          isInternal: Boolean(c.is_internal),
+          replyToId: c.reply_to_id || undefined,
+          replyToAuthor: c.reply_to_author || undefined,
+          replyToText: c.reply_to_text || undefined,
+          mentions: c.mentions || [],
+          attachments: c.attachments || [],
+          isPinned: Boolean(c.is_pinned),
+        }));
+      }
     } catch {
-      return [];
+      // Fallback
     }
+
+    return FlowDeskStore.getComments(clientId);
   },
 
   addComment: async (
@@ -2852,47 +2883,125 @@ export const CommentService = {
       isPinned?: boolean;
     }
   ): Promise<WorkspaceComment> => {
-    const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) throw new Error("No active workspace");
-
+    // 1. Try server API route
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          text: commentData.text,
+          author: commentData.author || 'Freelancer',
+          avatar: commentData.avatar,
+          replyToId: commentData.replyToId,
+          replyToAuthor: commentData.replyToAuthor,
+          replyToText: commentData.replyToText,
+          isOwner: commentData.isOwner ?? true,
+          isInternal: Boolean(commentData.isInternal),
+        }),
+      });
 
-      const payload = {
-        workspace_id: wsId,
-        client_id: clientId,
-        user_id: user?.id || null,
-        text: commentData.text,
-        author: commentData.author || 'Member',
-        avatar: commentData.avatar || '',
-        is_owner: commentData.isOwner ?? true,
-        is_internal: Boolean(commentData.isInternal),
-        reply_to_id: commentData.replyToId || null,
-        reply_to_author: commentData.replyToAuthor || null,
-        reply_to_text: commentData.replyToText || null,
-        mentions: commentData.mentions || [],
-        attachments: commentData.attachments || [],
-        is_pinned: commentData.isPinned ?? false,
-      };
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.comment) {
+          FlowDeskStore.addComment(clientId, {
+            text: commentData.text,
+            author: commentData.author,
+            avatar: commentData.avatar,
+            isOwner: commentData.isOwner ?? true,
+            replyToId: commentData.replyToId,
+            replyToAuthor: commentData.replyToAuthor,
+            replyToText: commentData.replyToText,
+            mentions: commentData.mentions,
+            attachments: commentData.attachments,
+            isPinned: commentData.isPinned,
+          });
 
-      const { data, error } = await supabase.from('workspace_comments').insert(payload).select().single();
-      if (error || !data) throw new Error("Failed to add comment");
-
-      return {
-        id: data.id,
-        clientId: data.client_id,
-        author: data.author,
-        avatar: data.avatar,
-        time: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-        text: data.text,
-        isOwner: data.is_owner,
-        isInternal: Boolean(data.is_internal),
-      };
+          return {
+            id: json.comment.id,
+            clientId: json.comment.client_id || clientId,
+            author: json.comment.author,
+            avatar: json.comment.avatar || json.comment.author_avatar || '',
+            time: json.comment.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            text: json.comment.text,
+            isOwner: Boolean(json.comment.is_owner),
+            isInternal: Boolean(json.comment.is_internal),
+          };
+        }
+      }
     } catch {
-      throw new Error("Failed to add comment");
+      // API non-blocking
     }
+
+    // 2. Direct Supabase insert
+    const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+    if (wsId) {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        const payload = {
+          workspace_id: wsId,
+          client_id: clientId,
+          user_id: user?.id || null,
+          text: commentData.text,
+          author: commentData.author || 'Freelancer',
+          avatar: commentData.avatar || '',
+          is_owner: commentData.isOwner ?? true,
+          is_internal: Boolean(commentData.isInternal),
+          reply_to_id: commentData.replyToId || null,
+          reply_to_author: commentData.replyToAuthor || null,
+          reply_to_text: commentData.replyToText || null,
+          mentions: commentData.mentions || [],
+          attachments: commentData.attachments || [],
+          is_pinned: commentData.isPinned ?? false,
+        };
+
+        const { data, error } = await supabase.from('workspace_comments').insert(payload).select().single();
+        if (!error && data) {
+          FlowDeskStore.addComment(clientId, {
+            text: commentData.text,
+            author: commentData.author,
+            avatar: commentData.avatar,
+            isOwner: commentData.isOwner ?? true,
+            replyToId: commentData.replyToId,
+            replyToAuthor: commentData.replyToAuthor,
+            replyToText: commentData.replyToText,
+            mentions: commentData.mentions,
+            attachments: commentData.attachments,
+            isPinned: commentData.isPinned,
+          });
+
+          return {
+            id: data.id,
+            clientId: data.client_id,
+            author: data.author,
+            avatar: data.avatar,
+            time: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            text: data.text,
+            isOwner: data.is_owner,
+            isInternal: Boolean(data.is_internal),
+          };
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    // 3. Store fallback
+    return FlowDeskStore.addComment(clientId, {
+      text: commentData.text,
+      author: commentData.author,
+      avatar: commentData.avatar,
+      isOwner: commentData.isOwner ?? true,
+      replyToId: commentData.replyToId,
+      replyToAuthor: commentData.replyToAuthor,
+      replyToText: commentData.replyToText,
+      mentions: commentData.mentions,
+      attachments: commentData.attachments,
+      isPinned: commentData.isPinned,
+    });
   },
 
   editComment: async (commentId: string, text: string): Promise<WorkspaceComment | undefined> => {

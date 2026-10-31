@@ -438,7 +438,7 @@ export async function generateInvoicePDF(
   doc.text('CURRENCY:', margin + 115, yPos + 6.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...primaryBlack);
-  doc.text(invoice.currency || 'USD', margin + 137, yPos + 6.5);
+  doc.text(invoice.currency || 'INR', margin + 137, yPos + 6.5);
 
   yPos += 14;
 
@@ -1070,7 +1070,7 @@ export function printInvoiceDocument(
         <div class="dates-bar">
           <div>Issue Date: <strong>${invoice.issueDate || 'N/A'}</strong></div>
           <div>Due Date: <strong>${invoice.dueDate || 'N/A'}</strong></div>
-          <div>Currency: <strong>${invoice.currency || 'USD'}</strong></div>
+          <div>Currency: <strong>${invoice.currency || 'INR'}</strong></div>
         </div>
 
         <!-- Table -->

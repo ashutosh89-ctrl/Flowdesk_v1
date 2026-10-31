@@ -25,13 +25,17 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   onSuccess,
 }) => {
   const { profile, userSettings } = useAuth();
-  const currencySymbol = getCurrencySymbol(userSettings?.currency || profile?.currency || 'INR');
-  const { showToast } = useToast();
-
   const [fetchedClients, setFetchedClients] = useState<Client[]>([]);
   const clients = propClients && propClients.length > 0 ? propClients : fetchedClients;
   const [title, setTitle] = useState('');
   const [clientId, setClientId] = useState(defaultClientId || '');
+
+  const effectiveClientId = clientId || defaultClientId || clients[0]?.id || '';
+  const selectedClient = clients.find((c) => c.id === effectiveClientId);
+  const studioCurrency = userSettings?.currency || profile?.currency || 'INR';
+  const effectiveCurrency = selectedClient?.currency || studioCurrency;
+  const currencySymbol = getCurrencySymbol(effectiveCurrency);
+  const { showToast } = useToast();
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState('15000');
   const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
@@ -166,7 +170,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Create New Project">
-      <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
             {error}

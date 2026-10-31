@@ -55,8 +55,8 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
         </div>
 
         {/* Score Radial Visualizer */}
-        <div className="flex items-center gap-6 p-4 rounded-xl bg-zinc-900/60 border border-white/10 mb-6">
-          <div className="relative w-20 h-20 flex items-center justify-center shrink-0">
+        <div className="flex items-center justify-center gap-6 p-4 rounded-xl bg-zinc-900/60 border border-white/10 mb-6">
+          <div className="relative w-20 h-20 shrink-0">
             <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
               <path
                 className="text-zinc-800"
@@ -75,7 +75,9 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
               />
             </svg>
-            <span className="absolute text-xl font-black text-white">{health.score}</span>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="text-xl font-black text-white leading-none text-center tabular-nums">{health.score}</span>
+            </div>
           </div>
 
           <div className="space-y-1 text-xs min-w-0">

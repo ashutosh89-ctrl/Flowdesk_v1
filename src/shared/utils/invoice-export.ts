@@ -103,7 +103,7 @@ export async function renderInvoiceToCanvas(
   }
 
   const effectiveBranding = resolveBrandingData(branding);
-  const currency = invoice.currency || 'USD';
+  const currency = invoice.currency || 'INR';
   const symbol = getCurrencySymbol(currency);
 
   // Canonical calculations

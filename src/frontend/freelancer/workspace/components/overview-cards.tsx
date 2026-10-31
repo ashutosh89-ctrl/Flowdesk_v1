@@ -41,7 +41,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({ summary }) => {
         <Card variant="crystal" className="p-4 border-white/10">
           <span className="text-[10px] uppercase font-mono text-zinc-400 block">Unpaid Invoices</span>
           <span className="text-xl font-bold text-amber-400 font-mono mt-1 block">
-            {formatCurrency(outstandingBalance, client.currency || 'USD')}
+            {formatCurrency(outstandingBalance, client.currency || 'INR')}
           </span>
         </Card>
       </div>

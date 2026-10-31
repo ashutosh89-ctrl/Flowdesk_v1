@@ -50,9 +50,9 @@ export const UserSettingsService = {
         if (!error && data) {
           const settings: UserSettings = {
             id: data.id,
-            currency: data.currency || 'USD',
-            timezone: data.timezone || 'America/New_York',
-            date_format: data.date_format || 'MM/DD/YYYY',
+            currency: data.currency || 'INR',
+            timezone: data.timezone || 'Asia/Kolkata',
+            date_format: data.date_format || 'DD/MM/YYYY',
             week_start: data.week_start || 'Monday',
             invoice_prefix: data.invoice_prefix || 'INV',
             invoice_number_format: data.invoice_number_format || 'prefix_year_sequence',
@@ -62,7 +62,7 @@ export const UserSettingsService = {
             invoice_next_sequence: data.invoice_next_sequence ? Number(data.invoice_next_sequence) : 1,
             invoice_annual_reset: data.invoice_annual_reset !== undefined ? Boolean(data.invoice_annual_reset) : false,
             default_tax_rate: Number(data.default_tax_rate) || 0,
-            tax_name: data.tax_name || 'Tax',
+            tax_name: data.tax_name || 'GST',
             default_payment_terms: Number(data.default_payment_terms) || 14,
             email_notifications: data.email_notifications !== undefined ? Boolean(data.email_notifications) : true,
             email_deliverables: data.email_deliverables !== undefined ? Boolean(data.email_deliverables) : true,
@@ -82,6 +82,40 @@ export const UserSettingsService = {
             branch_name: data.branch_name || data.payment_settings?.bankDetails?.branchName || '',
             razorpay_payment_link: data.razorpay_payment_link || data.payment_settings?.razorpayPaymentLink || '',
           };
+
+          // Redundancy check: if UPI QR or ID is missing from user_settings table, check profiles
+          if (!settings.upi_qr_code_url || !settings.upi_id) {
+            try {
+              const { data: prof } = await supabase
+                .from('profiles')
+                .select('upi_id, upi_qr_code_url, currency')
+                .eq('id', userId)
+                .maybeSingle();
+              if (prof) {
+                if (!settings.upi_qr_code_url && prof.upi_qr_code_url) {
+                  settings.upi_qr_code_url = prof.upi_qr_code_url;
+                  settings.payment_settings = {
+                    ...settings.payment_settings,
+                    upiQrCodeUrl: prof.upi_qr_code_url,
+                    upiEnabled: true,
+                  };
+                }
+                if (!settings.upi_id && prof.upi_id) {
+                  settings.upi_id = prof.upi_id;
+                  settings.payment_settings = {
+                    ...settings.payment_settings,
+                    upiId: prof.upi_id,
+                  };
+                }
+                if (prof.currency && (!data.currency || data.currency === 'USD')) {
+                  settings.currency = prof.currency;
+                }
+              }
+            } catch {
+              // non-critical
+            }
+          }
+
           this.setLocalSettings(userId, settings);
           return settings;
         }
@@ -114,9 +148,9 @@ export const UserSettingsService = {
     const currentSettings = await this.getUserSettings(targetUserId);
     const mergedSettings: UserSettings = {
       id: targetUserId,
-      currency: updates.currency || currentSettings.currency || 'USD',
-      timezone: updates.timezone || currentSettings.timezone || 'America/New_York',
-      date_format: updates.date_format || currentSettings.date_format || 'MM/DD/YYYY',
+      currency: updates.currency || currentSettings.currency || 'INR',
+      timezone: updates.timezone || currentSettings.timezone || 'Asia/Kolkata',
+      date_format: updates.date_format || currentSettings.date_format || 'DD/MM/YYYY',
       week_start: updates.week_start || currentSettings.week_start || 'Monday',
       invoice_prefix: updates.invoice_prefix !== undefined ? updates.invoice_prefix : (currentSettings.invoice_prefix || 'INV'),
       invoice_number_format: updates.invoice_number_format || currentSettings.invoice_number_format || 'prefix_year_sequence',
@@ -126,7 +160,7 @@ export const UserSettingsService = {
       invoice_next_sequence: updates.invoice_next_sequence !== undefined ? updates.invoice_next_sequence : (currentSettings.invoice_next_sequence ?? 1),
       invoice_annual_reset: updates.invoice_annual_reset !== undefined ? updates.invoice_annual_reset : (currentSettings.invoice_annual_reset ?? false),
       default_tax_rate: updates.default_tax_rate !== undefined ? updates.default_tax_rate : (currentSettings.default_tax_rate ?? 0),
-      tax_name: updates.tax_name !== undefined ? updates.tax_name : (currentSettings.tax_name || 'Tax'),
+      tax_name: updates.tax_name !== undefined ? updates.tax_name : (currentSettings.tax_name || 'GST'),
       default_payment_terms: updates.default_payment_terms !== undefined ? updates.default_payment_terms : (currentSettings.default_payment_terms ?? 14),
       email_notifications: updates.email_notifications !== undefined ? updates.email_notifications : (currentSettings.email_notifications ?? true),
       email_deliverables: updates.email_deliverables !== undefined ? updates.email_deliverables : (currentSettings.email_deliverables ?? true),

@@ -201,7 +201,7 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
     const isCancelled = invoice.workflowStatus === 'cancelled' || status === 'CANCELLED';
 
     // Amount Calculations & Words
-    const currency = invoice.currency || 'USD';
+    const currency = invoice.currency || 'INR';
     const subtotal = invoice.subtotal || 0;
     const discount = invoice.discount || 0;
     const taxableAmount = Math.max(0, subtotal - discount);

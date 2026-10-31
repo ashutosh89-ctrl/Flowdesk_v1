@@ -206,7 +206,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
               BILLING STATEMENT SUMMARY
             </span>
             <h2 className="text-2xl font-extrabold text-white font-mono mt-1">
-              {formatCurrency(totalOutstanding, invoices[0]?.currency || 'USD')}
+              {formatCurrency(totalOutstanding, invoices[0]?.currency || 'INR')}
             </h2>
             <p className="text-xs text-zinc-300 mt-0.5">
               {totalOutstanding > 0 ? 'Outstanding balance awaiting settlement' : 'All statements settled'}

@@ -85,7 +85,7 @@ export function InvoiceBuilderModal({
         setSelectedProjectId(invoiceToEdit.projectId || '');
         setIssueDate(invoiceToEdit.issueDate);
         setDueDate(invoiceToEdit.dueDate);
-        setCurrency(invoiceToEdit.currency || 'USD');
+        setCurrency(invoiceToEdit.currency || 'INR');
         setTaxName(invoiceToEdit.taxName || 'GST');
         setTaxPercentage(invoiceToEdit.taxPercentage ?? 0);
         setDiscount(invoiceToEdit.discount || 0);
@@ -120,7 +120,7 @@ export function InvoiceBuilderModal({
           FreelancerInvoiceService.getInvoices(),
         ]);
 
-        const studioCurrency = settings?.currency || userSettings?.currency || profile?.currency || 'USD';
+        const studioCurrency = settings?.currency || userSettings?.currency || profile?.currency || 'INR';
         const paymentTerms = settings?.default_payment_terms || 14;
         const dueDateMs = new Date(today).getTime() + paymentTerms * 86400000;
         const dueDateStr = new Date(dueDateMs).toISOString().split('T')[0];
@@ -137,11 +137,14 @@ export function InvoiceBuilderModal({
         setTaxName(settings?.tax_name || 'GST');
         setCurrency(studioCurrency);
 
+        const effectiveUpiId = settings?.upi_id || settings?.payment_settings?.upiId || userSettings?.upi_id || userSettings?.payment_settings?.upiId || profile?.upiId || '';
+        const effectiveUpiQr = settings?.upi_qr_code_url || settings?.payment_settings?.upiQrCodeUrl || userSettings?.upi_qr_code_url || userSettings?.payment_settings?.upiQrCodeUrl || profile?.upiQrCodeUrl || '';
+
         setBankTransferEnabled(settings?.payment_settings?.bankTransferEnabled ?? true);
-        setUpiEnabled(settings?.payment_settings?.upiEnabled ?? Boolean(settings?.upi_id || settings?.upi_qr_code_url || settings?.payment_settings?.upiQrCodeUrl));
+        setUpiEnabled(settings?.payment_settings?.upiEnabled ?? Boolean(effectiveUpiId || effectiveUpiQr));
         setRazorpayLinkEnabled(settings?.payment_settings?.razorpayLinkEnabled ?? Boolean(settings?.razorpay_payment_link));
-        setUpiId(settings?.upi_id || settings?.payment_settings?.upiId || '');
-        setUpiQrCodeUrl(settings?.upi_qr_code_url || settings?.payment_settings?.upiQrCodeUrl || '');
+        setUpiId(effectiveUpiId);
+        setUpiQrCodeUrl(effectiveUpiQr);
         setBankDetails({
           accountHolderName: settings?.account_holder_name || settings?.payment_settings?.bankDetails?.accountHolderName || '',
           bankName: settings?.bank_name || settings?.payment_settings?.bankDetails?.bankName || '',
@@ -157,11 +160,7 @@ export function InvoiceBuilderModal({
         const targetClient = (defaultClientId && allClients.find((c) => c.id === defaultClientId)) || allClients.find((c) => c.id === selectedClientId) || allClients[0];
         if (targetClient) {
           setSelectedClientId(targetClient.id);
-          if (targetClient.currency && targetClient.currency !== 'USD') {
-            setCurrency(targetClient.currency);
-          } else {
-            setCurrency(studioCurrency);
-          }
+          setCurrency(targetClient.currency || studioCurrency);
           FreelancerProjectService.getProjectsByClientId(targetClient.id).then(setProjects);
         } else {
           if (defaultClientId) {
@@ -170,22 +169,19 @@ export function InvoiceBuilderModal({
           setCurrency(studioCurrency);
           setProjects([]);
         }
-        setItems([{ id: 'item-initial', description: '', quantity: 1, rate: 0, amount: 0 }]);
+        const defaultRate = Number(profile?.hourlyRate) || 0;
+        setItems([{ id: 'item-initial', description: '', quantity: 1, rate: defaultRate, amount: defaultRate }]);
       }
     });
-  }, [isOpen, invoiceToEdit, user?.id, defaultClientId, profile?.currency, userSettings?.currency, selectedClientId]);
+  }, [isOpen, invoiceToEdit, user?.id, defaultClientId, profile?.currency, profile?.hourlyRate, profile?.upiId, profile?.upiQrCodeUrl, userSettings?.currency, selectedClientId]);
 
   const handleClientSelectChange = (newClientId: string) => {
     setSelectedClientId(newClientId);
     FreelancerProjectService.getProjectsByClientId(newClientId).then(setProjects);
     setSelectedProjectId('');
     const selectedClient = clients.find((c) => c.id === newClientId);
-    const studioCurrency = userSettings?.currency || profile?.currency || 'USD';
-    if (selectedClient && selectedClient.currency && selectedClient.currency !== 'USD') {
-      setCurrency(selectedClient.currency);
-    } else {
-      setCurrency(studioCurrency);
-    }
+    const studioCurrency = userSettings?.currency || profile?.currency || 'INR';
+    setCurrency(selectedClient?.currency || studioCurrency);
   };
 
   // Item handlers
@@ -204,9 +200,10 @@ export function InvoiceBuilderModal({
   };
 
   const handleAddItem = () => {
+    const defaultRate = Number(profile?.hourlyRate) || 0;
     setItems([
       ...items,
-      { id: `item-${Date.now()}`, description: '', quantity: 1, rate: 0, amount: 0 },
+      { id: `item-${Date.now()}`, description: '', quantity: 1, rate: defaultRate, amount: defaultRate },
     ]);
   };
 
@@ -733,13 +730,22 @@ export function InvoiceBuilderModal({
                       )}
                     </div>
 
+                    {upiQrCodeUrl && (
+                      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                        <span>Saved Payment QR Code from Settings is linked. Entering a UPI ID below is completely optional.</span>
+                      </div>
+                    )}
+
                     <div>
-                      <label className="block text-[11px] text-zinc-400 mb-1">UPI ID / VPA (Optional if uploading QR directly)</label>
+                      <label className="block text-[11px] text-zinc-400 mb-1">
+                        UPI ID / VPA {upiQrCodeUrl ? '(Optional - QR already linked)' : '(Optional if uploading QR directly)'}
+                      </label>
                       <input
                         type="text"
                         value={upiId}
                         onChange={(e) => setUpiId(e.target.value.trim())}
-                        placeholder="e.g. studio@okhdfcbank"
+                        placeholder={upiQrCodeUrl ? 'Optional: e.g. studio@okhdfcbank' : 'e.g. studio@okhdfcbank'}
                         className="w-full px-3 py-2 text-xs border border-white/10 rounded-lg bg-zinc-900 text-white focus:outline-none focus:border-white/30"
                       />
                     </div>

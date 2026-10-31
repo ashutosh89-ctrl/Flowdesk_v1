@@ -46,7 +46,7 @@ export const WorkspaceSettingsModal: React.FC<WorkspaceSettingsModalProps> = ({
           setCompanyName(profile.companyName || '');
           setTitle(profile.title || '');
           setHourlyRate((profile.hourlyRate || 120).toString());
-          setCurrency(profile.currency || 'USD');
+          setCurrency(profile.currency || 'INR');
           if (settings) {
             setInvoicePrefix(settings.invoice_prefix || 'INV-');
             setDefaultTaxRate((settings.default_tax_rate || 0).toString());

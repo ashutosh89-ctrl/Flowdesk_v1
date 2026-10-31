@@ -224,9 +224,65 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // 9. Insert Invoice Record
     const nowIso = new Date().toISOString();
-    const { data: insertedInvoice, error: insertError } = await supabaseAdmin
+    const primaryPayload: Record<string, any> = {
+      workspace_id: targetWorkspaceId,
+      client_id: client.id,
+      user_id: caller.userId,
+      client_name: client.name || 'Client',
+      client_email: client.email || 'client@example.com',
+      project_id: payload.projectId || null,
+      invoice_number: invoiceNumber,
+      status: 'draft',
+      workflow_status: 'draft',
+      payment_status: 'pending',
+      issue_date: payload.issueDate,
+      due_date: payload.dueDate,
+      subtotal: calc.subtotal,
+      tax_percentage: calc.taxPercentage,
+      tax_name: payload.taxName || 'GST',
+      tax_amount: calc.taxAmount,
+      total_amount: calc.total,
+      discount: calc.discount,
+      paid_amount: 0,
+      currency: payload.currency || 'INR',
+      notes: payload.notes || '',
+      payment_instructions: payload.paymentInstructions || '',
+      internal_notes: payload.internalNotes || '',
+      payment_methods: {
+        ...(payload.paymentMethods || {
+          bankTransferEnabled: true,
+          upiEnabled: Boolean(finalUpiId || finalQrCodeUrl),
+          razorpayLinkEnabled: Boolean(finalRazorpayLink),
+        }),
+        upiQrCodeUrl: finalQrCodeUrl || undefined,
+      },
+      upi_id: finalUpiId || null,
+      bank_details: finalBankDetails || null,
+      razorpay_payment_link: finalRazorpayLink || null,
+      created_at: nowIso,
+      updated_at: nowIso,
+    };
+
+    let insertedInvoice: any = null;
+    let insertError: any = null;
+
+    const primaryAttempt = await supabaseAdmin
       .from('invoices')
-      .insert({
+      .insert(primaryPayload)
+      .select()
+      .single();
+
+    if (!primaryAttempt.error && primaryAttempt.data) {
+      insertedInvoice = primaryAttempt.data;
+    } else {
+      insertError = primaryAttempt.error;
+      logger.warn('Initial invoice insert failed, attempting safe schema fallback retry:', {
+        requestId,
+        error: insertError?.message,
+      });
+
+      // Retry without extended / optional columns in case public.invoices has older schema
+      const fallbackPayload: Record<string, any> = {
         workspace_id: targetWorkspaceId,
         client_id: client.id,
         user_id: caller.userId,
@@ -235,43 +291,40 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         project_id: payload.projectId || null,
         invoice_number: invoiceNumber,
         status: 'draft',
-        workflow_status: 'draft',
-        payment_status: 'pending',
         issue_date: payload.issueDate,
         due_date: payload.dueDate,
         subtotal: calc.subtotal,
         tax_percentage: calc.taxPercentage,
-        tax_name: payload.taxName || 'Tax',
         tax_amount: calc.taxAmount,
         total_amount: calc.total,
         discount: calc.discount,
         paid_amount: 0,
-        currency: payload.currency,
+        currency: payload.currency || 'INR',
         notes: payload.notes || '',
-        payment_instructions: payload.paymentInstructions || '',
-        internal_notes: payload.internalNotes || '',
-        payment_methods: {
-          ...(payload.paymentMethods || {
-            bankTransferEnabled: true,
-            upiEnabled: Boolean(finalUpiId || finalQrCodeUrl),
-            razorpayLinkEnabled: Boolean(finalRazorpayLink),
-          }),
-          upiQrCodeUrl: finalQrCodeUrl || undefined,
-        },
-        upi_id: finalUpiId || null,
-        upi_qr_code_url: finalQrCodeUrl || null,
-        bank_details: finalBankDetails || null,
-        razorpay_payment_link: finalRazorpayLink || null,
         created_at: nowIso,
         updated_at: nowIso,
-      })
-      .select()
-      .single();
+      };
+
+      const fallbackAttempt = await supabaseAdmin
+        .from('invoices')
+        .insert(fallbackPayload)
+        .select()
+        .single();
+
+      if (!fallbackAttempt.error && fallbackAttempt.data) {
+        insertedInvoice = fallbackAttempt.data;
+        insertError = null;
+      } else {
+        insertError = fallbackAttempt.error || insertError;
+      }
+    }
 
     if (insertError || !insertedInvoice) {
       logger.error('Failed to insert invoice into database', insertError, { requestId });
       return createApiErrorResponse({
-        message: insertError?.code === '23505' ? 'An invoice with this number already exists.' : 'Failed to create invoice.',
+        message: insertError?.code === '23505'
+          ? 'An invoice with this number already exists.'
+          : (insertError?.message || 'Failed to create invoice.'),
         code: insertError?.code === '23505' ? 'DUPLICATE_INVOICE_NUMBER' : 'DATABASE_INSERT_ERROR',
         status: 400,
         requestId,

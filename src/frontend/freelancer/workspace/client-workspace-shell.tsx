@@ -90,6 +90,9 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
         .on('postgres_changes', { event: '*', schema: 'public', table: 'deliverable_comments' }, () => {
           loadSummary();
         })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'workspace_comments' }, () => {
+          loadSummary();
+        })
         .subscribe();
     } catch {
       // Realtime non-blocking

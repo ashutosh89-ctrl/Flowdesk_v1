@@ -23,7 +23,7 @@ export const RevenueTrajectoryCard: React.FC<RevenueTrajectoryCardProps> = ({
   currency: propCurrency,
 }) => {
   const { profile, userSettings } = useAuth();
-  const currency = propCurrency || userSettings?.currency || profile?.currency || 'USD';
+  const currency = propCurrency || userSettings?.currency || profile?.currency || 'INR';
   const sym = getCurrencySymbol(currency);
   const maxHistoryAmount = Math.max(...revenueHistory.map((r) => r.amount), 0);
   const maxVal = maxHistoryAmount > 0 ? maxHistoryAmount : 1;
