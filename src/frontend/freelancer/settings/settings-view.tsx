@@ -254,8 +254,19 @@ export const SettingsView: React.FC = () => {
       return next;
     });
     setDirty(true);
-    if ((field === 'currency' || field === 'default_deliverable_niche') && user?.id) {
-      UserSettingsService.saveUserSettings(user.id, { [field]: value }).catch((err) => {
+    const isNotificationPref = [
+      'email_notifications',
+      'email_deliverables',
+      'email_documents',
+      'email_invoices',
+      'email_invitations',
+      'invoice_reminders',
+      'comment_alerts',
+      'weekly_digest',
+    ].includes(field as string);
+
+    if (isNotificationPref || field === 'currency' || field === 'default_deliverable_niche') {
+      UserSettingsService.saveUserSettings(user?.id || 'usr-default', { [field]: value }).catch((err) => {
         console.warn(`Background ${field} preference sync notice:`, err);
       });
     }
@@ -1592,9 +1603,6 @@ export const SettingsView: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <CardDescription>
-                  Configure which transactional email events trigger delivery to you and your clients.
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {emailHealth.status === 'suspended_or_disabled' && (
@@ -1775,6 +1783,21 @@ export const SettingsView: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {dirty && (
+              <div className="flex justify-end pt-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  isLoading={saving}
+                  onClick={() => handleSave()}
+                  leftIcon={<Save className="w-4 h-4" />}
+                >
+                  Save Alert Preferences
+                </Button>
+              </div>
+            )}
           </div>
         )}
 

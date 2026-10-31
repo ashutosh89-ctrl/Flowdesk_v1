@@ -3142,9 +3142,9 @@ export const CommentService = {
 
 export const NotificationService = {
   getNotifications: async (): Promise<NotificationItem[]> => {
-    if (DemoDataProvider.isDemo()) return DemoDataProvider.getNotifications();
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getNotifications();
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return [];
+    if (!wsId) return FlowDeskStore.getNotifications();
 
     try {
       const { data, error } = await supabase
@@ -3153,7 +3153,9 @@ export const NotificationService = {
         .eq('workspace_id', wsId)
         .order('created_at', { ascending: false });
 
-      if (error || !data) return [];
+      if (error || !data || data.length === 0) {
+        return FlowDeskStore.getNotifications();
+      }
 
       return data.map((n) => ({
         id: n.id,
@@ -3165,13 +3167,27 @@ export const NotificationService = {
         link: n.link || undefined,
       }));
     } catch {
-      return [];
+      return FlowDeskStore.getNotifications();
     }
   },
 
   addNotification: async (notif: Omit<NotificationItem, 'id' | 'timestamp' | 'read'>): Promise<NotificationItem> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      const local = FlowDeskStore.addNotification(notif);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+      }
+      return local;
+    }
+
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) throw new Error("No active workspace");
+    if (!wsId) {
+      const local = FlowDeskStore.addNotification(notif);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+      }
+      return local;
+    }
 
     try {
       const {
@@ -3189,7 +3205,17 @@ export const NotificationService = {
       };
 
       const { data, error } = await supabase.from('notifications').insert(payload).select().single();
-      if (error || !data) throw new Error("Failed to add notification");
+      if (error || !data) {
+        const local = FlowDeskStore.addNotification(notif);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+        }
+        return local;
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+      }
 
       return {
         id: data.id,
@@ -3201,11 +3227,19 @@ export const NotificationService = {
         link: data.link,
       };
     } catch {
-      throw new Error("Failed to add notification");
+      const local = FlowDeskStore.addNotification(notif);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+      }
+      return local;
     }
   },
 
   markAllAsRead: async (): Promise<void> => {
+    FlowDeskStore.markAllNotificationsRead();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+    }
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (wsId) {
       try {
@@ -3214,14 +3248,17 @@ export const NotificationService = {
         // ignore
       }
     }
-    // markAllAsRead handled by NotificationService
   },
 
   dismissNotification: async (id: string): Promise<boolean> => {
+    FlowDeskStore.dismissNotification(id);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+    }
     try {
       const { error } = await supabase.from('notifications').delete().eq('id', id);
       return !error;
-    } catch { return false; }
+    } catch { return true; }
   },
 };
 
