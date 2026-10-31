@@ -136,6 +136,7 @@ export type CspReportPayload = z.infer<typeof CspReportPayloadSchema>;
 
 export const ApproveDeliverableSchema = z.object({
   notes: z.string().trim().max(1000).optional().default(''),
+  clientId: z.string().trim().optional(),
 }).strict();
 
 export type ApproveDeliverablePayload = z.infer<typeof ApproveDeliverableSchema>;
@@ -272,6 +273,7 @@ export const SubmitDeliverableSchema = z.object({
 
 export const RequestRevisionDeliverableSchema = z.object({
   revisionComment: z.string().trim().min(1, 'Revision comment is required').max(2000),
+  clientId: z.string().trim().optional(),
 }).strict();
 
 export const CreateDeliverableVersionSchema = z.object({

@@ -56,7 +56,7 @@ interface ClientPortalShellProps {
   profile: PortalProfile;
   branding?: InvoiceBranding | null;
   fileRequests: PortalFileRequest[];
-  onApproveDeliverable: (deliverableId: string, notes?: string) => Promise<void>;
+  onApproveDeliverable: (deliverableId: string, notes?: string) => Promise<any>;
   onRequestRevision: (deliverableId: string, reason: string, priority: string, comment: string, attachmentFile?: File) => Promise<void>;
   onUploadDocument: (docId: string, fileData: { fileName: string; size: string; file?: File; downloadUrl?: string }) => Promise<void>;
   onDirectUploadDocument?: (payload: {
@@ -560,9 +560,13 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
         onClose={() => setSelectedApprovalDeliverable(null)}
         deliverable={selectedApprovalDeliverable}
         onConfirmApprove={async (delivId, notes) => {
-          await onApproveDeliverable(delivId, notes);
+          const res = (await onApproveDeliverable(delivId, notes)) as any;
           setSelectedApprovalDeliverable(null);
-          showToast('Sign-off recorded! Deliverable marked as Approved.');
+          if (res && res.success === false) {
+            showToast(res.error || 'Failed to record approval.');
+          } else {
+            showToast('Sign-off recorded! Deliverable marked as Approved.');
+          }
         }}
         onRequestRevision={(deliv) => {
           setSelectedApprovalDeliverable(null);

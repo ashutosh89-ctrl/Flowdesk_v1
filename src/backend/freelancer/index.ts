@@ -1370,8 +1370,8 @@ export const FreelancerDeliverableService = {
 
       // Verify current status allows approval
       const { data: current } = await supabase.from('deliverables').select('status').eq('id', id).single();
-      if (!current || current.status !== 'submitted') {
-        console.warn('Cannot approve deliverable: status is not submitted');
+      if (!current || (current.status !== 'submitted' && current.status !== 'in_review' && current.status !== 'draft')) {
+        console.warn('Cannot approve deliverable: status is not approvable', current?.status);
         return undefined;
       }
 

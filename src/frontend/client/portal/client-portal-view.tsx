@@ -126,9 +126,10 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
 
   // Actions with Client Authorization Context
   const handleApproveDeliverable = async (delivId: string, notes?: string) => {
-    if (!client) return;
-    await ClientPortalService.approveDeliverable(client.id, delivId, notes);
+    if (!client) return { success: false, error: 'Client session missing.' };
+    const res = await ClientPortalService.approveDeliverable(client.id, delivId, notes);
     await loadPortalData();
+    return res;
   };
 
   const handleRequestRevision = async (
