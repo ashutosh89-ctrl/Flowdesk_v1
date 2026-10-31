@@ -13,6 +13,7 @@ import { UserProfile, UserSettings } from '@/shared/types';
 import { StorageHelper } from '@/backend/storage/storage-helper';
 import { updateWorkspaceBranding } from '@/backend/utilities/workspace';
 import { supabase } from '@/backend/utilities/supabase';
+import { FlowDeskStore } from '@/backend/store/storage-store';
 import {
   User,
   DollarSign,
@@ -64,7 +65,7 @@ export const SettingsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   // Fail-closed: no mock identity fallback in production. The authenticated
   // profile (or an empty shell that the user fills in) is the only source.
-  const [profile, setProfile] = useState<UserProfile>(() => authProfile || {
+  const [profile, setProfile] = useState<UserProfile>(() => authProfile || (typeof window !== 'undefined' ? FlowDeskStore.getUserProfile() : null) || {
     id: '',
     name: '',
     title: '',
@@ -141,6 +142,29 @@ export const SettingsView: React.FC = () => {
 
     const loadData = async () => {
       try {
+        // Pre-hydrate from local cache immediately so UI doesn't flash empty values on reload
+        const initialCachedSettings = UserSettingsService.getLocalSettings(user?.id || 'usr-default') || UserSettingsService.getLocalSettings('usr-default');
+        const initialPaymentSettings = UserSettingsService.getPaymentSettings(user?.id || 'usr-default') || UserSettingsService.getPaymentSettings('usr-default');
+        if ((initialCachedSettings || initialPaymentSettings) && mounted) {
+          setSettings((prev) => ({
+            ...prev,
+            ...(initialCachedSettings || {}),
+            payment_settings: {
+              ...(prev.payment_settings || {}),
+              ...(initialPaymentSettings || {}),
+              ...(initialCachedSettings?.payment_settings || {}),
+            },
+            bank_name: initialCachedSettings?.bank_name || initialPaymentSettings?.bankDetails?.bankName || prev.bank_name || '',
+            account_holder_name: initialCachedSettings?.account_holder_name || initialPaymentSettings?.bankDetails?.accountHolderName || prev.account_holder_name || '',
+            account_number: initialCachedSettings?.account_number || initialPaymentSettings?.bankDetails?.accountNumber || prev.account_number || '',
+            ifsc_code: initialCachedSettings?.ifsc_code || initialPaymentSettings?.bankDetails?.ifscCode || prev.ifsc_code || '',
+            branch_name: initialCachedSettings?.branch_name || initialPaymentSettings?.bankDetails?.branchName || prev.branch_name || '',
+            upi_id: initialCachedSettings?.upi_id || initialPaymentSettings?.upiId || prev.upi_id || '',
+            upi_qr_code_url: initialCachedSettings?.upi_qr_code_url || initialPaymentSettings?.upiQrCodeUrl || prev.upi_qr_code_url || '',
+            razorpay_payment_link: initialCachedSettings?.razorpay_payment_link || initialPaymentSettings?.razorpayPaymentLink || prev.razorpay_payment_link || '',
+          }));
+        }
+
         const [profileData, settingsData] = await Promise.all([
           SettingsService.getUserProfile(user?.id),
           UserSettingsService.getUserSettings(user?.id || 'usr-default'),
@@ -149,10 +173,27 @@ export const SettingsView: React.FC = () => {
         if (mounted) {
           const effectiveCurrency = settingsData?.currency || profileData?.currency || 'INR';
           if (profileData) {
-            setProfile({ ...profileData, currency: effectiveCurrency });
+            setProfile((prev) => ({
+              ...prev,
+              ...profileData,
+              currency: effectiveCurrency,
+              hourlyRate: typeof profileData.hourlyRate === 'number' ? profileData.hourlyRate : prev.hourlyRate,
+            }));
           }
           if (settingsData) {
-            setSettings({ ...settingsData, currency: effectiveCurrency });
+            setSettings((prev) => ({
+              ...prev,
+              ...settingsData,
+              currency: effectiveCurrency,
+              bank_name: settingsData.bank_name || settingsData.payment_settings?.bankDetails?.bankName || prev.bank_name || '',
+              account_holder_name: settingsData.account_holder_name || settingsData.payment_settings?.bankDetails?.accountHolderName || prev.account_holder_name || '',
+              account_number: settingsData.account_number || settingsData.payment_settings?.bankDetails?.accountNumber || prev.account_number || '',
+              ifsc_code: settingsData.ifsc_code || settingsData.payment_settings?.bankDetails?.ifscCode || prev.ifsc_code || '',
+              branch_name: settingsData.branch_name || settingsData.payment_settings?.bankDetails?.branchName || prev.branch_name || '',
+              upi_id: settingsData.upi_id || settingsData.payment_settings?.upiId || prev.upi_id || '',
+              upi_qr_code_url: settingsData.upi_qr_code_url || settingsData.payment_settings?.upiQrCodeUrl || prev.upi_qr_code_url || '',
+              razorpay_payment_link: settingsData.razorpay_payment_link || settingsData.payment_settings?.razorpayPaymentLink || prev.razorpay_payment_link || '',
+            }));
           }
         }
       } catch (err) {
@@ -177,7 +218,41 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleSettingsChange = (field: keyof UserSettings, value: any) => {
-    setSettings((prev) => ({ ...prev, [field]: value }));
+    setSettings((prev) => {
+      const next = { ...prev, [field]: value };
+      if (['bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'branch_name'].includes(field)) {
+        const bd = { ...(next.payment_settings?.bankDetails || {}) };
+        if (field === 'bank_name') bd.bankName = value;
+        if (field === 'account_holder_name') bd.accountHolderName = value;
+        if (field === 'account_number') bd.accountNumber = value;
+        if (field === 'ifsc_code') bd.ifscCode = value;
+        if (field === 'branch_name') bd.branchName = value;
+        next.payment_settings = {
+          ...(next.payment_settings || {}),
+          bankDetails: bd,
+          bankTransferEnabled: true,
+        };
+      } else if (field === 'upi_id') {
+        next.payment_settings = {
+          ...(next.payment_settings || {}),
+          upiId: value,
+          upiEnabled: Boolean(value || next.upi_qr_code_url),
+        };
+      } else if (field === 'upi_qr_code_url') {
+        next.payment_settings = {
+          ...(next.payment_settings || {}),
+          upiQrCodeUrl: value,
+          upiEnabled: Boolean(value || next.upi_id),
+        };
+      } else if (field === 'razorpay_payment_link') {
+        next.payment_settings = {
+          ...(next.payment_settings || {}),
+          razorpayPaymentLink: value,
+          razorpayLinkEnabled: Boolean(value),
+        };
+      }
+      return next;
+    });
     setDirty(true);
     if ((field === 'currency' || field === 'default_deliverable_niche') && user?.id) {
       UserSettingsService.saveUserSettings(user.id, { [field]: value }).catch((err) => {
@@ -372,6 +447,15 @@ export const SettingsView: React.FC = () => {
 
       // 3. Save user settings (tax, currency, prefix, terms, notifications)
       try {
+        const effectiveBankName = settings.bank_name || settings.payment_settings?.bankDetails?.bankName || '';
+        const effectiveHolderName = settings.account_holder_name || settings.payment_settings?.bankDetails?.accountHolderName || '';
+        const effectiveAccNum = settings.account_number || settings.payment_settings?.bankDetails?.accountNumber || '';
+        const effectiveIfsc = settings.ifsc_code || settings.payment_settings?.bankDetails?.ifscCode || '';
+        const effectiveBranch = settings.branch_name || settings.payment_settings?.bankDetails?.branchName || '';
+        const effectiveUpi = settings.upi_id || settings.payment_settings?.upiId || profile.upiId || '';
+        const effectiveQr = settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl || '';
+        const effectiveRzp = settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink || '';
+
         await UserSettingsService.saveUserSettings(user?.id || 'usr-default', {
           currency: profile.currency,
           default_tax_rate: settings.default_tax_rate,
@@ -388,30 +472,30 @@ export const SettingsView: React.FC = () => {
           weekly_digest: settings.weekly_digest,
           default_deliverable_niche: settings.default_deliverable_niche,
           payment_settings: {
-            bankTransferEnabled: settings.payment_settings?.bankTransferEnabled ?? Boolean(settings.bank_name || settings.account_number || true),
-            upiEnabled: settings.payment_settings?.upiEnabled ?? Boolean(settings.upi_id || settings.upi_qr_code_url || profile.upiId || profile.upiQrCodeUrl),
-            razorpayLinkEnabled: settings.payment_settings?.razorpayLinkEnabled ?? Boolean(settings.razorpay_payment_link),
-            upiId: settings.upi_id || settings.payment_settings?.upiId || profile.upiId || '',
-            upiQrCodeUrl: settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl || '',
+            bankTransferEnabled: settings.payment_settings?.bankTransferEnabled ?? Boolean(effectiveBankName || effectiveAccNum || true),
+            upiEnabled: settings.payment_settings?.upiEnabled ?? Boolean(effectiveUpi || effectiveQr),
+            razorpayLinkEnabled: settings.payment_settings?.razorpayLinkEnabled ?? Boolean(effectiveRzp),
+            upiId: effectiveUpi,
+            upiQrCodeUrl: effectiveQr,
             bankDetails: {
-              accountHolderName: settings.account_holder_name || settings.payment_settings?.bankDetails?.accountHolderName || '',
-              bankName: settings.bank_name || settings.payment_settings?.bankDetails?.bankName || '',
-              accountNumber: settings.account_number || settings.payment_settings?.bankDetails?.accountNumber || '',
-              ifscCode: settings.ifsc_code || settings.payment_settings?.bankDetails?.ifscCode || '',
-              branchName: settings.branch_name || settings.payment_settings?.bankDetails?.branchName || '',
-              upiId: settings.upi_id || settings.payment_settings?.bankDetails?.upiId || '',
+              accountHolderName: effectiveHolderName,
+              bankName: effectiveBankName,
+              accountNumber: effectiveAccNum,
+              ifscCode: effectiveIfsc,
+              branchName: effectiveBranch,
+              upiId: effectiveUpi,
             },
-            razorpayPaymentLink: settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink || '',
+            razorpayPaymentLink: effectiveRzp,
             defaultPaymentInstructions: settings.payment_settings?.defaultPaymentInstructions || '',
           },
-          upi_id: settings.upi_id,
-          upi_qr_code_url: settings.upi_qr_code_url,
-          bank_name: settings.bank_name,
-          account_holder_name: settings.account_holder_name,
-          account_number: settings.account_number,
-          ifsc_code: settings.ifsc_code,
-          branch_name: settings.branch_name,
-          razorpay_payment_link: settings.razorpay_payment_link,
+          upi_id: effectiveUpi,
+          upi_qr_code_url: effectiveQr,
+          bank_name: effectiveBankName,
+          account_holder_name: effectiveHolderName,
+          account_number: effectiveAccNum,
+          ifsc_code: effectiveIfsc,
+          branch_name: effectiveBranch,
+          razorpay_payment_link: effectiveRzp,
         });
       } catch (settingsErr) {
         console.warn('UserSettingsService.saveUserSettings notice:', settingsErr);
@@ -1203,7 +1287,7 @@ export const SettingsView: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
                       label="Account Holder Name"
-                      value={settings.account_holder_name || ''}
+                      value={settings.account_holder_name || settings.payment_settings?.bankDetails?.accountHolderName || ''}
                       onChange={(e) => {
                         handleSettingsChange('account_holder_name', e.target.value);
                       }}
@@ -1211,7 +1295,7 @@ export const SettingsView: React.FC = () => {
                     />
                     <Input
                       label="Bank Name"
-                      value={settings.bank_name || ''}
+                      value={settings.bank_name || settings.payment_settings?.bankDetails?.bankName || ''}
                       onChange={(e) => {
                         handleSettingsChange('bank_name', e.target.value);
                       }}
@@ -1219,7 +1303,7 @@ export const SettingsView: React.FC = () => {
                     />
                     <Input
                       label="Account Number / IBAN"
-                      value={settings.account_number || ''}
+                      value={settings.account_number || settings.payment_settings?.bankDetails?.accountNumber || ''}
                       onChange={(e) => {
                         handleSettingsChange('account_number', e.target.value);
                       }}
@@ -1227,7 +1311,7 @@ export const SettingsView: React.FC = () => {
                     />
                     <Input
                       label="IFSC / Routing / SWIFT Code"
-                      value={settings.ifsc_code || ''}
+                      value={settings.ifsc_code || settings.payment_settings?.bankDetails?.ifscCode || ''}
                       onChange={(e) => {
                         handleSettingsChange('ifsc_code', e.target.value);
                       }}
@@ -1236,7 +1320,7 @@ export const SettingsView: React.FC = () => {
                     <div className="sm:col-span-2">
                       <Input
                         label="Branch Name (Optional)"
-                        value={settings.branch_name || ''}
+                        value={settings.branch_name || settings.payment_settings?.bankDetails?.branchName || ''}
                         onChange={(e) => {
                           handleSettingsChange('branch_name', e.target.value);
                         }}
@@ -1253,11 +1337,11 @@ export const SettingsView: React.FC = () => {
                       <QrCode className="w-4 h-4 text-emerald-400" />
                       <h3 className="text-sm font-semibold text-white">UPI Payment & Direct QR Upload</h3>
                     </div>
-                    {settings.upi_qr_code_url ? (
+                    {(settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl) ? (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         Custom QR Active
                       </span>
-                    ) : settings.upi_id ? (
+                    ) : (settings.upi_id || settings.payment_settings?.upiId || profile.upiId) ? (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                         Dynamic QR Active
                       </span>
@@ -1278,7 +1362,7 @@ export const SettingsView: React.FC = () => {
                       <div>
                         <Input
                           label="UPI ID / VPA (Optional if uploading QR directly)"
-                          value={settings.upi_id || ''}
+                          value={settings.upi_id || settings.payment_settings?.upiId || profile.upiId || ''}
                           onChange={(e) => {
                             handleSettingsChange('upi_id', e.target.value.trim());
                           }}
@@ -1305,11 +1389,11 @@ export const SettingsView: React.FC = () => {
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-colors cursor-pointer disabled:opacity-50 shadow-sm shrink-0"
                           >
                             <Upload className="w-3.5 h-3.5" />
-                            <span>{isUploadingQr ? 'Uploading...' : settings.upi_qr_code_url ? 'Replace QR' : 'Upload QR'}</span>
+                            <span>{isUploadingQr ? 'Uploading...' : (settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl) ? 'Replace QR' : 'Upload QR'}</span>
                           </button>
                         </div>
 
-                        {settings.upi_qr_code_url && (
+                        {(settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl) && (
                           <div className="flex items-center justify-between pt-2 border-t border-white/5">
                             <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
                               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1330,11 +1414,11 @@ export const SettingsView: React.FC = () => {
 
                     {/* QR Code Preview Box */}
                     <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col items-center justify-center text-center">
-                      {settings.upi_qr_code_url ? (
+                      {(settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl) ? (
                         <div className="space-y-2 flex flex-col items-center">
                           <div className="p-2 bg-white rounded-xl shadow-lg border border-zinc-200">
                             <QRCode
-                              src={settings.upi_qr_code_url}
+                              src={settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl}
                               size={120}
                               alt="Uploaded Payment QR"
                             />
@@ -1343,11 +1427,11 @@ export const SettingsView: React.FC = () => {
                             Uploaded QR Preview
                           </span>
                         </div>
-                      ) : settings.upi_id ? (
+                      ) : (settings.upi_id || settings.payment_settings?.upiId || profile.upiId) ? (
                         <div className="space-y-2 flex flex-col items-center">
                           <div className="p-2.5 bg-white rounded-xl shadow-lg border border-zinc-200">
                             <QRCode
-                              value={`upi://pay?pa=${encodeURIComponent(settings.upi_id)}&pn=${encodeURIComponent(profile.companyName || profile.name || 'FlowDesk')}&cu=${encodeURIComponent(profile.currency || 'INR')}`}
+                              value={`upi://pay?pa=${encodeURIComponent(settings.upi_id || settings.payment_settings?.upiId || profile.upiId || '')}&pn=${encodeURIComponent(profile.companyName || profile.name || 'FlowDesk')}&cu=${encodeURIComponent(profile.currency || 'INR')}`}
                               size={110}
                               darkColor="#000000"
                               lightColor="#ffffff"
@@ -1379,7 +1463,7 @@ export const SettingsView: React.FC = () => {
                       <ExternalLink className="w-4 h-4 text-cyan-400" />
                       <h3 className="text-sm font-semibold text-white">Method B: Freelancer Razorpay Payment Link</h3>
                     </div>
-                    {settings.razorpay_payment_link && isApprovedRazorpayUrl(settings.razorpay_payment_link) && (
+                    {(settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink) && isApprovedRazorpayUrl(settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink || '') && (
                       <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         Approved Razorpay Link
                       </span>
@@ -1389,22 +1473,22 @@ export const SettingsView: React.FC = () => {
                   <div className="space-y-3">
                     <Input
                       label="Your Razorpay Payment Page URL / Link"
-                      value={settings.razorpay_payment_link || ''}
+                      value={settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink || ''}
                       onChange={(e) => {
                         handleSettingsChange('razorpay_payment_link', e.target.value.trim());
                       }}
                       placeholder="e.g. https://rzp.io/l/your-link or https://pages.razorpay.com/your-page"
                     />
 
-                    {settings.razorpay_payment_link && (
+                    {(settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink) && (
                       <div>
-                        {isApprovedRazorpayUrl(settings.razorpay_payment_link) ? (
+                        {isApprovedRazorpayUrl(settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink || '') ? (
                           <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                             <span className="text-xs text-emerald-300">
                               Valid Razorpay URL detected. Clients will see a &quot;Pay Online&quot; button.
                             </span>
                             <a
-                              href={settings.razorpay_payment_link}
+                              href={settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 transition-colors shrink-0"

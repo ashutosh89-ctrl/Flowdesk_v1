@@ -5,6 +5,8 @@ import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/
 import { parseJsonBody, UpdateUserSettingsSchema } from '@/shared/validation';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
 
+const serverPaymentSettingsCache = new Map<string, any>();
+
 /**
  * Account Settings Query Route Handler (Batch 4: Account & Settings)
  *
@@ -73,6 +75,38 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         .maybeSingle();
       if (latestSettings) {
         settings = latestSettings;
+      }
+    }
+
+    if (settings && userId) {
+      let cached = serverPaymentSettingsCache.get(userId);
+      if (!cached) {
+        try {
+          const { data: fileData, error: fileErr } = await supabaseAdmin.storage
+            .from('documents')
+            .download(`settings/${userId}/payment_settings.txt`);
+          if (!fileErr && fileData) {
+            const rawText = await fileData.text();
+            cached = JSON.parse(rawText);
+            serverPaymentSettingsCache.set(userId, cached);
+          }
+        } catch {
+          // non-critical storage read fallback
+        }
+      }
+      if (cached) {
+        settings.payment_settings = {
+          ...(cached || {}),
+          ...(settings.payment_settings || {}),
+        };
+        settings.bank_name = settings.bank_name || cached.bankDetails?.bankName || '';
+        settings.account_holder_name = settings.account_holder_name || cached.bankDetails?.accountHolderName || '';
+        settings.account_number = settings.account_number || cached.bankDetails?.accountNumber || '';
+        settings.ifsc_code = settings.ifsc_code || cached.bankDetails?.ifscCode || '';
+        settings.branch_name = settings.branch_name || cached.bankDetails?.branchName || '';
+        settings.upi_id = settings.upi_id || cached.upiId || '';
+        settings.upi_qr_code_url = settings.upi_qr_code_url || cached.upiQrCodeUrl || '';
+        settings.razorpay_payment_link = settings.razorpay_payment_link || cached.razorpayPaymentLink || '';
       }
     }
 
@@ -243,6 +277,45 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         updated = retry.data;
         upsertErr = retry.error;
       }
+
+      // 3. If still failing (e.g. payment_settings column also missing from core relational schema),
+      // strip payment_settings and retry with core relational columns
+      if (upsertErr) {
+        delete dbPayload.payment_settings;
+        retry = await supabaseAdmin.from('user_settings').upsert(dbPayload).select().maybeSingle();
+        updated = retry.data;
+        upsertErr = retry.error;
+      }
+    }
+
+    if (caller.userId) {
+      serverPaymentSettingsCache.set(caller.userId, effectivePaymentSettings);
+      try {
+        await supabaseAdmin.storage
+          .from('documents')
+          .upload(
+            `settings/${caller.userId}/payment_settings.txt`,
+            Buffer.from(JSON.stringify(effectivePaymentSettings), 'utf-8'),
+            {
+              contentType: 'text/plain',
+              upsert: true,
+            }
+          );
+      } catch (storageErr) {
+        logger.warn('Storage payment config sync notice', { error: String(storageErr) });
+      }
+    }
+
+    if (updated) {
+      updated.payment_settings = effectivePaymentSettings;
+      updated.bank_name = updates.bankName || effectivePaymentSettings.bankDetails?.bankName || '';
+      updated.account_holder_name = updates.accountHolderName || effectivePaymentSettings.bankDetails?.accountHolderName || '';
+      updated.account_number = updates.accountNumber || effectivePaymentSettings.bankDetails?.accountNumber || '';
+      updated.ifsc_code = updates.ifscCode || effectivePaymentSettings.bankDetails?.ifscCode || '';
+      updated.branch_name = updates.branchName || effectivePaymentSettings.bankDetails?.branchName || '';
+      updated.upi_id = updates.upiId || effectivePaymentSettings.upiId || '';
+      updated.upi_qr_code_url = updates.upiQrCodeUrl || effectivePaymentSettings.upiQrCodeUrl || '';
+      updated.razorpay_payment_link = updates.razorpayPaymentLink || effectivePaymentSettings.razorpayPaymentLink || '';
     }
 
     // Also sync to profiles for redundant persistence

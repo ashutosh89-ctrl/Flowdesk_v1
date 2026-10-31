@@ -1,8 +1,9 @@
 import { supabase } from '@/backend/utilities/supabase';
-import { UserSettings } from '@/shared/types';
+import { UserSettings, FreelancerPaymentSettings } from '@/shared/types';
 import { isServerMutationBatchEnabled } from '@/shared/config/feature-flags';
 
 const LOCAL_SETTINGS_PREFIX = 'flowdesk_user_settings_';
+const LOCAL_PAYMENT_PREFIX = 'flowdesk_payment_settings_';
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
   id: 'usr-default',
@@ -37,6 +38,8 @@ export const UserSettingsService = {
    */
   async getUserSettings(userId?: string | null): Promise<UserSettings> {
     const targetUserId = userId || 'usr-default';
+    const local = this.getLocalSettings(targetUserId) || (targetUserId !== 'usr-default' ? this.getLocalSettings('usr-default') : null);
+    const localPayment = this.getPaymentSettings(targetUserId) || (targetUserId !== 'usr-default' ? this.getPaymentSettings('usr-default') : null);
 
     // 1. Try fetching from Supabase if configured and authenticated user
     if (userId && userId !== 'usr-default' && !userId.startsWith('usr-demo')) {
@@ -48,39 +51,100 @@ export const UserSettingsService = {
           .maybeSingle();
 
         if (!error && data) {
+          const remoteBank = data.payment_settings?.bankDetails || {};
+          const localBank = local?.payment_settings?.bankDetails || {};
+          const localPayBank = localPayment?.bankDetails || {};
+
+          let bankName = data.bank_name || remoteBank.bankName || local?.bank_name || localBank.bankName || localPayBank.bankName || '';
+          let accountHolderName = data.account_holder_name || remoteBank.accountHolderName || local?.account_holder_name || localBank.accountHolderName || localPayBank.accountHolderName || '';
+          let accountNumber = data.account_number || remoteBank.accountNumber || local?.account_number || localBank.accountNumber || localPayBank.accountNumber || '';
+          let ifscCode = data.ifsc_code || remoteBank.ifscCode || local?.ifsc_code || localBank.ifscCode || localPayBank.ifscCode || '';
+          let branchName = data.branch_name || remoteBank.branchName || local?.branch_name || localBank.branchName || localPayBank.branchName || '';
+          let upiId = data.upi_id || data.payment_settings?.upiId || local?.upi_id || local?.payment_settings?.upiId || localPayment?.upiId || '';
+          let upiQrCodeUrl = data.upi_qr_code_url || data.payment_settings?.upiQrCodeUrl || local?.upi_qr_code_url || local?.payment_settings?.upiQrCodeUrl || localPayment?.upiQrCodeUrl || '';
+          let razorpayPaymentLink = data.razorpay_payment_link || data.payment_settings?.razorpayPaymentLink || local?.razorpay_payment_link || local?.payment_settings?.razorpayPaymentLink || localPayment?.razorpayPaymentLink || '';
+          let defaultPaymentInstructions = data.payment_settings?.defaultPaymentInstructions || local?.payment_settings?.defaultPaymentInstructions || localPayment?.defaultPaymentInstructions || '';
+
+          if (typeof window !== 'undefined' && (!bankName || !accountNumber || !upiId)) {
+            try {
+              const res = await fetch('/api/account/settings', { cache: 'no-store' });
+              if (res.ok) {
+                const apiJson = await res.json();
+                if (apiJson.success && apiJson.settings) {
+                  const s = apiJson.settings;
+                  const sp = s.payment_settings;
+                  const sb = sp?.bankDetails;
+                  if (!bankName) bankName = s.bank_name || sb?.bankName || '';
+                  if (!accountHolderName) accountHolderName = s.account_holder_name || sb?.accountHolderName || '';
+                  if (!accountNumber) accountNumber = s.account_number || sb?.accountNumber || '';
+                  if (!ifscCode) ifscCode = s.ifsc_code || sb?.ifscCode || '';
+                  if (!branchName) branchName = s.branch_name || sb?.branchName || '';
+                  if (!upiId) upiId = s.upi_id || sp?.upiId || '';
+                  if (!upiQrCodeUrl) upiQrCodeUrl = s.upi_qr_code_url || sp?.upiQrCodeUrl || '';
+                  if (!razorpayPaymentLink) razorpayPaymentLink = s.razorpay_payment_link || sp?.razorpayPaymentLink || '';
+                  if (!defaultPaymentInstructions) defaultPaymentInstructions = sp?.defaultPaymentInstructions || '';
+                }
+              }
+            } catch {
+              // non-critical background fetch
+            }
+          }
+
+          const resolvedPaymentSettings: FreelancerPaymentSettings = {
+            bankTransferEnabled: data.payment_settings?.bankTransferEnabled ?? local?.payment_settings?.bankTransferEnabled ?? localPayment?.bankTransferEnabled ?? Boolean(bankName || accountNumber || true),
+            upiEnabled: data.payment_settings?.upiEnabled ?? local?.payment_settings?.upiEnabled ?? localPayment?.upiEnabled ?? Boolean(upiId || upiQrCodeUrl),
+            razorpayLinkEnabled: data.payment_settings?.razorpayLinkEnabled ?? local?.payment_settings?.razorpayLinkEnabled ?? localPayment?.razorpayLinkEnabled ?? Boolean(razorpayPaymentLink),
+            upiId,
+            upiQrCodeUrl,
+            bankDetails: {
+              accountHolderName,
+              bankName,
+              accountNumber,
+              ifscCode,
+              branchName,
+              upiId,
+            },
+            razorpayPaymentLink,
+            defaultPaymentInstructions,
+            ...(local?.payment_settings || {}),
+            ...(localPayment || {}),
+            ...(data.payment_settings || {}),
+          };
+
           const settings: UserSettings = {
             id: data.id,
-            currency: data.currency || 'INR',
-            timezone: data.timezone || 'Asia/Kolkata',
-            date_format: data.date_format || 'DD/MM/YYYY',
-            week_start: data.week_start || 'Monday',
-            invoice_prefix: data.invoice_prefix || 'INV',
-            invoice_number_format: data.invoice_number_format || 'prefix_year_sequence',
-            invoice_separator: data.invoice_separator !== undefined ? data.invoice_separator : '-',
-            invoice_include_year: data.invoice_include_year !== undefined ? Boolean(data.invoice_include_year) : true,
-            invoice_padding: data.invoice_padding ? Number(data.invoice_padding) : 4,
-            invoice_next_sequence: data.invoice_next_sequence ? Number(data.invoice_next_sequence) : 1,
-            invoice_annual_reset: data.invoice_annual_reset !== undefined ? Boolean(data.invoice_annual_reset) : false,
-            default_tax_rate: typeof data.default_tax_rate === 'number' ? data.default_tax_rate : (Number(data.default_tax_rate) || 0),
-            tax_name: data.tax_name || 'GST',
-            default_payment_terms: Number(data.default_payment_terms) || 14,
-            email_notifications: data.email_notifications !== undefined ? Boolean(data.email_notifications) : true,
-            email_deliverables: data.email_deliverables !== undefined ? Boolean(data.email_deliverables) : true,
-            email_documents: data.email_documents !== undefined ? Boolean(data.email_documents) : true,
-            email_invoices: data.email_invoices !== undefined ? Boolean(data.email_invoices) : true,
-            email_invitations: data.email_invitations !== undefined ? Boolean(data.email_invitations) : true,
-            invoice_reminders: data.invoice_reminders !== undefined ? Boolean(data.invoice_reminders) : true,
-            comment_alerts: data.comment_alerts !== undefined ? Boolean(data.comment_alerts) : true,
-            default_deliverable_niche: data.default_deliverable_niche === 'others' ? 'others' : 'software_development',
-            payment_settings: data.payment_settings || {},
-            upi_id: data.upi_id || data.payment_settings?.upiId || '',
-            upi_qr_code_url: data.upi_qr_code_url || data.payment_settings?.upiQrCodeUrl || '',
-            bank_name: data.bank_name || data.payment_settings?.bankDetails?.bankName || '',
-            account_holder_name: data.account_holder_name || data.payment_settings?.bankDetails?.accountHolderName || '',
-            account_number: data.account_number || data.payment_settings?.bankDetails?.accountNumber || '',
-            ifsc_code: data.ifsc_code || data.payment_settings?.bankDetails?.ifscCode || '',
-            branch_name: data.branch_name || data.payment_settings?.bankDetails?.branchName || '',
-            razorpay_payment_link: data.razorpay_payment_link || data.payment_settings?.razorpayPaymentLink || '',
+            currency: (data.currency && data.currency !== 'USD') ? data.currency : (local?.currency || data.currency || 'INR'),
+            timezone: data.timezone || local?.timezone || 'Asia/Kolkata',
+            date_format: data.date_format || local?.date_format || 'DD/MM/YYYY',
+            week_start: data.week_start || local?.week_start || 'Monday',
+            invoice_prefix: data.invoice_prefix || local?.invoice_prefix || 'INV',
+            invoice_number_format: data.invoice_number_format || local?.invoice_number_format || 'prefix_year_sequence',
+            invoice_separator: data.invoice_separator !== undefined ? data.invoice_separator : (local?.invoice_separator ?? '-'),
+            invoice_include_year: data.invoice_include_year !== undefined ? Boolean(data.invoice_include_year) : (local?.invoice_include_year ?? true),
+            invoice_padding: data.invoice_padding ? Number(data.invoice_padding) : (local?.invoice_padding ?? 4),
+            invoice_next_sequence: data.invoice_next_sequence ? Number(data.invoice_next_sequence) : (local?.invoice_next_sequence ?? 1),
+            invoice_annual_reset: data.invoice_annual_reset !== undefined ? Boolean(data.invoice_annual_reset) : (local?.invoice_annual_reset ?? false),
+            default_tax_rate: typeof data.default_tax_rate === 'number' ? data.default_tax_rate : (local?.default_tax_rate ?? 0),
+            tax_name: data.tax_name || local?.tax_name || DEFAULT_USER_SETTINGS.tax_name || 'Tax',
+            default_payment_terms: Number(data.default_payment_terms) || local?.default_payment_terms || 14,
+            email_notifications: data.email_notifications !== undefined ? Boolean(data.email_notifications) : (local?.email_notifications ?? true),
+            email_deliverables: data.email_deliverables !== undefined ? Boolean(data.email_deliverables) : (local?.email_deliverables ?? true),
+            email_documents: data.email_documents !== undefined ? Boolean(data.email_documents) : (local?.email_documents ?? true),
+            email_invoices: data.email_invoices !== undefined ? Boolean(data.email_invoices) : (local?.email_invoices ?? true),
+            email_invitations: data.email_invitations !== undefined ? Boolean(data.email_invitations) : (local?.email_invitations ?? true),
+            invoice_reminders: data.invoice_reminders !== undefined ? Boolean(data.invoice_reminders) : (local?.invoice_reminders ?? true),
+            comment_alerts: data.comment_alerts !== undefined ? Boolean(data.comment_alerts) : (local?.comment_alerts ?? true),
+            weekly_digest: data.weekly_digest !== undefined ? Boolean(data.weekly_digest) : (local?.weekly_digest ?? false),
+            default_deliverable_niche: data.default_deliverable_niche === 'others' ? 'others' : (local?.default_deliverable_niche || 'software_development'),
+            payment_settings: resolvedPaymentSettings,
+            upi_id: upiId,
+            upi_qr_code_url: upiQrCodeUrl,
+            bank_name: bankName,
+            account_holder_name: accountHolderName,
+            account_number: accountNumber,
+            ifsc_code: ifscCode,
+            branch_name: branchName,
+            razorpay_payment_link: razorpayPaymentLink,
           };
 
           // Redundancy check: if UPI QR or ID is missing from user_settings table, check profiles
@@ -107,33 +171,21 @@ export const UserSettingsService = {
                     upiId: prof.upi_id,
                   };
                 }
-                const localCached = this.getLocalSettings(userId) || this.getLocalSettings('usr-default');
-                if (localCached?.currency && localCached.currency !== 'USD') {
-                  settings.currency = localCached.currency;
-                } else if (data?.currency && data.currency !== 'USD') {
-                  settings.currency = data.currency;
-                } else if (prof.currency && prof.currency !== 'USD') {
+                if (prof.currency && (!settings.currency || settings.currency === 'USD')) {
                   settings.currency = prof.currency;
-                } else {
-                  settings.currency = localCached?.currency || data?.currency || prof.currency || 'INR';
                 }
               }
             } catch {
               // non-critical
             }
-          } else {
-            const localCached = this.getLocalSettings(userId) || this.getLocalSettings('usr-default');
-            if (localCached?.currency && localCached.currency !== 'USD') {
-              settings.currency = localCached.currency;
-            } else if (data?.currency && data.currency !== 'USD') {
-              settings.currency = data.currency;
-            } else {
-              settings.currency = localCached?.currency || data?.currency || 'INR';
-            }
           }
 
           this.setLocalSettings(userId, settings);
-          this.setLocalSettings('usr-default', settings);
+          this.setPaymentSettings(userId, settings.payment_settings || {});
+          if (userId !== 'usr-default') {
+            this.setLocalSettings('usr-default', settings);
+            this.setPaymentSettings('usr-default', settings.payment_settings || {});
+          }
           return settings;
         }
       } catch (err: any) {
@@ -144,6 +196,16 @@ export const UserSettingsService = {
     // 2. Check local storage cache (with fallback to usr-default)
     const cached = this.getLocalSettings(targetUserId) || (targetUserId !== 'usr-default' ? this.getLocalSettings('usr-default') : null);
     if (cached) {
+      if (localPayment) {
+        cached.payment_settings = { ...(cached.payment_settings || {}), ...localPayment };
+        cached.bank_name = cached.bank_name || localPayment.bankDetails?.bankName || '';
+        cached.account_holder_name = cached.account_holder_name || localPayment.bankDetails?.accountHolderName || '';
+        cached.account_number = cached.account_number || localPayment.bankDetails?.accountNumber || '';
+        cached.ifsc_code = cached.ifsc_code || localPayment.bankDetails?.ifscCode || '';
+        cached.branch_name = cached.branch_name || localPayment.bankDetails?.branchName || '';
+        cached.upi_id = cached.upi_id || localPayment.upiId || '';
+        cached.upi_qr_code_url = cached.upi_qr_code_url || localPayment.upiQrCodeUrl || '';
+      }
       return cached;
     }
 
@@ -152,6 +214,16 @@ export const UserSettingsService = {
       ...DEFAULT_USER_SETTINGS,
       id: targetUserId,
     };
+    if (localPayment) {
+      fallbackSettings.payment_settings = { ...localPayment };
+      fallbackSettings.bank_name = localPayment.bankDetails?.bankName || '';
+      fallbackSettings.account_holder_name = localPayment.bankDetails?.accountHolderName || '';
+      fallbackSettings.account_number = localPayment.bankDetails?.accountNumber || '';
+      fallbackSettings.ifsc_code = localPayment.bankDetails?.ifscCode || '';
+      fallbackSettings.branch_name = localPayment.bankDetails?.branchName || '';
+      fallbackSettings.upi_id = localPayment.upiId || '';
+      fallbackSettings.upi_qr_code_url = localPayment.upiQrCodeUrl || '';
+    }
     this.setLocalSettings(targetUserId, fallbackSettings);
     return fallbackSettings;
   },
@@ -163,6 +235,37 @@ export const UserSettingsService = {
     const targetUserId = userId || 'usr-default';
 
     const currentSettings = await this.getUserSettings(targetUserId);
+
+    const paymentBank = updates.payment_settings?.bankDetails || {};
+    const bankName = updates.bank_name ?? paymentBank.bankName ?? currentSettings.bank_name ?? currentSettings.payment_settings?.bankDetails?.bankName ?? '';
+    const accountHolderName = updates.account_holder_name ?? paymentBank.accountHolderName ?? currentSettings.account_holder_name ?? currentSettings.payment_settings?.bankDetails?.accountHolderName ?? '';
+    const accountNumber = updates.account_number ?? paymentBank.accountNumber ?? currentSettings.account_number ?? currentSettings.payment_settings?.bankDetails?.accountNumber ?? '';
+    const ifscCode = updates.ifsc_code ?? paymentBank.ifscCode ?? currentSettings.ifsc_code ?? currentSettings.payment_settings?.bankDetails?.ifscCode ?? '';
+    const branchName = updates.branch_name ?? paymentBank.branchName ?? currentSettings.branch_name ?? currentSettings.payment_settings?.bankDetails?.branchName ?? '';
+    const upiId = updates.upi_id ?? updates.payment_settings?.upiId ?? currentSettings.upi_id ?? currentSettings.payment_settings?.upiId ?? '';
+    const upiQrCodeUrl = updates.upi_qr_code_url ?? updates.payment_settings?.upiQrCodeUrl ?? currentSettings.upi_qr_code_url ?? currentSettings.payment_settings?.upiQrCodeUrl ?? '';
+    const razorpayPaymentLink = updates.razorpay_payment_link ?? updates.payment_settings?.razorpayPaymentLink ?? currentSettings.razorpay_payment_link ?? currentSettings.payment_settings?.razorpayPaymentLink ?? '';
+    const defaultPaymentInstructions = updates.payment_settings?.defaultPaymentInstructions ?? currentSettings.payment_settings?.defaultPaymentInstructions ?? '';
+
+    const effectivePaymentSettings: FreelancerPaymentSettings = {
+      bankTransferEnabled: updates.payment_settings?.bankTransferEnabled ?? currentSettings.payment_settings?.bankTransferEnabled ?? Boolean(bankName || accountNumber || true),
+      upiEnabled: updates.payment_settings?.upiEnabled ?? currentSettings.payment_settings?.upiEnabled ?? Boolean(upiId || upiQrCodeUrl),
+      razorpayLinkEnabled: updates.payment_settings?.razorpayLinkEnabled ?? currentSettings.payment_settings?.razorpayLinkEnabled ?? Boolean(razorpayPaymentLink),
+      upiId,
+      upiQrCodeUrl,
+      bankDetails: {
+        accountHolderName,
+        bankName,
+        accountNumber,
+        ifscCode,
+        branchName,
+        upiId,
+      },
+      razorpayPaymentLink,
+      defaultPaymentInstructions,
+      ...(updates.payment_settings || {}),
+    };
+
     const mergedSettings: UserSettings = {
       id: targetUserId,
       currency: updates.currency || currentSettings.currency || 'INR',
@@ -177,7 +280,7 @@ export const UserSettingsService = {
       invoice_next_sequence: updates.invoice_next_sequence !== undefined ? updates.invoice_next_sequence : (currentSettings.invoice_next_sequence ?? 1),
       invoice_annual_reset: updates.invoice_annual_reset !== undefined ? updates.invoice_annual_reset : (currentSettings.invoice_annual_reset ?? false),
       default_tax_rate: updates.default_tax_rate !== undefined ? updates.default_tax_rate : (currentSettings.default_tax_rate ?? 0),
-      tax_name: updates.tax_name !== undefined ? updates.tax_name : (currentSettings.tax_name || 'GST'),
+      tax_name: updates.tax_name !== undefined ? updates.tax_name : (currentSettings.tax_name || DEFAULT_USER_SETTINGS.tax_name || 'Tax'),
       default_payment_terms: updates.default_payment_terms !== undefined ? updates.default_payment_terms : (currentSettings.default_payment_terms ?? 14),
       email_notifications: updates.email_notifications !== undefined ? updates.email_notifications : (currentSettings.email_notifications ?? true),
       email_deliverables: updates.email_deliverables !== undefined ? updates.email_deliverables : (currentSettings.email_deliverables ?? true),
@@ -185,23 +288,26 @@ export const UserSettingsService = {
       email_invoices: updates.email_invoices !== undefined ? updates.email_invoices : (currentSettings.email_invoices ?? true),
       email_invitations: updates.email_invitations !== undefined ? updates.email_invitations : (currentSettings.email_invitations ?? true),
       invoice_reminders: updates.invoice_reminders !== undefined ? updates.invoice_reminders : (currentSettings.invoice_reminders ?? true),
+      comment_alerts: updates.comment_alerts !== undefined ? updates.comment_alerts : (currentSettings.comment_alerts ?? true),
       weekly_digest: updates.weekly_digest !== undefined ? updates.weekly_digest : (currentSettings.weekly_digest ?? false),
       default_deliverable_niche: updates.default_deliverable_niche || currentSettings.default_deliverable_niche || 'software_development',
-      payment_settings: updates.payment_settings || currentSettings.payment_settings || {},
-      upi_id: updates.upi_id !== undefined ? updates.upi_id : currentSettings.upi_id,
-      upi_qr_code_url: updates.upi_qr_code_url !== undefined ? updates.upi_qr_code_url : currentSettings.upi_qr_code_url,
-      bank_name: updates.bank_name !== undefined ? updates.bank_name : currentSettings.bank_name,
-      account_holder_name: updates.account_holder_name !== undefined ? updates.account_holder_name : currentSettings.account_holder_name,
-      account_number: updates.account_number !== undefined ? updates.account_number : currentSettings.account_number,
-      ifsc_code: updates.ifsc_code !== undefined ? updates.ifsc_code : currentSettings.ifsc_code,
-      branch_name: updates.branch_name !== undefined ? updates.branch_name : currentSettings.branch_name,
-      razorpay_payment_link: updates.razorpay_payment_link !== undefined ? updates.razorpay_payment_link : currentSettings.razorpay_payment_link,
+      payment_settings: effectivePaymentSettings,
+      upi_id: upiId,
+      upi_qr_code_url: upiQrCodeUrl,
+      bank_name: bankName,
+      account_holder_name: accountHolderName,
+      account_number: accountNumber,
+      ifsc_code: ifscCode,
+      branch_name: branchName,
+      razorpay_payment_link: razorpayPaymentLink,
     };
 
-    // Always cache locally under targetUserId and usr-default
+    // Always cache locally under targetUserId and usr-default immediately
     this.setLocalSettings(targetUserId, mergedSettings);
+    this.setPaymentSettings(targetUserId, effectivePaymentSettings);
     if (targetUserId !== 'usr-default') {
       this.setLocalSettings('usr-default', mergedSettings);
+      this.setPaymentSettings('usr-default', effectivePaymentSettings);
     }
 
     if (typeof window !== 'undefined') {
@@ -227,15 +333,15 @@ export const UserSettingsService = {
               taxName: updates.tax_name,
               defaultPaymentTerms: updates.default_payment_terms,
               defaultDeliverableNiche: updates.default_deliverable_niche,
-              paymentSettings: updates.payment_settings,
-              upiId: updates.upi_id,
-              upiQrCodeUrl: updates.upi_qr_code_url,
-              bankName: updates.bank_name,
-              accountHolderName: updates.account_holder_name,
-              accountNumber: updates.account_number,
-              ifscCode: updates.ifsc_code,
-              branchName: updates.branch_name,
-              razorpayPaymentLink: updates.razorpay_payment_link,
+              paymentSettings: effectivePaymentSettings,
+              upiId,
+              upiQrCodeUrl,
+              bankName,
+              accountHolderName,
+              accountNumber,
+              ifscCode,
+              branchName,
+              razorpayPaymentLink,
             }),
           });
           if (
@@ -297,44 +403,39 @@ export const UserSettingsService = {
         if (updates.email_invitations !== undefined) payload.email_invitations = updates.email_invitations;
         if (updates.invoice_reminders !== undefined) payload.invoice_reminders = updates.invoice_reminders;
         if (updates.weekly_digest !== undefined) payload.weekly_digest = updates.weekly_digest;
-        const effectivePayment = {
-          ...(updates.payment_settings || currentSettings.payment_settings || {}),
-          ...(updates.upi_qr_code_url !== undefined ? { upiQrCodeUrl: updates.upi_qr_code_url } : {}),
-          ...(updates.upi_id !== undefined ? { upiId: updates.upi_id } : {}),
-          ...((updates.upi_qr_code_url || updates.upi_id) ? { upiEnabled: true } : {}),
+
+        // Try upserting full payload first with payment columns if schema supports it
+        const fullPayload = {
+          ...payload,
+          payment_settings: effectivePaymentSettings,
+          upi_id: upiId,
+          upi_qr_code_url: upiQrCodeUrl,
+          bank_name: bankName,
+          account_holder_name: accountHolderName,
+          account_number: accountNumber,
+          ifsc_code: ifscCode,
+          branch_name: branchName,
+          razorpay_payment_link: razorpayPaymentLink,
         };
-        payload.payment_settings = effectivePayment;
 
-        if (updates.upi_id !== undefined) payload.upi_id = updates.upi_id;
-        if (updates.upi_qr_code_url !== undefined) payload.upi_qr_code_url = updates.upi_qr_code_url;
-        if (updates.bank_name !== undefined) payload.bank_name = updates.bank_name;
-        if (updates.account_holder_name !== undefined) payload.account_holder_name = updates.account_holder_name;
-        if (updates.account_number !== undefined) payload.account_number = updates.account_number;
-        if (updates.ifsc_code !== undefined) payload.ifsc_code = updates.ifsc_code;
-        if (updates.branch_name !== undefined) payload.branch_name = updates.branch_name;
-        if (updates.razorpay_payment_link !== undefined) payload.razorpay_payment_link = updates.razorpay_payment_link;
-
-        let { error } = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
+        let { error } = await supabase.from('user_settings').upsert(fullPayload, { onConflict: 'id' });
         if (error) {
+          // Fall back to clean core schema columns guaranteed to exist
           delete payload.default_deliverable_niche;
           delete payload.email_invitations;
-          let retry = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
-          error = retry.error;
-          if (error) {
-            delete payload.upi_qr_code_url;
-            delete payload.upi_id;
-            delete payload.bank_name;
-            delete payload.account_holder_name;
-            delete payload.account_number;
-            delete payload.ifsc_code;
-            delete payload.branch_name;
-            delete payload.razorpay_payment_link;
-            retry = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
-            error = retry.error;
+          delete payload.payment_settings;
+          delete payload.upi_id;
+          delete payload.upi_qr_code_url;
+          delete payload.bank_name;
+          delete payload.account_holder_name;
+          delete payload.account_number;
+          delete payload.ifsc_code;
+          delete payload.branch_name;
+          delete payload.razorpay_payment_link;
+          const retry = await supabase.from('user_settings').upsert(payload, { onConflict: 'id' });
+          if (retry.error) {
+            console.warn('Supabase core settings upsert error:', retry.error.message);
           }
-        }
-        if (error) {
-          console.warn('Supabase settings upsert notice (non-fatal, cached locally):', error.message);
         }
 
         if (updates.currency) {
@@ -382,6 +483,38 @@ export const UserSettingsService = {
     try {
       const key = `${LOCAL_SETTINGS_PREFIX}${userId}`;
       localStorage.setItem(key, JSON.stringify(settings));
+    } catch {
+      // ignore
+    }
+  },
+
+  /**
+   * Get dedicated payment settings from localStorage
+   */
+  getPaymentSettings(userId: string): Partial<FreelancerPaymentSettings> | null {
+    if (typeof window === 'undefined') return null;
+    if (!userId) return null;
+    try {
+      const key = `${LOCAL_PAYMENT_PREFIX}${userId}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  },
+
+  /**
+   * Save dedicated payment settings to localStorage
+   */
+  setPaymentSettings(userId: string, paymentSettings: Partial<FreelancerPaymentSettings>): void {
+    if (typeof window === 'undefined') return;
+    if (!userId) return;
+    try {
+      const key = `${LOCAL_PAYMENT_PREFIX}${userId}`;
+      localStorage.setItem(key, JSON.stringify(paymentSettings));
     } catch {
       // ignore
     }
