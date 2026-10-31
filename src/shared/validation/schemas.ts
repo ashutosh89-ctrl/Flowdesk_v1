@@ -172,13 +172,6 @@ export const BankDetailsSchema = z.object({
   upiId: z.string().trim().max(100).optional(),
 }).strict();
 
-export const PaymentMethodsConfigSchema = z.object({
-  bankTransferEnabled: z.boolean().optional().default(true),
-  upiEnabled: z.boolean().optional().default(false),
-  razorpayLinkEnabled: z.boolean().optional().default(false),
-  upiQrCodeUrl: z.string().trim().max(1000).optional(),
-}).strict();
-
 export const RazorpayPaymentLinkSchema = z
   .string()
   .trim()
@@ -186,6 +179,17 @@ export const RazorpayPaymentLinkSchema = z
     (val) => !val || isApprovedRazorpayUrl(val),
     { message: 'Razorpay Payment Link must be a valid HTTPS URL on an approved Razorpay domain (rzp.io, pages.razorpay.com, or razorpay.me)' }
   );
+
+export const PaymentMethodsConfigSchema = z.object({
+  bankTransferEnabled: z.boolean().optional().default(true),
+  upiEnabled: z.boolean().optional().default(false),
+  razorpayLinkEnabled: z.boolean().optional().default(false),
+  upiQrCodeUrl: z.string().trim().max(2_000_000).optional(),
+  upiId: z.string().trim().max(100).optional(),
+  bankDetails: BankDetailsSchema.optional(),
+  razorpayPaymentLink: RazorpayPaymentLinkSchema.optional(),
+  defaultPaymentInstructions: z.string().trim().max(2000).optional(),
+}).passthrough();
 
 export const ClientPaymentNotificationSchema = z.object({
   amount: z.number().positive('Amount must be greater than zero').finite().max(100_000_000),
@@ -204,19 +208,20 @@ export const CreateInvoiceSchema = z.object({
   clientId: z.string().trim().min(1, 'Client ID is required'),
   projectId: z.string().trim().optional().nullable().transform((v) => (v && v.trim() !== '' ? v : null)),
   invoiceNumber: z.string().trim().min(1).max(100).optional(),
+  workflowStatus: z.enum(['draft', 'sent']).optional().default('draft'),
   issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Issue date must be YYYY-MM-DD'),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must be YYYY-MM-DD'),
   items: z.array(InvoiceItemInputSchema).min(1, 'At least one line item is required'),
   taxPercentage: z.number().min(0).max(100).optional().default(0),
-  taxName: z.string().trim().max(50).optional().default('Tax'),
+  taxName: z.string().trim().max(50).optional().default('GST'),
   discount: z.number().min(0).optional().default(0),
-  currency: z.string().trim().length(3).default('USD'),
+  currency: z.string().trim().length(3).default('INR'),
   notes: z.string().trim().max(2000).optional(),
   paymentInstructions: z.string().trim().max(2000).optional(),
   internalNotes: z.string().trim().max(2000).optional(),
   paymentMethods: PaymentMethodsConfigSchema.optional(),
   upiId: z.string().trim().max(100).optional(),
-  upiQrCodeUrl: z.string().trim().max(1000).optional(),
+  upiQrCodeUrl: z.string().trim().max(2_000_000).optional(),
   bankDetails: BankDetailsSchema.optional(),
   razorpayPaymentLink: RazorpayPaymentLinkSchema.optional(),
 }).strict();
@@ -316,7 +321,7 @@ export const UpdateUserSettingsSchema = z.object({
   defaultDeliverableNiche: z.enum(['software_development', 'others']).optional(),
   paymentSettings: z.record(z.string(), z.any()).optional(),
   upiId: z.string().trim().max(100).optional(),
-  upiQrCodeUrl: z.string().trim().max(1000).optional(),
+  upiQrCodeUrl: z.string().trim().max(2_000_000).optional(),
   bankName: z.string().trim().max(100).optional(),
   accountHolderName: z.string().trim().max(100).optional(),
   accountNumber: z.string().trim().max(50).optional(),

@@ -193,11 +193,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (caller.userId) {
       try {
-        const { data: userSettings } = await supabaseAdmin
+        let { data: userSettings } = await supabaseAdmin
           .from('user_settings')
           .select('*')
           .eq('id', caller.userId)
           .maybeSingle();
+
+        if (!userSettings) {
+          const { data: latestSettings } = await supabaseAdmin
+            .from('user_settings')
+            .select('*')
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (latestSettings) {
+            userSettings = latestSettings;
+          }
+        }
 
         if (userSettings) {
           defaultQrUrl = userSettings.upi_qr_code_url || userSettings.payment_settings?.upiQrCodeUrl || null;
@@ -211,6 +223,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             upiId: defaultUpiId,
           } : null);
           defaultRazorpayLink = userSettings.razorpay_payment_link || userSettings.payment_settings?.razorpayPaymentLink || null;
+        }
+
+        if (!defaultQrUrl || !defaultUpiId) {
+          const { data: prof } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
+            .eq('id', caller.userId)
+            .maybeSingle();
+          if (prof) {
+            if (!defaultQrUrl && prof.upi_qr_code_url) defaultQrUrl = prof.upi_qr_code_url;
+            if (!defaultUpiId && prof.upi_id) defaultUpiId = prof.upi_id;
+          }
         }
       } catch {
         // non-critical
@@ -232,8 +256,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       client_email: client.email || 'client@example.com',
       project_id: payload.projectId || null,
       invoice_number: invoiceNumber,
-      status: 'draft',
-      workflow_status: 'draft',
+      status: payload.workflowStatus === 'sent' ? 'sent' : 'draft',
+      workflow_status: payload.workflowStatus || 'draft',
       payment_status: 'pending',
       issue_date: payload.issueDate,
       due_date: payload.dueDate,
@@ -255,6 +279,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           razorpayLinkEnabled: Boolean(finalRazorpayLink),
         }),
         upiQrCodeUrl: finalQrCodeUrl || undefined,
+        upiId: finalUpiId || undefined,
+        bankDetails: finalBankDetails || undefined,
+        razorpayPaymentLink: finalRazorpayLink || undefined,
+        defaultPaymentInstructions: payload.paymentInstructions || undefined,
       },
       upi_id: finalUpiId || null,
       bank_details: finalBankDetails || null,
@@ -281,7 +309,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         error: insertError?.message,
       });
 
-      // Retry without extended / optional columns in case public.invoices has older schema
+      // Retry without extended standalone columns (upi_id, bank_details, razorpay_payment_link)
+      // but retain payment_methods JSONB, tax_name, and payment_instructions
       const fallbackPayload: Record<string, any> = {
         workspace_id: targetWorkspaceId,
         client_id: client.id,
@@ -290,17 +319,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         client_email: client.email || 'client@example.com',
         project_id: payload.projectId || null,
         invoice_number: invoiceNumber,
-        status: 'draft',
+        status: payload.workflowStatus === 'sent' ? 'sent' : 'draft',
+        workflow_status: payload.workflowStatus || 'draft',
+        payment_status: 'pending',
         issue_date: payload.issueDate,
         due_date: payload.dueDate,
         subtotal: calc.subtotal,
         tax_percentage: calc.taxPercentage,
+        tax_name: payload.taxName || 'GST',
         tax_amount: calc.taxAmount,
         total_amount: calc.total,
         discount: calc.discount,
         paid_amount: 0,
         currency: payload.currency || 'INR',
         notes: payload.notes || '',
+        payment_instructions: payload.paymentInstructions || '',
+        payment_methods: primaryPayload.payment_methods,
         created_at: nowIso,
         updated_at: nowIso,
       };
@@ -315,7 +349,41 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         insertedInvoice = fallbackAttempt.data;
         insertError = null;
       } else {
-        insertError = fallbackAttempt.error || insertError;
+        // Tertiary fallback: minimal fields if older table schema
+        const minimalPayload: Record<string, any> = {
+          workspace_id: targetWorkspaceId,
+          client_id: client.id,
+          user_id: caller.userId,
+          client_name: client.name || 'Client',
+          client_email: client.email || 'client@example.com',
+          project_id: payload.projectId || null,
+          invoice_number: invoiceNumber,
+          status: 'draft',
+          issue_date: payload.issueDate,
+          due_date: payload.dueDate,
+          subtotal: calc.subtotal,
+          tax_percentage: calc.taxPercentage,
+          tax_amount: calc.taxAmount,
+          total_amount: calc.total,
+          discount: calc.discount,
+          paid_amount: 0,
+          currency: payload.currency || 'INR',
+          notes: payload.notes || '',
+          created_at: nowIso,
+          updated_at: nowIso,
+        };
+        const tertiaryAttempt = await supabaseAdmin
+          .from('invoices')
+          .insert(minimalPayload)
+          .select()
+          .single();
+
+        if (!tertiaryAttempt.error && tertiaryAttempt.data) {
+          insertedInvoice = tertiaryAttempt.data;
+          insertError = null;
+        } else {
+          insertError = fallbackAttempt.error || tertiaryAttempt.error || insertError;
+        }
       }
     }
 

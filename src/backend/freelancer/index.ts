@@ -1882,6 +1882,30 @@ export const FreelancerInvoiceService = {
             settings?.upi_qr_code_url ||
             settings?.payment_settings?.upiQrCodeUrl ||
             undefined,
+          upiId:
+            invoice.upiId ||
+            invoice.paymentMethods?.upiId ||
+            settings?.upi_id ||
+            settings?.payment_settings?.upiId ||
+            undefined,
+          bankDetails:
+            invoice.bankDetails ||
+            invoice.paymentMethods?.bankDetails ||
+            settings?.payment_settings?.bankDetails ||
+            (settings?.bank_name ? {
+              bankName: settings.bank_name,
+              accountHolderName: settings.account_holder_name || '',
+              accountNumber: settings.account_number || '',
+              ifscCode: settings.ifsc_code || '',
+              branchName: settings.branch_name || '',
+              upiId: invoice.upiId || settings?.upi_id || '',
+            } : undefined),
+          razorpayPaymentLink:
+            invoice.razorpayPaymentLink ||
+            invoice.paymentMethods?.razorpayPaymentLink ||
+            settings?.razorpay_payment_link ||
+            settings?.payment_settings?.razorpayPaymentLink ||
+            undefined,
         },
         upi_id:
           invoice.upiId ||

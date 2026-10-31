@@ -678,6 +678,54 @@ export const ClientPortalService = {
       }
     }
 
+    // Secondary fallback: pull from recent invoices if branding is still missing QR or Bank details
+    if (!branding.upiQrCodeUrl || !branding.bankDetails || !branding.upiId) {
+      for (const inv of invoices) {
+        if (!branding.upiQrCodeUrl && (inv.upiQrCodeUrl || inv.paymentMethods?.upiQrCodeUrl)) {
+          branding.upiQrCodeUrl = inv.upiQrCodeUrl || inv.paymentMethods?.upiQrCodeUrl;
+        }
+        if (!branding.upiId && (inv.upiId || inv.paymentMethods?.upiId)) {
+          branding.upiId = inv.upiId || inv.paymentMethods?.upiId;
+        }
+        if (!branding.bankDetails && (inv.bankDetails || inv.paymentMethods?.bankDetails)) {
+          branding.bankDetails = inv.bankDetails || inv.paymentMethods?.bankDetails;
+          (branding as any).bankName = branding.bankDetails?.bankName;
+          (branding as any).accountNumber = branding.bankDetails?.accountNumber;
+          (branding as any).accountHolderName = branding.bankDetails?.accountHolderName;
+          (branding as any).ifscCode = branding.bankDetails?.ifscCode;
+          (branding as any).branchName = branding.bankDetails?.branchName;
+        }
+      }
+
+      if (!branding.upiQrCodeUrl || !branding.bankDetails) {
+        try {
+          const localProf = FlowDeskStore.getUserProfile() || {};
+          if (!branding.upiQrCodeUrl && localProf.upiQrCodeUrl) {
+            branding.upiQrCodeUrl = localProf.upiQrCodeUrl;
+          }
+          if (!branding.upiId && localProf.upiId) {
+            branding.upiId = localProf.upiId;
+          }
+          if (!branding.bankDetails && ((localProf as any).bankName || (localProf as any).bankDetails)) {
+            branding.bankDetails = (localProf as any).bankDetails || {
+              bankName: (localProf as any).bankName || '',
+              accountHolderName: (localProf as any).accountHolderName || '',
+              accountNumber: (localProf as any).accountNumber || '',
+              ifscCode: (localProf as any).ifscCode || '',
+              branchName: (localProf as any).branchName || '',
+            };
+            (branding as any).bankName = branding.bankDetails?.bankName;
+            (branding as any).accountNumber = branding.bankDetails?.accountNumber;
+            (branding as any).accountHolderName = branding.bankDetails?.accountHolderName;
+            (branding as any).ifscCode = branding.bankDetails?.ifscCode;
+            (branding as any).branchName = branding.bankDetails?.branchName;
+          }
+        } catch {
+          // non-critical
+        }
+      }
+    }
+
     const result: ClientPortalDataset = {
       client,
       projects,

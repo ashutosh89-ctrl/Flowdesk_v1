@@ -389,6 +389,8 @@ export interface PaymentMethodsConfig {
   upiQrCodeUrl?: string;
   upiId?: string;
   bankDetails?: BankDetails;
+  razorpayPaymentLink?: string;
+  defaultPaymentInstructions?: string;
 }
 
 export interface ClientPaymentNotification {

@@ -70,8 +70,36 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
   const [utrSuccess, setUtrSuccess] = useState(false);
   const [utrError, setUtrError] = useState<string | null>(null);
 
+  // Live branding state for seamless updates
+  const [liveBranding, setLiveBranding] = useState<any>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let mounted = true;
+    const targetClientId = clientId || invoice?.clientId;
+    const targetInvoiceId = invoice?.id;
+
+    if (targetClientId || targetInvoiceId) {
+      fetch(`/api/portal/branding?clientId=${encodeURIComponent(targetClientId || '')}&invoiceId=${encodeURIComponent(targetInvoiceId || '')}`, {
+        cache: 'no-store',
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (mounted && data?.success && data?.branding) {
+            setLiveBranding(data.branding);
+          }
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [isOpen, clientId, invoice?.id, invoice?.clientId]);
+
   // Resolve branding and payment details
-  const effectiveBranding = (branding || {}) as any;
+  const effectiveBranding = { ...(branding || {}), ...(liveBranding || {}) } as any;
   const invoiceBankDetails =
     invoice?.bankDetails ||
     invoice?.paymentMethods?.bankDetails ||
@@ -669,70 +697,76 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                  {accountHolderName && (
-                    <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
-                      <span className="text-zinc-400 block text-[10px]">Beneficiary Name</span>
-                      <span className="font-semibold text-zinc-200">{accountHolderName}</span>
-                    </div>
-                  )}
-
-                  {bankName && (
-                    <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
-                      <span className="text-zinc-400 block text-[10px]">Bank Name</span>
-                      <span className="font-semibold text-zinc-200">{bankName}</span>
-                    </div>
-                  )}
-
-                  {accountNumber && (
-                    <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
-                      <div>
-                        <span className="text-zinc-400 block text-[10px]">Account Number</span>
-                        <span className="font-mono font-bold text-white text-xs">{accountNumber}</span>
+                {!hasBank ? (
+                  <div className="p-4 rounded-xl bg-black/40 border border-white/5 text-center text-xs text-zinc-400">
+                    Direct bank transfer details are not configured for this statement. Please scan the QR code in the Scan & Pay tab or settle online.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                    {accountHolderName && (
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
+                        <span className="text-zinc-400 block text-[10px]">Beneficiary Name</span>
+                        <span className="font-semibold text-zinc-200">{accountHolderName}</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => copyText(accountNumber, 'modalAccNum')}
-                        className="p-1 rounded bg-white/10 hover:bg-white/20 text-zinc-200"
-                        title="Copy Account Number"
-                      >
-                        {copiedField === 'modalAccNum' ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  )}
+                    )}
 
-                  {ifscCode && (
-                    <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
-                      <div>
-                        <span className="text-zinc-400 block text-[10px]">IFSC / SWIFT Code</span>
-                        <span className="font-mono font-bold text-white text-xs">{ifscCode}</span>
+                    {bankName && (
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
+                        <span className="text-zinc-400 block text-[10px]">Bank Name</span>
+                        <span className="font-semibold text-zinc-200">{bankName}</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => copyText(ifscCode, 'modalIfsc')}
-                        className="p-1 rounded bg-white/10 hover:bg-white/20 text-zinc-200"
-                        title="Copy IFSC"
-                      >
-                        {copiedField === 'modalIfsc' ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  )}
+                    )}
 
-                  {branchName && (
-                    <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 sm:col-span-2">
-                      <span className="text-zinc-400 block text-[10px]">Branch</span>
-                      <span className="text-zinc-300">{branchName}</span>
-                    </div>
-                  )}
-                </div>
+                    {accountNumber && (
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
+                        <div>
+                          <span className="text-zinc-400 block text-[10px]">Account Number</span>
+                          <span className="font-mono font-bold text-white text-xs">{accountNumber}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyText(accountNumber, 'modalAccNum')}
+                          className="p-1 rounded bg-white/10 hover:bg-white/20 text-zinc-200"
+                          title="Copy Account Number"
+                        >
+                          {copiedField === 'modalAccNum' ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {ifscCode && (
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
+                        <div>
+                          <span className="text-zinc-400 block text-[10px]">IFSC / SWIFT Code</span>
+                          <span className="font-mono font-bold text-white text-xs">{ifscCode}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyText(ifscCode, 'modalIfsc')}
+                          className="p-1 rounded bg-white/10 hover:bg-white/20 text-zinc-200"
+                          title="Copy IFSC"
+                        >
+                          {copiedField === 'modalIfsc' ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {branchName && (
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 sm:col-span-2">
+                        <span className="text-zinc-400 block text-[10px]">Branch</span>
+                        <span className="text-zinc-300">{branchName}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="pt-2">
                   <button

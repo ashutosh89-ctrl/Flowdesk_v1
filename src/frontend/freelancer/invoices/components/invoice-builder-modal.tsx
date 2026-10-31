@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Client, Project, Invoice, InvoiceItem, BankDetails, PaymentMethodsConfig } from '@/shared/types';
+import { Client, Project, Invoice, InvoiceItem, BankDetails, PaymentMethodsConfig, UserSettings } from '@/shared/types';
 import { FreelancerClientService, FreelancerProjectService, FreelancerInvoiceService } from '@/backend/freelancer';
 import { UserSettingsService } from '@/backend/auth';
 import { useAuth } from '@/frontend/auth/auth-context';
@@ -72,6 +72,39 @@ export function InvoiceBuilderModal({
   // Loading state
   const [savingAction, setSavingAction] = useState<'draft' | 'issue' | null>(null);
 
+  // Dynamic sync when settings are updated elsewhere in the app
+  useEffect(() => {
+    const handleSettingsUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<UserSettings>;
+      const newSettings = customEvent.detail;
+      if (!newSettings || invoiceToEdit) return;
+      if (newSettings.default_tax_rate !== undefined) {
+        setTaxPercentage(typeof newSettings.default_tax_rate === 'number' ? newSettings.default_tax_rate : (Number(newSettings.default_tax_rate) || 0));
+      }
+      if (newSettings.tax_name) {
+        setTaxName(newSettings.tax_name);
+      }
+      if (newSettings.currency) {
+        setCurrency(newSettings.currency);
+      }
+      if (newSettings.upi_id) setUpiId(newSettings.upi_id);
+      if (newSettings.upi_qr_code_url) setUpiQrCodeUrl(newSettings.upi_qr_code_url);
+      if (newSettings.upi_id || newSettings.upi_qr_code_url) setUpiEnabled(true);
+      if (newSettings.bank_name || newSettings.account_number) {
+        setBankDetails({
+          accountHolderName: newSettings.account_holder_name || '',
+          bankName: newSettings.bank_name || '',
+          accountNumber: newSettings.account_number || '',
+          ifscCode: newSettings.ifsc_code || '',
+          branchName: newSettings.branch_name || '',
+        });
+      }
+    };
+
+    window.addEventListener('flowdesk:settings-updated', handleSettingsUpdate);
+    return () => window.removeEventListener('flowdesk:settings-updated', handleSettingsUpdate);
+  }, [invoiceToEdit]);
+
   // Synchronize state when modal opens or invoiceToEdit changes
   useEffect(() => {
     if (!isOpen) return;
@@ -114,11 +147,41 @@ export function InvoiceBuilderModal({
       } else {
         const today = new Date().toISOString().split('T')[0];
 
-        // Load user settings and existing invoices for sequential numbering
-        const [settings, existingInvoices] = await Promise.all([
-          user?.id ? UserSettingsService.getUserSettings(user.id) : null,
+        // Immediate sync from local settings cache so tax %, name, and payment details reflect instantly
+        const localSettings = UserSettingsService.getLocalSettings(user?.id || 'usr-default') ||
+                              UserSettingsService.getLocalSettings('usr-default') ||
+                              userSettings;
+        if (localSettings) {
+          const immTax = typeof localSettings.default_tax_rate === 'number'
+            ? localSettings.default_tax_rate
+            : (Number(localSettings.default_tax_rate) || 0);
+          setTaxPercentage(immTax);
+          setTaxName(localSettings.tax_name || 'GST');
+          setCurrency(localSettings.currency || profile?.currency || 'INR');
+
+          const immUpiId = localSettings.upi_id || localSettings.payment_settings?.upiId || profile?.upiId || '';
+          const immUpiQr = localSettings.upi_qr_code_url || localSettings.payment_settings?.upiQrCodeUrl || profile?.upiQrCodeUrl || '';
+          if (immUpiId) setUpiId(immUpiId);
+          if (immUpiQr) setUpiQrCodeUrl(immUpiQr);
+          if (immUpiId || immUpiQr) setUpiEnabled(true);
+
+          if (localSettings.bank_name || localSettings.account_number || localSettings.payment_settings?.bankDetails) {
+            setBankDetails({
+              accountHolderName: localSettings.account_holder_name || localSettings.payment_settings?.bankDetails?.accountHolderName || '',
+              bankName: localSettings.bank_name || localSettings.payment_settings?.bankDetails?.bankName || '',
+              accountNumber: localSettings.account_number || localSettings.payment_settings?.bankDetails?.accountNumber || '',
+              ifscCode: localSettings.ifsc_code || localSettings.payment_settings?.bankDetails?.ifscCode || '',
+              branchName: localSettings.branch_name || localSettings.payment_settings?.bankDetails?.branchName || '',
+            });
+          }
+        }
+
+        // Load fresh user settings and existing invoices for sequential numbering
+        const [fetchedSettings, existingInvoices] = await Promise.all([
+          UserSettingsService.getUserSettings(user?.id || 'usr-default'),
           FreelancerInvoiceService.getInvoices(),
         ]);
+        const settings = fetchedSettings || localSettings || userSettings;
 
         const studioCurrency = settings?.currency || userSettings?.currency || profile?.currency || 'INR';
         const paymentTerms = settings?.default_payment_terms || 14;
@@ -133,7 +196,10 @@ export function InvoiceBuilderModal({
         setInvoiceNumber(nextNum);
         setIssueDate(today);
         setDueDate(dueDateStr);
-        setTaxPercentage(settings?.default_tax_rate ?? 0);
+        const resolvedTaxRate = typeof settings?.default_tax_rate === 'number'
+          ? settings.default_tax_rate
+          : (Number(settings?.default_tax_rate) || 0);
+        setTaxPercentage(resolvedTaxRate);
         setTaxName(settings?.tax_name || 'GST');
         setCurrency(studioCurrency);
 
@@ -318,12 +384,16 @@ export function InvoiceBuilderModal({
         internalNotes,
         paymentMethods: {
           bankTransferEnabled,
-          upiEnabled,
+          upiEnabled: upiEnabled || Boolean(upiId.trim() || upiQrCodeUrl),
           razorpayLinkEnabled,
-          upiQrCodeUrl: upiEnabled && upiQrCodeUrl ? upiQrCodeUrl : undefined,
+          upiQrCodeUrl: (upiEnabled || Boolean(upiQrCodeUrl)) && upiQrCodeUrl ? upiQrCodeUrl : undefined,
+          upiId: (upiEnabled || Boolean(upiId.trim())) && upiId.trim() ? upiId.trim() : undefined,
+          bankDetails: bankTransferEnabled ? bankDetails : undefined,
+          razorpayPaymentLink: razorpayLinkEnabled && razorpayPaymentLink.trim() ? razorpayPaymentLink.trim() : undefined,
+          defaultPaymentInstructions: paymentInstructions || undefined,
         },
-        upiId: upiEnabled && upiId.trim() ? upiId.trim() : undefined,
-        upiQrCodeUrl: upiEnabled && upiQrCodeUrl ? upiQrCodeUrl : undefined,
+        upiId: (upiEnabled || Boolean(upiId.trim())) && upiId.trim() ? upiId.trim() : undefined,
+        upiQrCodeUrl: (upiEnabled || Boolean(upiQrCodeUrl)) && upiQrCodeUrl ? upiQrCodeUrl : undefined,
         bankDetails: bankTransferEnabled ? bankDetails : undefined,
         razorpayPaymentLink: razorpayLinkEnabled && razorpayPaymentLink.trim() ? razorpayPaymentLink.trim() : undefined,
       };

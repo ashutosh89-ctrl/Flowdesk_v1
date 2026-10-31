@@ -29,43 +29,47 @@ export const ClientInvoiceService = {
       }
 
       if (data && data.length > 0) {
-        // Resolve default fallback branding/settings from workspace owner
+        // Resolve default fallback branding/settings via server API route (bypasses RLS)
         let defaultQrUrl: string | undefined;
         let defaultUpiId: string | undefined;
         let defaultBankDetails: any = undefined;
 
-        try {
-          const wsId = data[0].workspace_id;
-          if (wsId) {
-            const { data: wsData } = await supabase
-              .from('workspaces')
-              .select('owner_id')
-              .eq('id', wsId)
-              .maybeSingle();
-
-            const ownerId = wsData?.owner_id;
-            if (ownerId) {
-              const [settingsRes, profRes] = await Promise.all([
-                supabase.from('user_settings').select('*').eq('id', ownerId).maybeSingle(),
-                supabase.from('profiles').select('upi_id, upi_qr_code_url').eq('id', ownerId).maybeSingle(),
-              ]);
-              const sData = settingsRes.data;
-              const pData = profRes.data;
-
-              defaultQrUrl = sData?.upi_qr_code_url || sData?.payment_settings?.upiQrCodeUrl || pData?.upi_qr_code_url || undefined;
-              defaultUpiId = sData?.upi_id || sData?.payment_settings?.upiId || pData?.upi_id || undefined;
-              defaultBankDetails = sData?.payment_settings?.bankDetails || (sData?.bank_name ? {
-                bankName: sData.bank_name,
-                accountHolderName: sData.account_holder_name || '',
-                accountNumber: sData.account_number || '',
-                ifscCode: sData.ifsc_code || '',
-                branchName: sData.branch_name || '',
-                upiId: defaultUpiId,
-              } : undefined);
+        if (typeof window !== 'undefined') {
+          try {
+            const brandRes = await fetch(`/api/portal/branding?clientId=${encodeURIComponent(clientId)}`, {
+              cache: 'no-store',
+            });
+            if (brandRes.ok) {
+              const brandJson = await brandRes.json();
+              if (brandJson?.success && brandJson.branding) {
+                defaultQrUrl = brandJson.branding.upiQrCodeUrl || undefined;
+                defaultUpiId = brandJson.branding.upiId || undefined;
+                defaultBankDetails = brandJson.branding.bankDetails || undefined;
+              }
             }
+          } catch (fbErr) {
+            console.warn('[ClientInvoiceService] Branding route query notice:', fbErr);
           }
-        } catch (fbErr) {
-          console.warn('[ClientInvoiceService] Non-critical fallback branding query notice:', fbErr);
+        }
+
+        if (!defaultQrUrl || !defaultBankDetails) {
+          try {
+            const localProf = FlowDeskStore.getUserProfile() || {};
+            if (!defaultQrUrl && localProf.upiQrCodeUrl) defaultQrUrl = localProf.upiQrCodeUrl;
+            if (!defaultUpiId && localProf.upiId) defaultUpiId = localProf.upiId;
+            if (!defaultBankDetails && ((localProf as any).bankName || (localProf as any).bankDetails)) {
+              defaultBankDetails = (localProf as any).bankDetails || {
+                bankName: (localProf as any).bankName || '',
+                accountHolderName: (localProf as any).accountHolderName || '',
+                accountNumber: (localProf as any).accountNumber || '',
+                ifscCode: (localProf as any).ifscCode || '',
+                branchName: (localProf as any).branchName || '',
+                upiId: defaultUpiId || '',
+              };
+            }
+          } catch {
+            // non-critical
+          }
         }
 
         return data.map((i) => {
@@ -147,8 +151,11 @@ export const ClientInvoiceService = {
             paymentInstructions: i.payment_instructions || '',
             paymentMethods: {
               ...(i.payment_methods || {}),
+              bankTransferEnabled: i.payment_methods?.bankTransferEnabled ?? Boolean(resolvedBankDetails),
               upiEnabled: i.payment_methods?.upiEnabled ?? Boolean(resolvedUpiId || resolvedQrUrl),
               upiQrCodeUrl: resolvedQrUrl,
+              upiId: resolvedUpiId,
+              bankDetails: resolvedBankDetails,
             },
             upiId: resolvedUpiId,
             upiQrCodeUrl: resolvedQrUrl,

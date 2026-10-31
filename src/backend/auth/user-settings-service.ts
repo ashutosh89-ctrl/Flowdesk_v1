@@ -61,7 +61,7 @@ export const UserSettingsService = {
             invoice_padding: data.invoice_padding ? Number(data.invoice_padding) : 4,
             invoice_next_sequence: data.invoice_next_sequence ? Number(data.invoice_next_sequence) : 1,
             invoice_annual_reset: data.invoice_annual_reset !== undefined ? Boolean(data.invoice_annual_reset) : false,
-            default_tax_rate: Number(data.default_tax_rate) || 0,
+            default_tax_rate: typeof data.default_tax_rate === 'number' ? data.default_tax_rate : (Number(data.default_tax_rate) || 0),
             tax_name: data.tax_name || 'GST',
             default_payment_terms: Number(data.default_payment_terms) || 14,
             email_notifications: data.email_notifications !== undefined ? Boolean(data.email_notifications) : true,
@@ -88,7 +88,7 @@ export const UserSettingsService = {
             try {
               const { data: prof } = await supabase
                 .from('profiles')
-                .select('upi_id, upi_qr_code_url, currency')
+                .select('*')
                 .eq('id', userId)
                 .maybeSingle();
               if (prof) {
@@ -117,6 +117,7 @@ export const UserSettingsService = {
           }
 
           this.setLocalSettings(userId, settings);
+          this.setLocalSettings('usr-default', settings);
           return settings;
         }
       } catch (err: any) {
@@ -124,8 +125,8 @@ export const UserSettingsService = {
       }
     }
 
-    // 2. Check local storage cache
-    const cached = this.getLocalSettings(targetUserId);
+    // 2. Check local storage cache (with fallback to usr-default)
+    const cached = this.getLocalSettings(targetUserId) || (targetUserId !== 'usr-default' ? this.getLocalSettings('usr-default') : null);
     if (cached) {
       return cached;
     }
@@ -181,8 +182,15 @@ export const UserSettingsService = {
       razorpay_payment_link: updates.razorpay_payment_link !== undefined ? updates.razorpay_payment_link : currentSettings.razorpay_payment_link,
     };
 
-    // Always cache locally
+    // Always cache locally under targetUserId and usr-default
     this.setLocalSettings(targetUserId, mergedSettings);
+    if (targetUserId !== 'usr-default') {
+      this.setLocalSettings('usr-default', mergedSettings);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flowdesk:settings-updated', { detail: mergedSettings }));
+    }
 
     if (typeof window !== 'undefined' && isServerMutationBatchEnabled(4)) {
       if (userId && userId !== 'usr-default' && !userId.startsWith('usr-demo')) {

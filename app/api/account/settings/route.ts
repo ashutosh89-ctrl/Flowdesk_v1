@@ -1,9 +1,102 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireApiCaller } from '@/backend/utilities/api-auth';
+import { requireApiCaller, resolveApiCaller } from '@/backend/utilities/api-auth';
 import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/utilities/logger';
 import { parseJsonBody, UpdateUserSettingsSchema } from '@/shared/validation';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
+
+/**
+ * Account Settings Query Route Handler (Batch 4: Account & Settings)
+ *
+ * Secure server-side retrieval of user billing, invoice formatting, tax, and payment settings.
+ */
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const requestId = getOrCreateRequestId(request);
+  const ip = getClientIp(request);
+
+  const rateLimit = await checkRateLimit(ip, {
+    prefix: 'account_settings_get',
+    maxRequests: 60,
+    windowSeconds: 60,
+  });
+
+  if (!rateLimit.allowed) {
+    return createApiErrorResponse({
+      message: 'Too many requests. Please try again shortly.',
+      code: 'RATE_LIMIT_EXCEEDED',
+      status: 429,
+      requestId,
+    });
+  }
+
+  const caller = await resolveApiCaller();
+
+  if (isDemoModeActive() || caller.isDemo) {
+    const { FlowDeskStore } = await import('@/backend/store/storage-store');
+    const localProf = FlowDeskStore.getUserProfile() || {};
+    return NextResponse.json({
+      success: true,
+      settings: {
+        currency: (localProf as any).currency || 'INR',
+        default_tax_rate: (localProf as any).defaultTaxRate || 0,
+        tax_name: (localProf as any).taxName || 'GST',
+        upi_id: (localProf as any).upiId || '',
+        upi_qr_code_url: (localProf as any).upiQrCodeUrl || '',
+        payment_settings: (localProf as any).paymentMethods || {},
+      },
+      requestId,
+    });
+  }
+
+  try {
+    let settings: any = null;
+    const userId = caller.userId;
+
+    if (userId) {
+      const { data, error } = await supabaseAdmin
+        .from('user_settings')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!error && data) {
+        settings = data;
+      }
+    }
+
+    if (!settings) {
+      const { data: latestSettings } = await supabaseAdmin
+        .from('user_settings')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestSettings) {
+        settings = latestSettings;
+      }
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        settings: settings || null,
+        requestId,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
+    );
+  } catch (err: any) {
+    return createApiErrorResponse({
+      message: 'Failed to retrieve account settings.',
+      code: 'INTERNAL_ERROR',
+      status: 500,
+      requestId,
+    });
+  }
+}
 
 /**
  * Account Settings Mutation Route Handler (Batch 4: Account & Settings)
@@ -44,7 +137,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
   // 3. Request Body Validation
   const bodyValidation = await parseJsonBody(request, UpdateUserSettingsSchema, {
-    maxBytes: 10 * 1024,
+    maxBytes: 2 * 1024 * 1024,
   });
   if (!bodyValidation.success) {
     return bodyValidation.response;

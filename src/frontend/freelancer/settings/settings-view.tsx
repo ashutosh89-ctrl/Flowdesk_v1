@@ -387,11 +387,11 @@ export const SettingsView: React.FC = () => {
           weekly_digest: settings.weekly_digest,
           default_deliverable_niche: settings.default_deliverable_niche,
           payment_settings: {
-            bankTransferEnabled: settings.payment_settings?.bankTransferEnabled ?? true,
-            upiEnabled: settings.payment_settings?.upiEnabled ?? false,
-            razorpayLinkEnabled: settings.payment_settings?.razorpayLinkEnabled ?? false,
-            upiId: settings.upi_id || settings.payment_settings?.upiId || '',
-            upiQrCodeUrl: settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || '',
+            bankTransferEnabled: settings.payment_settings?.bankTransferEnabled ?? Boolean(settings.bank_name || settings.account_number || true),
+            upiEnabled: settings.payment_settings?.upiEnabled ?? Boolean(settings.upi_id || settings.upi_qr_code_url || profile.upiId || profile.upiQrCodeUrl),
+            razorpayLinkEnabled: settings.payment_settings?.razorpayLinkEnabled ?? Boolean(settings.razorpay_payment_link),
+            upiId: settings.upi_id || settings.payment_settings?.upiId || profile.upiId || '',
+            upiQrCodeUrl: settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl || '',
             bankDetails: {
               accountHolderName: settings.account_holder_name || settings.payment_settings?.bankDetails?.accountHolderName || '',
               bankName: settings.bank_name || settings.payment_settings?.bankDetails?.bankName || '',

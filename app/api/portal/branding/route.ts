@@ -188,11 +188,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         }
 
         const ownerId = wsData.owner_id;
+        let profData: any = null;
+        let userSettingsData: any = null;
+
         if (ownerId) {
           const [profRes, settingsRes] = await Promise.all([
             supabaseAdmin
               .from('profiles')
-              .select('id, full_name, business_name, company_name, email, phone, logo_url, signature_url, country, upi_id, upi_qr_code_url')
+              .select('*')
               .eq('id', ownerId)
               .maybeSingle(),
             supabaseAdmin
@@ -202,89 +205,209 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
               .maybeSingle(),
           ]);
 
-          const profData = profRes.data;
-          const userSettingsData = settingsRes.data;
+          profData = profRes.data;
+          userSettingsData = settingsRes.data;
+        }
 
-          if (profData) {
-            if (profData.full_name) branding.freelancerName = profData.full_name;
-            if (profData.business_name || profData.company_name) {
-              branding.businessName = profData.business_name || profData.company_name || branding.businessName;
+        // If user_settings row for ownerId is missing or has no payment details, check any recent user_settings row
+        if (!userSettingsData?.payment_settings?.bankDetails && !userSettingsData?.bank_name && !userSettingsData?.upi_qr_code_url) {
+          try {
+            const { data: latestSettings } = await supabaseAdmin
+              .from('user_settings')
+              .select('*')
+              .order('updated_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (latestSettings) {
+              userSettingsData = { ...(userSettingsData || {}), ...latestSettings };
             }
-            if (profData.email) branding.email = profData.email;
-            if (profData.phone) branding.phone = profData.phone;
-            if (profData.country) (branding as any).country = profData.country;
+          } catch {
+            // non-critical
+          }
+        }
 
-            if (profData.logo_url && (!branding.logoUrl || branding.logoUrl === '/branding/flowdesk-symbol.png')) {
-              branding.logoUrl = profData.logo_url.startsWith('http') || profData.logo_url.startsWith('/') || profData.logo_url.startsWith('data:')
-                ? profData.logo_url
-                : StorageHelper.getPublicUrl('logos', profData.logo_url);
+        // If profiles row for ownerId is missing, check latest profile
+        if (!profData) {
+          try {
+            const { data: latestProf } = await supabaseAdmin
+              .from('profiles')
+              .select('*')
+              .order('updated_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (latestProf) {
+              profData = latestProf;
             }
-            if (profData.signature_url && !branding.signatureUrl) {
-              branding.signatureUrl = profData.signature_url.startsWith('http') || profData.signature_url.startsWith('/') || profData.signature_url.startsWith('data:')
-                ? profData.signature_url
-                : StorageHelper.getPublicUrl('signatures', profData.signature_url);
-            }
+          } catch {
+            // non-critical
           }
+        }
 
-          // Populate UPI QR code, UPI ID, Bank Transfer Details, and Payment Methods
-          const effectiveUpiQrCodeUrl =
-            userSettingsData?.upi_qr_code_url ||
-            userSettingsData?.payment_settings?.upiQrCodeUrl ||
-            profData?.upi_qr_code_url ||
-            '';
-          if (effectiveUpiQrCodeUrl) {
-            branding.upiQrCodeUrl =
-              effectiveUpiQrCodeUrl.startsWith('http') ||
-              effectiveUpiQrCodeUrl.startsWith('/') ||
-              effectiveUpiQrCodeUrl.startsWith('data:')
-                ? effectiveUpiQrCodeUrl
-                : StorageHelper.getPublicUrl('logos', effectiveUpiQrCodeUrl);
+        if (profData) {
+          if (profData.full_name) branding.freelancerName = profData.full_name;
+          if (profData.business_name || profData.company_name) {
+            branding.businessName = profData.business_name || profData.company_name || branding.businessName;
           }
+          if (profData.email) branding.email = profData.email;
+          if (profData.phone) branding.phone = profData.phone;
+          if (profData.country) (branding as any).country = profData.country;
 
-          const effectiveUpiId =
-            userSettingsData?.upi_id ||
-            userSettingsData?.payment_settings?.upiId ||
-            profData?.upi_id ||
-            '';
-          if (effectiveUpiId) {
-            branding.upiId = effectiveUpiId;
+          if (profData.logo_url && (!branding.logoUrl || branding.logoUrl === '/branding/flowdesk-symbol.png')) {
+            branding.logoUrl = profData.logo_url.startsWith('http') || profData.logo_url.startsWith('/') || profData.logo_url.startsWith('data:')
+              ? profData.logo_url
+              : StorageHelper.getPublicUrl('logos', profData.logo_url);
           }
+          if (profData.signature_url && !branding.signatureUrl) {
+            branding.signatureUrl = profData.signature_url.startsWith('http') || profData.signature_url.startsWith('/') || profData.signature_url.startsWith('data:')
+              ? profData.signature_url
+              : StorageHelper.getPublicUrl('signatures', profData.signature_url);
+          }
+        }
 
-          const bankDetails =
-            userSettingsData?.payment_settings?.bankDetails ||
-            (userSettingsData?.bank_name || userSettingsData?.account_number
-              ? {
-                  bankName: userSettingsData.bank_name || '',
-                  accountHolderName: userSettingsData.account_holder_name || '',
-                  accountNumber: userSettingsData.account_number || '',
-                  ifscCode: userSettingsData.ifsc_code || '',
-                  branchName: userSettingsData.branch_name || '',
-                  upiId: effectiveUpiId,
-                }
-              : undefined);
-          if (bankDetails) {
-            branding.bankDetails = bankDetails;
-            (branding as any).bankName = bankDetails.bankName;
-            (branding as any).accountNumber = bankDetails.accountNumber;
-            (branding as any).accountHolderName = bankDetails.accountHolderName;
-            (branding as any).ifscCode = bankDetails.ifscCode;
-            (branding as any).branchName = bankDetails.branchName;
-          }
+        // Populate UPI QR code, UPI ID, Bank Transfer Details, and Payment Methods
+        const effectiveUpiQrCodeUrl =
+          userSettingsData?.upi_qr_code_url ||
+          userSettingsData?.payment_settings?.upiQrCodeUrl ||
+          profData?.upi_qr_code_url ||
+          '';
+        if (effectiveUpiQrCodeUrl) {
+          branding.upiQrCodeUrl =
+            effectiveUpiQrCodeUrl.startsWith('http') ||
+            effectiveUpiQrCodeUrl.startsWith('/') ||
+            effectiveUpiQrCodeUrl.startsWith('data:')
+              ? effectiveUpiQrCodeUrl
+              : StorageHelper.getPublicUrl('logos', effectiveUpiQrCodeUrl);
+        }
 
-          const razorpayPaymentLink =
-            userSettingsData?.razorpay_payment_link ||
-            userSettingsData?.payment_settings?.razorpayPaymentLink ||
-            '';
-          if (razorpayPaymentLink) {
-            branding.razorpayPaymentLink = razorpayPaymentLink;
-          }
+        const effectiveUpiId =
+          userSettingsData?.upi_id ||
+          userSettingsData?.payment_settings?.upiId ||
+          profData?.upi_id ||
+          '';
+        if (effectiveUpiId) {
+          branding.upiId = effectiveUpiId;
+        }
 
-          if (userSettingsData?.payment_settings) {
-            branding.paymentMethods = userSettingsData.payment_settings;
-          }
+        const bankDetails =
+          userSettingsData?.payment_settings?.bankDetails ||
+          (userSettingsData?.bank_name || userSettingsData?.account_number
+            ? {
+                bankName: userSettingsData.bank_name || '',
+                accountHolderName: userSettingsData.account_holder_name || '',
+                accountNumber: userSettingsData.account_number || '',
+                ifscCode: userSettingsData.ifsc_code || '',
+                branchName: userSettingsData.branch_name || '',
+                upiId: effectiveUpiId,
+              }
+            : undefined);
+        if (bankDetails) {
+          branding.bankDetails = bankDetails;
+          (branding as any).bankName = bankDetails.bankName;
+          (branding as any).accountNumber = bankDetails.accountNumber;
+          (branding as any).accountHolderName = bankDetails.accountHolderName;
+          (branding as any).ifscCode = bankDetails.ifscCode;
+          (branding as any).branchName = bankDetails.branchName;
+        }
+
+        const razorpayPaymentLink =
+          userSettingsData?.razorpay_payment_link ||
+          userSettingsData?.payment_settings?.razorpayPaymentLink ||
+          '';
+        if (razorpayPaymentLink) {
+          branding.razorpayPaymentLink = razorpayPaymentLink;
+        }
+
+        if (userSettingsData?.payment_settings) {
+          branding.paymentMethods = {
+            ...userSettingsData.payment_settings,
+            upiQrCodeUrl: branding.upiQrCodeUrl,
+            upiId: branding.upiId,
+            bankDetails: branding.bankDetails,
+          };
         }
       }
     }
+
+    // Inspect recent invoices for client/invoiceId if payment details or QR are still missing
+    const invoiceId = searchParams.get('invoiceId')?.trim();
+    if (!branding.upiQrCodeUrl || !branding.bankDetails || !branding.upiId) {
+      try {
+        let invQuery = supabaseAdmin
+          .from('invoices')
+          .select('payment_methods, bank_details, upi_id, upi_qr_code_url, razorpay_payment_link');
+
+        if (invoiceId) {
+          invQuery = invQuery.eq('id', invoiceId);
+        } else if (clientId) {
+          invQuery = invQuery.eq('client_id', clientId).order('created_at', { ascending: false }).limit(3);
+        }
+
+        const { data: invRows } = await invQuery;
+        if (invRows && invRows.length > 0) {
+          for (const inv of invRows) {
+            const qr = inv.upi_qr_code_url || inv.payment_methods?.upiQrCodeUrl;
+            const upi = inv.upi_id || inv.payment_methods?.upiId;
+            const b = inv.bank_details || inv.payment_methods?.bankDetails;
+            const rzp = inv.razorpay_payment_link || inv.payment_methods?.razorpayPaymentLink;
+
+            if (!branding.upiQrCodeUrl && qr) branding.upiQrCodeUrl = qr;
+            if (!branding.upiId && upi) branding.upiId = upi;
+            if (!branding.bankDetails && b) {
+              branding.bankDetails = b;
+              (branding as any).bankName = b.bankName;
+              (branding as any).accountNumber = b.accountNumber;
+              (branding as any).accountHolderName = b.accountHolderName;
+              (branding as any).ifscCode = b.ifscCode;
+              (branding as any).branchName = b.branchName;
+            }
+            if (!branding.razorpayPaymentLink && rzp) branding.razorpayPaymentLink = rzp;
+          }
+        }
+      } catch {
+        // non-critical
+      }
+    }
+
+    // If still missing, check system store / mock data fallback
+    if (!branding.upiQrCodeUrl || !branding.bankDetails) {
+      try {
+        const localProf = FlowDeskStore.getUserProfile() || {};
+        if (!branding.upiQrCodeUrl && localProf.upiQrCodeUrl) {
+          branding.upiQrCodeUrl = localProf.upiQrCodeUrl;
+        }
+        if (!branding.upiId && localProf.upiId) {
+          branding.upiId = localProf.upiId;
+        }
+        if (!branding.bankDetails && ((localProf as any).bankName || (localProf as any).bankDetails)) {
+          const fbBank = (localProf as any).bankDetails || {
+            bankName: (localProf as any).bankName || '',
+            accountHolderName: (localProf as any).accountHolderName || '',
+            accountNumber: (localProf as any).accountNumber || '',
+            ifscCode: (localProf as any).ifscCode || '',
+            branchName: (localProf as any).branchName || '',
+            upiId: branding.upiId || '',
+          };
+          branding.bankDetails = fbBank;
+          (branding as any).bankName = fbBank.bankName;
+          (branding as any).accountNumber = fbBank.accountNumber;
+          (branding as any).accountHolderName = fbBank.accountHolderName;
+          (branding as any).ifscCode = fbBank.ifscCode;
+          (branding as any).branchName = fbBank.branchName;
+        }
+      } catch {
+        // non-critical
+      }
+    }
+
+    // Ensure paymentMethods has up-to-date toggles and fields
+    branding.paymentMethods = {
+      ...(branding.paymentMethods || {}),
+      bankTransferEnabled: Boolean(branding.bankDetails?.accountNumber || branding.bankDetails?.bankName),
+      upiEnabled: Boolean(branding.upiId || branding.upiQrCodeUrl),
+      upiQrCodeUrl: branding.upiQrCodeUrl,
+      upiId: branding.upiId,
+      bankDetails: branding.bankDetails,
+    };
 
     return NextResponse.json({
       success: true,
