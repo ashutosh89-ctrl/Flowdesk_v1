@@ -136,7 +136,7 @@ export const BillingPlanPanel: React.FC = () => {
             <p className="font-semibold">{error || 'Subscription data unavailable'}</p>
             <p className="text-zinc-400 mt-0.5">Please check your network connection and retry.</p>
           </div>
-          <Button variant="secondary" size="sm" onClick={fetchBillingStatus}>
+          <Button type="button" variant="secondary" size="sm" onClick={fetchBillingStatus}>
             Retry
           </Button>
         </div>
@@ -174,6 +174,7 @@ export const BillingPlanPanel: React.FC = () => {
             </div>
           </div>
           <Button
+            type="button"
             variant="primary"
             size="sm"
             className="bg-red-500 hover:bg-red-600 text-white shadow-none"
@@ -197,7 +198,7 @@ export const BillingPlanPanel: React.FC = () => {
               </p>
             </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => setIsUpgradeModalOpen(true)}>
+          <Button type="button" variant="secondary" size="sm" onClick={() => setIsUpgradeModalOpen(true)}>
             Update Card
           </Button>
         </div>
@@ -218,6 +219,7 @@ export const BillingPlanPanel: React.FC = () => {
             </div>
           </div>
           <Button
+            type="button"
             variant="secondary"
             size="sm"
             onClick={handleResumeSubscription}
@@ -241,7 +243,7 @@ export const BillingPlanPanel: React.FC = () => {
               </p>
             </div>
           </div>
-          <Button variant="primary" size="sm" onClick={() => setIsUpgradeModalOpen(true)}>
+          <Button type="button" variant="primary" size="sm" onClick={() => setIsUpgradeModalOpen(true)}>
             Subscribe to Pro
           </Button>
         </div>
@@ -295,6 +297,7 @@ export const BillingPlanPanel: React.FC = () => {
 
             <div className="flex items-center gap-2">
               <Button
+                type="button"
                 variant="primary"
                 onClick={() => setIsUpgradeModalOpen(true)}
                 rightIcon={<ArrowUpRight className="w-4 h-4" />}
@@ -304,6 +307,7 @@ export const BillingPlanPanel: React.FC = () => {
 
               {planKey !== 'free' && !cancelAtPeriodEnd && (
                 <Button
+                  type="button"
                   variant="secondary"
                   onClick={handleCancelSubscription}
                   disabled={actionLoading}

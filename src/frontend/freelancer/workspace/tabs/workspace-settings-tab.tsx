@@ -223,11 +223,23 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
               placeholder="Field Key (e.g. VAT Reg)"
               value={newKey}
               onChange={(e) => setNewKey(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddCustomField();
+                }
+              }}
             />
             <Input
               placeholder="Field Value (e.g. GB-99401)"
               value={newValue}
               onChange={(e) => setNewValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddCustomField();
+                }
+              }}
             />
             <Button
               variant="secondary"

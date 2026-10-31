@@ -713,7 +713,19 @@ export const SettingsView: React.FC = () => {
       {/* TAB: PERMANENT CLIENT PORTAL LINK */}
       {activeTab === 'portal' && <PortalSettingsPanel />}
 
-      <form onSubmit={handleSave} className="space-y-6">
+      {/* TAB: BILLING & SUBSCRIPTION PLAN */}
+      {activeTab === 'billing' && <BillingPlanPanel />}
+
+      <form
+        onSubmit={handleSave}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+            e.preventDefault();
+            handleSave();
+          }
+        }}
+        className="space-y-6"
+      >
         {/* TAB 1: STUDIO PROFILE & BRANDING */}
         {activeTab === 'profile' && (
           <div className="space-y-6">
@@ -993,8 +1005,6 @@ export const SettingsView: React.FC = () => {
         {/* TAB 2: RATES & INVOICE DEFAULTS + NUMBERING SYSTEM */}
         {activeTab === 'billing' && (
           <div className="space-y-6">
-            <BillingPlanPanel />
-
             {/* Rates & Financial Defaults */}
             <Card variant="crystal">
               <CardHeader>

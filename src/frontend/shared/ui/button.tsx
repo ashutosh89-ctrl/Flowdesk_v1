@@ -16,6 +16,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       variant = 'primary',
       size = 'md',
       isLoading = false,
+      type = 'button',
       leftIcon,
       rightIcon,
       className = '',
@@ -83,6 +84,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
+        type={type}
         disabled={disabled || isLoading}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}

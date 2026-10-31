@@ -32,9 +32,9 @@ export const FeatureShowcase: React.FC = () => {
     },
     {
       icon: <ShieldCheck className="w-5 h-5 text-[#43D6B0]" />,
-      title: 'Password-Free Client Portal',
-      description: 'Clients access their dedicated review portal using direct, secure magic links without needing to create an account.',
-      benefit: 'Zero login friction for your clients and faster turnaround.',
+      title: 'Dedicated Client Portal',
+      description: 'Clients connect via secure invitation links to a branded portal to review deliverables, approve milestones, and track invoices with verified access.',
+      benefit: 'Fast, seamless onboarding with a professional, authenticated client experience.',
     },
     {
       icon: <FolderKanban className="w-5 h-5 text-[#43D6B0]" />,

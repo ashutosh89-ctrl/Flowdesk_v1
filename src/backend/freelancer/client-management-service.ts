@@ -230,7 +230,7 @@ export const FreelancerClientManagementService = {
    */
   sendClientInvitationEmail: async (
     clientId: string
-  ): Promise<{ success: boolean; message?: string; inviteUrl?: string; error?: string }> => {
+  ): Promise<{ success: boolean; message?: string; inviteUrl?: string; error?: string; emailDispatched?: boolean; emailDeliveryError?: string }> => {
     if (typeof window !== 'undefined' && isServerMutationBatchEnabled(3)) {
       try {
         const res = await fetch(`/api/clients/${encodeURIComponent(clientId)}/invitation`, {
@@ -246,6 +246,8 @@ export const FreelancerClientManagementService = {
           success: true,
           message: data.message || 'Invitation email dispatched',
           inviteUrl: data.url,
+          emailDispatched: data.emailDispatched,
+          emailDeliveryError: data.emailDeliveryError,
         };
       } catch (err: any) {
         return { success: false, error: err.message || 'Failed to dispatch invitation email' };

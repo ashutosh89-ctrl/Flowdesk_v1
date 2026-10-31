@@ -764,12 +764,9 @@ export default function PermanentPortalJoinPage({ params }: PageProps) {
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-4 sm:p-6 selection:bg-emerald-500/30">
       <div className="w-full max-w-md space-y-6">
         {/* Header Branding */}
-        <div className="text-center space-y-2">
+        <div className="text-center">
           <div className="inline-block">
             <FlowDeskLogo className="h-8 w-auto mx-auto" />
-          </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
-            <Sparkles className="w-3.5 h-3.5" /> Permanent Client Portal
           </div>
         </div>
 

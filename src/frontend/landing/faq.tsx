@@ -13,8 +13,8 @@ export const FAQSection: React.FC = () => {
       a: 'FlowDesk is purpose-built for the freelance-client relationship. Instead of just task lists, it unifies client onboarding, project scoping, deliverable version control, structured client approval sign-offs, document vaults, itemized invoicing, and payment tracking in one connected workspace.',
     },
     {
-      q: 'Do my clients need an account to review work or access invoices?',
-      a: 'No. Clients never need to create a FlowDesk account or remember passwords. They access their work via a dedicated, secure client portal using a direct magic link to review deliverables, submit revision requests, download documents, and view invoices.',
+      q: 'How do my clients join and access their portal?',
+      a: 'You send them a secure invitation link. New clients complete a quick 10-second setup to create their verified client account, while returning clients sign in directly to connect to your workspace. From there, they have private, authenticated access to review deliverables, request revisions, approve milestones, and view invoices.',
     },
     {
       q: 'Can I generate professional, itemized invoices?',

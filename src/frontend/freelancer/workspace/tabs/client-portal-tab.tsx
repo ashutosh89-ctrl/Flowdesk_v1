@@ -124,7 +124,15 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
       const res = await FreelancerClientManagementService.sendClientInvitationEmail(client.id);
       if (res.success) {
         if (res.inviteUrl) setConnectionUrl(res.inviteUrl);
-        showToast('Invitation Dispatched', res.message || `Invitation email sent to ${client.email}`, 'success');
+        if (res.emailDispatched === false) {
+          showToast(
+            'Link Ready (Email Not Sent)',
+            res.message || 'Invitation link created. Copy and share it manually.',
+            'info'
+          );
+        } else {
+          showToast('Invitation Dispatched', res.message || `Invitation email sent to ${client.email}`, 'success');
+        }
       } else {
         showToast('Delivery Notice', res.error || 'Failed to dispatch email', 'error');
       }
