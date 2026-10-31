@@ -245,16 +245,6 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           </button>
         )}
 
-        <div className="p-3 rounded-xl bg-[#176B5B]/10 border border-[#176B5B]/25 flex items-start gap-2.5">
-          <ShieldCheck className="w-4 h-4 text-[#43D6B0] shrink-0 mt-0.5" />
-          <div>
-            <p className="text-[11px] font-semibold text-[#43D6B0]">Magic Access Security</p>
-            <p className="text-[10px] text-[#A6B4AE] leading-relaxed mt-0.5">
-              Encrypted authenticated access provided by your service provider.
-            </p>
-          </div>
-        </div>
-
         <div className="flex items-center justify-center gap-2 py-1 text-[11px] text-[#A6B4AE] font-medium select-none">
           <img src="/branding/flowdesk-symbol.png" alt="FlowDesk" className="w-4 h-4 object-contain opacity-70" />
           <span className="tracking-wide">Powered by FlowDesk</span>

@@ -81,7 +81,7 @@ export const ProfileService = {
       avatarUrl: profileData.avatarUrl || '',
       logoUrl: profileData.logoUrl || '',
       signatureUrl: profileData.signatureUrl || '',
-      currency: profileData.currency || 'USD',
+      currency: profileData.currency || 'INR',
       companyName,
       hourlyRate: profileData.hourlyRate || 120,
       profession: profileData.profession || '',

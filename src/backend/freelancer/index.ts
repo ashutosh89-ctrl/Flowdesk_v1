@@ -602,6 +602,8 @@ export const FreelancerDeliverableService = {
         fileSize: d.file_size || d.metadata?.fileSize || undefined,
         previewImageUrl: d.preview_image_url || d.metadata?.previewImageUrl || undefined,
         thumbnailUrl: d.thumbnail_url || d.metadata?.thumbnailUrl || undefined,
+        repoUrl: d.metadata?.repositoryUrl || d.metadata?.repoUrl || d.metadata?.githubUrl || undefined,
+        previewUrl: d.metadata?.previewUrl || d.metadata?.liveProjectUrl || d.metadata?.projectUrl || undefined,
         commentsCount: d.comments_count || 0,
         filesCount: d.files_count || 0,
         isArchived: d.status === 'archived',
@@ -814,6 +816,14 @@ export const FreelancerDeliverableService = {
         internal_notes: delData.internalNotes || '',
         submission_message: delData.submissionMessage || '',
         approval_status: delData.approvalStatus || 'pending',
+        niche: delData.niche || 'general',
+        metadata: (delData as any).nicheMetadata || (delData as any).metadata || {
+          previewUrl: (delData as any).previewUrl,
+          liveProjectUrl: (delData as any).previewUrl,
+          repositoryUrl: (delData as any).repoUrl || (delData as any).repositoryUrl,
+          repoUrl: (delData as any).repoUrl || (delData as any).repositoryUrl,
+          githubUrl: (delData as any).repoUrl || (delData as any).repositoryUrl,
+        },
       };
 
       const { data, error } = await safeDeliverableInsert(supabase, payload);
@@ -898,6 +908,14 @@ export const FreelancerDeliverableService = {
         version: data.current_version || 'v1.0',
         internalNotes: data.internal_notes || '',
         submissionMessage: data.submission_message || '',
+        niche: data.niche || delData.niche || 'general',
+        nicheMetadata: data.metadata || (delData as any).nicheMetadata || {},
+        fileUrl: delData.fileUrl || undefined,
+        fileName: delData.fileName || undefined,
+        fileSize: delData.fileSize || undefined,
+        previewImageUrl: (delData as any).previewImageUrl || undefined,
+        repoUrl: (delData as any).repoUrl || data.metadata?.repositoryUrl || data.metadata?.repoUrl || undefined,
+        previewUrl: (delData as any).previewUrl || data.metadata?.previewUrl || data.metadata?.liveProjectUrl || undefined,
       };
     } catch (err) {
       console.warn('Direct Supabase write failed:', err);

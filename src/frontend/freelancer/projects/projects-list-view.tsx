@@ -23,7 +23,9 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import { useAuth } from '@/frontend/auth/auth-context';
-import { getCurrencySymbol } from '@/shared/utils/currency';
+import { formatCurrency, getCurrencySymbol } from '@/shared/utils/currency';
+import { UserSettingsService } from '@/backend/auth/user-settings-service';
+import { UserSettings } from '@/shared/types';
 
 export interface ProjectsListViewProps {
   onOpenWorkspace?: (clientId: string) => void;
@@ -31,7 +33,29 @@ export interface ProjectsListViewProps {
 
 export const ProjectsListView: React.FC<ProjectsListViewProps> = ({ onOpenWorkspace }) => {
   const { profile, userSettings } = useAuth();
-  const studioCurrency = userSettings?.currency || profile?.currency || 'INR';
+  const [activeCurrency, setActiveCurrency] = useState<string>(() => {
+    return userSettings?.currency || profile?.currency || UserSettingsService.getLocalSettings('usr-default')?.currency || 'INR';
+  });
+
+  useEffect(() => {
+    const cur = userSettings?.currency || profile?.currency;
+    if (cur) setActiveCurrency(cur);
+  }, [userSettings?.currency, profile?.currency]);
+
+  useEffect(() => {
+    const handleSettingsUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<UserSettings>;
+      if (customEvent.detail?.currency) {
+        setActiveCurrency(customEvent.detail.currency);
+      }
+    };
+    window.addEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    return () => {
+      window.removeEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    };
+  }, []);
+
+  const studioCurrency = activeCurrency || 'INR';
   const currencySymbol = getCurrencySymbol(studioCurrency);
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -205,7 +229,11 @@ export const ProjectsListView: React.FC<ProjectsListViewProps> = ({ onOpenWorksp
 
               <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs text-zinc-400">
                 <span className="flex items-center gap-1 font-mono text-white font-bold">
-                  {currencySymbol} {p.budget.toLocaleString('en-IN')}
+                  {(() => {
+                    const projectClient = clients.find((c) => c.id === p.clientId);
+                    const projectCurrency = projectClient?.currency || studioCurrency;
+                    return formatCurrency(p.budget, projectCurrency);
+                  })()}
                 </span>
 
                 <div className="flex items-center gap-2">

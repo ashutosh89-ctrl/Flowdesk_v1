@@ -113,9 +113,9 @@ export const AuthService = {
         });
 
         await UserSettingsService.saveUserSettings(data.user.id, {
-          currency: 'USD',
-          tax_name: 'Sales Tax',
-          default_tax_rate: 10,
+          currency: 'INR',
+          tax_name: 'GST',
+          default_tax_rate: 0,
         });
 
         // Set local session copy for seamless state persistence
@@ -170,12 +170,13 @@ export const AuthService = {
       companyName: businessName,
       email: targetEmail,
       onboardingCompleted: true,
+      currency: 'INR',
     });
 
     await UserSettingsService.saveUserSettings(mockUserId, {
-      currency: 'USD',
-      tax_name: 'Sales Tax',
-      default_tax_rate: 10,
+      currency: 'INR',
+      tax_name: 'GST',
+      default_tax_rate: 0,
     });
 
     return { user, error: null };

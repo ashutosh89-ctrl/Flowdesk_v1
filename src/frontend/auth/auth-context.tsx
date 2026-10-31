@@ -54,6 +54,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           companyName: businessName,
           email: currentUser.email || '',
           onboardingCompleted: false,
+          currency: 'INR',
         });
       } else if (fetchedProfile && currentUser?.email && fetchedProfile.email !== currentUser.email) {
         // Email consistency: Supabase auth.users.email is authoritative.
@@ -70,9 +71,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.warn('Profile email sync notice:', syncErr?.message);
         }
       }
-      setProfile(fetchedProfile);
 
       const settings = await UserSettingsService.getUserSettings(userId);
+      const localCached = UserSettingsService.getLocalSettings(userId) || UserSettingsService.getLocalSettings('usr-default');
+      const activeCurrency = localCached?.currency || settings?.currency || fetchedProfile?.currency || 'INR';
+      
+      if (fetchedProfile) {
+        fetchedProfile = { ...fetchedProfile, currency: activeCurrency };
+      }
+      if (settings) {
+        settings.currency = activeCurrency;
+      }
+
+      setProfile(fetchedProfile);
       setUserSettings(settings);
     } catch (err: any) {
       console.warn('Error loading profile/settings:', err?.message);
@@ -126,6 +137,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     initAuth();
 
+    // Listen to flowdesk settings update events for live UI reactivity
+    const handleSettingsUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<UserSettings>;
+      if (customEvent.detail && mounted) {
+        const newSettings = customEvent.detail;
+        setUserSettings(newSettings);
+        if (newSettings.currency) {
+          setProfile((prev) => (prev ? { ...prev, currency: newSettings.currency } : prev));
+        }
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    }
+
     // Listen to Supabase auth state changes for ongoing updates
     const subscription = SessionService.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
@@ -153,6 +179,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       mounted = false;
       if (subscription && typeof subscription.unsubscribe === 'function') {
         subscription.unsubscribe();
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('flowdesk:settings-updated', handleSettingsUpdated);
       }
     };
   }, [loadProfileAndSettings]);
@@ -299,7 +328,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           email: data.clientEmail || 'contact@apexdigital.com',
           status: 'active',
           country: data.country || 'India',
-          currency: data.currency || 'USD',
+          currency: data.currency || 'INR',
           notes: 'First client created during onboarding.',
           activeProjectsCount: 1,
         });

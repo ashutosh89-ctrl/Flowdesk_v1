@@ -98,10 +98,27 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
 
             const meta = (deliv.nicheMetadata || {}) as Record<string, any>;
             
-            // Extract Project URLs and Repository Links
-            const repoUrl = meta.repositoryUrl || meta.repoUrl;
+            // Extract Project URLs and Repository Links with fallback extraction
+            const rawRepoUrl =
+              deliv.repoUrl ||
+              (deliv as any).githubUrl ||
+              (deliv as any).repositoryUrl ||
+              meta.repositoryUrl ||
+              meta.repoUrl ||
+              meta.githubUrl ||
+              (() => {
+                if (deliv.fileUrl && /github\.com/i.test(deliv.fileUrl)) return deliv.fileUrl;
+                const match = `${deliv.description || ''} ${deliv.submissionMessage || ''}`.match(/https?:\/\/(www\.)?github\.com\/[^\s)\]]+/i);
+                return match ? match[0] : null;
+              })();
+
+            const repoUrl = rawRepoUrl && isSafeHttpUrl(rawRepoUrl) ? rawRepoUrl : null;
+
             const liveProjectUrl = (() => {
               const url =
+                deliv.previewUrl ||
+                (deliv as any).liveProjectUrl ||
+                (deliv as any).projectUrl ||
                 meta.previewUrl ||
                 meta.liveProjectUrl ||
                 meta.projectUrl ||
@@ -111,7 +128,21 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                 meta.documentUrl ||
                 meta.reportUrl ||
                 meta.socialPreviewUrl ||
-                meta.publishingUrl;
+                meta.publishingUrl ||
+                (() => {
+                  if (
+                    deliv.fileUrl &&
+                    isSafeHttpUrl(deliv.fileUrl) &&
+                    !/github\.com/i.test(deliv.fileUrl) &&
+                    !/\.(pdf|zip|tar|rar|docx?|xlsx?)($|\?)/i.test(deliv.fileUrl) &&
+                    !deliv.fileUrl.includes('/flowdesk.app/deliverables/')
+                  ) {
+                    return deliv.fileUrl;
+                  }
+                  const match = `${deliv.description || ''} ${deliv.submissionMessage || ''}`.match(/https?:\/\/[^\s)\]]+/i);
+                  if (match && !/github\.com/i.test(match[0])) return match[0];
+                  return null;
+                })();
               return url && isSafeHttpUrl(url) ? url : null;
             })();
             const branchName = meta.branchName;
@@ -168,7 +199,20 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                       </a>
                     )}
 
-                    {deliv.fileUrl && deliv.fileUrl !== '#' && deliv.fileUrl !== '' ? (
+                    {repoUrl && (
+                      <a
+                        href={repoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white border border-white/20 transition-all shadow-sm"
+                      >
+                        <Code2 className="w-3.5 h-3.5 text-[#43D6B0]" />
+                        <span>GitHub Repo</span>
+                        <ExternalLink className="w-3 h-3 opacity-70" />
+                      </a>
+                    )}
+
+                    {deliv.fileUrl && deliv.fileUrl !== '#' && deliv.fileUrl !== '' && !deliv.fileUrl.startsWith('https://flowdesk.app/deliverables/') ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -178,15 +222,17 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                         Download Asset
                       </Button>
                     ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled
-                        className="opacity-50 cursor-not-allowed"
-                        leftIcon={<Download className="w-3.5 h-3.5 text-zinc-500" />}
-                      >
-                        File Unavailable
-                      </Button>
+                      !liveProjectUrl && !repoUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled
+                          className="opacity-50 cursor-not-allowed"
+                          leftIcon={<Download className="w-3.5 h-3.5 text-zinc-500" />}
+                        >
+                          File Unavailable
+                        </Button>
+                      )
                     )}
 
                     {!isApproved && (

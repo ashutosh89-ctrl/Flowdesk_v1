@@ -169,8 +169,13 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
         submissionMessage: submissionMessage.trim(),
         status: 'draft' as const,
         approvalStatus: 'pending' as const,
+        previewUrl: previewUrl.trim() || undefined,
+        repoUrl: repoUrl.trim() || undefined,
         niche,
-        nicheMetadata: buildNicheMetadata(),
+        nicheMetadata: {
+          ...buildNicheMetadata(),
+          githubUrl: repoUrl.trim() || undefined,
+        },
       };
 
       if (onCreate) {

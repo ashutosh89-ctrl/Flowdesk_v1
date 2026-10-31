@@ -24,7 +24,29 @@ interface InvoiceDashboardProps {
 
 export function InvoiceDashboard({ metrics, onSelectInvoice, onCreateInvoice, currency: propCurrency }: InvoiceDashboardProps) {
   const { profile, userSettings } = useAuth();
-  const currency = propCurrency || userSettings?.currency || profile?.currency || 'INR';
+  const [internalCurrency, setInternalCurrency] = React.useState<string>(() => {
+    return propCurrency || userSettings?.currency || profile?.currency || 'INR';
+  });
+
+  React.useEffect(() => {
+    const c = propCurrency || userSettings?.currency || profile?.currency;
+    if (c) setInternalCurrency(c);
+  }, [propCurrency, userSettings?.currency, profile?.currency]);
+
+  React.useEffect(() => {
+    const handleSettingsUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<any>;
+      if (customEvent.detail?.currency) {
+        setInternalCurrency(customEvent.detail.currency);
+      }
+    };
+    window.addEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    return () => {
+      window.removeEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    };
+  }, []);
+
+  const currency = internalCurrency || 'INR';
 
   const safeMetrics: FinancialDashboardMetrics = {
     lifetimeRevenue: metrics?.lifetimeRevenue ?? 0,

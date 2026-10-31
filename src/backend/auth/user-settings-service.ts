@@ -107,12 +107,28 @@ export const UserSettingsService = {
                     upiId: prof.upi_id,
                   };
                 }
-                if (prof.currency && (!data.currency || data.currency === 'USD')) {
+                const localCached = this.getLocalSettings(userId) || this.getLocalSettings('usr-default');
+                if (localCached?.currency && localCached.currency !== 'USD') {
+                  settings.currency = localCached.currency;
+                } else if (data?.currency && data.currency !== 'USD') {
+                  settings.currency = data.currency;
+                } else if (prof.currency && prof.currency !== 'USD') {
                   settings.currency = prof.currency;
+                } else {
+                  settings.currency = localCached?.currency || data?.currency || prof.currency || 'INR';
                 }
               }
             } catch {
               // non-critical
+            }
+          } else {
+            const localCached = this.getLocalSettings(userId) || this.getLocalSettings('usr-default');
+            if (localCached?.currency && localCached.currency !== 'USD') {
+              settings.currency = localCached.currency;
+            } else if (data?.currency && data.currency !== 'USD') {
+              settings.currency = data.currency;
+            } else {
+              settings.currency = localCached?.currency || data?.currency || 'INR';
             }
           }
 
@@ -319,6 +335,17 @@ export const UserSettingsService = {
         }
         if (error) {
           console.warn('Supabase settings upsert notice (non-fatal, cached locally):', error.message);
+        }
+
+        if (updates.currency) {
+          try {
+            await supabase
+              .from('profiles')
+              .update({ currency: updates.currency, updated_at: new Date().toISOString() })
+              .eq('id', userId);
+          } catch (profSyncErr) {
+            console.warn('Profile currency update notice:', profSyncErr);
+          }
         }
       } catch (err: any) {
         console.warn('Supabase settings sync notice (saved to local cache):', err?.message);

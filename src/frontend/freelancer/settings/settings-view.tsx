@@ -70,7 +70,7 @@ export const SettingsView: React.FC = () => {
     title: '',
     email: '',
     avatarUrl: '',
-    currency: 'USD',
+    currency: 'INR',
     companyName: '',
     hourlyRate: 120,
     profession: '',
@@ -147,11 +147,12 @@ export const SettingsView: React.FC = () => {
         ]);
 
         if (mounted) {
+          const effectiveCurrency = settingsData?.currency || profileData?.currency || 'INR';
           if (profileData) {
-            setProfile(profileData);
+            setProfile({ ...profileData, currency: effectiveCurrency });
           }
           if (settingsData) {
-            setSettings(settingsData);
+            setSettings({ ...settingsData, currency: effectiveCurrency });
           }
         }
       } catch (err) {
@@ -178,9 +179,9 @@ export const SettingsView: React.FC = () => {
   const handleSettingsChange = (field: keyof UserSettings, value: any) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
     setDirty(true);
-    if (field === 'default_deliverable_niche' && user?.id) {
+    if ((field === 'currency' || field === 'default_deliverable_niche') && user?.id) {
       UserSettingsService.saveUserSettings(user.id, { [field]: value }).catch((err) => {
-        console.warn('Background niche preference sync notice:', err);
+        console.warn(`Background ${field} preference sync notice:`, err);
       });
     }
   };
@@ -927,8 +928,12 @@ export const SettingsView: React.FC = () => {
                   <div>
                     <label className="block text-xs font-medium text-zinc-300 mb-1.5">Primary Studio Currency</label>
                     <select
-                      value={profile.currency}
-                      onChange={(e) => handleProfileChange('currency', e.target.value)}
+                      value={profile.currency || settings.currency || 'INR'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleProfileChange('currency', val);
+                        handleSettingsChange('currency', val);
+                      }}
                       className="w-full px-3 py-2 border border-white/10 rounded-xl bg-zinc-900 text-white text-sm focus:outline-none focus:border-white/30"
                     >
                       {SUPPORTED_CURRENCIES.map((c) => (

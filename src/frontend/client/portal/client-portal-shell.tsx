@@ -315,7 +315,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
               )}
 
               {activeTab === 'projects' && (
-                <ProjectOverview projects={projects} activities={activities} />
+                <ProjectOverview projects={projects} activities={activities} currency={client?.currency || 'INR'} />
               )}
 
               {activeTab === 'deliverables' && (

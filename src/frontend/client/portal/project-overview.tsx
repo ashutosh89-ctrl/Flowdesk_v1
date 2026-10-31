@@ -22,9 +22,10 @@ import { formatCurrency } from '@/shared/utils/currency';
 interface ProjectOverviewProps {
   projects: Project[];
   activities: PortalActivity[];
+  currency?: string;
 }
 
-export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, activities }) => {
+export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, activities, currency = 'INR' }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || '');
 
   const activeProject = projects.find((p) => p.id === selectedProjectId) || projects[0];
@@ -112,7 +113,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, acti
               <span>Agreed Budget</span>
             </div>
             <p className="text-2xl font-extrabold text-white font-mono">
-              {formatCurrency(activeProject.budget || 0, 'INR')}
+              {formatCurrency(activeProject.budget || 0, currency || 'INR')}
             </p>
             <p className="text-[11px] text-zinc-500">Fixed Milestone Agreement</p>
           </div>

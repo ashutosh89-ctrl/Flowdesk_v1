@@ -29,8 +29,33 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import { useAuth } from '@/frontend/auth/auth-context';
+import { UserSettingsService } from '@/backend/auth/user-settings-service';
+import { UserSettings } from '@/shared/types';
 
 export const InvoicesListView: React.FC = () => {
+  const { profile, userSettings } = useAuth();
+  const [activeCurrency, setActiveCurrency] = useState<string>(() => {
+    return userSettings?.currency || profile?.currency || UserSettingsService.getLocalSettings('usr-default')?.currency || 'INR';
+  });
+
+  useEffect(() => {
+    const cur = userSettings?.currency || profile?.currency;
+    if (cur) setActiveCurrency(cur);
+  }, [userSettings?.currency, profile?.currency]);
+
+  useEffect(() => {
+    const handleSettingsUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<UserSettings>;
+      if (customEvent.detail?.currency) {
+        setActiveCurrency(customEvent.detail.currency);
+      }
+    };
+    window.addEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    return () => {
+      window.removeEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    };
+  }, []);
+
   const [viewMode, setViewMode] = useState<'dashboard' | 'directory'>('dashboard');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [metrics, setMetrics] = useState<FinancialDashboardMetrics>({
@@ -80,7 +105,6 @@ export const InvoicesListView: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   const { showToast } = useToast();
-  const { profile } = useAuth();
 
   const refreshData = async () => {
     try {
@@ -338,6 +362,7 @@ export const InvoicesListView: React.FC = () => {
       {!isLoading && (viewMode === 'dashboard' ? (
         <InvoiceDashboard
           metrics={metrics}
+          currency={activeCurrency}
           onSelectInvoice={handleOpenDetails}
           onCreateInvoice={handleOpenCreate}
         />

@@ -64,6 +64,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenClientWorkspace,
 }) => {
   const { user, profile, userSettings } = useAuth();
+  const [activeCurrency, setActiveCurrency] = useState<string>(() => {
+    return userSettings?.currency || profile?.currency || 'INR';
+  });
+
+  useEffect(() => {
+    const cur = userSettings?.currency || profile?.currency;
+    if (cur) setActiveCurrency(cur);
+  }, [userSettings?.currency, profile?.currency]);
+
+  useEffect(() => {
+    const handleSettingsUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<any>;
+      if (customEvent.detail?.currency) {
+        setActiveCurrency(customEvent.detail.currency);
+      }
+    };
+    window.addEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    return () => {
+      window.removeEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    };
+  }, []);
+
   const [metrics, setMetrics] = useState<any>(emptyMetrics);
   const [todayItems, setTodayItems] = useState<TodayFocusItem[]>([]);
   const [health, setHealth] = useState<WorkspaceHealth>(initialHealth);
@@ -421,7 +443,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       <TodayFocusCard items={todayItems} onAction={handleActionFromFocus} onNavigate={onNavigate} />
-      <BusinessSnapshot metrics={metrics} onNavigate={onNavigate} />
+      <BusinessSnapshot metrics={metrics} onNavigate={onNavigate} currency={activeCurrency} />
       <ProjectHealthCard summaries={projectSummaries} onNavigate={onNavigate} />
 
       <div className="border border-white/5 rounded-2xl overflow-hidden">
@@ -458,6 +480,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   revenueHistory={metrics.revenueHistory || []}
                   revenueGrowthPct={metrics.revenueGrowthPct}
                   onNavigate={onNavigate}
+                  currency={activeCurrency}
                 />
               </div>
             </div>
