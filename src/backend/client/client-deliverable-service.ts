@@ -21,12 +21,23 @@ export const ClientDeliverableService = {
     }
 
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('deliverables')
-        .select('*')
+        .select('*, deliverable_files(*)')
         .eq('client_id', clientId)
         .neq('status', 'archived')
         .order('due_date', { ascending: true });
+
+      if (error) {
+        const fallbackRes = await supabase
+          .from('deliverables')
+          .select('*')
+          .eq('client_id', clientId)
+          .neq('status', 'archived')
+          .order('due_date', { ascending: true });
+        data = fallbackRes.data;
+        error = fallbackRes.error;
+      }
 
       if (error) {
         console.warn('Error fetching client deliverables:', error.message);
@@ -34,35 +45,121 @@ export const ClientDeliverableService = {
       }
 
       if (data && data.length > 0) {
-        return data.map((d) => ({
-          id: d.id,
-          projectId: d.project_id || '',
-          clientId: d.client_id,
-          clientName: d.client_name || '',
-          title: d.title,
-          description: d.description || '',
-          status: d.status || 'draft',
-          approvalStatus: d.approval_status || 'pending',
-          priority: d.priority || 'medium',
-          dueDate: d.due_date || new Date().toISOString().split('T')[0],
-          reviewDeadline: d.review_deadline || undefined,
-          version: d.current_version || 'v1.0',
-          submissionMessage: d.submission_message || '',
-          rejectionReason: d.rejection_reason || undefined,
-          niche: d.niche || 'general',
-          nicheMetadata: d.metadata || {},
-          fileUrl: d.file_url || d.metadata?.fileUrl || undefined,
-          fileName: d.file_name || d.metadata?.fileName || undefined,
-          fileSize: d.file_size || d.metadata?.fileSize || undefined,
-          previewImageUrl: d.preview_image_url || d.metadata?.previewImageUrl || undefined,
-          thumbnailUrl: d.thumbnail_url || d.metadata?.thumbnailUrl || undefined,
-          repoUrl: d.metadata?.repositoryUrl || d.metadata?.repoUrl || d.metadata?.githubUrl || undefined,
-          previewUrl: d.metadata?.previewUrl || d.metadata?.liveProjectUrl || d.metadata?.projectUrl || undefined,
-          commentsCount: d.comments_count || 0,
-          filesCount: d.files_count || 0,
-          createdAt: d.created_at,
-          updatedAt: d.updated_at,
-        }));
+        return data.map((d) => {
+          const rawFiles = Array.isArray(d.deliverable_files) ? d.deliverable_files : [];
+
+          // 1. Preview URL:
+          const previewFile = rawFiles.find((f: any) =>
+            f.file_type === 'preview' ||
+            /vercel\.app|netlify\.app/i.test(f.file_url || '') ||
+            (/preview|live/i.test(f.file_name || '') && !f.file_url?.includes('/flowdesk.app/deliverables/'))
+          );
+          const resolvedPreviewUrl =
+            previewFile?.file_url ||
+            d.preview_url ||
+            d.metadata?.previewUrl ||
+            d.metadata?.liveProjectUrl ||
+            undefined;
+
+          // 2. Repository URL:
+          const repoFile = rawFiles.find((f: any) =>
+            f.file_type === 'github' ||
+            /github\.com|gitlab\.com/i.test(f.file_url || '') ||
+            /repository|github|repo/i.test(f.file_name || '')
+          );
+          const resolvedRepoUrl =
+            repoFile?.file_url ||
+            d.repo_url ||
+            d.metadata?.repositoryUrl ||
+            d.metadata?.repoUrl ||
+            d.metadata?.githubUrl ||
+            undefined;
+
+          // 3. Preview Image URL:
+          const imageFile = rawFiles.find((f: any) =>
+            f.file_type?.startsWith('image/') ||
+            /\.(png|jpe?g|webp|gif|svg)($|\?)/i.test(f.file_url || '') ||
+            Boolean(f.thumbnail_url)
+          );
+          const resolvedPreviewImg =
+            imageFile?.thumbnail_url ||
+            imageFile?.file_url ||
+            d.preview_image_url ||
+            d.thumbnail_url ||
+            d.metadata?.previewImageUrl ||
+            undefined;
+
+          // 4. Primary asset / file download:
+          const assetFile = rawFiles.find((f: any) =>
+            f.file_type !== 'github' &&
+            f.file_type !== 'preview' &&
+            !f.file_url?.startsWith('https://flowdesk.app/deliverables/')
+          );
+          const resolvedFileUrl =
+            assetFile?.file_url ||
+            d.file_url ||
+            d.metadata?.fileUrl ||
+            undefined;
+          const resolvedFileName =
+            assetFile?.file_name ||
+            d.file_name ||
+            d.metadata?.fileName ||
+            undefined;
+          const resolvedFileSize =
+            assetFile?.file_size ||
+            d.file_size ||
+            d.metadata?.fileSize ||
+            undefined;
+
+          return {
+            id: d.id,
+            projectId: d.project_id || '',
+            clientId: d.client_id,
+            clientName: d.client_name || '',
+            title: d.title,
+            description: d.description || '',
+            status: d.status || 'draft',
+            approvalStatus: d.approval_status || 'pending',
+            priority: d.priority || 'medium',
+            dueDate: d.due_date || new Date().toISOString().split('T')[0],
+            reviewDeadline: d.review_deadline || undefined,
+            version: d.current_version || 'v1.0',
+            submissionMessage: d.submission_message || '',
+            rejectionReason: d.rejection_reason || undefined,
+            niche: d.niche || 'general',
+            nicheMetadata: {
+              ...(d.metadata || {}),
+              previewUrl: resolvedPreviewUrl,
+              liveProjectUrl: resolvedPreviewUrl,
+              repoUrl: resolvedRepoUrl,
+              githubUrl: resolvedRepoUrl,
+              repositoryUrl: resolvedRepoUrl,
+              previewImageUrl: resolvedPreviewImg,
+            },
+            fileUrl: resolvedFileUrl,
+            fileName: resolvedFileName,
+            fileSize: resolvedFileSize,
+            previewImageUrl: resolvedPreviewImg,
+            thumbnailUrl: resolvedPreviewImg,
+            repoUrl: resolvedRepoUrl,
+            previewUrl: resolvedPreviewUrl,
+            files: rawFiles.map((f: any) => ({
+              id: f.id,
+              deliverableId: d.id,
+              fileName: f.file_name,
+              fileSize: f.file_size,
+              fileType: f.file_type,
+              fileUrl: f.file_url,
+              thumbnailUrl: f.thumbnail_url,
+              uploadedAt: f.uploaded_at || f.created_at,
+              isPinned: Boolean(f.is_pinned),
+            })),
+            commentsCount: d.comments_count || 0,
+            filesCount: rawFiles.length || d.files_count || 0,
+            createdAt: d.created_at,
+            updatedAt: d.updated_at,
+          };
+        });
       }
     } catch (err) {
       console.warn('Error fetching client deliverables:', err);

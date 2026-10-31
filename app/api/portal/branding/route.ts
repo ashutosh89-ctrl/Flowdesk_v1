@@ -209,7 +209,62 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           userSettingsData = settingsRes.data;
         }
 
-        // If user_settings row for ownerId is missing or has no payment details, check any recent user_settings row
+        // If user_settings row for ownerId is missing or has no payment details, check storage or recent rows
+        let storagePaymentSettings: any = null;
+        if (ownerId) {
+          try {
+            const { data: fileBlob, error: fileErr } = await supabaseAdmin.storage
+              .from('documents')
+              .download(`settings/${ownerId}/payment_settings.txt`);
+            if (!fileErr && fileBlob) {
+              const text = await fileBlob.text();
+              storagePaymentSettings = JSON.parse(text);
+            }
+          } catch {
+            // non-critical
+          }
+        }
+
+        if (!storagePaymentSettings) {
+          try {
+            const { data: list } = await supabaseAdmin.storage.from('documents').list('settings');
+            if (list && list.length > 0) {
+              for (const item of list) {
+                if (item.name && item.name.length > 10) {
+                  const { data: fb } = await supabaseAdmin.storage
+                    .from('documents')
+                    .download(`settings/${item.name}/payment_settings.txt`);
+                  if (fb) {
+                    const txt = await fb.text();
+                    storagePaymentSettings = JSON.parse(txt);
+                    if (storagePaymentSettings?.bankDetails || storagePaymentSettings?.upiId) break;
+                  }
+                }
+              }
+            }
+          } catch {
+            // non-critical
+          }
+        }
+
+        if (storagePaymentSettings) {
+          userSettingsData = {
+            ...(userSettingsData || {}),
+            payment_settings: {
+              ...(userSettingsData?.payment_settings || {}),
+              ...storagePaymentSettings,
+            },
+            upi_id: storagePaymentSettings.upiId || userSettingsData?.upi_id,
+            upi_qr_code_url: storagePaymentSettings.upiQrCodeUrl || userSettingsData?.upi_qr_code_url,
+            bank_name: storagePaymentSettings.bankDetails?.bankName || userSettingsData?.bank_name,
+            account_holder_name: storagePaymentSettings.bankDetails?.accountHolderName || userSettingsData?.account_holder_name,
+            account_number: storagePaymentSettings.bankDetails?.accountNumber || userSettingsData?.account_number,
+            ifsc_code: storagePaymentSettings.bankDetails?.ifscCode || userSettingsData?.ifsc_code,
+            branch_name: storagePaymentSettings.bankDetails?.branchName || userSettingsData?.branch_name,
+            razorpay_payment_link: storagePaymentSettings.razorpayPaymentLink || userSettingsData?.razorpay_payment_link,
+          };
+        }
+
         if (!userSettingsData?.payment_settings?.bankDetails && !userSettingsData?.bank_name && !userSettingsData?.upi_qr_code_url) {
           try {
             const { data: latestSettings } = await supabaseAdmin
@@ -328,13 +383,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Inspect recent invoices for client/invoiceId if payment details or QR are still missing
+    // Inspect recent invoices for client/invoiceId if payment notes or instructions exist
     const invoiceId = searchParams.get('invoiceId')?.trim();
     if (!branding.upiQrCodeUrl || !branding.bankDetails || !branding.upiId) {
       try {
         let invQuery = supabaseAdmin
           .from('invoices')
-          .select('payment_methods, bank_details, upi_id, upi_qr_code_url, razorpay_payment_link');
+          .select('id, client_id, notes, payment_instructions');
 
         if (invoiceId) {
           invQuery = invQuery.eq('id', invoiceId);
@@ -345,22 +400,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         const { data: invRows } = await invQuery;
         if (invRows && invRows.length > 0) {
           for (const inv of invRows) {
-            const qr = inv.upi_qr_code_url || inv.payment_methods?.upiQrCodeUrl;
-            const upi = inv.upi_id || inv.payment_methods?.upiId;
-            const b = inv.bank_details || inv.payment_methods?.bankDetails;
-            const rzp = inv.razorpay_payment_link || inv.payment_methods?.razorpayPaymentLink;
-
-            if (!branding.upiQrCodeUrl && qr) branding.upiQrCodeUrl = qr;
-            if (!branding.upiId && upi) branding.upiId = upi;
-            if (!branding.bankDetails && b) {
-              branding.bankDetails = b;
-              (branding as any).bankName = b.bankName;
-              (branding as any).accountNumber = b.accountNumber;
-              (branding as any).accountHolderName = b.accountHolderName;
-              (branding as any).ifscCode = b.ifscCode;
-              (branding as any).branchName = b.branchName;
+            if (inv.payment_instructions) {
+              const text = inv.payment_instructions;
+              const upiMatch = text.match(/[\w.-]+@[\w.-]+/);
+              if (upiMatch && !branding.upiId) {
+                branding.upiId = upiMatch[0];
+              }
             }
-            if (!branding.razorpayPaymentLink && rzp) branding.razorpayPaymentLink = rzp;
           }
         }
       } catch {

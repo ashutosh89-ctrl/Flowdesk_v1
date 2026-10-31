@@ -68,6 +68,11 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
   const pendingDeliverables = deliverables.filter(d => d.status === 'ready_for_review' || d.status === 'submitted' || d.status === 'preparing');
   const pendingDocs = documents.filter(d => d.status === 'pending' || d.isRequired);
   const unpaidInvoices = invoices.filter(i => i.paymentStatus !== 'paid');
+  const effectiveCurrency =
+    unpaidInvoices[0]?.currency ||
+    invoices[0]?.currency ||
+    client?.currency ||
+    'INR';
 
   return (
     <div className="space-y-8">
@@ -192,7 +197,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
           </div>
           <div className="mt-3">
             <span className="text-2xl font-extrabold text-white font-mono">
-              ${outstandingInvoicesTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              {formatCurrency(outstandingInvoicesTotal, effectiveCurrency)}
             </span>
             <p className="text-xs text-zinc-400 mt-1">
               {unpaidInvoices.length > 0 ? `${unpaidInvoices.length} unpaid statement(s)` : 'Account settled in full'}

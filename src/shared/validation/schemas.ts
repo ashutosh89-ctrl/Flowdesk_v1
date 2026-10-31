@@ -257,6 +257,9 @@ export const CreateDeliverableSchema = z.object({
     'consulting_va',
     'others',
   ]).optional().default('general'),
+  previewUrl: z.string().trim().max(2048).optional(),
+  repoUrl: z.string().trim().max(2048).optional(),
+  previewImageUrl: z.string().trim().max(2048).optional(),
   nicheMetadata: z.record(z.string(), z.any()).optional().default({}),
 }).strict();
 

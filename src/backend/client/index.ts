@@ -288,7 +288,7 @@ export const ClientPortalService = {
             totalBilled: Number(canonicalData.total_billed) || 0,
             activeProjectsCount: canonicalData.active_projects_count || 0,
             country: canonicalData.country || 'India',
-            currency: canonicalData.currency || 'USD',
+            currency: canonicalData.currency || 'INR',
             createdAt: canonicalData.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
           };
           (client as any).workspace_id = canonicalData.workspace_id;

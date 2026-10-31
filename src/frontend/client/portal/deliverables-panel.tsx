@@ -97,12 +97,27 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
             const isApproved = deliv.status === 'approved' || deliv.status === 'completed';
 
             const meta = (deliv.nicheMetadata || {}) as Record<string, any>;
+            const attachedFiles = (deliv as any).files || [];
+            const previewFileObj = attachedFiles.find((f: any) =>
+              f.fileType === 'preview' ||
+              f.file_type === 'preview' ||
+              /vercel\.app|netlify\.app/i.test(f.fileUrl || f.file_url || '') ||
+              /preview|live/i.test(f.fileName || f.file_name || '')
+            );
+            const repoFileObj = attachedFiles.find((f: any) =>
+              f.fileType === 'github' ||
+              f.file_type === 'github' ||
+              /github\.com|gitlab\.com/i.test(f.fileUrl || f.file_url || '') ||
+              /repository|github|repo/i.test(f.fileName || f.file_name || '')
+            );
             
             // Extract Project URLs and Repository Links with fallback extraction
             const rawRepoUrl =
               deliv.repoUrl ||
               (deliv as any).githubUrl ||
               (deliv as any).repositoryUrl ||
+              repoFileObj?.fileUrl ||
+              repoFileObj?.file_url ||
               meta.repositoryUrl ||
               meta.repoUrl ||
               meta.githubUrl ||
@@ -119,6 +134,8 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                 deliv.previewUrl ||
                 (deliv as any).liveProjectUrl ||
                 (deliv as any).projectUrl ||
+                previewFileObj?.fileUrl ||
+                previewFileObj?.file_url ||
                 meta.previewUrl ||
                 meta.liveProjectUrl ||
                 meta.projectUrl ||
@@ -191,7 +208,7 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                         href={liveProjectUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#43D6B0]/15 hover:bg-[#43D6B0]/25 text-[#43D6B0] border border-[#43D6B0]/30 transition-all shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#43D6B0]/15 hover:bg-[#43D6B0]/25 text-[#43D6B0] border border-[#43D6B0]/30 transition-all shadow-sm cursor-pointer"
                       >
                         <Globe className="w-3.5 h-3.5" />
                         <span>Live Preview</span>
@@ -204,7 +221,7 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                         href={repoUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white border border-white/20 transition-all shadow-sm"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white border border-white/20 transition-all shadow-sm cursor-pointer"
                       >
                         <Code2 className="w-3.5 h-3.5 text-[#43D6B0]" />
                         <span>GitHub Repo</span>
@@ -383,6 +400,35 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                           <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-emerald-400 shrink-0 ml-2" />
                         </a>
                       )}
+
+                      {attachedFiles
+                        .filter(
+                          (f: any) =>
+                            f.fileUrl &&
+                            f.fileUrl !== liveProjectUrl &&
+                            f.fileUrl !== repoUrl &&
+                            !f.fileUrl.startsWith('https://flowdesk.app/deliverables/')
+                        )
+                        .map((f: any) => (
+                          <a
+                            key={f.id}
+                            href={f.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900/80 border border-white/10 hover:border-[#43D6B0]/50 hover:bg-zinc-900 text-zinc-200 transition-all group"
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <FileText className="w-4 h-4 text-[#43D6B0] shrink-0" />
+                              <div className="truncate">
+                                <span className="text-[10px] text-zinc-400 block">{f.fileName || 'Attached Asset'}</span>
+                                <span className="font-mono text-xs font-semibold text-white truncate block">
+                                  {f.fileUrl.replace(/^https?:\/\//, '')}
+                                </span>
+                              </div>
+                            </div>
+                            <ExternalLink className="w-3.5 h-3.5 text-zinc-400 group-hover:text-[#43D6B0] shrink-0 ml-2" />
+                          </a>
+                        ))}
                     </div>
                   </div>
                 )}

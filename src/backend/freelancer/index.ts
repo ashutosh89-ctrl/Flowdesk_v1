@@ -9,6 +9,7 @@ import { UserSettingsService } from '@/backend/auth/user-settings-service';
 import { FlowDeskStore } from '@/backend/store/storage-store';
 import { isServerMutationBatchEnabled } from '@/shared/config/feature-flags';
 import { safeDeliverableInsert, safeDeliverableUpdate, safeDeliverableFileInsert, deriveApprovalStatus } from '@/backend/utilities/deliverables-db';
+import { isSafeHttpUrl } from '@/shared/utils/safe-url';
 
 /** Helper: format bytes to human-readable string */
 const formatFileSize = (bytes: number): string => {
@@ -742,6 +743,9 @@ export const FreelancerDeliverableService = {
             status: delData.status || 'draft',
             approvalStatus: delData.approvalStatus || 'pending',
             niche: delData.niche || 'general',
+            previewUrl: (delData as any).previewUrl,
+            repoUrl: (delData as any).repoUrl,
+            previewImageUrl: (delData as any).previewImageUrl,
             nicheMetadata: delData.nicheMetadata || {},
           }),
         });
@@ -942,6 +946,63 @@ export const FreelancerDeliverableService = {
       if (updates.approvalStatus !== undefined) payload.approval_status = updates.approvalStatus;
       if (updates.niche !== undefined) payload.niche = updates.niche;
       if (updates.nicheMetadata !== undefined) payload.metadata = updates.nicheMetadata;
+
+      // Resilient sync of Live Preview and Repo URLs to deliverable_files
+      const previewUrl = updates.previewUrl || (updates as any).nicheMetadata?.previewUrl || (updates as any).nicheMetadata?.liveProjectUrl;
+      const repoUrl = updates.repoUrl || (updates as any).nicheMetadata?.repositoryUrl || (updates as any).nicheMetadata?.repoUrl || (updates as any).nicheMetadata?.githubUrl;
+
+      if (previewUrl && isSafeHttpUrl(previewUrl)) {
+        try {
+          const { data: existingPreview } = await supabase
+            .from('deliverable_files')
+            .select('id')
+            .eq('deliverable_id', id)
+            .eq('file_type', 'preview')
+            .maybeSingle();
+
+          if (existingPreview) {
+            await supabase.from('deliverable_files').update({ file_url: previewUrl }).eq('id', existingPreview.id);
+          } else {
+            await safeDeliverableFileInsert(supabase, {
+              deliverable_id: id,
+              file_name: 'App Live Preview',
+              file_size: 'Web App',
+              file_type: 'preview',
+              file_url: previewUrl,
+              is_pinned: true,
+            });
+          }
+        } catch (prevErr) {
+          console.warn('Sync previewUrl notice:', prevErr);
+        }
+      }
+
+      if (repoUrl && isSafeHttpUrl(repoUrl)) {
+        try {
+          const { data: existingRepo } = await supabase
+            .from('deliverable_files')
+            .select('id')
+            .eq('deliverable_id', id)
+            .eq('file_type', 'github')
+            .maybeSingle();
+
+          if (existingRepo) {
+            await supabase.from('deliverable_files').update({ file_url: repoUrl }).eq('id', existingRepo.id);
+          } else {
+            await safeDeliverableFileInsert(supabase, {
+              deliverable_id: id,
+              file_name: 'GitHub Repository',
+              file_size: 'Source Code',
+              file_type: 'github',
+              file_url: repoUrl,
+              is_pinned: false,
+            });
+          }
+        } catch (repoErr) {
+          console.warn('Sync repoUrl notice:', repoErr);
+        }
+      }
+
       const { data, error } = await safeDeliverableUpdate(supabase, id, payload, { key: 'workspace_id', value: wsId });
       if (error) { console.warn('Supabase deliverable update error:', error.message); return undefined; }
       if (!data) return undefined;
