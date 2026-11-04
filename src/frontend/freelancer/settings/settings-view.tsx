@@ -43,8 +43,10 @@ import {
   Building2,
   QrCode,
   ExternalLink,
+  Download,
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
+import Link from 'next/link';
 import { SUPPORTED_CURRENCIES } from '@/shared/utils/currency';
 import { formatInvoiceNumber, sanitizeInvoicePrefix } from '@/shared/utils/invoice-calculations';
 import { InvoiceNumberFormatPreset } from '@/shared/types';
@@ -94,6 +96,7 @@ export const SettingsView: React.FC = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isExportingData, setIsExportingData] = useState(false);
 
   // Logo, Signature & QR upload states
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -669,6 +672,31 @@ export const SettingsView: React.FC = () => {
     }
   };
 
+  const handleExportData = async () => {
+    try {
+      setIsExportingData(true);
+      const res = await fetch('/api/account/export');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to generate data export');
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `flowdesk-data-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      showToast('Export Complete', 'Your complete account data archive has been downloaded as JSON.', 'success');
+    } catch (err: any) {
+      showToast('Export Failed', err.message || 'Could not export your data. Please try again or contact support.', 'error');
+    } finally {
+      setIsExportingData(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -942,20 +970,18 @@ export const SettingsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleSettingsChange('default_deliverable_niche', 'software_development')}
-                    className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
-                      (settings.default_deliverable_niche || 'software_development') === 'software_development'
+                    className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${(settings.default_deliverable_niche || 'software_development') === 'software_development'
                         ? 'bg-[#176B5B]/15 border-[#176B5B] shadow-[0_0_15px_rgba(23,107,91,0.2)] ring-1 ring-[#43D6B0]/50'
                         : 'bg-[#191F1D] border-[#176B5B]/30 hover:border-[#176B5B]/60'
-                    }`}
+                      }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2.5">
-                          <div className={`p-2 rounded-lg ${
-                            (settings.default_deliverable_niche || 'software_development') === 'software_development'
+                          <div className={`p-2 rounded-lg ${(settings.default_deliverable_niche || 'software_development') === 'software_development'
                               ? 'bg-[#176B5B]/30 text-[#43D6B0]'
                               : 'bg-white/5 text-[#A6B4AE]'
-                          }`}>
+                            }`}>
                             <Code2 className="w-4 h-4" />
                           </div>
                           <span className="text-sm font-semibold text-[#F5F5F0]">Software Developer</span>
@@ -977,20 +1003,18 @@ export const SettingsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleSettingsChange('default_deliverable_niche', 'others')}
-                    className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
-                      settings.default_deliverable_niche === 'others'
+                    className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${settings.default_deliverable_niche === 'others'
                         ? 'bg-[#176B5B]/15 border-[#176B5B] shadow-[0_0_15px_rgba(23,107,91,0.2)] ring-1 ring-[#43D6B0]/50'
                         : 'bg-[#191F1D] border-[#176B5B]/30 hover:border-[#176B5B]/60'
-                    }`}
+                      }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2.5">
-                          <div className={`p-2 rounded-lg ${
-                            settings.default_deliverable_niche === 'others'
+                          <div className={`p-2 rounded-lg ${settings.default_deliverable_niche === 'others'
                               ? 'bg-[#176B5B]/30 text-[#43D6B0]'
                               : 'bg-white/5 text-[#A6B4AE]'
-                          }`}>
+                            }`}>
                             <Briefcase className="w-4 h-4" />
                           </div>
                           <span className="text-sm font-semibold text-[#F5F5F0]">Others</span>
@@ -1174,11 +1198,10 @@ export const SettingsView: React.FC = () => {
                               handleSettingsChange('invoice_number_format', 'custom');
                             }
                           }}
-                          className={`p-3.5 rounded-xl border text-left transition-all ${
-                            isSelected
+                          className={`p-3.5 rounded-xl border text-left transition-all ${isSelected
                               ? 'bg-emerald-500/10 border-emerald-500/60 ring-1 ring-emerald-500/40 text-white'
                               : 'bg-white/[0.02] border-white/10 hover:border-white/20 text-zinc-300'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center justify-between mb-1">
                             <span className="font-mono text-xs font-bold">{preset.label}</span>
@@ -1867,6 +1890,56 @@ export const SettingsView: React.FC = () => {
               </CardContent>
             </Card>
 
+            {/* Privacy & Data Rights (DPDP Act 2023) */}
+            <Card variant="crystal" className="border-blue-500/20 bg-blue-950/10">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-blue-400" />
+                  <CardTitle className="text-blue-300">Privacy & Data Rights (DPDP Act 2023)</CardTitle>
+                </div>
+                <CardDescription className="text-blue-200/70">
+                  Access, export, and manage your personal and workspace data in accordance with Indian privacy laws.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-950/20">
+                  <div>
+                    <h4 className="text-xs font-bold text-blue-100">Export My Data (JSON Archive)</h4>
+                    <p className="text-[11px] text-blue-200/60 mt-0.5">
+                      Download a complete, machine-readable JSON archive of your user profile, workspaces, clients, projects, deliverables, documents, and tax invoices.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportData}
+                    isLoading={isExportingData}
+                    leftIcon={<Download className="w-3.5 h-3.5 text-blue-400" />}
+                    className="border-blue-500/40 text-blue-200 hover:bg-blue-500/20 shrink-0"
+                  >
+                    Export Data (JSON)
+                  </Button>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-white/5 bg-white/[0.02]">
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-200">Data Correction, Erasure & Grievance Redressal</h4>
+                    <p className="text-[11px] text-zinc-400 mt-0.5">
+                      Submit a privacy rights request or contact our designated Grievance Officer regarding data rectification, withdrawal of consent, or erasure inquiries.
+                    </p>
+                  </div>
+                  <Link
+                    href="/contact?category=Privacy%20and%20Data%20Deletion"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/20 text-xs text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 transition-colors shrink-0"
+                  >
+                    <span>Contact Grievance Officer</span>
+                    <ExternalLink className="w-3 h-3 text-zinc-400" />
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Danger Zone */}
             <Card variant="crystal" className="border-rose-500/20 bg-rose-950/10">
               <CardHeader>
@@ -2062,7 +2135,7 @@ export const SettingsView: React.FC = () => {
                 Deleting your account will immediately suspend access to your workspace, documents, and client portals.
               </p>
               <p>
-                You can recover and restore your account at any time by simply logging back into FlowDesk within <strong>5 days</strong>. After 5 days, all data, clients, invoices, and storage files will be permanently purged.
+                You can recover and restore your account at any time by simply logging back into FlowDesk within <strong>5 days</strong>. After 5 days, all workspace data, clients, projects, and deliverable storage files will be permanently purged. In accordance with Indian tax regulations, historical financial transaction and tax invoice records are retained for statutory retention periods.
               </p>
             </div>
 

@@ -50,6 +50,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             type={inputType}
             value={value}
             disabled={disabled}
+            suppressHydrationWarning
             className={`w-full bg-[#191F1D]/80 backdrop-blur-md text-[#F5F5F0] text-base placeholder-[#A6B4AE]/60 border rounded-xl py-3 transition-all duration-200 focus:outline-none focus:ring-2 ${
               error
                 ? 'border-rose-500/60 focus:border-rose-500 focus:ring-rose-500/25'

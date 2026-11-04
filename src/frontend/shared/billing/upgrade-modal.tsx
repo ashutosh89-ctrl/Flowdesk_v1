@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Modal } from '@/frontend/shared/ui/modal';
 import { Button } from '@/frontend/shared/ui/button';
 import { BILLING_PLANS, PlanKey, BillingInterval } from '@/shared/billing';
@@ -28,90 +29,82 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   const { showToast } = useToast();
 
   const handleCheckout = async (planKey: PlanKey) => {
-    if (planKey === 'free' || planKey === currentPlanKey) return;
-
-    setLoadingPlan(planKey);
-    setError(null);
-
     try {
+      setLoadingPlan(planKey);
+      setError(null);
+
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           planKey,
           interval,
+          notes: { client_portal: 'flowdesk_freelancer' },
         }),
       });
 
       const data = await res.json();
+
       if (!res.ok) {
-        throw new Error(data.error?.message || data.error || 'Failed to start checkout session.');
+        throw new Error(data.error || 'Failed to initiate checkout session');
       }
 
-      // If Razorpay SDK is available, open checkout modal
-      if (typeof window !== 'undefined' && (window as any).Razorpay && data.checkoutPayload) {
-        const options = {
-          key: data.checkoutPayload.keyId,
-          subscription_id: data.checkoutPayload.subscriptionId,
-          name: 'FlowDesk Workspace',
-          description: `Subscription to ${BILLING_PLANS[planKey].name} (${interval})`,
+      // Check if Razorpay is loaded
+      if (typeof window !== 'undefined' && (window as any).Razorpay) {
+        const rzp = new (window as any).Razorpay({
+          key: data.keyId,
+          subscription_id: data.subscriptionId,
+          name: 'FlowDesk Studio',
+          description: `${BILLING_PLANS[planKey].name} Plan Subscription`,
           handler: function (response: any) {
-            showToast(
-              'Subscription Initiated',
-              'Payment authorized. Your plan entitlements will update momentarily.',
-              'success'
-            );
+            showToast('Upgrade Successful', 'Your workspace limits have been updated.', 'success');
             onSuccess?.();
             onClose();
           },
-          prefill: {
-            name: data.checkoutPayload.customerName,
-            email: data.checkoutPayload.customerEmail,
-          },
           theme: {
-            color: '#10b981',
+            color: '#176B5B',
           },
-        };
-        const rzp = new (window as any).Razorpay(options);
+        });
+
+        rzp.on('payment.failed', function (response: any) {
+          setError(response.error?.description || 'Payment authorization failed');
+        });
+
         rzp.open();
       } else {
-        // Mock / development confirmation
-        showToast(
-          'Plan Activated',
-          `Workspace successfully upgraded to ${BILLING_PLANS[planKey].name}.`,
-          'success'
-        );
-        onSuccess?.();
-        onClose();
+        // Fallback for demo / preview environments without Razorpay SDK injected
+        if (data.shortUrl) {
+          window.location.assign(data.shortUrl);
+        } else {
+          showToast(
+            'Subscription Created',
+            `Subscription ID ${data.subscriptionId} initiated in test mode.`,
+            'info'
+          );
+          onSuccess?.();
+          onClose();
+        }
       }
     } catch (err: any) {
-      setError(err?.message || 'Checkout failed. Please try again.');
+      setError(err.message || 'Subscription checkout failed');
     } finally {
       setLoadingPlan(null);
     }
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Upgrade Your Workspace"
-      description="Unlock higher client limits, more storage, and custom branding."
-      size="xl"
-    >
-      <div className="space-y-6 pt-2">
+    <Modal isOpen={isOpen} onClose={onClose} title="Upgrade Workspace Plan" size="xl">
+      <div className="space-y-6">
         {featureNotice && (
-          <div className="flex items-center gap-2 p-3 bg-[#43D6B0]/10 border border-[#43D6B0]/20 rounded-xl text-xs text-[#43D6B0]">
-            <Zap className="w-4 h-4 shrink-0 text-[#43D6B0]" />
+          <div className="flex items-center gap-2 p-3 bg-[#176B5B]/15 border border-[#176B5B]/40 rounded-xl text-xs text-[#F5F5F0]">
+            <Zap className="w-4 h-4 text-[#43D6B0] shrink-0" />
             <span>{featureNotice}</span>
           </div>
         )}
 
         {error && (
-          <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-300">
-            <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+          <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400">
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
@@ -164,6 +157,11 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="text-sm font-bold text-[#F5F5F0] tracking-tight">{plan.name}</span>
+                    {plan.badge && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/30">
+                        {plan.badge}
+                      </span>
+                    )}
                     {isCurrent && (
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/30">
                         Current
@@ -184,18 +182,26 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                         /{interval === 'yearly' ? 'year' : 'month'}
                       </span>
                     </div>
-                    <span className="text-[10px] text-[#A6B4AE]">+ 18% GST</span>
+                    <span className="text-[10px] text-[#A6B4AE]">+ 18% GST (Tax Invoice Included)</span>
                   </div>
 
                   {/* Limits bullets */}
                   <ul className="space-y-2 pt-3 border-t border-[#176B5B]/20 text-xs text-[#A6B4AE] mb-6">
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
-                      <span>{plan.limits.activeClients} active clients</span>
+                      <span>
+                        {plan.limits.activeClients >= 1000
+                          ? 'Unlimited active clients (fair use)'
+                          : `${plan.limits.activeClients} active clients`}
+                      </span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
-                      <span>{plan.limits.activeProjects} active projects</span>
+                      <span>
+                        {plan.limits.activeProjects >= 1000
+                          ? 'Unlimited active projects'
+                          : `${plan.limits.activeProjects} active projects`}
+                      </span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
@@ -239,7 +245,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                       {loadingPlan === planKey ? (
                         <div className="flex items-center justify-center gap-2">
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Preparing...</span>
+                          <span>Connecting...</span>
                         </div>
                       ) : (
                         `Upgrade to ${plan.name}`
@@ -252,12 +258,19 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           })}
         </div>
 
-        <div className="flex items-center justify-between text-xs text-[#A6B4AE] pt-2 border-t border-[#176B5B]/20">
+        {/* Policy Links & Razorpay e-Mandate disclosure */}
+        <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-[#A6B4AE] pt-3 border-t border-[#176B5B]/20 gap-2">
           <div className="flex items-center gap-2">
             <Shield className="w-3.5 h-3.5 text-[#43D6B0]" />
             <span>Secure recurring payments powered by Razorpay e-Mandate</span>
           </div>
-          <span>Cancel anytime from settings</span>
+          <div className="flex items-center gap-2 font-mono text-[11px]">
+            <Link href="/terms" target="_blank" className="hover:text-white underline">Terms</Link>
+            <span>•</span>
+            <Link href="/refund-policy" target="_blank" className="hover:text-white underline">Refunds</Link>
+            <span>•</span>
+            <Link href="/cancellation-policy" target="_blank" className="hover:text-white underline">Cancellations</Link>
+          </div>
         </div>
       </div>
     </Modal>

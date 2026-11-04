@@ -454,3 +454,36 @@ export type CreateRecurringSchedulePayload = z.infer<typeof CreateRecurringSched
 export type UpdateRecurringSchedulePayload = z.infer<typeof UpdateRecurringScheduleSchema>;
 export type UpdateReminderSettingsPayload = z.infer<typeof UpdateReminderSettingsSchema>;
 
+
+
+// ==========================================
+// Contact & Support Ticket Schema
+// ==========================================
+
+export const ContactCategoryEnum = z.enum([
+  'Account and Login',
+  'Subscription and Billing',
+  'Payment Failure',
+  'Refund Request',
+  'Client Management',
+  'Project Management',
+  'File Upload',
+  'Technical Issue',
+  'Bug Report',
+  'Privacy and Data Deletion',
+  'Other',
+]);
+
+export const ContactSubmissionSchema = z.object({
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
+  email: z.string().trim().email('Valid email address required').max(150),
+  category: ContactCategoryEnum,
+  subject: z.string().trim().min(3, 'Subject must be at least 3 characters').max(200),
+  message: z.string().trim().min(10, 'Message must be at least 10 characters').max(5000),
+  orderOrPaymentId: z.string().trim().max(100).optional().nullable(),
+  privacyConsent: z.boolean().optional(),
+  hp_website: z.string().max(0, 'Spam detected').optional().default(''),
+}).strict();
+
+export type ContactCategory = z.infer<typeof ContactCategoryEnum>;
+export type ContactSubmissionPayload = z.infer<typeof ContactSubmissionSchema>;

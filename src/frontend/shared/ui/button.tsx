@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -89,6 +91,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
+        suppressHydrationWarning
         className={`${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
         {...props}
       >
@@ -108,9 +111,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {ripples.map((r) => (
           <span
             key={r.id}
-            className={`absolute rounded-full pointer-events-none animate-ping ${
-              variant === 'primary' ? 'bg-white/35' : 'bg-white/25'
-            }`}
+            className={`absolute rounded-full pointer-events-none animate-ping ${variant === 'primary' ? 'bg-white/35' : 'bg-white/25'
+              }`}
             style={{
               left: r.x - 20,
               top: r.y - 20,

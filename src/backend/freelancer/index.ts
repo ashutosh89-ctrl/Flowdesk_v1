@@ -9,6 +9,7 @@ import { UserSettingsService } from '@/backend/auth/user-settings-service';
 import { FlowDeskStore } from '@/backend/store/storage-store';
 import { isServerMutationBatchEnabled } from '@/shared/config/feature-flags';
 import { safeDeliverableInsert, safeDeliverableUpdate, safeDeliverableFileInsert, deriveApprovalStatus } from '@/backend/utilities/deliverables-db';
+import { assertWithinLimit } from '@/backend/billing';
 import { isSafeHttpUrl } from '@/shared/utils/safe-url';
 
 /** Helper: format bytes to human-readable string */
@@ -262,6 +263,9 @@ export const FreelancerProjectService = {
     }
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) throw new Error('No active workspace');
+
+    // Server-side plan limit check
+    await assertWithinLimit(wsId, 'activeProjects', 1);
 
     try {
       const {
@@ -1623,21 +1627,21 @@ export const FreelancerInvoiceService = {
         const receipts = persistedReceipts.length > 0
           ? persistedReceipts
           : (i.invoice_payments || []).map((p: any) => ({
-              id: p.id,
-              receiptNumber: `RCP-${i.invoice_number || 'INV'}-${(p.id || '').slice(0, 4)}`,
-              invoiceId: p.invoice_id,
-              invoiceNumber: i.invoice_number,
-              amount: Number(p.amount) || 0,
-              currency: p.currency || i.currency || 'USD',
-              paymentDate: p.payment_date || p.created_at || new Date().toISOString(),
-              paymentMethod: p.payment_method || 'bank_transfer',
-              clientName: i.client_name,
-              notes: p.notes,
-              razorpayPaymentId: p.razorpay_payment_id,
-              razorpayOrderId: p.razorpay_order_id,
-              gateway: p.gateway || 'manual',
-              gatewayStatus: p.gateway_status || 'completed',
-            }));
+            id: p.id,
+            receiptNumber: `RCP-${i.invoice_number || 'INV'}-${(p.id || '').slice(0, 4)}`,
+            invoiceId: p.invoice_id,
+            invoiceNumber: i.invoice_number,
+            amount: Number(p.amount) || 0,
+            currency: p.currency || i.currency || 'USD',
+            paymentDate: p.payment_date || p.created_at || new Date().toISOString(),
+            paymentMethod: p.payment_method || 'bank_transfer',
+            clientName: i.client_name,
+            notes: p.notes,
+            razorpayPaymentId: p.razorpay_payment_id,
+            razorpayOrderId: p.razorpay_order_id,
+            gateway: p.gateway || 'manual',
+            gatewayStatus: p.gateway_status || 'completed',
+          }));
 
         return {
           id: i.id,
@@ -1756,21 +1760,21 @@ export const FreelancerInvoiceService = {
       const receipts = persistedReceipts.length > 0
         ? persistedReceipts
         : (i.invoice_payments || []).map((p: any) => ({
-            id: p.id,
-            receiptNumber: `RCP-${i.invoice_number || 'INV'}-${(p.id || '').slice(0, 4)}`,
-            invoiceId: p.invoice_id,
-            invoiceNumber: i.invoice_number,
-            amount: Number(p.amount) || 0,
-            currency: p.currency || i.currency || 'USD',
-            paymentDate: p.payment_date || p.created_at || new Date().toISOString(),
-            paymentMethod: p.payment_method || 'bank_transfer',
-            clientName: i.client_name,
-            notes: p.notes,
-            razorpayPaymentId: p.razorpay_payment_id,
-            razorpayOrderId: p.razorpay_order_id,
-            gateway: p.gateway || 'manual',
-            gatewayStatus: p.gateway_status || 'completed',
-          }));
+          id: p.id,
+          receiptNumber: `RCP-${i.invoice_number || 'INV'}-${(p.id || '').slice(0, 4)}`,
+          invoiceId: p.invoice_id,
+          invoiceNumber: i.invoice_number,
+          amount: Number(p.amount) || 0,
+          currency: p.currency || i.currency || 'USD',
+          paymentDate: p.payment_date || p.created_at || new Date().toISOString(),
+          paymentMethod: p.payment_method || 'bank_transfer',
+          clientName: i.client_name,
+          notes: p.notes,
+          razorpayPaymentId: p.razorpay_payment_id,
+          razorpayOrderId: p.razorpay_order_id,
+          gateway: p.gateway || 'manual',
+          gatewayStatus: p.gateway_status || 'completed',
+        }));
 
       return {
         id: i.id,

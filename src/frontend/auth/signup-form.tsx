@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Input } from '@/frontend/shared/ui/input';
 import { Button } from '@/frontend/shared/ui/button';
 import { OAuthButtons } from '@/frontend/shared/common/oauth-buttons';
@@ -116,6 +117,36 @@ export const SignUpForm: React.FC<SignupFormProps> = ({
           required
         />
 
+        <div className="text-[11px] text-zinc-400 text-center leading-relaxed px-1">
+          By creating an account, you agree to our{' '}
+          <Link
+            href="/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
+          >
+            Terms of Service
+          </Link>
+          ,{' '}
+          <Link
+            href="/refund-policy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
+          >
+            Refund Policy
+          </Link>
+          , and acknowledge our{' '}
+          <Link
+            href="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
+          >
+            Privacy Policy
+          </Link>
+          .
+        </div>
         <Button
           type="submit"
           variant="primary"
