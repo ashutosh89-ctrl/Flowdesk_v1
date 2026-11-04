@@ -14,10 +14,12 @@ import {
   Download,
   Upload,
   MessageSquare,
-  Sparkles,
   TrendingUp,
   Folder,
+  ShieldCheck,
 } from 'lucide-react';
+import { Progress } from '@/frontend/shared/ui/progress';
+import { formatCurrency } from '@/shared/utils/currency';
 import {
   Client,
   Project,
@@ -66,18 +68,20 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
   const pendingDeliverables = deliverables.filter(d => d.status === 'ready_for_review' || d.status === 'submitted' || d.status === 'preparing');
   const pendingDocs = documents.filter(d => d.status === 'pending' || d.isRequired);
   const unpaidInvoices = invoices.filter(i => i.paymentStatus !== 'paid');
+  const effectiveCurrency =
+    unpaidInvoices[0]?.currency ||
+    invoices[0]?.currency ||
+    client?.currency ||
+    'INR';
 
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}
-      <Card variant="crystal" className="p-6 sm:p-8 border-white/20 bg-gradient-to-r from-zinc-900/90 via-zinc-950 to-zinc-900/90 relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-          <Sparkles className="w-32 h-32 text-white" />
-        </div>
+      <Card variant="crystal" className="p-6 sm:p-8 border-white/20 bg-[#16181B] relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-zinc-300 font-mono">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <ShieldCheck className="w-3.5 h-3.5 text-[#43D6B0]" />
               <span>Workspace Active • {client.company}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
@@ -159,13 +163,13 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
         <Card
           variant="crystal"
           className={`p-5 transition-all cursor-pointer ${
-            pendingDocumentsCount > 0 ? 'border-blue-500/30 bg-blue-500/[0.03] hover:border-blue-500/50' : 'border-white/10 bg-zinc-900/50'
+            pendingDocumentsCount > 0 ? 'border-[#176B5B]/50 bg-[#176B5B]/10 hover:border-[#43D6B0]/50' : 'border-[#176B5B]/30 bg-[#191F1D]'
           }`}
           onClick={() => onNavigateTab('documents')}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono uppercase text-zinc-400 font-semibold tracking-wider">Document Requests</span>
-            <div className={`p-2 rounded-xl border ${pendingDocumentsCount > 0 ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-white/5 border-white/10 text-zinc-400'}`}>
+            <span className="text-xs font-mono uppercase text-[#A6B4AE] font-semibold tracking-wider">Document Requests</span>
+            <div className={`p-2 rounded-xl border ${pendingDocumentsCount > 0 ? 'bg-[#176B5B]/20 border-[#176B5B]/40 text-[#43D6B0]' : 'bg-white/5 border-white/10 text-zinc-400'}`}>
               <FileText className="w-4 h-4" />
             </div>
           </div>
@@ -193,7 +197,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
           </div>
           <div className="mt-3">
             <span className="text-2xl font-extrabold text-white font-mono">
-              ${outstandingInvoicesTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              {formatCurrency(outstandingInvoicesTotal, effectiveCurrency)}
             </span>
             <p className="text-xs text-zinc-400 mt-1">
               {unpaidInvoices.length > 0 ? `${unpaidInvoices.length} unpaid statement(s)` : 'Account settled in full'}
@@ -245,17 +249,12 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
                         <span>Milestone Progress</span>
                         <span className="font-bold text-white">{p.completionPercentage}%</span>
                       </div>
-                      <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-white h-1.5 rounded-full transition-all duration-500"
-                          style={{ width: `${p.completionPercentage}%` }}
-                        />
-                      </div>
+                      <Progress value={p.completionPercentage} size="xs" />
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[11px] text-zinc-400 font-mono">
                       <span>Target Launch: {p.dueDate}</span>
-                      <span>Budget: ${p.budget?.toLocaleString()}</span>
+                      <span>Budget: {formatCurrency(p.budget || 0, client.currency || 'INR')}</span>
                     </div>
                   </div>
                 ))
@@ -320,23 +319,23 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
         {/* Right Column (1 Col): Activity & Document Requests */}
         <div className="space-y-6">
           {/* Outstanding File Requests */}
-          <Card variant="crystal" className="border-blue-500/20 bg-blue-500/[0.02]">
+          <Card variant="crystal" className="border-[#176B5B]/30 bg-[#191F1D]">
             <CardHeader>
-              <CardTitle className="text-blue-300">Requested Files</CardTitle>
-              <CardDescription>Documents requested by your freelancer</CardDescription>
+              <CardTitle className="text-[#F5F5F0]">Requested Files</CardTitle>
+              <CardDescription className="text-[#A6B4AE]">Documents requested by your freelancer</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {pendingDocs.length === 0 ? (
-                <p className="text-xs text-zinc-500 italic py-2">No pending document requests.</p>
+                <p className="text-xs text-[#A6B4AE] italic py-2">No pending document requests.</p>
               ) : (
                 pendingDocs.slice(0, 3).map((doc) => (
-                  <div key={doc.id} className="p-3.5 rounded-xl bg-zinc-900/80 border border-white/10 space-y-2">
+                  <div key={doc.id} className="p-3.5 rounded-xl bg-[#101312] border border-[#176B5B]/30 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h5 className="text-xs font-bold text-white">{doc.title}</h5>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">{doc.type.toUpperCase()} • Requested</p>
+                        <h5 className="text-xs font-bold text-[#F5F5F0]">{doc.title}</h5>
+                        <p className="text-[11px] text-[#A6B4AE] mt-0.5">{doc.type.toUpperCase()} • Requested</p>
                       </div>
-                      <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+                      <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/40 font-bold">
                         Pending Upload
                       </span>
                     </div>

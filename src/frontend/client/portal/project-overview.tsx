@@ -14,14 +14,18 @@ import {
   Layers,
   ChevronRight,
   TrendingUp,
+  Receipt,
 } from 'lucide-react';
+import { Progress } from '@/frontend/shared/ui/progress';
+import { formatCurrency } from '@/shared/utils/currency';
 
 interface ProjectOverviewProps {
   projects: Project[];
   activities: PortalActivity[];
+  currency?: string;
 }
 
-export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, activities }) => {
+export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, activities, currency = 'INR' }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>(projects[0]?.id || '');
 
   const activeProject = projects.find((p) => p.id === selectedProjectId) || projects[0];
@@ -91,17 +95,12 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, acti
               <span>Overall Completion</span>
             </div>
             <p className="text-2xl font-extrabold text-white font-mono">{activeProject.completionPercentage}%</p>
-            <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-              <div
-                className="bg-emerald-400 h-1.5 rounded-full"
-                style={{ width: `${activeProject.completionPercentage}%` }}
-              />
-            </div>
+            <Progress value={activeProject.completionPercentage} size="xs" />
           </div>
 
           <div className="p-4 rounded-2xl bg-zinc-900/80 border border-white/10 space-y-1">
             <div className="flex items-center gap-2 text-zinc-400 text-xs font-mono">
-              <Calendar className="w-3.5 h-3.5 text-blue-400" />
+              <Calendar className="w-3.5 h-3.5 text-[#43D6B0]" />
               <span>Target Launch Date</span>
             </div>
             <p className="text-lg font-bold text-white font-mono">{activeProject.dueDate}</p>
@@ -110,11 +109,11 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, acti
 
           <div className="p-4 rounded-2xl bg-zinc-900/80 border border-white/10 space-y-1">
             <div className="flex items-center gap-2 text-zinc-400 text-xs font-mono">
-              <DollarSign className="w-3.5 h-3.5 text-indigo-400" />
+              <Receipt className="w-3.5 h-3.5 text-[#43D6B0]" />
               <span>Agreed Budget</span>
             </div>
             <p className="text-2xl font-extrabold text-white font-mono">
-              ${activeProject.budget?.toLocaleString()}
+              {formatCurrency(activeProject.budget || 0, currency || 'INR')}
             </p>
             <p className="text-[11px] text-zinc-500">Fixed Milestone Agreement</p>
           </div>
@@ -167,7 +166,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, acti
         {/* Project Timeline */}
         <div>
           <h3 className="text-sm font-bold text-white tracking-tight mb-4 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-blue-400" />
+            <Clock className="w-4 h-4 text-[#43D6B0]" />
             Client Timeline History
           </h3>
 

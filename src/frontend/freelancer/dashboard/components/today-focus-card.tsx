@@ -8,7 +8,7 @@ import {
   AlertCircle,
   FileSearch,
   MessageSquare,
-  Sparkles,
+  Target,
   ChevronRight,
   Check,
 } from 'lucide-react';
@@ -34,6 +34,9 @@ export const TodayFocusCard: React.FC<TodayFocusCardProps> = ({ items, onAction,
   };
 
   const activeItems = items.filter((item) => !completedIds.includes(item.id));
+  if (activeItems.length === 0) {
+    return null;
+  }
   const filteredItems = activeItems.filter(
     (item) => filterPriority === 'all' || item.priority === filterPriority
   );
@@ -80,20 +83,18 @@ export const TodayFocusCard: React.FC<TodayFocusCardProps> = ({ items, onAction,
       case 'comment_unanswered':
         return <MessageSquare className="w-4 h-4 text-purple-400" />;
       default:
-        return <Sparkles className="w-4 h-4 text-zinc-400" />;
+        return <CheckCircle2 className="w-4 h-4 text-zinc-400" />;
     }
   };
 
   return (
-    <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden group">
-      {/* Top Ambient Glow */}
-      <div className="absolute -top-24 -left-24 w-72 h-72 bg-gradient-to-br from-amber-500/10 via-rose-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+    <div className="bg-[#16181B] border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
-              <Sparkles className="w-4 h-4" />
+            <div className="p-1.5 rounded-lg bg-[#43D6B0]/10 border border-[#43D6B0]/20 text-[#43D6B0]">
+              <Target className="w-4 h-4" />
             </div>
             <h2 className="text-lg font-bold text-white tracking-tight">Today&apos;s Focus & Priorities</h2>
           </div>

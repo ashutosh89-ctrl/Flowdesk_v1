@@ -371,6 +371,9 @@ export const StorageHelper = {
    */
   async getDownloadUrl(bucket: StorageBucket, path: string, expiresIn = 300): Promise<string> {
     if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+      return path;
+    }
     if (PRIVATE_BUCKETS.has(bucket)) {
       try {
         return await this.getSignedUrl(bucket, path, expiresIn);

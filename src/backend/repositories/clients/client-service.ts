@@ -38,7 +38,7 @@ export const ClientRepository = {
         totalBilled: Number(c.total_billed) || 0,
         activeProjectsCount: c.active_projects_count || 0,
         country: c.country || 'India',
-        currency: c.currency || 'USD',
+        currency: c.currency || 'INR',
         createdAt: c.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
         deletedAt: c.deleted_at?.split('T')[0] || undefined,
         restoreUntil,
@@ -77,7 +77,7 @@ export const ClientRepository = {
       totalBilled: Number(data.total_billed) || 0,
       activeProjectsCount: data.active_projects_count || 0,
       country: data.country || 'India',
-      currency: data.currency || 'USD',
+      currency: data.currency || 'INR',
       createdAt: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
       deletedAt: data.deleted_at?.split('T')[0] || undefined,
       restoreUntil,
@@ -127,7 +127,7 @@ export const ClientRepository = {
         health_badge: clientData.healthBadge || 'healthy',
         active_projects_count: clientData.activeProjectsCount || 0,
         country: clientData.country || 'India',
-        currency: clientData.currency || 'USD',
+        currency: clientData.currency || 'INR',
         notes: clientData.notes || '',
       })
       .select()
@@ -149,7 +149,7 @@ export const ClientRepository = {
       totalBilled: Number(data.total_billed) || 0,
       activeProjectsCount: data.active_projects_count || 0,
       country: data.country || 'India',
-      currency: data.currency || 'USD',
+      currency: data.currency || 'INR',
       createdAt: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
     };
   },
@@ -186,7 +186,7 @@ export const ClientRepository = {
       totalBilled: Number(data.total_billed) || 0,
       activeProjectsCount: data.active_projects_count || 0,
       country: data.country || 'India',
-      currency: data.currency || 'USD',
+      currency: data.currency || 'INR',
       createdAt: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
     };
   },

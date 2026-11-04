@@ -70,34 +70,122 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
   const [utrSuccess, setUtrSuccess] = useState(false);
   const [utrError, setUtrError] = useState<string | null>(null);
 
+  // Live branding state for seamless updates
+  const [liveBranding, setLiveBranding] = useState<any>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let mounted = true;
+    const targetClientId = clientId || invoice?.clientId;
+    const targetInvoiceId = invoice?.id;
+
+    if (targetClientId || targetInvoiceId) {
+      fetch(`/api/portal/branding?clientId=${encodeURIComponent(targetClientId || '')}&invoiceId=${encodeURIComponent(targetInvoiceId || '')}`, {
+        cache: 'no-store',
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (mounted && data?.success && data?.branding) {
+            setLiveBranding(data.branding);
+          }
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [isOpen, clientId, invoice?.id, invoice?.clientId]);
+
   // Resolve branding and payment details
-  const effectiveBranding = (branding || {}) as any;
-  const invoiceBankDetails = invoice?.bankDetails || effectiveBranding.bankDetails || {};
-  const bankName = invoiceBankDetails.bankName || effectiveBranding.bankName || '';
+  const effectiveBranding = { ...(branding || {}), ...(liveBranding || {}) } as any;
+  const invoiceBankDetails =
+    invoice?.bankDetails ||
+    invoice?.paymentMethods?.bankDetails ||
+    effectiveBranding.bankDetails ||
+    effectiveBranding.payment_settings?.bankDetails ||
+    {};
+
+  const bankName =
+    invoiceBankDetails.bankName ||
+    invoiceBankDetails.bank_name ||
+    effectiveBranding.bankName ||
+    effectiveBranding.bank_name ||
+    effectiveBranding.payment_settings?.bankDetails?.bankName ||
+    effectiveBranding.payment_settings?.bankDetails?.bank_name ||
+    '';
+
   const accountHolderName =
     invoiceBankDetails.accountHolderName ||
+    invoiceBankDetails.account_holder_name ||
     effectiveBranding.accountHolderName ||
+    effectiveBranding.account_holder_name ||
+    effectiveBranding.payment_settings?.bankDetails?.accountHolderName ||
+    effectiveBranding.payment_settings?.bankDetails?.account_holder_name ||
     effectiveBranding.name ||
+    effectiveBranding.businessName ||
     '';
-  const accountNumber = invoiceBankDetails.accountNumber || effectiveBranding.accountNumber || '';
+
+  const accountNumber =
+    invoiceBankDetails.accountNumber ||
+    invoiceBankDetails.account_number ||
+    effectiveBranding.accountNumber ||
+    effectiveBranding.account_number ||
+    effectiveBranding.payment_settings?.bankDetails?.accountNumber ||
+    effectiveBranding.payment_settings?.bankDetails?.account_number ||
+    '';
+
   const ifscCode =
     invoiceBankDetails.ifscCode ||
+    invoiceBankDetails.ifsc_code ||
     invoiceBankDetails.swiftCode ||
+    invoiceBankDetails.swift_code ||
     effectiveBranding.ifscCode ||
+    effectiveBranding.ifsc_code ||
+    effectiveBranding.payment_settings?.bankDetails?.ifscCode ||
+    effectiveBranding.payment_settings?.bankDetails?.ifsc_code ||
     '';
-  const branchName = invoiceBankDetails.branchName || effectiveBranding.branchName || '';
+
+  const branchName =
+    invoiceBankDetails.branchName ||
+    invoiceBankDetails.branch_name ||
+    effectiveBranding.branchName ||
+    effectiveBranding.branch_name ||
+    effectiveBranding.payment_settings?.bankDetails?.branchName ||
+    effectiveBranding.payment_settings?.bankDetails?.branch_name ||
+    '';
 
   const upiId =
     invoice?.upiId ||
+    invoice?.paymentMethods?.upiId ||
     invoiceBankDetails.upiId ||
+    invoiceBankDetails.upi_id ||
     effectiveBranding.upiId ||
+    effectiveBranding.upi_id ||
+    effectiveBranding.payment_settings?.upiId ||
+    effectiveBranding.payment_settings?.upi_id ||
     effectiveBranding.bankDetails?.upiId ||
+    effectiveBranding.bankDetails?.upi_id ||
+    effectiveBranding.payment_settings?.bankDetails?.upiId ||
     '';
-  const upiQrCodeUrl = invoice?.upiQrCodeUrl || effectiveBranding.upiQrCodeUrl || '';
+
+  const upiQrCodeUrl =
+    invoice?.upiQrCodeUrl ||
+    invoice?.paymentMethods?.upiQrCodeUrl ||
+    invoiceBankDetails.upiQrCodeUrl ||
+    invoiceBankDetails.upi_qr_code_url ||
+    effectiveBranding.upiQrCodeUrl ||
+    effectiveBranding.upi_qr_code_url ||
+    effectiveBranding.payment_settings?.upiQrCodeUrl ||
+    effectiveBranding.payment_settings?.upi_qr_code_url ||
+    '';
+
   const payeeName =
     effectiveBranding.businessName ||
     effectiveBranding.companyName ||
     effectiveBranding.name ||
+    accountHolderName ||
     'FlowDesk Studio';
 
   const hasQr = Boolean(upiQrCodeUrl || upiId);
@@ -105,8 +193,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
 
   // Active payment method tab
   const [activeTab, setActiveTab] = useState<PaymentMethodTab>(() => {
-    if (hasQr) return 'qr';
-    if (hasBank) return 'bank';
+    if (hasQr || hasBank) return 'qr';
     return 'online';
   });
 
@@ -390,24 +477,25 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
             )}
 
             {/* Payment Method Selector Tabs */}
-            <div className="grid grid-cols-3 gap-2 p-1 bg-zinc-950 rounded-xl border border-white/10">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 p-1 bg-zinc-950 rounded-xl border border-white/10">
               <button
                 type="button"
                 onClick={() => setActiveTab('qr')}
-                className={`py-2 px-2.5 rounded-lg flex items-center justify-center gap-1.5 font-bold transition-all text-xs cursor-pointer ${
+                className={`py-2 px-1.5 sm:px-2.5 rounded-lg flex items-center justify-center gap-1 sm:gap-1.5 font-bold transition-all text-[11px] sm:text-xs cursor-pointer ${
                   activeTab === 'qr'
                     ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border border-transparent'
                 }`}
               >
                 <QrCode className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Scan & Pay QR</span>
+                <span className="hidden sm:inline">{hasBank ? 'QR & Bank Transfer' : 'Scan & Pay QR'}</span>
+                <span className="sm:hidden">{hasBank ? 'QR / Bank' : 'QR Pay'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab('bank')}
-                className={`py-2 px-2.5 rounded-lg flex items-center justify-center gap-1.5 font-bold transition-all text-xs cursor-pointer ${
+                className={`py-2 px-1.5 sm:px-2.5 rounded-lg flex items-center justify-center gap-1 sm:gap-1.5 font-bold transition-all text-[11px] sm:text-xs cursor-pointer ${
                   activeTab === 'bank'
                     ? 'bg-amber-500/20 border border-amber-500/40 text-amber-300 shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border border-transparent'
@@ -420,21 +508,23 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('online')}
-                className={`py-2 px-2.5 rounded-lg flex items-center justify-center gap-1.5 font-bold transition-all text-xs cursor-pointer ${
+                className={`py-2 px-1.5 sm:px-2.5 rounded-lg flex items-center justify-center gap-1 sm:gap-1.5 font-bold transition-all text-[11px] sm:text-xs cursor-pointer ${
                   activeTab === 'online'
-                    ? 'bg-blue-500/20 border border-blue-500/40 text-blue-300 shadow-sm'
+                    ? 'bg-[#176B5B]/20 border border-[#176B5B]/50 text-[#43D6B0] shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border border-transparent'
                 }`}
               >
                 <CreditCard className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Card / Online</span>
+                <span className="hidden sm:inline">Card / Online</span>
+                <span className="sm:hidden">Online</span>
               </button>
             </div>
 
-            {/* TAB 1: INSTANT QR CODE PAYMENT */}
+            {/* TAB 1: INSTANT QR CODE & BANK TRANSFER PAYMENT */}
             {activeTab === 'qr' && (
-              <div className="p-4 rounded-xl bg-zinc-900/70 border border-white/10 space-y-4">
-                <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-900/70 border border-white/10 space-y-4">
+                {/* QR Section */}
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4">
                   {/* The QR Code Image / SVG */}
                   <div className="relative p-2 bg-white rounded-xl shadow-lg border border-zinc-200 w-[140px] h-[140px] flex items-center justify-center shrink-0 overflow-hidden">
                     {upiQrCodeUrl ? (
@@ -453,7 +543,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
                     ) : (
                       <div className="text-zinc-500 text-center text-[10px] p-2">
                         <QrCode className="w-8 h-8 mx-auto text-zinc-400 mb-1" />
-                        No QR configured
+                        Scan & Pay
                       </div>
                     )}
                   </div>
@@ -487,7 +577,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
                             <button
                               type="button"
                               onClick={() => copyText(upiId, 'upiModalVpa')}
-                              className="p-1 rounded bg-white/10 hover:bg-white/20 text-zinc-200"
+                              className="p-1 rounded bg-white/10 hover:bg-white/20 text-zinc-200 transition-colors"
                               title="Copy UPI ID"
                             >
                               {copiedField === 'upiModalVpa' ? (
@@ -500,18 +590,96 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
                         </div>
                       )}
                     </div>
+                  </div>
+                </div>
 
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('confirm_utr')}
-                        className="w-full py-2 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <FileCheck2 className="w-3.5 h-3.5" />
-                        <span>I Have Completed Payment (Submit UTR)</span>
-                      </button>
+                {/* Embedded Direct Bank Transfer Details (Visible on client side if user updated bank details) */}
+                {hasBank && (
+                  <div className="pt-3 border-t border-white/10 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                        <Landmark className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Direct Bank Transfer Details</span>
+                      </div>
+                      <span className="text-[10px] text-zinc-400 font-mono">IMPS / NEFT / RTGS</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                      {accountHolderName && (
+                        <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
+                          <span className="text-zinc-400 block text-[10px]">Beneficiary Name</span>
+                          <span className="font-semibold text-zinc-200">{accountHolderName}</span>
+                        </div>
+                      )}
+
+                      {bankName && (
+                        <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
+                          <span className="text-zinc-400 block text-[10px]">Bank Name</span>
+                          <span className="font-semibold text-zinc-200">{bankName}</span>
+                        </div>
+                      )}
+
+                      {accountNumber && (
+                        <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
+                          <div>
+                            <span className="text-zinc-400 block text-[10px]">Account Number</span>
+                            <span className="font-mono font-bold text-emerald-300 text-xs">{accountNumber}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyText(accountNumber, 'modalTab1AccNum')}
+                            className="p-1 rounded bg-white/10 hover:bg-white/20 text-zinc-200 transition-colors"
+                            title="Copy Account Number"
+                          >
+                            {copiedField === 'modalTab1AccNum' ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {ifscCode && (
+                        <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
+                          <div>
+                            <span className="text-zinc-400 block text-[10px]">IFSC / SWIFT Code</span>
+                            <span className="font-mono font-bold text-emerald-300 text-xs">{ifscCode}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyText(ifscCode, 'modalTab1Ifsc')}
+                            className="p-1 rounded bg-white/10 hover:bg-white/20 text-zinc-200 transition-colors"
+                            title="Copy IFSC"
+                          >
+                            {copiedField === 'modalTab1Ifsc' ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {branchName && (
+                        <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 sm:col-span-2">
+                          <span className="text-zinc-400 block text-[10px]">Branch</span>
+                          <span className="text-zinc-300">{branchName}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
+                )}
+
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('confirm_utr')}
+                    className="w-full py-2.5 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <FileCheck2 className="w-3.5 h-3.5" />
+                    <span>I Have Completed Payment (Submit UTR / Reference)</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -529,70 +697,76 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                  {accountHolderName && (
-                    <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
-                      <span className="text-zinc-400 block text-[10px]">Beneficiary Name</span>
-                      <span className="font-semibold text-zinc-200">{accountHolderName}</span>
-                    </div>
-                  )}
-
-                  {bankName && (
-                    <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
-                      <span className="text-zinc-400 block text-[10px]">Bank Name</span>
-                      <span className="font-semibold text-zinc-200">{bankName}</span>
-                    </div>
-                  )}
-
-                  {accountNumber && (
-                    <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
-                      <div>
-                        <span className="text-zinc-400 block text-[10px]">Account Number</span>
-                        <span className="font-mono font-bold text-white text-xs">{accountNumber}</span>
+                {!hasBank ? (
+                  <div className="p-4 rounded-xl bg-black/40 border border-white/5 text-center text-xs text-zinc-400">
+                    Direct bank transfer details are not configured for this statement. Please scan the QR code in the Scan & Pay tab or settle online.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                    {accountHolderName && (
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
+                        <span className="text-zinc-400 block text-[10px]">Beneficiary Name</span>
+                        <span className="font-semibold text-zinc-200">{accountHolderName}</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => copyText(accountNumber, 'modalAccNum')}
-                        className="p-1 rounded bg-white/10 hover:bg-white/20 text-zinc-200"
-                        title="Copy Account Number"
-                      >
-                        {copiedField === 'modalAccNum' ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  )}
+                    )}
 
-                  {ifscCode && (
-                    <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
-                      <div>
-                        <span className="text-zinc-400 block text-[10px]">IFSC / SWIFT Code</span>
-                        <span className="font-mono font-bold text-white text-xs">{ifscCode}</span>
+                    {bankName && (
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-white/5">
+                        <span className="text-zinc-400 block text-[10px]">Bank Name</span>
+                        <span className="font-semibold text-zinc-200">{bankName}</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => copyText(ifscCode, 'modalIfsc')}
-                        className="p-1 rounded bg-white/10 hover:bg-white/20 text-zinc-200"
-                        title="Copy IFSC"
-                      >
-                        {copiedField === 'modalIfsc' ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  )}
+                    )}
 
-                  {branchName && (
-                    <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 sm:col-span-2">
-                      <span className="text-zinc-400 block text-[10px]">Branch</span>
-                      <span className="text-zinc-300">{branchName}</span>
-                    </div>
-                  )}
-                </div>
+                    {accountNumber && (
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
+                        <div>
+                          <span className="text-zinc-400 block text-[10px]">Account Number</span>
+                          <span className="font-mono font-bold text-white text-xs">{accountNumber}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyText(accountNumber, 'modalAccNum')}
+                          className="p-1 rounded bg-white/10 hover:bg-white/20 text-zinc-200"
+                          title="Copy Account Number"
+                        >
+                          {copiedField === 'modalAccNum' ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {ifscCode && (
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
+                        <div>
+                          <span className="text-zinc-400 block text-[10px]">IFSC / SWIFT Code</span>
+                          <span className="font-mono font-bold text-white text-xs">{ifscCode}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => copyText(ifscCode, 'modalIfsc')}
+                          className="p-1 rounded bg-white/10 hover:bg-white/20 text-zinc-200"
+                          title="Copy IFSC"
+                        >
+                          {copiedField === 'modalIfsc' ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {branchName && (
+                      <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 sm:col-span-2">
+                        <span className="text-zinc-400 block text-[10px]">Branch</span>
+                        <span className="text-zinc-300">{branchName}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="pt-2">
                   <button
@@ -610,23 +784,23 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
             {/* TAB 3: ONLINE RAZORPAY PAYMENT */}
             {activeTab === 'online' && (
               <div className="p-4 rounded-xl bg-zinc-900/70 border border-white/10 space-y-4">
-                <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-between">
+                <div className="p-3 rounded-lg bg-[#176B5B]/15 border border-[#176B5B]/30 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-blue-400" />
-                    <span className="font-semibold text-white">256-Bit Encrypted Online Checkout</span>
+                    <ShieldCheck className="w-4 h-4 text-[#43D6B0]" />
+                    <span className="font-semibold text-[#F5F5F0]">256-Bit Encrypted Online Checkout</span>
                   </div>
-                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 font-bold">
+                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-[#176B5B]/25 text-[#43D6B0] font-bold">
                     Credit / Debit / NetBanking
                   </span>
                 </div>
 
-                <p className="text-zinc-300 text-xs">
+                <p className="text-[#A6B4AE] text-xs">
                   Click below to open the Razorpay gateway modal. You can pay using domestic or international cards, net banking, or verified UPI accounts.
                 </p>
 
                 <Button
                   variant="primary"
-                  className="w-full justify-center py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold"
+                  className="w-full justify-center py-2.5 font-bold"
                   onClick={handleStartPayment}
                   disabled={remainingBalance <= 0}
                   leftIcon={<CreditCard className="w-4 h-4" />}

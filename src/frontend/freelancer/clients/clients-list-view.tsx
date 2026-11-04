@@ -24,7 +24,7 @@ export interface ClientsListViewProps {
 
 export const ClientsListView: React.FC<ClientsListViewProps> = ({ onOpenWorkspace }) => {
   const { profile, userSettings } = useAuth();
-  const studioCurrency = userSettings?.currency || profile?.currency || 'USD';
+  const studioCurrency = userSettings?.currency || profile?.currency || 'INR';
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');

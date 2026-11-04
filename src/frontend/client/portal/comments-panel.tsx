@@ -119,16 +119,25 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
               value={newCommentText}
               disabled={isSubmitting}
               onChange={(e) => setNewCommentText(e.target.value)}
-              placeholder="Type your feedback, question, or note..."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+              placeholder="Type your feedback, question, or note... (Press Enter ↵ to send, Shift+Enter for new line)"
               maxLength={2000}
               className="w-full p-3.5 rounded-2xl bg-zinc-900 border border-white/15 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/30 focus:ring-1 focus:ring-white/20 transition-all resize-none"
             />
 
             <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center gap-2 text-zinc-500 text-xs">
+              <div className="flex items-center gap-3 text-zinc-500 text-xs">
                 <span className="flex items-center gap-1 font-mono text-[11px]">
                   <AtSign className="w-3 h-3 text-indigo-400" />
                   Mentions supported
+                </span>
+                <span className="hidden sm:inline-block font-mono text-[10px] text-zinc-500 bg-white/5 border border-white/10 px-2 py-0.5 rounded">
+                  Enter ↵ to send • Shift+Enter for newline
                 </span>
               </div>
 

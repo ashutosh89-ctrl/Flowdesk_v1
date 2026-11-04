@@ -6,8 +6,10 @@ import { Modal } from '@/frontend/shared/ui/modal';
 import { UpgradeModal } from '@/frontend/shared/billing/upgrade-modal';
 import { WorkspaceEntitlements } from '@/backend/billing/entitlements';
 import { useToast } from '@/frontend/shared/ui/toast';
+import { Progress } from '@/frontend/shared/ui/progress';
 import {
-  Sparkles,
+  Crown,
+  Zap,
   CreditCard,
   AlertTriangle,
   Clock,
@@ -137,7 +139,7 @@ export const BillingPlanPanel: React.FC = () => {
             <p className="font-semibold">{error || 'Subscription data unavailable'}</p>
             <p className="text-zinc-400 mt-0.5">Please check your network connection and retry.</p>
           </div>
-          <Button variant="secondary" size="sm" onClick={fetchBillingStatus}>
+          <Button type="button" variant="secondary" size="sm" onClick={fetchBillingStatus}>
             Retry
           </Button>
         </div>
@@ -183,6 +185,7 @@ export const BillingPlanPanel: React.FC = () => {
             </div>
           </div>
           <Button
+            type="button"
             variant="primary"
             size="sm"
             className="bg-red-500 hover:bg-red-600 text-white shadow-none shrink-0"
@@ -206,7 +209,7 @@ export const BillingPlanPanel: React.FC = () => {
               </p>
             </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => setIsUpgradeModalOpen(true)} className="shrink-0">
+<Button type="button" variant="secondary" size="sm" onClick={() => setIsUpgradeModalOpen(true)} className="shrink-0">
             Update Payment Method
           </Button>
         </div>
@@ -226,6 +229,7 @@ export const BillingPlanPanel: React.FC = () => {
             </div>
           </div>
           <Button
+            type="button"
             variant="secondary"
             size="sm"
             onClick={handleResumeSubscription}
@@ -240,17 +244,17 @@ export const BillingPlanPanel: React.FC = () => {
 
     if (status === 'trialing') {
       return (
-        <div className="flex items-center justify-between p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-300">
+        <div className="flex items-center justify-between p-4 bg-[#43D6B0]/10 border border-[#43D6B0]/20 rounded-2xl text-xs text-[#43D6B0]">
           <div className="flex items-center gap-3">
-            <Sparkles className="w-5 h-5 text-emerald-400 shrink-0" />
+            <Crown className="w-5 h-5 text-[#43D6B0] shrink-0" />
             <div>
-              <p className="font-bold text-emerald-200">Pro Trial Active</p>
-              <p className="text-emerald-400/80 text-[11px] mt-0.5">
+              <p className="font-bold text-white">Free Pro Trial Active</p>
+              <p className="text-zinc-400 text-[11px] mt-0.5">
                 Enjoy full access to advanced freelancer features during your trial period.
               </p>
             </div>
           </div>
-          <Button variant="primary" size="sm" onClick={() => setIsUpgradeModalOpen(true)} className="shrink-0">
+          <Button type="button" variant="primary" size="sm" onClick={() => setIsUpgradeModalOpen(true)} className="shrink-0">
             Activate Subscription
           </Button>
         </div>
@@ -284,14 +288,7 @@ export const BillingPlanPanel: React.FC = () => {
           </span>
         </div>
 
-        <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-amber-400' : 'bg-emerald-400'
-            }`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        <Progress value={pct} size="xs" />
       </div>
     );
   };
@@ -305,8 +302,8 @@ export const BillingPlanPanel: React.FC = () => {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0047AB]/20 text-[#E8F0FF] border border-[#2563EB]/30 text-xs font-mono mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-[#2563EB]" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#43D6B0]/10 text-[#43D6B0] border border-[#43D6B0]/20 text-xs font-mono mb-2">
+                <Zap className="w-3.5 h-3.5" />
                 <span>{planName}</span>
                 {status === 'active' && <span className="text-[10px] text-emerald-400 font-bold">&bull; Active</span>}
               </div>
@@ -321,6 +318,7 @@ export const BillingPlanPanel: React.FC = () => {
 
             <div className="flex items-center gap-2">
               <Button
+                type="button"
                 variant="primary"
                 onClick={() => setIsUpgradeModalOpen(true)}
                 rightIcon={<ArrowUpRight className="w-4 h-4" />}
@@ -330,6 +328,7 @@ export const BillingPlanPanel: React.FC = () => {
 
               {planKey !== 'free' && !cancelAtPeriodEnd && (
                 <Button
+                  type="button"
                   variant="secondary"
                   onClick={() => setIsCancelModalOpen(true)}
                   disabled={actionLoading}
@@ -346,10 +345,10 @@ export const BillingPlanPanel: React.FC = () => {
           <div className="space-y-3">
             <h4 className="text-xs font-mono uppercase tracking-wider text-zinc-400">Workspace Quotas &amp; Usage</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {renderUsageBar('Active Clients', usage.activeClients, limits.activeClients, <Users className="w-4 h-4 text-emerald-400" />)}
-              {renderUsageBar('Active Projects', usage.activeProjects, limits.activeProjects, <FolderKanban className="w-4 h-4 text-blue-400" />)}
-              {renderUsageBar('Monthly Invoices', usage.invoicesPerMonth, limits.invoicesPerMonth, <Receipt className="w-4 h-4 text-amber-400" />)}
-              {renderUsageBar('Storage Allocation', usage.storageMb, limits.storageMb, <HardDrive className="w-4 h-4 text-purple-400" />, 'MB')}
+              {renderUsageBar('Active Clients', usage.activeClients, limits.activeClients, <Users className="w-4 h-4 text-[#43D6B0]" />)}
+              {renderUsageBar('Active Projects', usage.activeProjects, limits.activeProjects, <FolderKanban className="w-4 h-4 text-[#43D6B0]" />)}
+              {renderUsageBar('Monthly Invoices', usage.invoicesPerMonth, limits.invoicesPerMonth, <Receipt className="w-4 h-4 text-[#43D6B0]" />)}
+              {renderUsageBar('Storage Allocation', usage.storageMb, limits.storageMb, <HardDrive className="w-4 h-4 text-[#43D6B0]" />, 'MB')}
             </div>
           </div>
 

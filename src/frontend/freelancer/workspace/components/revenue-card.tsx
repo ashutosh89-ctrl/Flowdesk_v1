@@ -12,7 +12,7 @@ export interface RevenueCardProps {
 export const RevenueCard: React.FC<RevenueCardProps> = ({
   totalBilled,
   outstandingBalance = 0,
-  currency = 'USD',
+  currency = 'INR',
 }) => {
   return (
     <Card variant="crystal" className="p-5 border-white/10 space-y-3">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Search, Plus, Settings } from 'lucide-react';
+import { Search, Plus, Settings } from 'lucide-react';
 import { BreadcrumbItem } from '../ui/breadcrumbs';
 import { Button } from '../ui/button';
 import { NotificationMenu } from '../common/notification-menu';
@@ -10,7 +10,7 @@ export interface TopNavProps {
   breadcrumbItems: BreadcrumbItem[];
   userProfile: UserProfile;
   onOpenSearch: () => void;
-  onOpenMobileSidebar: () => void;
+  onOpenMobileSidebar?: () => void;
   onNavigate: (view: string) => void;
   onSwitchViewMode: (mode: 'app' | 'landing') => void;
   onQuickAction?: () => void;
@@ -20,7 +20,6 @@ export const TopNav: React.FC<TopNavProps> = ({
   breadcrumbItems,
   userProfile,
   onOpenSearch,
-  onOpenMobileSidebar,
   onNavigate,
   onSwitchViewMode,
   onQuickAction,
@@ -28,45 +27,37 @@ export const TopNav: React.FC<TopNavProps> = ({
   const currentTitle = breadcrumbItems[breadcrumbItems.length - 1]?.label || 'Dashboard';
 
   return (
-    <header className="w-full h-16 px-4 md:px-8 border-b border-[#2A2A2A] bg-[#0A0A0A]/90 backdrop-blur-xl flex items-center justify-between sticky top-0 z-30 select-none">
-      {/* Left Section: Mobile Toggle & Page Title */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onOpenMobileSidebar}
-          className="p-2 text-zinc-400 hover:text-white md:hidden rounded-lg hover:bg-white/10 transition-colors"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-        <div className="flex items-center gap-2.5">
-          <h2 className="text-base sm:text-lg font-bold font-display text-white tracking-tight">{currentTitle}</h2>
-          <span className="hidden sm:inline-block w-2 h-2 rounded-full bg-emerald-400" />
-        </div>
+    <header className="w-full h-16 px-3.5 sm:px-6 md:px-8 border-b border-white/10 bg-[#0D0E11] flex items-center justify-between sticky top-0 z-30 select-none shrink-0">
+      {/* Left Section: Page Title (Clean and uncluttered, menu is in bottom nav dock) */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        <h2 className="text-base sm:text-lg font-bold font-display text-white tracking-tight truncate">{currentTitle}</h2>
       </div>
 
-      {/* Center Section: Modern OS ⌘K Glass Search Bar */}
+      {/* Center Section: Modern OS ⌘K Search Bar */}
       <div className="flex-1 max-w-[540px] mx-4 hidden md:block">
         <button
           onClick={onOpenSearch}
-          className="w-full h-10 px-4 rounded-xl bg-[#111111] border border-[#2A2A2A] hover:border-[#2563EB]/40 hover:bg-[#181818] backdrop-blur-md flex items-center justify-between text-sm text-zinc-400 hover:text-white transition-all duration-200 shadow-inner group"
+          className="w-full h-10 px-4 rounded-xl bg-[#131518] border border-white/10 hover:border-white/20 hover:bg-[#181A1F] flex items-center justify-between text-sm text-zinc-400 hover:text-white transition-all duration-200 group cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
-            <Search className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" />
-            <span className="font-medium text-zinc-300 group-hover:text-white">
+            <Search className="w-4 h-4 text-zinc-400 group-hover:text-[#43D6B0] transition-colors" />
+            <span className="font-medium text-zinc-400 group-hover:text-zinc-200">
               Search clients, invoices, deliverables, documents...
             </span>
           </div>
-          <kbd className="px-2 py-0.5 text-xs font-mono font-medium bg-[#181818] border border-[#2A2A2A] rounded text-zinc-300 shadow-sm">
+          <kbd className="px-2 py-0.5 text-xs font-mono font-medium bg-[#0D0E11] border border-white/10 rounded text-zinc-400 shadow-sm">
             ⌘K
           </kbd>
         </button>
       </div>
 
       {/* Right Section: Actions, Notifications, Settings, User Profile */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* Mobile Search Icon Button */}
         <button
           onClick={onOpenSearch}
-          className="md:hidden p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+          className="md:hidden p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+          aria-label="Search"
         >
           <Search className="w-4 h-4" />
         </button>
@@ -81,17 +72,18 @@ export const TopNav: React.FC<TopNavProps> = ({
             }
           }}
           leftIcon={<Plus className="w-3.5 h-3.5" />}
-          className="text-xs font-semibold shadow-md"
+          className="text-xs font-semibold shadow-sm px-2.5 sm:px-3"
           aria-label="Open quick actions"
         >
           <span className="hidden sm:inline">New</span>
         </Button>
 
-        {/* Settings Shortcut Button */}
+        {/* Settings Shortcut Button (available on desktop, on mobile accessible in bottom Menu and User Profile) */}
         <button
           onClick={() => onNavigate('settings')}
-          className="p-2 text-zinc-400 hover:text-white rounded-xl bg-[#111111] border border-[#2A2A2A] hover:border-[#2563EB]/40 hover:bg-[#181818] transition-all"
+          className="p-2 text-zinc-400 hover:text-white rounded-xl bg-[#131518] border border-white/10 hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer hidden sm:flex"
           title="Settings"
+          aria-label="Settings"
         >
           <Settings className="w-4 h-4" />
         </button>
@@ -102,11 +94,13 @@ export const TopNav: React.FC<TopNavProps> = ({
         <div className="h-4 w-px bg-white/10 mx-1 hidden sm:block" />
 
         {/* User Profile Dropdown Menu */}
-        <UserProfileMenu
-          profile={userProfile}
-          onNavigate={onNavigate}
-          onSwitchViewMode={onSwitchViewMode}
-        />
+        <div className="shrink-0">
+          <UserProfileMenu
+            profile={userProfile}
+            onNavigate={onNavigate}
+            onSwitchViewMode={onSwitchViewMode}
+          />
+        </div>
       </div>
     </header>
   );

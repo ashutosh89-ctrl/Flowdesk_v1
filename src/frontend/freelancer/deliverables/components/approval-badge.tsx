@@ -34,7 +34,7 @@ export const ApprovalBadge: React.FC<ApprovalBadgeProps> = ({
       break;
     case 'viewed':
       label = 'Viewed by Client';
-      colorClasses = 'bg-blue-500/10 text-blue-300 border-blue-500/20';
+      colorClasses = 'bg-[#176B5B]/15 text-[#43D6B0] border-[#176B5B]/30';
       icon = <Eye className="w-3 h-3" />;
       break;
     case 'approved':

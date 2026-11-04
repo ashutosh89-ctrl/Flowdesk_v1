@@ -83,17 +83,17 @@ function FlowDeskAppContent() {
   // When switching to 'app' or explicitly loading authenticated view, show loading skeleton
   if (isLoading && viewMode === 'app') {
     return (
-      <div className="min-h-screen bg-[#09090b] text-white flex flex-col items-center justify-center p-4">
-        <div className="p-8 rounded-3xl bg-zinc-900/60 border border-white/10 flex flex-col items-center max-w-sm w-full text-center space-y-4 shadow-2xl">
-          <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
-            <Loader2 className="w-6 h-6 animate-spin text-white" />
+      <div className="min-h-screen bg-[#101312] text-[#F5F5F0] flex flex-col items-center justify-center p-4">
+        <div className="p-8 rounded-3xl bg-[#191F1D] border border-[#176B5B]/30 flex flex-col items-center max-w-sm w-full text-center space-y-4 shadow-2xl">
+          <div className="w-12 h-12 rounded-2xl bg-[#176B5B]/20 border border-[#176B5B]/40 flex items-center justify-center text-[#43D6B0]">
+            <Loader2 className="w-6 h-6 animate-spin text-[#43D6B0]" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white tracking-tight">FlowDesk OS</h3>
-            <p className="text-xs text-zinc-400 mt-1">Verifying identity & restoring persistent session...</p>
+            <h3 className="text-lg font-bold text-[#F5F5F0] tracking-tight">FlowDesk OS</h3>
+            <p className="text-xs text-[#A6B4AE] mt-1">Verifying identity & restoring persistent session...</p>
           </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] text-zinc-400">
-            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#176B5B]/15 border border-[#176B5B]/30 text-[10px] text-[#A6B4AE]">
+            <ShieldCheck className="w-3 h-3 text-[#43D6B0]" />
             <span>Secure Workspace Session Active</span>
           </div>
         </div>

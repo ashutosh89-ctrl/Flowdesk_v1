@@ -103,6 +103,9 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
         .on('postgres_changes', { event: '*', schema: 'public', table: 'deliverable_comments' }, () => {
           loadPortalData(true);
         })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'workspace_comments' }, () => {
+          loadPortalData(true);
+        })
         .subscribe();
     } catch {
       // Realtime channel non-blocking
@@ -123,9 +126,10 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
 
   // Actions with Client Authorization Context
   const handleApproveDeliverable = async (delivId: string, notes?: string) => {
-    if (!client) return;
-    await ClientPortalService.approveDeliverable(client.id, delivId, notes);
+    if (!client) return { success: false, error: 'Client session missing.' };
+    const res = await ClientPortalService.approveDeliverable(client.id, delivId, notes);
     await loadPortalData();
+    return res;
   };
 
   const handleRequestRevision = async (
@@ -180,12 +184,15 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
 
   const handlePostComment = async (text: string, replyToId?: string) => {
     if (!client) return;
-    await ClientPortalService.postComment(client.id, {
+    const res: any = await ClientPortalService.postComment(client.id, {
       text,
       author: client.name,
       avatar: client.avatarUrl,
       replyToId,
     });
+    if (res && res.error && !res.success) {
+      throw new Error(res.error);
+    }
     await loadPortalData();
   };
 

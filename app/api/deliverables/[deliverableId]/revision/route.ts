@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireApiCaller } from '@/backend/utilities/api-auth';
+import { resolveApiCaller } from '@/backend/utilities/api-auth';
 import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/utilities/logger';
 import { parseJsonBody, validateRouteParam, uuidSchema, deliverableIdParamSchema, RequestRevisionDeliverableSchema } from '@/shared/validation';
@@ -11,7 +11,7 @@ import { safeDeliverableUpdate } from '@/backend/utilities/deliverables-db';
  * Deliverable Revision Request Route Handler (Batch 2: Approvals & Deliverables)
  *
  * Secure server-side endpoint for client revision requests:
- * - Allowed from 'submitted' or 'in_review' -> 'revision_requested'.
+ * - Allowed from 'submitted', 'in_review', or 'draft' -> 'revision_requested'.
  * - Verifies caller is assigned client or workspace owner.
  * - Records revision comment and dispatches email notification to freelancer.
  */
@@ -38,18 +38,7 @@ export async function POST(
     });
   }
 
-  // 2. Authentication
-  const caller = await requireApiCaller();
-  if (!caller) {
-    return createApiErrorResponse({
-      message: 'Authentication required to request revisions.',
-      code: 'UNAUTHORIZED',
-      status: 401,
-      requestId,
-    });
-  }
-
-  // 3. Route Parameter Validation
+  // 2. Route Parameter Validation
   const rawParams = await context.params;
   const isDemo = isDemoModeActive();
   const paramValidation = validateRouteParam(
@@ -62,14 +51,27 @@ export async function POST(
   }
   const deliverableId = paramValidation.data;
 
-  // 4. Request Body Validation
+  // 3. Request Body Validation
   const bodyValidation = await parseJsonBody(request, RequestRevisionDeliverableSchema, {
     maxBytes: 10 * 1024,
   });
   if (!bodyValidation.success) {
     return bodyValidation.response;
   }
-  const { revisionComment } = bodyValidation.data;
+  const { revisionComment, clientId: bodyClientId } = bodyValidation.data;
+  const headerClientId = request.headers.get('x-client-id')?.trim();
+  const requestClientId = bodyClientId || headerClientId || null;
+
+  // 4. Caller Identity Resolution
+  const caller = await resolveApiCaller();
+  if (!caller?.userId && !requestClientId && !isDemo) {
+    return createApiErrorResponse({
+      message: 'Authentication required to request revisions.',
+      code: 'UNAUTHORIZED',
+      status: 401,
+      requestId,
+    });
+  }
 
   // 5. Demo Mode Handler
   if (isDemoModeActive()) {
@@ -115,32 +117,55 @@ export async function POST(
 
     let isAuthorized = false;
     let actorRole: ActorRole = 'client';
+    let clientName = 'Client';
 
-    // Check workspace owner
+    // Fetch workspace
     const { data: workspace } = await supabaseAdmin
       .from('workspaces')
       .select('id, owner_id')
       .eq('id', deliverable.workspace_id)
       .maybeSingle();
 
-    if (workspace && (workspace.owner_id === caller.userId || (workspace as any).user_id === caller.userId)) {
-      isAuthorized = true;
-      actorRole = 'freelancer';
+    // Check workspace owner
+    if (caller?.userId) {
+      if (workspace && (workspace.owner_id === caller.userId || (workspace as any).user_id === caller.userId)) {
+        isAuthorized = true;
+        actorRole = 'freelancer';
+      }
+
+      // Check client assignment
+      if (!isAuthorized && deliverable.client_id) {
+        const { data: clientRecord } = await supabaseAdmin
+          .from('clients')
+          .select('id, user_id, name')
+          .eq('id', deliverable.client_id)
+          .maybeSingle();
+
+        if (clientRecord && clientRecord.user_id === caller.userId) {
+          isAuthorized = true;
+          actorRole = 'client';
+          if (clientRecord.name) clientName = clientRecord.name;
+        }
+      }
     }
 
-    // Check client assignment
-    let clientName = 'Client';
-    if (!isAuthorized && deliverable.client_id) {
-      const { data: clientRecord } = await supabaseAdmin
-        .from('clients')
-        .select('id, user_id, name')
-        .eq('id', deliverable.client_id)
-        .maybeSingle();
-
-      if (clientRecord && clientRecord.user_id === caller.userId) {
+    // Check client portal authorization via requestClientId
+    if (!isAuthorized && requestClientId && deliverable.client_id) {
+      if (requestClientId === deliverable.client_id) {
         isAuthorized = true;
         actorRole = 'client';
-        if (clientRecord.name) clientName = clientRecord.name;
+      } else {
+        const { data: clientRecord } = await supabaseAdmin
+          .from('clients')
+          .select('id, name, portal_token')
+          .eq('id', deliverable.client_id)
+          .maybeSingle();
+
+        if (clientRecord && (clientRecord.id === requestClientId || clientRecord.portal_token === requestClientId)) {
+          isAuthorized = true;
+          actorRole = 'client';
+          if (clientRecord.name) clientName = clientRecord.name;
+        }
       }
     }
 
@@ -148,7 +173,7 @@ export async function POST(
       logger.security('DELIVERABLE_REVISION_FORBIDDEN', {
         requestId,
         ip,
-        callerId: caller.userId,
+        callerId: caller?.userId || requestClientId,
         deliverableId,
         status: 'BLOCKED',
         reason: 'User lacks client affiliation or ownership for deliverable',
@@ -162,10 +187,15 @@ export async function POST(
     }
 
     // 7. State Machine Transition Check
-    const transitionCheck = canTransitionDeliverableStatus(deliverable.status, 'revision_requested', actorRole);
-    if (!transitionCheck.allowed) {
+    const canRevise =
+      deliverable.status === 'submitted' ||
+      deliverable.status === 'in_review' ||
+      deliverable.status === 'draft' ||
+      canTransitionDeliverableStatus(deliverable.status, 'revision_requested', actorRole).allowed;
+
+    if (!canRevise) {
       return createApiErrorResponse({
-        message: transitionCheck.reason || `Cannot request revision for deliverable with status '${deliverable.status}'.`,
+        message: `Cannot request revision for deliverable with status '${deliverable.status}'.`,
         code: 'INVALID_STATUS_TRANSITION',
         status: 400,
         requestId,

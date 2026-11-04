@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Client, Project, Invoice, InvoiceItem, BankDetails, PaymentMethodsConfig } from '@/shared/types';
+import { Client, Project, Invoice, InvoiceItem, BankDetails, PaymentMethodsConfig, UserSettings } from '@/shared/types';
 import { FreelancerClientService, FreelancerProjectService, FreelancerInvoiceService } from '@/backend/freelancer';
 import { UserSettingsService } from '@/backend/auth';
 import { useAuth } from '@/frontend/auth/auth-context';
@@ -70,7 +70,40 @@ export function InvoiceBuilderModal({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   // Loading state
-  const [isSaving, setIsSaving] = useState(false);
+  const [savingAction, setSavingAction] = useState<'draft' | 'issue' | null>(null);
+
+  // Dynamic sync when settings are updated elsewhere in the app
+  useEffect(() => {
+    const handleSettingsUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<UserSettings>;
+      const newSettings = customEvent.detail;
+      if (!newSettings || invoiceToEdit) return;
+      if (newSettings.default_tax_rate !== undefined) {
+        setTaxPercentage(typeof newSettings.default_tax_rate === 'number' ? newSettings.default_tax_rate : (Number(newSettings.default_tax_rate) || 0));
+      }
+      if (newSettings.tax_name) {
+        setTaxName(newSettings.tax_name);
+      }
+      if (newSettings.currency) {
+        setCurrency(newSettings.currency);
+      }
+      if (newSettings.upi_id) setUpiId(newSettings.upi_id);
+      if (newSettings.upi_qr_code_url) setUpiQrCodeUrl(newSettings.upi_qr_code_url);
+      if (newSettings.upi_id || newSettings.upi_qr_code_url) setUpiEnabled(true);
+      if (newSettings.bank_name || newSettings.account_number) {
+        setBankDetails({
+          accountHolderName: newSettings.account_holder_name || '',
+          bankName: newSettings.bank_name || '',
+          accountNumber: newSettings.account_number || '',
+          ifscCode: newSettings.ifsc_code || '',
+          branchName: newSettings.branch_name || '',
+        });
+      }
+    };
+
+    window.addEventListener('flowdesk:settings-updated', handleSettingsUpdate);
+    return () => window.removeEventListener('flowdesk:settings-updated', handleSettingsUpdate);
+  }, [invoiceToEdit]);
 
   // Synchronize state when modal opens or invoiceToEdit changes
   useEffect(() => {
@@ -85,7 +118,7 @@ export function InvoiceBuilderModal({
         setSelectedProjectId(invoiceToEdit.projectId || '');
         setIssueDate(invoiceToEdit.issueDate);
         setDueDate(invoiceToEdit.dueDate);
-        setCurrency(invoiceToEdit.currency || 'USD');
+        setCurrency(invoiceToEdit.currency || 'INR');
         setTaxName(invoiceToEdit.taxName || 'GST');
         setTaxPercentage(invoiceToEdit.taxPercentage ?? 0);
         setDiscount(invoiceToEdit.discount || 0);
@@ -114,13 +147,43 @@ export function InvoiceBuilderModal({
       } else {
         const today = new Date().toISOString().split('T')[0];
 
-        // Load user settings and existing invoices for sequential numbering
-        const [settings, existingInvoices] = await Promise.all([
-          user?.id ? UserSettingsService.getUserSettings(user.id) : null,
+        // Immediate sync from local settings cache so tax %, name, and payment details reflect instantly
+        const localSettings = UserSettingsService.getLocalSettings(user?.id || 'usr-default') ||
+                              UserSettingsService.getLocalSettings('usr-default') ||
+                              userSettings;
+        if (localSettings) {
+          const immTax = typeof localSettings.default_tax_rate === 'number'
+            ? localSettings.default_tax_rate
+            : (Number(localSettings.default_tax_rate) || 0);
+          setTaxPercentage(immTax);
+          setTaxName(localSettings.tax_name || 'GST');
+          setCurrency(localSettings.currency || profile?.currency || 'INR');
+
+          const immUpiId = localSettings.upi_id || localSettings.payment_settings?.upiId || profile?.upiId || '';
+          const immUpiQr = localSettings.upi_qr_code_url || localSettings.payment_settings?.upiQrCodeUrl || profile?.upiQrCodeUrl || '';
+          if (immUpiId) setUpiId(immUpiId);
+          if (immUpiQr) setUpiQrCodeUrl(immUpiQr);
+          if (immUpiId || immUpiQr) setUpiEnabled(true);
+
+          if (localSettings.bank_name || localSettings.account_number || localSettings.payment_settings?.bankDetails) {
+            setBankDetails({
+              accountHolderName: localSettings.account_holder_name || localSettings.payment_settings?.bankDetails?.accountHolderName || '',
+              bankName: localSettings.bank_name || localSettings.payment_settings?.bankDetails?.bankName || '',
+              accountNumber: localSettings.account_number || localSettings.payment_settings?.bankDetails?.accountNumber || '',
+              ifscCode: localSettings.ifsc_code || localSettings.payment_settings?.bankDetails?.ifscCode || '',
+              branchName: localSettings.branch_name || localSettings.payment_settings?.bankDetails?.branchName || '',
+            });
+          }
+        }
+
+        // Load fresh user settings and existing invoices for sequential numbering
+        const [fetchedSettings, existingInvoices] = await Promise.all([
+          UserSettingsService.getUserSettings(user?.id || 'usr-default'),
           FreelancerInvoiceService.getInvoices(),
         ]);
+        const settings = fetchedSettings || localSettings || userSettings;
 
-        const studioCurrency = settings?.currency || userSettings?.currency || profile?.currency || 'USD';
+        const studioCurrency = settings?.currency || userSettings?.currency || profile?.currency || 'INR';
         const paymentTerms = settings?.default_payment_terms || 14;
         const dueDateMs = new Date(today).getTime() + paymentTerms * 86400000;
         const dueDateStr = new Date(dueDateMs).toISOString().split('T')[0];
@@ -133,15 +196,21 @@ export function InvoiceBuilderModal({
         setInvoiceNumber(nextNum);
         setIssueDate(today);
         setDueDate(dueDateStr);
-        setTaxPercentage(settings?.default_tax_rate ?? 0);
+        const resolvedTaxRate = typeof settings?.default_tax_rate === 'number'
+          ? settings.default_tax_rate
+          : (Number(settings?.default_tax_rate) || 0);
+        setTaxPercentage(resolvedTaxRate);
         setTaxName(settings?.tax_name || 'GST');
         setCurrency(studioCurrency);
 
+        const effectiveUpiId = settings?.upi_id || settings?.payment_settings?.upiId || userSettings?.upi_id || userSettings?.payment_settings?.upiId || profile?.upiId || '';
+        const effectiveUpiQr = settings?.upi_qr_code_url || settings?.payment_settings?.upiQrCodeUrl || userSettings?.upi_qr_code_url || userSettings?.payment_settings?.upiQrCodeUrl || profile?.upiQrCodeUrl || '';
+
         setBankTransferEnabled(settings?.payment_settings?.bankTransferEnabled ?? true);
-        setUpiEnabled(settings?.payment_settings?.upiEnabled ?? Boolean(settings?.upi_id || settings?.upi_qr_code_url || settings?.payment_settings?.upiQrCodeUrl));
+        setUpiEnabled(settings?.payment_settings?.upiEnabled ?? Boolean(effectiveUpiId || effectiveUpiQr));
         setRazorpayLinkEnabled(settings?.payment_settings?.razorpayLinkEnabled ?? Boolean(settings?.razorpay_payment_link));
-        setUpiId(settings?.upi_id || settings?.payment_settings?.upiId || '');
-        setUpiQrCodeUrl(settings?.upi_qr_code_url || settings?.payment_settings?.upiQrCodeUrl || '');
+        setUpiId(effectiveUpiId);
+        setUpiQrCodeUrl(effectiveUpiQr);
         setBankDetails({
           accountHolderName: settings?.account_holder_name || settings?.payment_settings?.bankDetails?.accountHolderName || '',
           bankName: settings?.bank_name || settings?.payment_settings?.bankDetails?.bankName || '',
@@ -157,11 +226,7 @@ export function InvoiceBuilderModal({
         const targetClient = (defaultClientId && allClients.find((c) => c.id === defaultClientId)) || allClients.find((c) => c.id === selectedClientId) || allClients[0];
         if (targetClient) {
           setSelectedClientId(targetClient.id);
-          if (targetClient.currency && targetClient.currency !== 'USD') {
-            setCurrency(targetClient.currency);
-          } else {
-            setCurrency(studioCurrency);
-          }
+          setCurrency(targetClient.currency || studioCurrency);
           FreelancerProjectService.getProjectsByClientId(targetClient.id).then(setProjects);
         } else {
           if (defaultClientId) {
@@ -170,22 +235,19 @@ export function InvoiceBuilderModal({
           setCurrency(studioCurrency);
           setProjects([]);
         }
-        setItems([{ id: 'item-initial', description: '', quantity: 1, rate: 0, amount: 0 }]);
+        const defaultRate = Number(profile?.hourlyRate) || 0;
+        setItems([{ id: 'item-initial', description: '', quantity: 1, rate: defaultRate, amount: defaultRate }]);
       }
     });
-  }, [isOpen, invoiceToEdit, user?.id, defaultClientId, profile?.currency, userSettings?.currency, selectedClientId]);
+  }, [isOpen, invoiceToEdit, user?.id, defaultClientId, profile?.currency, profile?.hourlyRate, profile?.upiId, profile?.upiQrCodeUrl, userSettings?.currency, selectedClientId]);
 
   const handleClientSelectChange = (newClientId: string) => {
     setSelectedClientId(newClientId);
     FreelancerProjectService.getProjectsByClientId(newClientId).then(setProjects);
     setSelectedProjectId('');
     const selectedClient = clients.find((c) => c.id === newClientId);
-    const studioCurrency = userSettings?.currency || profile?.currency || 'USD';
-    if (selectedClient && selectedClient.currency && selectedClient.currency !== 'USD') {
-      setCurrency(selectedClient.currency);
-    } else {
-      setCurrency(studioCurrency);
-    }
+    const studioCurrency = userSettings?.currency || profile?.currency || 'INR';
+    setCurrency(selectedClient?.currency || studioCurrency);
   };
 
   // Item handlers
@@ -204,9 +266,10 @@ export function InvoiceBuilderModal({
   };
 
   const handleAddItem = () => {
+    const defaultRate = Number(profile?.hourlyRate) || 0;
     setItems([
       ...items,
-      { id: `item-${Date.now()}`, description: '', quantity: 1, rate: 0, amount: 0 },
+      { id: `item-${Date.now()}`, description: '', quantity: 1, rate: defaultRate, amount: defaultRate },
     ]);
   };
 
@@ -295,7 +358,7 @@ export function InvoiceBuilderModal({
     const client = clients.find((c) => c.id === selectedClientId);
     const proj = projects.find((p) => p.id === selectedProjectId);
 
-    setIsSaving(true);
+    setSavingAction(isDraft ? 'draft' : 'issue');
     try {
       const payload = {
         invoiceNumber,
@@ -321,12 +384,16 @@ export function InvoiceBuilderModal({
         internalNotes,
         paymentMethods: {
           bankTransferEnabled,
-          upiEnabled,
+          upiEnabled: upiEnabled || Boolean(upiId.trim() || upiQrCodeUrl),
           razorpayLinkEnabled,
-          upiQrCodeUrl: upiEnabled && upiQrCodeUrl ? upiQrCodeUrl : undefined,
+          upiQrCodeUrl: (upiEnabled || Boolean(upiQrCodeUrl)) && upiQrCodeUrl ? upiQrCodeUrl : undefined,
+          upiId: (upiEnabled || Boolean(upiId.trim())) && upiId.trim() ? upiId.trim() : undefined,
+          bankDetails: bankTransferEnabled ? bankDetails : undefined,
+          razorpayPaymentLink: razorpayLinkEnabled && razorpayPaymentLink.trim() ? razorpayPaymentLink.trim() : undefined,
+          defaultPaymentInstructions: paymentInstructions || undefined,
         },
-        upiId: upiEnabled && upiId.trim() ? upiId.trim() : undefined,
-        upiQrCodeUrl: upiEnabled && upiQrCodeUrl ? upiQrCodeUrl : undefined,
+        upiId: (upiEnabled || Boolean(upiId.trim())) && upiId.trim() ? upiId.trim() : undefined,
+        upiQrCodeUrl: (upiEnabled || Boolean(upiQrCodeUrl)) && upiQrCodeUrl ? upiQrCodeUrl : undefined,
         bankDetails: bankTransferEnabled ? bankDetails : undefined,
         razorpayPaymentLink: razorpayLinkEnabled && razorpayPaymentLink.trim() ? razorpayPaymentLink.trim() : undefined,
       };
@@ -345,15 +412,15 @@ export function InvoiceBuilderModal({
     } catch (err) {
       setValidationErrors([err instanceof Error ? err.message : 'Failed to save invoice.']);
     } finally {
-      setIsSaving(false);
+      setSavingAction(null);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-zinc-950/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden my-8 backdrop-blur-2xl text-white">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="relative w-full max-w-4xl bg-zinc-950/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden my-2 sm:my-8 backdrop-blur-2xl text-white">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/[0.02]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/10 bg-white/[0.02]">
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-amber-400" />
             <h2 className="text-base font-semibold text-white">
@@ -369,7 +436,7 @@ export function InvoiceBuilderModal({
         </div>
 
         {/* Form Body */}
-        <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+        <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 max-h-[74vh] sm:max-h-[75vh] overflow-y-auto">
           {/* Metadata Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div>
@@ -480,8 +547,8 @@ export function InvoiceBuilderModal({
               </button>
             </div>
 
-            <div className="border border-white/10 rounded-xl overflow-hidden bg-zinc-950/60">
-              <table className="w-full text-left border-collapse">
+            <div className="border border-white/10 rounded-xl overflow-x-auto w-full bg-zinc-950/60 pb-1">
+              <table className="w-full text-left border-collapse min-w-[560px]">
                 <thead>
                   <tr className="bg-white/[0.04] border-b border-white/10 text-[11px] font-semibold text-zinc-400">
                     <th className="py-2.5 px-3 w-[45%]">Description</th>
@@ -733,13 +800,22 @@ export function InvoiceBuilderModal({
                       )}
                     </div>
 
+                    {upiQrCodeUrl && (
+                      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                        <span>Saved Payment QR Code from Settings is linked. Entering a UPI ID below is completely optional.</span>
+                      </div>
+                    )}
+
                     <div>
-                      <label className="block text-[11px] text-zinc-400 mb-1">UPI ID / VPA (Optional if uploading QR directly)</label>
+                      <label className="block text-[11px] text-zinc-400 mb-1">
+                        UPI ID / VPA {upiQrCodeUrl ? '(Optional - QR already linked)' : '(Optional if uploading QR directly)'}
+                      </label>
                       <input
                         type="text"
                         value={upiId}
                         onChange={(e) => setUpiId(e.target.value.trim())}
-                        placeholder="e.g. studio@okhdfcbank"
+                        placeholder={upiQrCodeUrl ? 'Optional: e.g. studio@okhdfcbank' : 'e.g. studio@okhdfcbank'}
                         className="w-full px-3 py-2 text-xs border border-white/10 rounded-lg bg-zinc-900 text-white focus:outline-none focus:border-white/30"
                       />
                     </div>
@@ -840,32 +916,38 @@ export function InvoiceBuilderModal({
         )}
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-white/10 bg-zinc-950/80">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 px-4 sm:px-6 py-3.5 sm:py-4 border-t border-white/10 bg-zinc-950/80">
           <button
             type="button"
             onClick={onClose}
-            disabled={isSaving}
-            className="px-4 py-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors disabled:opacity-50"
+            disabled={Boolean(savingAction)}
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors disabled:opacity-50 text-center"
           >
             Cancel
           </button>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => handleSubmit(true)}
-              disabled={isSaving}
-              className="px-4 py-2 text-xs font-semibold border border-white/10 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white transition-all shadow-sm disabled:opacity-50"
+              disabled={Boolean(savingAction)}
+              className="w-full sm:w-auto justify-center px-4 py-2.5 sm:py-2 text-xs font-semibold border border-white/10 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white transition-all shadow-sm disabled:opacity-50 text-center"
             >
-              {isSaving ? 'Saving...' : 'Save as Draft'}
+              {savingAction === 'draft' ? 'Saving Draft...' : 'Save as Draft'}
             </button>
             <button
               type="button"
               onClick={() => handleSubmit(false)}
-              disabled={isSaving}
-              className="px-4 py-2 text-xs font-bold rounded-xl bg-white hover:bg-amber-400 text-zinc-950 transition-all flex items-center gap-1.5 shadow-md disabled:opacity-50 cursor-pointer"
+              disabled={Boolean(savingAction)}
+              className="w-full sm:w-auto justify-center px-4 py-2.5 sm:py-2 text-xs font-bold rounded-xl bg-[#43D6B0] hover:bg-[#38c29e] text-[#0D0E10] transition-all flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50 cursor-pointer text-center"
             >
-              {isSaving ? 'Saving...' : <><Check className="w-4 h-4" /> Save & Issue Invoice</>}
+              {savingAction === 'issue' ? (
+                'Issuing Invoice...'
+              ) : (
+                <>
+                  <Check className="w-4 h-4" /> Save & Issue Invoice
+                </>
+              )}
             </button>
           </div>
         </div>

@@ -32,7 +32,16 @@ import {
   PortalFileRequest,
   InvoiceBranding,
 } from '@/shared/types';
-import { CheckCircle2, ShieldCheck, X } from 'lucide-react';
+import {
+  CheckCircle2,
+  ShieldCheck,
+  X,
+  LayoutDashboard,
+  PackageCheck,
+  Receipt,
+  Folder,
+  Menu,
+} from 'lucide-react';
 import { generateInvoicePDF } from '@/shared/utils/invoice-pdf';
 
 interface ClientPortalShellProps {
@@ -47,7 +56,7 @@ interface ClientPortalShellProps {
   profile: PortalProfile;
   branding?: InvoiceBranding | null;
   fileRequests: PortalFileRequest[];
-  onApproveDeliverable: (deliverableId: string, notes?: string) => Promise<void>;
+  onApproveDeliverable: (deliverableId: string, notes?: string) => Promise<any>;
   onRequestRevision: (deliverableId: string, reason: string, priority: string, comment: string, attachmentFile?: File) => Promise<void>;
   onUploadDocument: (docId: string, fileData: { fileName: string; size: string; file?: File; downloadUrl?: string }) => Promise<void>;
   onDirectUploadDocument?: (payload: {
@@ -155,13 +164,13 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white font-sans antialiased flex flex-col lg:flex-row selection:bg-white selection:text-zinc-950">
+    <div className="min-h-screen bg-[#101312] text-[#F5F5F0] font-sans antialiased flex flex-col lg:flex-row selection:bg-[#43D6B0] selection:text-[#101312]">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-4 right-4 z-50 p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold backdrop-blur-xl shadow-2xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="fixed top-4 right-4 z-50 p-4 rounded-xl bg-[#176B5B]/20 border border-[#176B5B]/50 text-[#43D6B0] text-xs font-semibold backdrop-blur-xl shadow-2xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-2">
+          <CheckCircle2 className="w-4 h-4 text-[#43D6B0] shrink-0" />
           <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="ml-2 text-zinc-400 hover:text-white">
+          <button onClick={() => setToastMessage(null)} className="ml-2 text-[#A6B4AE] hover:text-[#F5F5F0]">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -217,7 +226,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
         )}
 
         {/* Main Canvas Body */}
-        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+        <main className="flex-1 max-w-7xl w-full mx-auto p-3.5 sm:p-6 lg:p-8 pb-24 md:pb-8 space-y-6 sm:space-y-8">
           {/* Global Search Results overlay if searching */}
           {searchResults ? (
             <div className="space-y-6">
@@ -306,7 +315,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
               )}
 
               {activeTab === 'projects' && (
-                <ProjectOverview projects={projects} activities={activities} />
+                <ProjectOverview projects={projects} activities={activities} currency={client?.currency || 'INR'} />
               )}
 
               {activeTab === 'deliverables' && (
@@ -426,6 +435,109 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
         </main>
       </div>
 
+      {/* Client Mobile Bottom Navigation Dock */}
+      <nav
+        aria-label="Client Portal Mobile Navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0D0E11]/95 backdrop-blur-xl border-t border-white/10 px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_20px_rgba(0,0,0,0.5)] select-none"
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('overview')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer min-w-[56px] ${
+            activeTab === 'overview' ? 'text-[#43D6B0]' : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <div className="relative">
+            <LayoutDashboard className={`w-5 h-5 transition-transform ${activeTab === 'overview' ? 'scale-110' : ''}`} />
+            {activeTab === 'overview' && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#43D6B0]" />
+            )}
+          </div>
+          <span className={`text-[10px] mt-1 font-medium ${activeTab === 'overview' ? 'font-bold text-white' : ''}`}>
+            Overview
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('deliverables')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer min-w-[56px] relative ${
+            activeTab === 'deliverables' ? 'text-[#43D6B0]' : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <div className="relative">
+            <PackageCheck className={`w-5 h-5 transition-transform ${activeTab === 'deliverables' ? 'scale-110' : ''}`} />
+            {pendingApprovalsCount > 0 && (
+              <span className="absolute -top-1 -right-1.5 bg-amber-500 text-black text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                {pendingApprovalsCount}
+              </span>
+            )}
+            {activeTab === 'deliverables' && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#43D6B0]" />
+            )}
+          </div>
+          <span className={`text-[10px] mt-1 font-medium ${activeTab === 'deliverables' ? 'font-bold text-white' : ''}`}>
+            Work
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('invoices')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer min-w-[56px] relative ${
+            activeTab === 'invoices' ? 'text-[#43D6B0]' : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <div className="relative">
+            <Receipt className={`w-5 h-5 transition-transform ${activeTab === 'invoices' ? 'scale-110' : ''}`} />
+            {unpaidInvoicesCount > 0 && (
+              <span className="absolute -top-1 -right-1.5 bg-emerald-500 text-black text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                {unpaidInvoicesCount}
+              </span>
+            )}
+            {activeTab === 'invoices' && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#43D6B0]" />
+            )}
+          </div>
+          <span className={`text-[10px] mt-1 font-medium ${activeTab === 'invoices' ? 'font-bold text-white' : ''}`}>
+            Invoices
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('documents')}
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer min-w-[56px] relative ${
+            activeTab === 'documents' ? 'text-[#43D6B0]' : 'text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <div className="relative">
+            <Folder className={`w-5 h-5 transition-transform ${activeTab === 'documents' ? 'scale-110' : ''}`} />
+            {pendingDocumentsCount > 0 && (
+              <span className="absolute -top-1 -right-1.5 bg-sky-500 text-black text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                {pendingDocumentsCount}
+              </span>
+            )}
+            {activeTab === 'documents' && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#43D6B0]" />
+            )}
+          </div>
+          <span className={`text-[10px] mt-1 font-medium ${activeTab === 'documents' ? 'font-bold text-white' : ''}`}>
+            Files
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsMobileSidebarOpen(true)}
+          className="flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-zinc-400 hover:text-zinc-200 transition-all cursor-pointer min-w-[56px]"
+          aria-label="More navigation options"
+        >
+          <Menu className="w-5 h-5" />
+          <span className="text-[10px] mt-1 font-medium">Menu</span>
+        </button>
+      </nav>
+
       {/* Razorpay Checkout Modal — keyed by invoice so state resets per checkout */}
       <RazorpayCheckoutModal
         key={selectedPaymentInvoice?.id || 'closed'}
@@ -448,9 +560,13 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
         onClose={() => setSelectedApprovalDeliverable(null)}
         deliverable={selectedApprovalDeliverable}
         onConfirmApprove={async (delivId, notes) => {
-          await onApproveDeliverable(delivId, notes);
+          const res = (await onApproveDeliverable(delivId, notes)) as any;
           setSelectedApprovalDeliverable(null);
-          showToast('Sign-off recorded! Deliverable marked as Approved.');
+          if (res && res.success === false) {
+            showToast(res.error || 'Failed to record approval.');
+          } else {
+            showToast('Sign-off recorded! Deliverable marked as Approved.');
+          }
         }}
         onRequestRevision={(deliv) => {
           setSelectedApprovalDeliverable(null);

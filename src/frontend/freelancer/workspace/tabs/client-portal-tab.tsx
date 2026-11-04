@@ -12,6 +12,7 @@ import { useToast } from '@/frontend/shared/ui/toast';
 import { FreelancerClientManagementService } from '@/backend/freelancer/client-management-service';
 import { getCurrentWorkspace } from '@/backend/utilities/workspace';
 import { getAppBaseUrl } from '@/shared/utils/url';
+import { formatCurrency } from '@/shared/utils/currency';
 
 export interface ClientPortalTabProps {
   summary: WorkspaceSummary;
@@ -123,7 +124,15 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
       const res = await FreelancerClientManagementService.sendClientInvitationEmail(client.id);
       if (res.success) {
         if (res.inviteUrl) setConnectionUrl(res.inviteUrl);
-        showToast('Invitation Dispatched', res.message || `Invitation email sent to ${client.email}`, 'success');
+        if (res.emailDispatched === false) {
+          showToast(
+            'Link Ready (Email Not Sent)',
+            res.message || 'Invitation link created. Copy and share it manually.',
+            'info'
+          );
+        } else {
+          showToast('Invitation Dispatched', res.message || `Invitation email sent to ${client.email}`, 'success');
+        }
       } else {
         showToast('Delivery Notice', res.error || 'Failed to dispatch email', 'error');
       }
@@ -316,7 +325,7 @@ export const ClientPortalTab: React.FC<ClientPortalTabProps> = ({ summary, onRef
                   <p className="text-[10px] text-zinc-400">Due {inv.dueDate}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-white">${inv.total.toLocaleString()}</span>
+                  <span className="text-xs font-bold text-white font-mono">{formatCurrency(inv.total, inv.currency || client.currency || 'INR')}</span>
                   <StatusPill status={inv.status || inv.paymentStatus || 'pending'} />
                 </div>
               </div>

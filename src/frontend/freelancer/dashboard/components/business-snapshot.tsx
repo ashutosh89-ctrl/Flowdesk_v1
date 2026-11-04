@@ -23,7 +23,29 @@ interface BusinessSnapshotProps {
 
 export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onNavigate, currency: propCurrency }) => {
   const { profile, userSettings } = useAuth();
-  const currency = propCurrency || userSettings?.currency || profile?.currency || 'USD';
+  const [internalCurrency, setInternalCurrency] = React.useState<string>(() => {
+    return propCurrency || userSettings?.currency || profile?.currency || 'INR';
+  });
+
+  React.useEffect(() => {
+    const c = propCurrency || userSettings?.currency || profile?.currency;
+    if (c) setInternalCurrency(c);
+  }, [propCurrency, userSettings?.currency, profile?.currency]);
+
+  React.useEffect(() => {
+    const handleSettingsUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<any>;
+      if (customEvent.detail?.currency) {
+        setInternalCurrency(customEvent.detail.currency);
+      }
+    };
+    window.addEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    return () => {
+      window.removeEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    };
+  }, []);
+
+  const currency = internalCurrency || 'INR';
   const safeMetrics = {
     activeClientsCount: metrics?.activeClientsCount ?? 0,
     activeProjectsCount: metrics?.activeProjectsCount ?? 0,
@@ -44,9 +66,9 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Active Clients',
       value: safeMetrics.activeClientsCount.toString(),
       subtext: 'Active client accounts',
-      icon: <Users className="w-5 h-5 text-[#2563EB]" />,
-      color: 'from-[#0047AB]/15 to-transparent',
-      borderColor: 'border-[#2563EB]/30',
+      icon: <Users className="w-5 h-5 text-[#43D6B0]" />,
+      color: 'from-[#176B5B]/15 to-transparent',
+      borderColor: 'border-[#176B5B]/30',
       actionView: 'clients',
     },
     {
@@ -54,9 +76,9 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Active Projects',
       value: safeMetrics.activeProjectsCount.toString(),
       subtext: `${safeMetrics.completionRate}% avg completion`,
-      icon: <FolderKanban className="w-5 h-5 text-[#2563EB]" />,
-      color: 'from-[#0047AB]/15 to-transparent',
-      borderColor: 'border-[#2563EB]/30',
+      icon: <FolderKanban className="w-5 h-5 text-[#43D6B0]" />,
+      color: 'from-[#176B5B]/15 to-transparent',
+      borderColor: 'border-[#176B5B]/30',
       actionView: 'projects',
     },
     {
@@ -64,9 +86,9 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Pending Deliverables',
       value: safeMetrics.pendingDeliverablesCount.toString(),
       subtext: 'Packages in review',
-      icon: <FileCheck className="w-5 h-5 text-emerald-400" />,
-      color: 'from-emerald-500/10 to-transparent',
-      borderColor: 'border-emerald-500/20',
+      icon: <FileCheck className="w-5 h-5 text-[#43D6B0]" />,
+      color: 'from-[#176B5B]/15 to-transparent',
+      borderColor: 'border-[#176B5B]/30',
       actionView: 'deliverables',
     },
     {
@@ -84,9 +106,9 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Monthly Revenue',
       value: formatCurrency(safeMetrics.monthlyRevenue, currency),
       subtext: `+${safeMetrics.revenueGrowthPct}% vs last month`,
-      icon: <TrendingUp className="w-5 h-5 text-emerald-400" />,
-      color: 'from-emerald-500/10 to-transparent',
-      borderColor: 'border-emerald-500/20',
+      icon: <TrendingUp className="w-5 h-5 text-[#43D6B0]" />,
+      color: 'from-[#176B5B]/15 to-transparent',
+      borderColor: 'border-[#176B5B]/30',
       actionView: 'invoices',
     },
     {
@@ -114,44 +136,47 @@ export const BusinessSnapshot: React.FC<BusinessSnapshotProps> = ({ metrics, onN
       label: 'Workspace Health',
       value: `${safeMetrics.workspaceHealthScore}/100`,
       subtext: 'Optimal operational score',
-      icon: <ShieldCheck className="w-5 h-5 text-[#2563EB]" />,
-      color: 'from-[#0047AB]/15 to-transparent',
-      borderColor: 'border-[#2563EB]/30',
+      icon: <ShieldCheck className="w-5 h-5 text-[#43D6B0]" />,
+      color: 'from-[#176B5B]/15 to-transparent',
+      borderColor: 'border-[#176B5B]/30',
       actionView: 'dashboard',
     },
   ];
 
   return (
-    <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-[#16181B] border border-white/[0.08] rounded-2xl p-4 sm:p-6 shadow-md">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold font-display text-white tracking-tight flex items-center gap-2.5">
-            <Activity className="w-6 h-6 text-[#2563EB]" /> Business Intelligence Snapshot
+          <h2 className="text-xl sm:text-2xl font-bold font-display text-[#F8F9FA] tracking-tight flex items-center gap-2.5">
+            <Activity className="w-5 h-5 text-[#43D6B0]" /> Business Snapshot
           </h2>
-          <p className="text-sm text-zinc-300 font-medium mt-1">High-level financial &amp; operational metrics across all client hubs.</p>
+          <p className="text-xs sm:text-sm text-[#9CA3AF] mt-1">High-level financial &amp; operational metrics across client hubs.</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {cards.map((card) => (
           <div
             key={card.id}
             onClick={() => onNavigate(card.actionView)}
-            className={`p-5 rounded-xl bg-gradient-to-br ${card.color} bg-[#181818]/80 border ${card.borderColor} hover:border-[#0047AB]/50 transition-all cursor-pointer group flex flex-col justify-between`}
+            className="p-3.5 sm:p-5 rounded-xl bg-[#131518] border border-white/[0.06] hover:border-[#43D6B0]/40 transition-colors cursor-pointer group flex flex-col justify-between min-w-0 overflow-hidden"
           >
-            <div className="flex items-start justify-between mb-3.5">
-              <span className="p-2.5 rounded-lg bg-white/5 border border-white/10 group-hover:scale-105 transition-transform">
+            <div className="flex items-start justify-between mb-2.5 sm:mb-3.5">
+              <span className="p-2 sm:p-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] group-hover:scale-105 transition-transform">
                 {card.icon}
               </span>
-              <ArrowUpRight className="w-5 h-5 text-zinc-500 group-hover:text-white transition-colors" />
+              <ArrowUpRight className="w-4 h-4 text-[#9CA3AF] group-hover:text-white transition-colors" />
             </div>
 
-            <div>
-              <p className="text-sm font-semibold text-zinc-300">{card.label}</p>
-              <h3 className="text-2xl sm:text-3xl font-extrabold font-display text-white tracking-tight my-1 group-hover:text-amber-300 transition-colors">
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm font-semibold text-[#9CA3AF] truncate" title={card.label}>{card.label}</p>
+              <h3
+                title={card.value}
+                className="text-base xs:text-lg sm:text-2xl lg:text-3xl font-extrabold font-display text-[#F8F9FA] tracking-tight my-1 group-hover:text-[#43D6B0] transition-colors truncate tabular-nums"
+              >
                 {card.value}
               </h3>
-              <p className="text-xs sm:text-sm text-zinc-400 font-medium">{card.subtext}</p>
+              <p className="text-[11px] sm:text-xs md:text-sm text-[#9CA3AF] font-medium truncate" title={card.subtext}>{card.subtext}</p>
             </div>
           </div>
         ))}

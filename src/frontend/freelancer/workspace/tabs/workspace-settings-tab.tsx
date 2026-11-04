@@ -24,6 +24,7 @@ import {
 import { CountrySelect } from '@/frontend/shared/ui/country-select';
 import { PhoneInput } from '@/frontend/shared/ui/phone-input';
 import { switchCountryPrefix } from '@/shared/utils/countries';
+import { SUPPORTED_CURRENCIES } from '@/shared/utils/currency';
 
 export interface WorkspaceSettingsTabProps {
   summary: WorkspaceSummary;
@@ -45,7 +46,7 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
   const [phone, setPhone] = useState(client.phone || '');
   const [industry, setIndustry] = useState(client.industry || '');
   const [country, setCountry] = useState(client.country || 'India');
-  const [currency, setCurrency] = useState(client.currency || 'USD');
+  const [currency, setCurrency] = useState(client.currency || 'INR');
   const [notes, setNotes] = useState(client.notes || '');
 
   // Custom Fields manager
@@ -172,7 +173,20 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label="Default Currency" value={currency} onChange={(e) => setCurrency(e.target.value)} />
+            <div>
+              <label className="block text-xs font-medium text-zinc-300 mb-1.5">Default Currency</label>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="w-full px-3 py-2 border border-white/10 rounded-xl bg-zinc-900 text-white text-sm focus:outline-none focus:border-white/30"
+              >
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code} className="bg-zinc-900 text-white">
+                    {c.name} ({c.symbol})
+                  </option>
+                ))}
+              </select>
+            </div>
             <Input label="Workspace Logo URL" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
           </div>
         </Card>
@@ -209,11 +223,23 @@ export const WorkspaceSettingsTab: React.FC<WorkspaceSettingsTabProps> = ({
               placeholder="Field Key (e.g. VAT Reg)"
               value={newKey}
               onChange={(e) => setNewKey(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddCustomField();
+                }
+              }}
             />
             <Input
               placeholder="Field Value (e.g. GB-99401)"
               value={newValue}
               onChange={(e) => setNewValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddCustomField();
+                }
+              }}
             />
             <Button
               variant="secondary"

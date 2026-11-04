@@ -5,6 +5,8 @@ import { StatusPill } from '@/frontend/shared/ui/status-pill';
 import { HealthBadge } from '@/frontend/shared/ui/health-badge';
 import { Button } from '@/frontend/shared/ui/button';
 import { Client } from '@/shared/types';
+import { useAuth } from '@/frontend/auth/auth-context';
+import { formatCurrency } from '@/shared/utils/currency';
 import {
   ArrowUpRight,
   Building,
@@ -44,6 +46,8 @@ export const ClientCard: React.FC<ClientCardProps> = ({
   onCopyConnectionLink,
   onInviteEmail,
 }) => {
+  const { profile, userSettings } = useAuth();
+  const studioCurrency = userSettings?.currency || profile?.currency || 'INR';
   const [showMenu, setShowMenu] = React.useState(false);
 
   return (
@@ -240,14 +244,14 @@ export const ClientCard: React.FC<ClientCardProps> = ({
         </div>
         <div>
           <span className="text-[10px] uppercase font-mono text-zinc-500 block">Unpaid</span>
-          <span className="text-sm font-bold text-amber-400 font-mono">
-            ${(client.outstandingBalance || 0).toLocaleString()}
+          <span className="text-xs font-bold text-amber-400 font-mono">
+            {formatCurrency(client.outstandingBalance || 0, client.currency || studioCurrency)}
           </span>
         </div>
         <div>
           <span className="text-[10px] uppercase font-mono text-zinc-500 block">Lifetime</span>
-          <span className="text-sm font-bold text-emerald-400 font-mono">
-            ${(client.totalBilled || 0).toLocaleString()}
+          <span className="text-xs font-bold text-emerald-400 font-mono">
+            {formatCurrency(client.totalBilled || 0, client.currency || studioCurrency)}
           </span>
         </div>
       </div>

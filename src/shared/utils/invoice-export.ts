@@ -103,7 +103,7 @@ export async function renderInvoiceToCanvas(
   }
 
   const effectiveBranding = resolveBrandingData(branding);
-  const currency = invoice.currency || 'USD';
+  const currency = invoice.currency || 'INR';
   const symbol = getCurrencySymbol(currency);
 
   // Canonical calculations
@@ -611,7 +611,7 @@ export async function renderInvoiceToCanvas(
     ctx.fillText('Pay Online via Razorpay', margin, payY);
     payY += 16 * scale;
 
-    ctx.fillStyle = '#2563eb';
+    ctx.fillStyle = '#176b5b';
     ctx.font = `${11 * scale}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
     ctx.fillText(razorpayLink, margin, payY);
     payY += 15 * scale;

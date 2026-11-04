@@ -193,11 +193,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (caller.userId) {
       try {
-        const { data: userSettings } = await supabaseAdmin
+        let { data: userSettings } = await supabaseAdmin
           .from('user_settings')
           .select('*')
           .eq('id', caller.userId)
           .maybeSingle();
+
+        if (!userSettings) {
+          const { data: latestSettings } = await supabaseAdmin
+            .from('user_settings')
+            .select('*')
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (latestSettings) {
+            userSettings = latestSettings;
+          }
+        }
 
         if (userSettings) {
           defaultQrUrl = userSettings.upi_qr_code_url || userSettings.payment_settings?.upiQrCodeUrl || null;
@@ -212,6 +224,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           } : null);
           defaultRazorpayLink = userSettings.razorpay_payment_link || userSettings.payment_settings?.razorpayPaymentLink || null;
         }
+
+        if (!defaultQrUrl || !defaultUpiId) {
+          const { data: prof } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
+            .eq('id', caller.userId)
+            .maybeSingle();
+          if (prof) {
+            if (!defaultQrUrl && prof.upi_qr_code_url) defaultQrUrl = prof.upi_qr_code_url;
+            if (!defaultUpiId && prof.upi_id) defaultUpiId = prof.upi_id;
+          }
+        }
       } catch {
         // non-critical
       }
@@ -224,9 +248,70 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // 9. Insert Invoice Record
     const nowIso = new Date().toISOString();
-    const { data: insertedInvoice, error: insertError } = await supabaseAdmin
+    const primaryPayload: Record<string, any> = {
+      workspace_id: targetWorkspaceId,
+      client_id: client.id,
+      user_id: caller.userId,
+      client_name: client.name || 'Client',
+      client_email: client.email || 'client@example.com',
+      project_id: payload.projectId || null,
+      invoice_number: invoiceNumber,
+      status: payload.workflowStatus === 'sent' ? 'sent' : 'draft',
+      workflow_status: payload.workflowStatus || 'draft',
+      payment_status: 'pending',
+      issue_date: payload.issueDate,
+      due_date: payload.dueDate,
+      subtotal: calc.subtotal,
+      tax_percentage: calc.taxPercentage,
+      tax_name: payload.taxName || 'GST',
+      tax_amount: calc.taxAmount,
+      total_amount: calc.total,
+      discount: calc.discount,
+      paid_amount: 0,
+      currency: payload.currency || 'INR',
+      notes: payload.notes || '',
+      payment_instructions: payload.paymentInstructions || '',
+      internal_notes: payload.internalNotes || '',
+      payment_methods: {
+        ...(payload.paymentMethods || {
+          bankTransferEnabled: true,
+          upiEnabled: Boolean(finalUpiId || finalQrCodeUrl),
+          razorpayLinkEnabled: Boolean(finalRazorpayLink),
+        }),
+        upiQrCodeUrl: finalQrCodeUrl || undefined,
+        upiId: finalUpiId || undefined,
+        bankDetails: finalBankDetails || undefined,
+        razorpayPaymentLink: finalRazorpayLink || undefined,
+        defaultPaymentInstructions: payload.paymentInstructions || undefined,
+      },
+      upi_id: finalUpiId || null,
+      bank_details: finalBankDetails || null,
+      razorpay_payment_link: finalRazorpayLink || null,
+      created_at: nowIso,
+      updated_at: nowIso,
+    };
+
+    let insertedInvoice: any = null;
+    let insertError: any = null;
+
+    const primaryAttempt = await supabaseAdmin
       .from('invoices')
-      .insert({
+      .insert(primaryPayload)
+      .select()
+      .single();
+
+    if (!primaryAttempt.error && primaryAttempt.data) {
+      insertedInvoice = primaryAttempt.data;
+    } else {
+      insertError = primaryAttempt.error;
+      logger.warn('Initial invoice insert failed, attempting safe schema fallback retry:', {
+        requestId,
+        error: insertError?.message,
+      });
+
+      // Retry without extended standalone columns (upi_id, bank_details, razorpay_payment_link)
+      // but retain payment_methods JSONB, tax_name, and payment_instructions
+      const fallbackPayload: Record<string, any> = {
         workspace_id: targetWorkspaceId,
         client_id: client.id,
         user_id: caller.userId,
@@ -234,44 +319,80 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         client_email: client.email || 'client@example.com',
         project_id: payload.projectId || null,
         invoice_number: invoiceNumber,
-        status: 'draft',
-        workflow_status: 'draft',
+        status: payload.workflowStatus === 'sent' ? 'sent' : 'draft',
+        workflow_status: payload.workflowStatus || 'draft',
         payment_status: 'pending',
         issue_date: payload.issueDate,
         due_date: payload.dueDate,
         subtotal: calc.subtotal,
         tax_percentage: calc.taxPercentage,
-        tax_name: payload.taxName || 'Tax',
+        tax_name: payload.taxName || 'GST',
         tax_amount: calc.taxAmount,
         total_amount: calc.total,
         discount: calc.discount,
         paid_amount: 0,
-        currency: payload.currency,
+        currency: payload.currency || 'INR',
         notes: payload.notes || '',
         payment_instructions: payload.paymentInstructions || '',
-        internal_notes: payload.internalNotes || '',
-        payment_methods: {
-          ...(payload.paymentMethods || {
-            bankTransferEnabled: true,
-            upiEnabled: Boolean(finalUpiId || finalQrCodeUrl),
-            razorpayLinkEnabled: Boolean(finalRazorpayLink),
-          }),
-          upiQrCodeUrl: finalQrCodeUrl || undefined,
-        },
-        upi_id: finalUpiId || null,
-        upi_qr_code_url: finalQrCodeUrl || null,
-        bank_details: finalBankDetails || null,
-        razorpay_payment_link: finalRazorpayLink || null,
+        payment_methods: primaryPayload.payment_methods,
         created_at: nowIso,
         updated_at: nowIso,
-      })
-      .select()
-      .single();
+      };
+
+      const fallbackAttempt = await supabaseAdmin
+        .from('invoices')
+        .insert(fallbackPayload)
+        .select()
+        .single();
+
+      if (!fallbackAttempt.error && fallbackAttempt.data) {
+        insertedInvoice = fallbackAttempt.data;
+        insertError = null;
+      } else {
+        // Tertiary fallback: minimal fields if older table schema
+        const minimalPayload: Record<string, any> = {
+          workspace_id: targetWorkspaceId,
+          client_id: client.id,
+          user_id: caller.userId,
+          client_name: client.name || 'Client',
+          client_email: client.email || 'client@example.com',
+          project_id: payload.projectId || null,
+          invoice_number: invoiceNumber,
+          status: 'draft',
+          issue_date: payload.issueDate,
+          due_date: payload.dueDate,
+          subtotal: calc.subtotal,
+          tax_percentage: calc.taxPercentage,
+          tax_amount: calc.taxAmount,
+          total_amount: calc.total,
+          discount: calc.discount,
+          paid_amount: 0,
+          currency: payload.currency || 'INR',
+          notes: payload.notes || '',
+          created_at: nowIso,
+          updated_at: nowIso,
+        };
+        const tertiaryAttempt = await supabaseAdmin
+          .from('invoices')
+          .insert(minimalPayload)
+          .select()
+          .single();
+
+        if (!tertiaryAttempt.error && tertiaryAttempt.data) {
+          insertedInvoice = tertiaryAttempt.data;
+          insertError = null;
+        } else {
+          insertError = fallbackAttempt.error || tertiaryAttempt.error || insertError;
+        }
+      }
+    }
 
     if (insertError || !insertedInvoice) {
       logger.error('Failed to insert invoice into database', insertError, { requestId });
       return createApiErrorResponse({
-        message: insertError?.code === '23505' ? 'An invoice with this number already exists.' : 'Failed to create invoice.',
+        message: insertError?.code === '23505'
+          ? 'An invoice with this number already exists.'
+          : (insertError?.message || 'Failed to create invoice.'),
         code: insertError?.code === '23505' ? 'DUPLICATE_INVOICE_NUMBER' : 'DATABASE_INSERT_ERROR',
         status: 400,
         requestId,

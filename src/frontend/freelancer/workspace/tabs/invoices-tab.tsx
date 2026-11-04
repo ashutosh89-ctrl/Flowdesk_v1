@@ -81,7 +81,7 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({ summary, onRefresh }) 
 
                   <div className="flex items-center gap-4 self-end sm:self-auto">
                     <span className="text-sm font-bold text-white font-mono">
-                      ${inv.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      {formatCurrency(inv.total, inv.currency || client.currency || 'INR')}
                     </span>
                     <StatusPill status={inv.status || inv.paymentStatus || 'pending'} />
 
@@ -135,14 +135,14 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({ summary, onRefresh }) 
               {(viewInvoice?.items ?? []).map((item, idx) => (
                 <div key={idx} className="flex justify-between text-xs py-1 border-b border-white/5 text-zinc-300">
                   <span>{item.description} (x{item.quantity})</span>
-                  <span className="font-mono text-white">{formatCurrency(item.amount || 0, viewInvoice?.currency || client.currency || 'USD')}</span>
+                  <span className="font-mono text-white">{formatCurrency(item.amount || 0, viewInvoice?.currency || client.currency || 'INR')}</span>
                 </div>
               ))}
             </div>
 
             <div className="pt-2 flex justify-between text-sm font-bold text-white font-mono">
               <span>Total Amount</span>
-              <span>{formatCurrency(viewInvoice?.total || 0, viewInvoice?.currency || client.currency || 'USD')}</span>
+              <span>{formatCurrency(viewInvoice?.total || 0, viewInvoice?.currency || client.currency || 'INR')}</span>
             </div>
           </div>
 

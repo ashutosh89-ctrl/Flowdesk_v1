@@ -214,8 +214,44 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    // Optional: insert file record
-    if (payload.fileName || payload.fileUrl) {
+    // Insert preview link record if provided
+    if (payload.previewUrl) {
+      try {
+        await safeDeliverableFileInsert(supabaseAdmin, {
+          deliverable_id: deliverable.id,
+          file_name: 'Live Project / Preview',
+          file_size: 'Web App',
+          file_type: 'preview',
+          file_url: payload.previewUrl,
+          is_pinned: true,
+        });
+      } catch (previewErr) {
+        logger.warn('Non-critical: preview link attachment notice', { error: String(previewErr) });
+      }
+    }
+
+    // Insert repository record if provided
+    if (payload.repoUrl) {
+      try {
+        await safeDeliverableFileInsert(supabaseAdmin, {
+          deliverable_id: deliverable.id,
+          file_name: 'Repository (GitHub)',
+          file_size: 'Source Code',
+          file_type: 'github',
+          file_url: payload.repoUrl,
+          is_pinned: false,
+        });
+      } catch (repoErr) {
+        logger.warn('Non-critical: repo link attachment notice', { error: String(repoErr) });
+      }
+    }
+
+    // Optional: insert file record if not duplicate
+    if (
+      (payload.fileName || payload.fileUrl) &&
+      payload.fileUrl !== payload.previewUrl &&
+      payload.fileUrl !== payload.repoUrl
+    ) {
       try {
         await safeDeliverableFileInsert(supabaseAdmin, {
           deliverable_id: deliverable.id,
@@ -228,6 +264,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       } catch (fileErr) {
         logger.warn('Non-critical: file attachment notice', { error: String(fileErr) });
       }
+    }
+
+    // Persist full metadata to storage for resilient retrieval
+    try {
+      const metaPayload = {
+        previewUrl: payload.previewUrl,
+        repoUrl: payload.repoUrl,
+        previewImageUrl: payload.previewImageUrl,
+        nicheMetadata: payload.nicheMetadata,
+      };
+      await supabaseAdmin.storage
+        .from('documents')
+        .upload(
+          `deliverables/${deliverable.id}/metadata.json`,
+          Buffer.from(JSON.stringify(metaPayload), 'utf-8'),
+          { contentType: 'application/json', upsert: true }
+        );
+    } catch {
+      // non-critical
     }
 
     // Insert initial version record and activity log (non-blocking)

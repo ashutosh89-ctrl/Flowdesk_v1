@@ -162,16 +162,13 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" dir="ltr" className="dark">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Space+Grotesk:wght@400..700&family=Instrument+Serif:ital@0;1&display=swap" />
-        <link rel="preload" href="/fonts/plus-jakarta-sans/PlusJakartaSans-Regular.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/plus-jakarta-sans/PlusJakartaSans-SemiBold.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/space-grotesk/SpaceGrotesk-Regular.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/space-grotesk/SpaceGrotesk-Bold.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@300;400;500;600;700;800&display=swap" />
+        <link rel="preload" href="/fonts/instrument-serif/InstrumentSerif-Regular.ttf" as="font" type="font/ttf" crossOrigin="anonymous" />
         {process.env.NEXT_PUBLIC_TYPEKIT_ID && (
           <link rel="stylesheet" href={`https://use.typekit.net/${process.env.NEXT_PUBLIC_TYPEKIT_ID}.css`} />
         )}
@@ -181,7 +178,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body
-        className="bg-[#0A0A0A] text-[#F5F7FA] min-h-screen font-sans selection:bg-[#0047AB] selection:text-white antialiased"
+        className="bg-[#101312] text-[#F5F5F0] min-h-screen font-sans selection:bg-[#43D6B0] selection:text-[#101312] antialiased"
         suppressHydrationWarning
       >
         <RootProviders>{children}</RootProviders>

@@ -42,8 +42,8 @@ export const ActivityTab: React.FC<ActivityTabProps> = ({ summary }) => {
     if (action.includes('deleted') || action.includes('removed')) return <Trash2 className="w-4 h-4 text-rose-400" />;
     if (action.includes('created') || action.includes('generated')) return <FileEdit className="w-4 h-4 text-emerald-400" />;
     if (action.includes('archived')) return <Archive className="w-4 h-4 text-amber-400" />;
-    if (action.includes('invoice') || category === 'invoice') return <Receipt className="w-4 h-4 text-blue-400" />;
-    if (action.includes('document') || category === 'document') return <FileText className="w-4 h-4 text-purple-400" />;
+    if (action.includes('invoice') || category === 'invoice') return <Receipt className="w-4 h-4 text-[#43D6B0]" />;
+    if (action.includes('document') || category === 'document') return <FileText className="w-4 h-4 text-[#43D6B0]" />;
     return <RefreshCw className="w-4 h-4 text-zinc-400" />;
   };
 

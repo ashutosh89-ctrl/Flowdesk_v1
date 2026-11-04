@@ -23,7 +23,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
   onSuccess,
 }) => {
   const { profile, userSettings } = useAuth();
-  const studioCurrency = userSettings?.currency || profile?.currency || 'USD';
+  const studioCurrency = userSettings?.currency || profile?.currency || 'INR';
   const { showToast } = useToast();
 
   const [name, setName] = useState('');
@@ -81,34 +81,34 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
         tags,
       });
 
-      showToast('Client Workspace Created', `Workspace for "${company.trim()}" is ready.`, 'success');
-
-      if (sendInviteNow && newClient?.id) {
-        try {
-          const invRes = await fetch(`/api/clients/${encodeURIComponent(newClient.id)}/invitation`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              recipientEmail: email.trim(),
-              forceNew: true,
-              sendEmail: true,
-            }),
-          });
-          const invData = await invRes.json();
-          if (invData.emailDispatched) {
-            showToast('Invitation Email Dispatched', `Sent onboarding invitation to ${email.trim()}`, 'success');
-          } else if (invData.emailDeliveryError) {
-            showToast('Workspace Created', `Client ready. Note: Email paused (${invData.emailDeliveryError}).`, 'info');
-          }
-        } catch (invErr) {
-          console.warn('Auto invitation send notice:', invErr);
-        }
-      }
-
+      // Immediately clear form, close modal, and notify caller for zero-latency UX
       resetForm();
       onClose();
       if (onSuccess) {
         onSuccess(newClient);
+      }
+      showToast('Client Workspace Created', `Workspace for "${company.trim()}" is ready.`, 'success');
+
+      // Dispatch invitation asynchronously in background so client creation is instant
+      if (sendInviteNow && newClient?.id) {
+        fetch(`/api/clients/${encodeURIComponent(newClient.id)}/invitation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipientEmail: email.trim(),
+            forceNew: true,
+            sendEmail: true,
+          }),
+        })
+          .then((res) => res.json())
+          .then((invData) => {
+            if (invData.emailDispatched) {
+              showToast('Invitation Email Dispatched', `Sent onboarding invitation to ${email.trim()}`, 'success');
+            }
+          })
+          .catch((invErr) => {
+            console.warn('Auto invitation send notice:', invErr);
+          });
       }
     } catch (err: any) {
       console.error('Create client error:', err);

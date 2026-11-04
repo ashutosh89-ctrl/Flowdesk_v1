@@ -10,6 +10,7 @@ import { FlowDeskStore } from '@/backend/store/storage-store';
 import { isServerMutationBatchEnabled } from '@/shared/config/feature-flags';
 import { safeDeliverableInsert, safeDeliverableUpdate, safeDeliverableFileInsert, deriveApprovalStatus } from '@/backend/utilities/deliverables-db';
 import { assertWithinLimit } from '@/backend/billing';
+import { isSafeHttpUrl } from '@/shared/utils/safe-url';
 
 /** Helper: format bytes to human-readable string */
 const formatFileSize = (bytes: number): string => {
@@ -601,6 +602,13 @@ export const FreelancerDeliverableService = {
         submissionMessage: d.submission_message || '',
         niche: d.niche || 'general',
         nicheMetadata: d.metadata || {},
+        fileUrl: d.file_url || d.metadata?.fileUrl || undefined,
+        fileName: d.file_name || d.metadata?.fileName || undefined,
+        fileSize: d.file_size || d.metadata?.fileSize || undefined,
+        previewImageUrl: d.preview_image_url || d.metadata?.previewImageUrl || undefined,
+        thumbnailUrl: d.thumbnail_url || d.metadata?.thumbnailUrl || undefined,
+        repoUrl: d.metadata?.repositoryUrl || d.metadata?.repoUrl || d.metadata?.githubUrl || undefined,
+        previewUrl: d.metadata?.previewUrl || d.metadata?.liveProjectUrl || d.metadata?.projectUrl || undefined,
         commentsCount: d.comments_count || 0,
         filesCount: d.files_count || 0,
         isArchived: d.status === 'archived',
@@ -686,6 +694,11 @@ export const FreelancerDeliverableService = {
         rejectionReason: data.rejection_reason || undefined,
         niche: data.niche || 'general',
         nicheMetadata: data.metadata || {},
+        fileUrl: data.file_url || data.metadata?.fileUrl || (files[0]?.fileUrl) || undefined,
+        fileName: data.file_name || data.metadata?.fileName || (files[0]?.fileName) || undefined,
+        fileSize: data.file_size || data.metadata?.fileSize || (files[0]?.fileSize) || undefined,
+        previewImageUrl: data.preview_image_url || data.metadata?.previewImageUrl || undefined,
+        thumbnailUrl: data.thumbnail_url || data.metadata?.thumbnailUrl || undefined,
         commentsCount: data.comments_count || comments.length,
         filesCount: data.files_count || files.length,
         files,
@@ -734,6 +747,9 @@ export const FreelancerDeliverableService = {
             status: delData.status || 'draft',
             approvalStatus: delData.approvalStatus || 'pending',
             niche: delData.niche || 'general',
+            previewUrl: (delData as any).previewUrl,
+            repoUrl: (delData as any).repoUrl,
+            previewImageUrl: (delData as any).previewImageUrl,
             nicheMetadata: delData.nicheMetadata || {},
           }),
         });
@@ -808,6 +824,14 @@ export const FreelancerDeliverableService = {
         internal_notes: delData.internalNotes || '',
         submission_message: delData.submissionMessage || '',
         approval_status: delData.approvalStatus || 'pending',
+        niche: delData.niche || 'general',
+        metadata: (delData as any).nicheMetadata || (delData as any).metadata || {
+          previewUrl: (delData as any).previewUrl,
+          liveProjectUrl: (delData as any).previewUrl,
+          repositoryUrl: (delData as any).repoUrl || (delData as any).repositoryUrl,
+          repoUrl: (delData as any).repoUrl || (delData as any).repositoryUrl,
+          githubUrl: (delData as any).repoUrl || (delData as any).repositoryUrl,
+        },
       };
 
       const { data, error } = await safeDeliverableInsert(supabase, payload);
@@ -892,6 +916,14 @@ export const FreelancerDeliverableService = {
         version: data.current_version || 'v1.0',
         internalNotes: data.internal_notes || '',
         submissionMessage: data.submission_message || '',
+        niche: data.niche || delData.niche || 'general',
+        nicheMetadata: data.metadata || (delData as any).nicheMetadata || {},
+        fileUrl: delData.fileUrl || undefined,
+        fileName: delData.fileName || undefined,
+        fileSize: delData.fileSize || undefined,
+        previewImageUrl: (delData as any).previewImageUrl || undefined,
+        repoUrl: (delData as any).repoUrl || data.metadata?.repositoryUrl || data.metadata?.repoUrl || undefined,
+        previewUrl: (delData as any).previewUrl || data.metadata?.previewUrl || data.metadata?.liveProjectUrl || undefined,
       };
     } catch (err) {
       console.warn('Direct Supabase write failed:', err);
@@ -918,6 +950,63 @@ export const FreelancerDeliverableService = {
       if (updates.approvalStatus !== undefined) payload.approval_status = updates.approvalStatus;
       if (updates.niche !== undefined) payload.niche = updates.niche;
       if (updates.nicheMetadata !== undefined) payload.metadata = updates.nicheMetadata;
+
+      // Resilient sync of Live Preview and Repo URLs to deliverable_files
+      const previewUrl = updates.previewUrl || (updates as any).nicheMetadata?.previewUrl || (updates as any).nicheMetadata?.liveProjectUrl;
+      const repoUrl = updates.repoUrl || (updates as any).nicheMetadata?.repositoryUrl || (updates as any).nicheMetadata?.repoUrl || (updates as any).nicheMetadata?.githubUrl;
+
+      if (previewUrl && isSafeHttpUrl(previewUrl)) {
+        try {
+          const { data: existingPreview } = await supabase
+            .from('deliverable_files')
+            .select('id')
+            .eq('deliverable_id', id)
+            .eq('file_type', 'preview')
+            .maybeSingle();
+
+          if (existingPreview) {
+            await supabase.from('deliverable_files').update({ file_url: previewUrl }).eq('id', existingPreview.id);
+          } else {
+            await safeDeliverableFileInsert(supabase, {
+              deliverable_id: id,
+              file_name: 'App Live Preview',
+              file_size: 'Web App',
+              file_type: 'preview',
+              file_url: previewUrl,
+              is_pinned: true,
+            });
+          }
+        } catch (prevErr) {
+          console.warn('Sync previewUrl notice:', prevErr);
+        }
+      }
+
+      if (repoUrl && isSafeHttpUrl(repoUrl)) {
+        try {
+          const { data: existingRepo } = await supabase
+            .from('deliverable_files')
+            .select('id')
+            .eq('deliverable_id', id)
+            .eq('file_type', 'github')
+            .maybeSingle();
+
+          if (existingRepo) {
+            await supabase.from('deliverable_files').update({ file_url: repoUrl }).eq('id', existingRepo.id);
+          } else {
+            await safeDeliverableFileInsert(supabase, {
+              deliverable_id: id,
+              file_name: 'GitHub Repository',
+              file_size: 'Source Code',
+              file_type: 'github',
+              file_url: repoUrl,
+              is_pinned: false,
+            });
+          }
+        } catch (repoErr) {
+          console.warn('Sync repoUrl notice:', repoErr);
+        }
+      }
+
       const { data, error } = await safeDeliverableUpdate(supabase, id, payload, { key: 'workspace_id', value: wsId });
       if (error) { console.warn('Supabase deliverable update error:', error.message); return undefined; }
       if (!data) return undefined;
@@ -1285,8 +1374,8 @@ export const FreelancerDeliverableService = {
 
       // Verify current status allows approval
       const { data: current } = await supabase.from('deliverables').select('status').eq('id', id).single();
-      if (!current || current.status !== 'submitted') {
-        console.warn('Cannot approve deliverable: status is not submitted');
+      if (!current || (current.status !== 'submitted' && current.status !== 'in_review' && current.status !== 'draft')) {
+        console.warn('Cannot approve deliverable: status is not approvable', current?.status);
         return undefined;
       }
 
@@ -1413,6 +1502,54 @@ import {
   calculateRemainingBalance,
   generateNextInvoiceNumber,
 } from '@/shared/utils/invoice-calculations';
+
+function mapApiInvoiceData(raw: any, fallback?: Partial<Invoice>): Invoice {
+  const calcTotal = Number(raw.total_amount ?? raw.total ?? fallback?.total) || 0;
+  const calcPaid = Number(raw.paid_amount ?? raw.paidAmount ?? fallback?.paidAmount) || 0;
+  const rawStatus = raw.status || raw.workflow_status || raw.workflowStatus || fallback?.workflowStatus || 'draft';
+  const isOverdue = raw.due_date && rawStatus !== 'paid' && new Date(raw.due_date) < new Date();
+
+  return {
+    id: raw.id || fallback?.id || '',
+    invoiceNumber: raw.invoice_number || raw.invoiceNumber || fallback?.invoiceNumber || '',
+    clientId: raw.client_id || raw.clientId || fallback?.clientId || '',
+    clientName: raw.client_name || raw.clientName || fallback?.clientName || 'Client Workspace',
+    clientEmail: raw.client_email || raw.clientEmail || fallback?.clientEmail || 'client@example.com',
+    projectId: raw.project_id || raw.projectId || fallback?.projectId || undefined,
+    projectName: raw.project_name || raw.projectName || fallback?.projectName || undefined,
+    issueDate: raw.issue_date || raw.issueDate || fallback?.issueDate || new Date().toISOString().split('T')[0],
+    dueDate: raw.due_date || raw.dueDate || fallback?.dueDate || new Date().toISOString().split('T')[0],
+    workflowStatus: (raw.workflow_status || raw.workflowStatus || raw.status || fallback?.workflowStatus || 'draft') as any,
+    paymentStatus: (raw.payment_status || raw.paymentStatus || (rawStatus === 'paid' ? 'paid' : 'pending')) as any,
+    status: isOverdue ? 'overdue' : (raw.status || fallback?.status || 'draft'),
+    items: (raw.items || raw.invoice_items || fallback?.items || []).map((it: any) => ({
+      id: it.id,
+      description: it.description || 'Item',
+      quantity: Number(it.quantity) || 1,
+      rate: Number(it.rate ?? it.unit_price) || 0,
+      amount: Number(it.amount ?? ((Number(it.quantity) || 1) * (Number(it.rate ?? it.unit_price) || 0))) || 0,
+    })),
+    subtotal: Number(raw.subtotal ?? fallback?.subtotal) || 0,
+    discount: Number(raw.discount ?? fallback?.discount) || 0,
+    taxName: raw.tax_name || raw.taxName || fallback?.taxName || 'Tax',
+    taxPercentage: Number(raw.tax_percentage ?? raw.taxPercentage ?? fallback?.taxPercentage) || 0,
+    tax: Number(raw.tax_amount ?? raw.tax ?? fallback?.tax) || 0,
+    total: calcTotal,
+    paidAmount: calcPaid,
+    remainingBalance: calculateRemainingBalance(calcTotal, calcPaid),
+    currency: raw.currency || fallback?.currency || 'USD',
+    notes: raw.notes || fallback?.notes || '',
+    paymentInstructions: raw.payment_instructions || raw.paymentInstructions || fallback?.paymentInstructions || '',
+    internalNotes: raw.internal_notes || raw.internalNotes || fallback?.internalNotes || '',
+    paymentMethods: raw.payment_methods || raw.paymentMethods || fallback?.paymentMethods || undefined,
+    upiId: raw.upi_id || raw.upiId || fallback?.upiId || undefined,
+    upiQrCodeUrl: raw.upi_qr_code_url || raw.upiQrCodeUrl || raw.payment_methods?.upiQrCodeUrl || fallback?.upiQrCodeUrl || undefined,
+    bankDetails: raw.bank_details || raw.bankDetails || fallback?.bankDetails || undefined,
+    razorpayPaymentLink: raw.razorpay_payment_link || raw.razorpayPaymentLink || fallback?.razorpayPaymentLink || undefined,
+    receipts: raw.receipts || fallback?.receipts || [],
+    reminders: raw.reminders || fallback?.reminders || [],
+  };
+}
 
 export const FreelancerInvoiceService = {
   getInvoices: async (clientId?: string): Promise<Invoice[]> => {
@@ -1714,12 +1851,13 @@ export const FreelancerInvoiceService = {
           taxPercentage: invoice.taxPercentage,
           taxName: invoice.taxName,
           discount: invoice.discount,
-          currency: invoice.currency || 'USD',
+          currency: invoice.currency || 'INR',
           notes: invoice.notes,
           paymentInstructions: invoice.paymentInstructions,
           internalNotes: invoice.internalNotes,
           paymentMethods: invoice.paymentMethods,
           upiId: invoice.upiId,
+          upiQrCodeUrl: invoice.upiQrCodeUrl || invoice.paymentMethods?.upiQrCodeUrl,
           bankDetails: invoice.bankDetails,
           razorpayPaymentLink: invoice.razorpayPaymentLink,
         }),
@@ -1728,7 +1866,10 @@ export const FreelancerInvoiceService = {
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Failed to create invoice.');
       }
-      const fetched = await FreelancerInvoiceService.getInvoiceById(data.invoice.id);
+      if (data.invoice) {
+        return mapApiInvoiceData(data.invoice, invoice);
+      }
+      const fetched = await FreelancerInvoiceService.getInvoiceById(data.invoice?.id);
       return fetched || (data.invoice as any);
     }
 
@@ -1799,12 +1940,12 @@ export const FreelancerInvoiceService = {
         due_date: invoice.dueDate || new Date().toISOString().split('T')[0],
         subtotal: calc.subtotal,
         tax_percentage: calc.taxPercentage,
-        tax_name: invoice.taxName || 'Tax',
+        tax_name: invoice.taxName || 'GST',
         tax_amount: calc.taxAmount,
         total_amount: calc.total,
         discount: calc.discount,
         paid_amount: 0,
-        currency: invoice.currency || 'USD',
+        currency: invoice.currency || 'INR',
         notes: invoice.notes || '',
         payment_instructions: invoice.paymentInstructions || '',
         internal_notes: invoice.internalNotes || '',
@@ -1824,17 +1965,35 @@ export const FreelancerInvoiceService = {
             settings?.upi_qr_code_url ||
             settings?.payment_settings?.upiQrCodeUrl ||
             undefined,
+          upiId:
+            invoice.upiId ||
+            invoice.paymentMethods?.upiId ||
+            settings?.upi_id ||
+            settings?.payment_settings?.upiId ||
+            undefined,
+          bankDetails:
+            invoice.bankDetails ||
+            invoice.paymentMethods?.bankDetails ||
+            settings?.payment_settings?.bankDetails ||
+            (settings?.bank_name ? {
+              bankName: settings.bank_name,
+              accountHolderName: settings.account_holder_name || '',
+              accountNumber: settings.account_number || '',
+              ifscCode: settings.ifsc_code || '',
+              branchName: settings.branch_name || '',
+              upiId: invoice.upiId || settings?.upi_id || '',
+            } : undefined),
+          razorpayPaymentLink:
+            invoice.razorpayPaymentLink ||
+            invoice.paymentMethods?.razorpayPaymentLink ||
+            settings?.razorpay_payment_link ||
+            settings?.payment_settings?.razorpayPaymentLink ||
+            undefined,
         },
         upi_id:
           invoice.upiId ||
           settings?.upi_id ||
           settings?.payment_settings?.upiId ||
-          null,
-        upi_qr_code_url:
-          invoice.upiQrCodeUrl ||
-          invoice.paymentMethods?.upiQrCodeUrl ||
-          settings?.upi_qr_code_url ||
-          settings?.payment_settings?.upiQrCodeUrl ||
           null,
         bank_details:
           invoice.bankDetails ||
@@ -1989,6 +2148,11 @@ export const FreelancerInvoiceService = {
           notes: inv.notes,
           paymentInstructions: invoice.paymentInstructions || inv.payment_instructions || '',
           internalNotes: invoice.internalNotes || inv.internal_notes || '',
+          paymentMethods: inv.payment_methods || invoice.paymentMethods,
+          upiId: inv.upi_id || invoice.upiId,
+          upiQrCodeUrl: inv.upi_qr_code_url || invoice.upiQrCodeUrl,
+          bankDetails: inv.bank_details || invoice.bankDetails,
+          razorpayPaymentLink: inv.razorpay_payment_link || invoice.razorpayPaymentLink,
           receipts: [],
         };
       }
@@ -2116,6 +2280,9 @@ export const FreelancerInvoiceService = {
       const data = await res.json();
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Failed to update invoice.');
+      }
+      if (data.invoice) {
+        return mapApiInvoiceData(data.invoice, updates);
       }
       return FreelancerInvoiceService.getInvoiceById(id);
     }
@@ -2736,38 +2903,75 @@ export const ActivityService = FreelancerActivityService;
 
 export const CommentService = {
   getComments: async (clientId: string): Promise<WorkspaceComment[]> => {
-    const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return [];
+    if (!clientId) return [];
 
+    // 1. Try server API route first
     try {
-      const { data, error } = await supabase
+      const res = await fetch(`/api/comments?clientId=${encodeURIComponent(clientId)}&role=freelancer`, {
+        cache: 'no-store',
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.comments) && json.comments.length > 0) {
+          return json.comments.map((c: any) => ({
+            id: c.id,
+            clientId: c.client_id || c.clientId,
+            author: c.author,
+            avatar: c.avatar || c.author_avatar || '',
+            time: c.created_at?.split('T')[0] || c.time || new Date().toISOString().split('T')[0],
+            text: c.text,
+            isOwner: Boolean(c.is_owner ?? c.isOwner),
+            isInternal: Boolean(c.is_internal ?? c.isInternal),
+            replyToId: c.reply_to_id || c.replyToId || undefined,
+            replyToAuthor: c.reply_to_author || c.replyToAuthor || undefined,
+            replyToText: c.reply_to_text || c.replyToText || undefined,
+            mentions: c.mentions || [],
+            attachments: c.attachments || [],
+            isPinned: Boolean(c.is_pinned ?? c.isPinned),
+          }));
+        }
+      }
+    } catch {
+      // API non-blocking
+    }
+
+    // 2. Direct Supabase query
+    try {
+      const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+      let query = supabase
         .from('workspace_comments')
         .select('*')
-        .eq('workspace_id', wsId)
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: true });
+        .eq('client_id', clientId);
 
-      if (error || !data) return [];
+      if (wsId) {
+        query = query.or(`workspace_id.eq.${wsId},workspace_id.is.null`);
+      }
 
-      return data.map((c) => ({
-        id: c.id,
-        clientId: c.client_id,
-        author: c.author,
-        avatar: c.avatar || '',
-        time: c.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-        text: c.text,
-        isOwner: Boolean(c.is_owner),
-        isInternal: Boolean(c.is_internal),
-        replyToId: c.reply_to_id || undefined,
-        replyToAuthor: c.reply_to_author || undefined,
-        replyToText: c.reply_to_text || undefined,
-        mentions: c.mentions || [],
-        attachments: c.attachments || [],
-        isPinned: Boolean(c.is_pinned),
-      }));
+      const { data, error } = await query.order('created_at', { ascending: true });
+
+      if (data && data.length > 0) {
+        return data.map((c) => ({
+          id: c.id,
+          clientId: c.client_id,
+          author: c.author,
+          avatar: c.avatar || c.author_avatar || '',
+          time: c.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+          text: c.text,
+          isOwner: Boolean(c.is_owner),
+          isInternal: Boolean(c.is_internal),
+          replyToId: c.reply_to_id || undefined,
+          replyToAuthor: c.reply_to_author || undefined,
+          replyToText: c.reply_to_text || undefined,
+          mentions: c.mentions || [],
+          attachments: c.attachments || [],
+          isPinned: Boolean(c.is_pinned),
+        }));
+      }
     } catch {
-      return [];
+      // Fallback
     }
+
+    return FlowDeskStore.getComments(clientId);
   },
 
   addComment: async (
@@ -2786,47 +2990,125 @@ export const CommentService = {
       isPinned?: boolean;
     }
   ): Promise<WorkspaceComment> => {
-    const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) throw new Error("No active workspace");
-
+    // 1. Try server API route
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          text: commentData.text,
+          author: commentData.author || 'Freelancer',
+          avatar: commentData.avatar,
+          replyToId: commentData.replyToId,
+          replyToAuthor: commentData.replyToAuthor,
+          replyToText: commentData.replyToText,
+          isOwner: commentData.isOwner ?? true,
+          isInternal: Boolean(commentData.isInternal),
+        }),
+      });
 
-      const payload = {
-        workspace_id: wsId,
-        client_id: clientId,
-        user_id: user?.id || null,
-        text: commentData.text,
-        author: commentData.author || 'Member',
-        avatar: commentData.avatar || '',
-        is_owner: commentData.isOwner ?? true,
-        is_internal: Boolean(commentData.isInternal),
-        reply_to_id: commentData.replyToId || null,
-        reply_to_author: commentData.replyToAuthor || null,
-        reply_to_text: commentData.replyToText || null,
-        mentions: commentData.mentions || [],
-        attachments: commentData.attachments || [],
-        is_pinned: commentData.isPinned ?? false,
-      };
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.comment) {
+          FlowDeskStore.addComment(clientId, {
+            text: commentData.text,
+            author: commentData.author,
+            avatar: commentData.avatar,
+            isOwner: commentData.isOwner ?? true,
+            replyToId: commentData.replyToId,
+            replyToAuthor: commentData.replyToAuthor,
+            replyToText: commentData.replyToText,
+            mentions: commentData.mentions,
+            attachments: commentData.attachments,
+            isPinned: commentData.isPinned,
+          });
 
-      const { data, error } = await supabase.from('workspace_comments').insert(payload).select().single();
-      if (error || !data) throw new Error("Failed to add comment");
-
-      return {
-        id: data.id,
-        clientId: data.client_id,
-        author: data.author,
-        avatar: data.avatar,
-        time: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-        text: data.text,
-        isOwner: data.is_owner,
-        isInternal: Boolean(data.is_internal),
-      };
+          return {
+            id: json.comment.id,
+            clientId: json.comment.client_id || clientId,
+            author: json.comment.author,
+            avatar: json.comment.avatar || json.comment.author_avatar || '',
+            time: json.comment.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            text: json.comment.text,
+            isOwner: Boolean(json.comment.is_owner),
+            isInternal: Boolean(json.comment.is_internal),
+          };
+        }
+      }
     } catch {
-      throw new Error("Failed to add comment");
+      // API non-blocking
     }
+
+    // 2. Direct Supabase insert
+    const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+    if (wsId) {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        const payload = {
+          workspace_id: wsId,
+          client_id: clientId,
+          user_id: user?.id || null,
+          text: commentData.text,
+          author: commentData.author || 'Freelancer',
+          avatar: commentData.avatar || '',
+          is_owner: commentData.isOwner ?? true,
+          is_internal: Boolean(commentData.isInternal),
+          reply_to_id: commentData.replyToId || null,
+          reply_to_author: commentData.replyToAuthor || null,
+          reply_to_text: commentData.replyToText || null,
+          mentions: commentData.mentions || [],
+          attachments: commentData.attachments || [],
+          is_pinned: commentData.isPinned ?? false,
+        };
+
+        const { data, error } = await supabase.from('workspace_comments').insert(payload).select().single();
+        if (!error && data) {
+          FlowDeskStore.addComment(clientId, {
+            text: commentData.text,
+            author: commentData.author,
+            avatar: commentData.avatar,
+            isOwner: commentData.isOwner ?? true,
+            replyToId: commentData.replyToId,
+            replyToAuthor: commentData.replyToAuthor,
+            replyToText: commentData.replyToText,
+            mentions: commentData.mentions,
+            attachments: commentData.attachments,
+            isPinned: commentData.isPinned,
+          });
+
+          return {
+            id: data.id,
+            clientId: data.client_id,
+            author: data.author,
+            avatar: data.avatar,
+            time: data.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            text: data.text,
+            isOwner: data.is_owner,
+            isInternal: Boolean(data.is_internal),
+          };
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    // 3. Store fallback
+    return FlowDeskStore.addComment(clientId, {
+      text: commentData.text,
+      author: commentData.author,
+      avatar: commentData.avatar,
+      isOwner: commentData.isOwner ?? true,
+      replyToId: commentData.replyToId,
+      replyToAuthor: commentData.replyToAuthor,
+      replyToText: commentData.replyToText,
+      mentions: commentData.mentions,
+      attachments: commentData.attachments,
+      isPinned: commentData.isPinned,
+    });
   },
 
   editComment: async (commentId: string, text: string): Promise<WorkspaceComment | undefined> => {
@@ -2864,9 +3146,9 @@ export const CommentService = {
 
 export const NotificationService = {
   getNotifications: async (): Promise<NotificationItem[]> => {
-    if (DemoDataProvider.isDemo()) return DemoDataProvider.getNotifications();
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getNotifications();
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) return [];
+    if (!wsId) return FlowDeskStore.getNotifications();
 
     try {
       const { data, error } = await supabase
@@ -2875,7 +3157,9 @@ export const NotificationService = {
         .eq('workspace_id', wsId)
         .order('created_at', { ascending: false });
 
-      if (error || !data) return [];
+      if (error || !data || data.length === 0) {
+        return FlowDeskStore.getNotifications();
+      }
 
       return data.map((n) => ({
         id: n.id,
@@ -2887,13 +3171,27 @@ export const NotificationService = {
         link: n.link || undefined,
       }));
     } catch {
-      return [];
+      return FlowDeskStore.getNotifications();
     }
   },
 
   addNotification: async (notif: Omit<NotificationItem, 'id' | 'timestamp' | 'read'>): Promise<NotificationItem> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      const local = FlowDeskStore.addNotification(notif);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+      }
+      return local;
+    }
+
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (!wsId) throw new Error("No active workspace");
+    if (!wsId) {
+      const local = FlowDeskStore.addNotification(notif);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+      }
+      return local;
+    }
 
     try {
       const {
@@ -2911,7 +3209,17 @@ export const NotificationService = {
       };
 
       const { data, error } = await supabase.from('notifications').insert(payload).select().single();
-      if (error || !data) throw new Error("Failed to add notification");
+      if (error || !data) {
+        const local = FlowDeskStore.addNotification(notif);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+        }
+        return local;
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+      }
 
       return {
         id: data.id,
@@ -2923,11 +3231,19 @@ export const NotificationService = {
         link: data.link,
       };
     } catch {
-      throw new Error("Failed to add notification");
+      const local = FlowDeskStore.addNotification(notif);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+      }
+      return local;
     }
   },
 
   markAllAsRead: async (): Promise<void> => {
+    FlowDeskStore.markAllNotificationsRead();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+    }
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (wsId) {
       try {
@@ -2936,14 +3252,17 @@ export const NotificationService = {
         // ignore
       }
     }
-    // markAllAsRead handled by NotificationService
   },
 
   dismissNotification: async (id: string): Promise<boolean> => {
+    FlowDeskStore.dismissNotification(id);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+    }
     try {
       const { error } = await supabase.from('notifications').delete().eq('id', id);
       return !error;
-    } catch { return false; }
+    } catch { return true; }
   },
 };
 

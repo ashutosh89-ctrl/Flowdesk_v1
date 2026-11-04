@@ -12,7 +12,7 @@ import {
   Pin,
   CornerDownLeft,
   X,
-  Sparkles,
+  Command,
 } from 'lucide-react';
 import { SearchResultItem } from '@/shared/types';
 import {
@@ -240,8 +240,8 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
                 <span>↵ Select</span>
                 <span>ESC Close</span>
               </div>
-              <span className="flex items-center gap-1 text-zinc-400">
-                <Sparkles className="w-3 h-3 text-amber-400" /> Universal Index Active
+              <span className="flex items-center gap-1.5 text-zinc-400">
+                <Command className="w-3 h-3 text-[#43D6B0]" /> Universal Index Active
               </span>
             </div>
           </motion.div>

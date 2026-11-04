@@ -251,8 +251,7 @@ void main() {
   }
 }`;
 
-type QualityLevel = 'low' | 'medium' | 'high';
-const QUALITY: Record<QualityLevel, { sim: number; dye: number }> = {
+const QUALITY = {
   low: { sim: 96, dye: 384 },
   medium: { sim: 128, dye: 576 },
   high: { sim: 160, dye: 768 }
@@ -262,9 +261,9 @@ const PRESSURE_STEPS = 20;
 const FLOW = 0.75;
 const BLOOM_LEVELS = 5;
 
-const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-const compile = (gl: WebGL2RenderingContext, type: number, source: string): WebGLShader | null => {
+const compile = (gl: WebGL2RenderingContext, type: number, source: string) => {
   const shader = gl.createShader(type);
   if (!shader) return null;
   gl.shaderSource(shader, source);
@@ -297,53 +296,6 @@ const fromHsv = (hue: number, saturation: number, value: number): [number, numbe
   return [r + m, g + m, b + m];
 };
 
-interface Target {
-  texture: WebGLTexture;
-  fbo: WebGLFramebuffer;
-  width: number;
-  height: number;
-  texel: [number, number];
-}
-
-interface TargetPair {
-  readonly read: Target;
-  readonly write: Target;
-  swap: () => void;
-  targets: () => Target[];
-}
-
-interface TargetsState {
-  velocity: TargetPair;
-  dye: TargetPair;
-  forward: Target;
-  back: Target;
-  pressure: TargetPair;
-  divergence: Target;
-  bloom: Target[];
-}
-
-interface ProgramPass {
-  program: WebGLProgram;
-  uniforms: Record<string, WebGLUniformLocation | null>;
-}
-
-interface Settings {
-  color: string;
-  secondaryColor: string;
-  intensity: number;
-  trailWidth: number;
-  linger: number;
-  glow: number;
-  hotspot: number;
-  followSpeed: number;
-  grain: number;
-  clickBurst: boolean;
-  quality: QualityLevel;
-  theme: 'dark' | 'light';
-  maxDevicePixelRatio: number;
-  enabled: boolean;
-}
-
 export interface GlowCursorProps extends React.HTMLAttributes<HTMLDivElement> {
   color?: string;
   secondaryColor?: string;
@@ -355,9 +307,9 @@ export interface GlowCursorProps extends React.HTMLAttributes<HTMLDivElement> {
   followSpeed?: number;
   grain?: number;
   clickBurst?: boolean;
-  quality?: QualityLevel;
+  quality?: 'low' | 'medium' | 'high';
   theme?: 'dark' | 'light';
-  blendMode?: React.CSSProperties['mixBlendMode'] | string;
+  blendMode?: any;
   maxDevicePixelRatio?: number;
   enabled?: boolean;
   children?: React.ReactNode;
@@ -366,13 +318,13 @@ export interface GlowCursorProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const GlowCursor: React.FC<GlowCursorProps> = ({
-  color = '#5f8bff',
-  secondaryColor,
-  intensity = 1.3,
-  trailWidth = 3,
-  linger = 1.4,
-  glow = 1.2,
-  hotspot = 0.8,
+  color = '#43D6B0',
+  secondaryColor = '#176B5B',
+  intensity = 0.9,
+  trailWidth = 4,
+  linger = 1.5,
+  glow = 0.9,
+  hotspot = 0.7,
   followSpeed = 0.6,
   grain = 0,
   clickBurst = true,
@@ -386,9 +338,9 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
   style,
   ...rest
 }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const settingsRef = useRef<Settings>({
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const currentSettings = {
     color: String(color),
     secondaryColor: secondaryColor ? String(secondaryColor) : '',
     intensity: Math.max(0, intensity),
@@ -403,41 +355,12 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
     theme,
     maxDevicePixelRatio,
     enabled
-  });
+  };
+  const settingsRef = useRef<any>(currentSettings);
 
   useEffect(() => {
-    settingsRef.current = {
-      color: String(color),
-      secondaryColor: secondaryColor ? String(secondaryColor) : '',
-      intensity: Math.max(0, intensity),
-      trailWidth: clamp(trailWidth, 0.5, 40),
-      linger: clamp(linger, 0.1, 10),
-      glow: Math.max(0, glow),
-      hotspot: Math.max(0, hotspot),
-      followSpeed: clamp(followSpeed, 0, 1),
-      grain: Math.max(0, grain),
-      clickBurst,
-      quality: QUALITY[quality] ? quality : 'high',
-      theme,
-      maxDevicePixelRatio,
-      enabled
-    };
-  }, [
-    color,
-    secondaryColor,
-    intensity,
-    trailWidth,
-    linger,
-    glow,
-    hotspot,
-    followSpeed,
-    grain,
-    clickBurst,
-    quality,
-    theme,
-    maxDevicePixelRatio,
-    enabled
-  ]);
+    settingsRef.current = currentSettings;
+  });
 
   useEffect(() => {
     const container = containerRef.current;
@@ -449,13 +372,12 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       depth: false,
       stencil: false
     }) as WebGL2RenderingContext | null;
-
     if (!container || !canvas || !gl || !gl.getExtension('EXT_color_buffer_float')) return undefined;
 
     const vertexShader = compile(gl, gl.VERTEX_SHADER, VERTEX);
     if (!vertexShader) return undefined;
 
-    const build = (source: string): ProgramPass | null => {
+    const build = (source: string) => {
       const fragment = compile(gl, gl.FRAGMENT_SHADER, source);
       const program = gl.createProgram();
       if (!fragment || !program) return null;
@@ -477,7 +399,7 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       return { program, uniforms };
     };
 
-    const passes: Record<string, ProgramPass | null> = {
+    const passes: Record<string, any> = {
       splat: build(SPLAT),
       advect: build(ADVECT),
       maccormack: build(MACCORMACK),
@@ -491,8 +413,6 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       display: build(DISPLAY)
     };
     if (Object.values(passes).some(pass => !pass)) return undefined;
-
-    const nonNullPasses = passes as Record<string, ProgramPass>;
 
     const vao = gl.createVertexArray();
     const buffer = gl.createBuffer();
@@ -508,28 +428,13 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
     const probeContext = probe.getContext('2d', { willReadFrequently: true });
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
-    const state: {
-      width: number;
-      height: number;
-      ratio: number;
-      colorKey: string;
-      color: [number, number, number];
-      secondary: [number, number, number];
-      pointer: { x: number; y: number; inside: boolean };
-      emitter: { x: number; y: number; vx: number; vy: number; px: number; py: number; travelled: number };
-      ready: boolean;
-      bursts: [number, number][];
-      active: number;
-      time: number;
-      allocated: string;
-      targets: TargetsState | null;
-    } = {
+    const state: any = {
       width: 1,
       height: 1,
       ratio: 1,
       colorKey: '',
-      color: [0.37, 0.55, 1],
-      secondary: [0.25, 0.3, 1],
+      color: [0.26, 0.84, 0.69],
+      secondary: [0.09, 0.42, 0.36],
       pointer: { x: 0, y: 0, inside: false },
       emitter: { x: 0, y: 0, vx: 0, vy: 0, px: 0, py: 0, travelled: 0 },
       ready: false,
@@ -539,28 +444,27 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       allocated: '',
       targets: null
     };
-
     let raf = 0;
     let last = 0;
     let alive = true;
     let visible = true;
 
-    const toRgb = (value: string | undefined, fallback: [number, number, number]): [number, number, number] => {
+    const toRgb = (value: string, fallback: [number, number, number]): [number, number, number] => {
       if (!probeContext || !value) return fallback;
       const css = /^[0-9a-f]{3,8}$/i.test(value) ? `#${value}` : value;
       probeContext.clearRect(0, 0, 1, 1);
       probeContext.fillStyle = '#000000';
       probeContext.fillStyle = css;
       probeContext.fillRect(0, 0, 1, 1);
-      const data = probeContext.getImageData(0, 0, 1, 1).data;
-      return [data[0] / 255, data[1] / 255, data[2] / 255];
+      const [r, g, b] = probeContext.getImageData(0, 0, 1, 1).data;
+      return [r / 255, g / 255, b / 255];
     };
 
-    const resolveColors = (s: Settings) => {
+    const resolveColors = (s: any) => {
       const key = `${s.color}|${s.secondaryColor}`;
       if (key === state.colorKey) return;
       state.colorKey = key;
-      state.color = toRgb(s.color, [0.37, 0.55, 1]);
+      state.color = toRgb(s.color, [0.26, 0.84, 0.69]);
       if (s.secondaryColor) {
         state.secondary = toRgb(s.secondaryColor, state.color);
       } else {
@@ -569,21 +473,15 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       }
     };
 
-    const createTarget = (
-      width: number,
-      height: number,
-      internalFormat: number,
-      format: number,
-      filter: number
-    ): Target => {
-      const texture = gl.createTexture()!;
+    const createTarget = (width: number, height: number, internalFormat: number, format: number, filter: number) => {
+      const texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, width, height, 0, format, gl.HALF_FLOAT, null);
-      const fbo = gl.createFramebuffer()!;
+      const fbo = gl.createFramebuffer();
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
       gl.viewport(0, 0, width, height);
@@ -592,13 +490,7 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       return { texture, fbo, width, height, texel: [1 / width, 1 / height] };
     };
 
-    const createPair = (
-      width: number,
-      height: number,
-      internalFormat: number,
-      format: number,
-      filter: number
-    ): TargetPair => {
+    const createPair = (width: number, height: number, internalFormat: number, format: number, filter: number) => {
       let read = createTarget(width, height, internalFormat, format, filter);
       let write = createTarget(width, height, internalFormat, format, filter);
       return {
@@ -619,7 +511,7 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       };
     };
 
-    const destroyTarget = (target: Target) => {
+    const destroyTarget = (target: any) => {
       gl.deleteTexture(target.texture);
       gl.deleteFramebuffer(target.fbo);
     };
@@ -655,16 +547,15 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       if (key === state.allocated && state.targets) return;
       release();
       state.allocated = key;
-      const preset = QUALITY[s.quality];
+      const preset = QUALITY[s.quality as keyof typeof QUALITY] || QUALITY.high;
       const aspect = state.width / state.height;
-      const dims = (base: number) =>
-        aspect >= 1 ? [Math.round(base * aspect), base] : [base, Math.round(base / aspect)];
+      const dims = (base: number) => (aspect >= 1 ? [Math.round(base * aspect), base] : [base, Math.round(base / aspect)]);
       const [simW, simH] = dims(preset.sim);
       let [dyeW, dyeH] = dims(preset.dye);
       const shrink = Math.min(1, canvas.width / dyeW, canvas.height / dyeH);
       dyeW = Math.max(2, Math.round(dyeW * shrink));
       dyeH = Math.max(2, Math.round(dyeH * shrink));
-      const bloom: Target[] = [];
+      const bloom = [];
       let bloomW = dyeW >> 1;
       let bloomH = dyeH >> 1;
       for (let i = 0; i < BLOOM_LEVELS; i++) {
@@ -700,7 +591,7 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       allocate();
     };
 
-    const draw = (target: Target | null) => {
+    const draw = (target: any) => {
       if (target) {
         gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
         gl.viewport(0, 0, target.width, target.height);
@@ -711,55 +602,43 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     };
 
-    const applyPass = (pass: ProgramPass, texel: [number, number]) => {
+    const applyPass = (pass: any, texel: [number, number]) => {
       gl.useProgram(pass.program);
       if (pass.uniforms.uTexel) gl.uniform2f(pass.uniforms.uTexel, texel[0], texel[1]);
       return pass.uniforms;
     };
 
-    const bind = (unit: number, target: Target) => {
+    const bind = (unit: number, target: any) => {
       gl.activeTexture(gl.TEXTURE0 + unit);
       gl.bindTexture(gl.TEXTURE_2D, target.texture);
       return unit;
     };
 
-    const splat = (
-      pair: TargetPair,
-      ax: number,
-      ay: number,
-      bx: number,
-      by: number,
-      radius: number,
-      value: [number, number, number],
-      mode: number,
-      strength: number,
-      wide: number = radius
-    ) => {
-      const u = applyPass(nonNullPasses.splat, pair.read.texel);
-      if (u.uTarget) gl.uniform1i(u.uTarget, bind(0, pair.read));
-      if (u.uAspect) gl.uniform1f(u.uAspect, state.width / state.height);
-      if (u.uA) gl.uniform2f(u.uA, ax / state.width, 1 - ay / state.height);
-      if (u.uB) gl.uniform2f(u.uB, bx / state.width, 1 - by / state.height);
-      if (u.uRadius) gl.uniform1f(u.uRadius, radius / state.height);
-      if (u.uWide) gl.uniform1f(u.uWide, wide / state.height);
-      if (u.uValue) gl.uniform3f(u.uValue, value[0], value[1], value[2]);
-      if (u.uMode) gl.uniform1f(u.uMode, mode);
-      if (u.uStrength) gl.uniform1f(u.uStrength, strength);
+    const splat = (pair: any, ax: number, ay: number, bx: number, by: number, radius: number, value: [number, number, number], mode: number, strength: number, wide = radius) => {
+      const u = applyPass(passes.splat, pair.read.texel);
+      gl.uniform1i(u.uTarget, bind(0, pair.read));
+      gl.uniform1f(u.uAspect, state.width / state.height);
+      gl.uniform2f(u.uA, ax / state.width, 1 - ay / state.height);
+      gl.uniform2f(u.uB, bx / state.width, 1 - by / state.height);
+      gl.uniform1f(u.uRadius, radius / state.height);
+      gl.uniform1f(u.uWide, wide / state.height);
+      gl.uniform3f(u.uValue, value[0], value[1], value[2]);
+      gl.uniform1f(u.uMode, mode);
+      gl.uniform1f(u.uStrength, strength);
       draw(pair.write);
       pair.swap();
     };
 
     const toGrid = (vx: number, vy: number): [number, number] => {
-      const velocity = state.targets!.velocity;
+      const { velocity } = state.targets;
       return [(vx * velocity.read.width) / state.width, (-vy * velocity.read.height) / state.height];
     };
 
-    const lightRadius = (s: Settings) =>
-      Math.max(s.trailWidth * 0.5, (state.height / state.targets!.dye.read.height) * 0.9);
+    const lightRadius = (s: any) => Math.max(s.trailWidth * 0.5, (state.height / state.targets.dye.read.height) * 0.9);
 
-    const emit = (s: Settings, dt: number, now: number) => {
+    const emit = (s: any, dt: number, now: number) => {
       const { emitter, pointer } = state;
-      const { velocity, dye } = state.targets!;
+      const { velocity, dye } = state.targets;
       emitter.px = emitter.x;
       emitter.py = emitter.y;
       if (reduce || s.followSpeed >= 1) {
@@ -799,8 +678,8 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       state.active = now;
     };
 
-    const burst = (s: Settings, x: number, y: number, now: number) => {
-      const { velocity, dye } = state.targets!;
+    const burst = (s: any, x: number, y: number, now: number) => {
+      const { velocity, dye } = state.targets;
       const radius = lightRadius(s);
       const jets = 6;
       const base = Math.random() * Math.PI * 2;
@@ -823,40 +702,40 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       state.active = now;
     };
 
-    const step = (s: Settings, dt: number) => {
-      const { velocity, dye, pressure, divergence } = state.targets!;
+    const step = (s: any, dt: number) => {
+      const { velocity, dye, pressure, divergence } = state.targets;
       if (!reduce) {
-        let u = applyPass(nonNullPasses.divergence, velocity.read.texel);
-        if (u.uVelocity) gl.uniform1i(u.uVelocity, bind(0, velocity.read));
+        let u = applyPass(passes.divergence, velocity.read.texel);
+        gl.uniform1i(u.uVelocity, bind(0, velocity.read));
         draw(divergence);
 
-        u = applyPass(nonNullPasses.scale, pressure.read.texel);
-        if (u.uSource) gl.uniform1i(u.uSource, bind(0, pressure.read));
-        if (u.uValue) gl.uniform1f(u.uValue, 0.8);
+        u = applyPass(passes.scale, pressure.read.texel);
+        gl.uniform1i(u.uSource, bind(0, pressure.read));
+        gl.uniform1f(u.uValue, 0.8);
         draw(pressure.write);
         pressure.swap();
 
-        u = applyPass(nonNullPasses.pressure, pressure.read.texel);
-        if (u.uDivergence) gl.uniform1i(u.uDivergence, bind(1, divergence));
+        u = applyPass(passes.pressure, pressure.read.texel);
+        gl.uniform1i(u.uDivergence, bind(1, divergence));
         for (let i = 0; i < PRESSURE_STEPS; i++) {
-          if (u.uPressure) gl.uniform1i(u.uPressure, bind(0, pressure.read));
+          gl.uniform1i(u.uPressure, bind(0, pressure.read));
           draw(pressure.write);
           pressure.swap();
         }
 
-        u = applyPass(nonNullPasses.gradient, velocity.read.texel);
-        if (u.uPressure) gl.uniform1i(u.uPressure, bind(0, pressure.read));
-        if (u.uVelocity) gl.uniform1i(u.uVelocity, bind(1, velocity.read));
+        u = applyPass(passes.gradient, velocity.read.texel);
+        gl.uniform1i(u.uPressure, bind(0, pressure.read));
+        gl.uniform1i(u.uVelocity, bind(1, velocity.read));
         draw(velocity.write);
         velocity.swap();
 
-        u = applyPass(nonNullPasses.advect, velocity.read.texel);
-        if (u.uVelocityTexel) gl.uniform2f(u.uVelocityTexel, velocity.read.texel[0], velocity.read.texel[1]);
-        if (u.uVelocity) gl.uniform1i(u.uVelocity, bind(0, velocity.read));
-        if (u.uSource) gl.uniform1i(u.uSource, bind(0, velocity.read));
-        if (u.uDt) gl.uniform1f(u.uDt, dt);
+        u = applyPass(passes.advect, velocity.read.texel);
+        gl.uniform2f(u.uVelocityTexel, velocity.read.texel[0], velocity.read.texel[1]);
+        gl.uniform1i(u.uVelocity, bind(0, velocity.read));
+        gl.uniform1i(u.uSource, bind(0, velocity.read));
+        gl.uniform1f(u.uDt, dt);
         const calm = Math.exp(-dt * 1.2);
-        if (u.uDecay) gl.uniform4f(u.uDecay, calm, calm, 1, 1);
+        gl.uniform4f(u.uDecay, calm, calm, 1, 1);
         draw(velocity.write);
         velocity.swap();
       }
@@ -867,80 +746,80 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
         Math.exp((-dt * 4.6) / (s.linger * 1.2)),
         1
       ];
-      const { forward, back } = state.targets!;
+      const { forward, back } = state.targets;
       if (reduce) {
-        const u = applyPass(nonNullPasses.advect, dye.read.texel);
-        if (u.uVelocityTexel) gl.uniform2f(u.uVelocityTexel, velocity.read.texel[0], velocity.read.texel[1]);
-        if (u.uVelocity) gl.uniform1i(u.uVelocity, bind(0, velocity.read));
-        if (u.uSource) gl.uniform1i(u.uSource, bind(1, dye.read));
-        if (u.uDt) gl.uniform1f(u.uDt, 0);
-        if (u.uDecay) gl.uniform4f(u.uDecay, decay[0], decay[1], decay[2], decay[3]);
+        const u = applyPass(passes.advect, dye.read.texel);
+        gl.uniform2f(u.uVelocityTexel, velocity.read.texel[0], velocity.read.texel[1]);
+        gl.uniform1i(u.uVelocity, bind(0, velocity.read));
+        gl.uniform1i(u.uSource, bind(1, dye.read));
+        gl.uniform1f(u.uDt, 0);
+        gl.uniform4f(u.uDecay, decay[0], decay[1], decay[2], decay[3]);
         draw(dye.write);
         dye.swap();
         return;
       }
-      let u = applyPass(nonNullPasses.advect, dye.read.texel);
-      if (u.uVelocityTexel) gl.uniform2f(u.uVelocityTexel, velocity.read.texel[0], velocity.read.texel[1]);
-      if (u.uVelocity) gl.uniform1i(u.uVelocity, bind(0, velocity.read));
-      if (u.uSource) gl.uniform1i(u.uSource, bind(1, dye.read));
-      if (u.uDt) gl.uniform1f(u.uDt, dt);
-      if (u.uDecay) gl.uniform4f(u.uDecay, 1, 1, 1, 1);
+      let u = applyPass(passes.advect, dye.read.texel);
+      gl.uniform2f(u.uVelocityTexel, velocity.read.texel[0], velocity.read.texel[1]);
+      gl.uniform1i(u.uVelocity, bind(0, velocity.read));
+      gl.uniform1i(u.uSource, bind(1, dye.read));
+      gl.uniform1f(u.uDt, dt);
+      gl.uniform4f(u.uDecay, 1, 1, 1, 1);
       draw(forward);
-      if (u.uSource) gl.uniform1i(u.uSource, bind(1, forward));
-      if (u.uDt) gl.uniform1f(u.uDt, -dt);
+      gl.uniform1i(u.uSource, bind(1, forward));
+      gl.uniform1f(u.uDt, -dt);
       draw(back);
-      u = applyPass(nonNullPasses.maccormack, dye.read.texel);
-      if (u.uVelocityTexel) gl.uniform2f(u.uVelocityTexel, velocity.read.texel[0], velocity.read.texel[1]);
-      if (u.uSourceTexel) gl.uniform2f(u.uSourceTexel, dye.read.texel[0], dye.read.texel[1]);
-      if (u.uVelocity) gl.uniform1i(u.uVelocity, bind(0, velocity.read));
-      if (u.uSource) gl.uniform1i(u.uSource, bind(1, dye.read));
-      if (u.uForward) gl.uniform1i(u.uForward, bind(2, forward));
-      if (u.uBack) gl.uniform1i(u.uBack, bind(3, back));
-      if (u.uDt) gl.uniform1f(u.uDt, dt);
-      if (u.uDecay) gl.uniform4f(u.uDecay, decay[0], decay[1], decay[2], decay[3]);
+      u = applyPass(passes.maccormack, dye.read.texel);
+      gl.uniform2f(u.uVelocityTexel, velocity.read.texel[0], velocity.read.texel[1]);
+      gl.uniform2f(u.uSourceTexel, dye.read.texel[0], dye.read.texel[1]);
+      gl.uniform1i(u.uVelocity, bind(0, velocity.read));
+      gl.uniform1i(u.uSource, bind(1, dye.read));
+      gl.uniform1i(u.uForward, bind(2, forward));
+      gl.uniform1i(u.uBack, bind(3, back));
+      gl.uniform1f(u.uDt, dt);
+      gl.uniform4f(u.uDecay, decay[0], decay[1], decay[2], decay[3]);
       draw(dye.write);
       dye.swap();
     };
 
-    const setShade = (u: Record<string, WebGLUniformLocation | null>, s: Settings) => {
-      if (u.uColor) gl.uniform3f(u.uColor, state.color[0], state.color[1], state.color[2]);
-      if (u.uSecondary) gl.uniform3f(u.uSecondary, state.secondary[0], state.secondary[1], state.secondary[2]);
-      if (u.uIntensity) gl.uniform1f(u.uIntensity, s.intensity);
-      if (u.uHotspot) gl.uniform1f(u.uHotspot, s.hotspot);
+    const setShade = (u: any, s: any) => {
+      gl.uniform3f(u.uColor, state.color[0], state.color[1], state.color[2]);
+      gl.uniform3f(u.uSecondary, state.secondary[0], state.secondary[1], state.secondary[2]);
+      gl.uniform1f(u.uIntensity, s.intensity);
+      gl.uniform1f(u.uHotspot, s.hotspot);
     };
 
-    const render = (s: Settings) => {
-      const { dye, bloom } = state.targets!;
+    const render = (s: any) => {
+      const { dye, bloom } = state.targets;
       if (s.glow > 0) {
-        let u = applyPass(nonNullPasses.prefilter, bloom[0].texel);
-        if (u.uDye) gl.uniform1i(u.uDye, bind(0, dye.read));
-        if (u.uDyeTexel) gl.uniform2f(u.uDyeTexel, dye.read.texel[0], dye.read.texel[1]);
+        let u = applyPass(passes.prefilter, bloom[0].texel);
+        gl.uniform1i(u.uDye, bind(0, dye.read));
+        gl.uniform2f(u.uDyeTexel, dye.read.texel[0], dye.read.texel[1]);
         setShade(u, s);
         draw(bloom[0]);
-        u = applyPass(nonNullPasses.down, bloom[0].texel);
+        u = applyPass(passes.down, bloom[0].texel);
         for (let i = 1; i < bloom.length; i++) {
-          if (u.uSource) gl.uniform1i(u.uSource, bind(0, bloom[i - 1]));
-          if (u.uSourceTexel) gl.uniform2f(u.uSourceTexel, bloom[i - 1].texel[0], bloom[i - 1].texel[1]);
+          gl.uniform1i(u.uSource, bind(0, bloom[i - 1]));
+          gl.uniform2f(u.uSourceTexel, bloom[i - 1].texel[0], bloom[i - 1].texel[1]);
           draw(bloom[i]);
         }
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.ONE, gl.ONE);
-        u = applyPass(nonNullPasses.up, bloom[0].texel);
+        u = applyPass(passes.up, bloom[0].texel);
         for (let i = bloom.length - 1; i > 0; i--) {
-          if (u.uSource) gl.uniform1i(u.uSource, bind(0, bloom[i]));
-          if (u.uSourceTexel) gl.uniform2f(u.uSourceTexel, bloom[i].texel[0], bloom[i].texel[1]);
+          gl.uniform1i(u.uSource, bind(0, bloom[i]));
+          gl.uniform2f(u.uSourceTexel, bloom[i].texel[0], bloom[i].texel[1]);
           draw(bloom[i - 1]);
         }
         gl.disable(gl.BLEND);
       }
-      const u = applyPass(nonNullPasses.display, [1 / canvas.width, 1 / canvas.height]);
-      if (u.uDye) gl.uniform1i(u.uDye, bind(0, dye.read));
-      if (u.uBloom) gl.uniform1i(u.uBloom, bind(1, bloom[0]));
+      const u = applyPass(passes.display, [1 / canvas.width, 1 / canvas.height]);
+      gl.uniform1i(u.uDye, bind(0, dye.read));
+      gl.uniform1i(u.uBloom, bind(1, bloom[0]));
       setShade(u, s);
-      if (u.uGlow) gl.uniform1f(u.uGlow, s.glow > 0 ? (s.glow * 1.4) / BLOOM_LEVELS : 0);
-      if (u.uGrain) gl.uniform1f(u.uGrain, s.grain);
-      if (u.uTime) gl.uniform1f(u.uTime, state.time);
-      if (u.uLight) gl.uniform1f(u.uLight, s.theme === 'light' ? 1 : 0);
+      gl.uniform1f(u.uGlow, s.glow > 0 ? (s.glow * 1.4) / BLOOM_LEVELS : 0);
+      gl.uniform1f(u.uGrain, s.grain);
+      gl.uniform1f(u.uTime, state.time);
+      gl.uniform1f(u.uLight, s.theme === 'light' ? 1 : 0);
       draw(null);
     };
 
@@ -967,7 +846,7 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
 
       if (state.ready) emit(s, dt, now);
       while (state.bursts.length) {
-        const [x, y] = state.bursts.shift()!;
+        const [x, y] = state.bursts.shift();
         burst(s, x, y, now);
       }
       step(s, dt);
@@ -1043,7 +922,6 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       wake();
     });
     resizeObserver.observe(container);
-
     const intersection = new IntersectionObserver(entries => {
       visible = entries.some(entry => entry.isIntersecting);
       if (visible) {
@@ -1052,7 +930,6 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       }
     });
     intersection.observe(container);
-
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('pointerdown', onPointerDown, { passive: true });
     document.documentElement.addEventListener('pointerleave', onPointerLeave);
@@ -1070,16 +947,14 @@ const GlowCursor: React.FC<GlowCursorProps> = ({
       document.documentElement.removeEventListener('pointerleave', onPointerLeave);
       document.removeEventListener('visibilitychange', onVisibility);
       release();
-      Object.values(nonNullPasses).forEach(pass => {
-        if (pass?.program) gl.deleteProgram(pass.program);
-      });
+      Object.values(passes).forEach(pass => gl.deleteProgram(pass.program));
       gl.deleteShader(vertexShader);
       gl.deleteBuffer(buffer);
       gl.deleteVertexArray(vao);
     };
   }, []);
 
-  const mode = (blendMode ?? (theme === 'light' ? 'normal' : 'screen')) as React.CSSProperties['mixBlendMode'];
+  const mode = blendMode ?? (theme === 'light' ? 'normal' : 'screen');
 
   return (
     <div ref={containerRef} className={`glow-cursor${className ? ` ${className}` : ''}`} style={style} {...rest}>

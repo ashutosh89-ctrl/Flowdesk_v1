@@ -1,9 +1,136 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireApiCaller } from '@/backend/utilities/api-auth';
+import { requireApiCaller, resolveApiCaller } from '@/backend/utilities/api-auth';
 import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/utilities/logger';
 import { parseJsonBody, UpdateUserSettingsSchema } from '@/shared/validation';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
+
+const serverPaymentSettingsCache = new Map<string, any>();
+
+/**
+ * Account Settings Query Route Handler (Batch 4: Account & Settings)
+ *
+ * Secure server-side retrieval of user billing, invoice formatting, tax, and payment settings.
+ */
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const requestId = getOrCreateRequestId(request);
+  const ip = getClientIp(request);
+
+  const rateLimit = await checkRateLimit(ip, {
+    prefix: 'account_settings_get',
+    maxRequests: 60,
+    windowSeconds: 60,
+  });
+
+  if (!rateLimit.allowed) {
+    return createApiErrorResponse({
+      message: 'Too many requests. Please try again shortly.',
+      code: 'RATE_LIMIT_EXCEEDED',
+      status: 429,
+      requestId,
+    });
+  }
+
+  const caller = await resolveApiCaller();
+
+  if (isDemoModeActive() || caller.isDemo) {
+    const { FlowDeskStore } = await import('@/backend/store/storage-store');
+    const localProf = FlowDeskStore.getUserProfile() || {};
+    return NextResponse.json({
+      success: true,
+      settings: {
+        currency: (localProf as any).currency || 'INR',
+        default_tax_rate: (localProf as any).defaultTaxRate || 0,
+        tax_name: (localProf as any).taxName || 'GST',
+        upi_id: (localProf as any).upiId || '',
+        upi_qr_code_url: (localProf as any).upiQrCodeUrl || '',
+        payment_settings: (localProf as any).paymentMethods || {},
+      },
+      requestId,
+    });
+  }
+
+  try {
+    let settings: any = null;
+    const userId = caller.userId;
+
+    if (userId) {
+      const { data, error } = await supabaseAdmin
+        .from('user_settings')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!error && data) {
+        settings = data;
+      }
+    }
+
+    if (!settings) {
+      const { data: latestSettings } = await supabaseAdmin
+        .from('user_settings')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestSettings) {
+        settings = latestSettings;
+      }
+    }
+
+    if (settings && userId) {
+      let cached = serverPaymentSettingsCache.get(userId);
+      if (!cached) {
+        try {
+          const { data: fileData, error: fileErr } = await supabaseAdmin.storage
+            .from('documents')
+            .download(`settings/${userId}/payment_settings.txt`);
+          if (!fileErr && fileData) {
+            const rawText = await fileData.text();
+            cached = JSON.parse(rawText);
+            serverPaymentSettingsCache.set(userId, cached);
+          }
+        } catch {
+          // non-critical storage read fallback
+        }
+      }
+      if (cached) {
+        settings.payment_settings = {
+          ...(cached || {}),
+          ...(settings.payment_settings || {}),
+        };
+        settings.bank_name = settings.bank_name || cached.bankDetails?.bankName || '';
+        settings.account_holder_name = settings.account_holder_name || cached.bankDetails?.accountHolderName || '';
+        settings.account_number = settings.account_number || cached.bankDetails?.accountNumber || '';
+        settings.ifsc_code = settings.ifsc_code || cached.bankDetails?.ifscCode || '';
+        settings.branch_name = settings.branch_name || cached.bankDetails?.branchName || '';
+        settings.upi_id = settings.upi_id || cached.upiId || '';
+        settings.upi_qr_code_url = settings.upi_qr_code_url || cached.upiQrCodeUrl || '';
+        settings.razorpay_payment_link = settings.razorpay_payment_link || cached.razorpayPaymentLink || '';
+      }
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        settings: settings || null,
+        requestId,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
+    );
+  } catch (err: any) {
+    return createApiErrorResponse({
+      message: 'Failed to retrieve account settings.',
+      code: 'INTERNAL_ERROR',
+      status: 500,
+      requestId,
+    });
+  }
+}
 
 /**
  * Account Settings Mutation Route Handler (Batch 4: Account & Settings)
@@ -44,7 +171,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
   // 3. Request Body Validation
   const bodyValidation = await parseJsonBody(request, UpdateUserSettingsSchema, {
-    maxBytes: 10 * 1024,
+    maxBytes: 2 * 1024 * 1024,
   });
   if (!bodyValidation.success) {
     return bodyValidation.response;
@@ -150,6 +277,45 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         updated = retry.data;
         upsertErr = retry.error;
       }
+
+      // 3. If still failing (e.g. payment_settings column also missing from core relational schema),
+      // strip payment_settings and retry with core relational columns
+      if (upsertErr) {
+        delete dbPayload.payment_settings;
+        retry = await supabaseAdmin.from('user_settings').upsert(dbPayload).select().maybeSingle();
+        updated = retry.data;
+        upsertErr = retry.error;
+      }
+    }
+
+    if (caller.userId) {
+      serverPaymentSettingsCache.set(caller.userId, effectivePaymentSettings);
+      try {
+        await supabaseAdmin.storage
+          .from('documents')
+          .upload(
+            `settings/${caller.userId}/payment_settings.txt`,
+            Buffer.from(JSON.stringify(effectivePaymentSettings), 'utf-8'),
+            {
+              contentType: 'text/plain',
+              upsert: true,
+            }
+          );
+      } catch (storageErr) {
+        logger.warn('Storage payment config sync notice', { error: String(storageErr) });
+      }
+    }
+
+    if (updated) {
+      updated.payment_settings = effectivePaymentSettings;
+      updated.bank_name = updates.bankName || effectivePaymentSettings.bankDetails?.bankName || '';
+      updated.account_holder_name = updates.accountHolderName || effectivePaymentSettings.bankDetails?.accountHolderName || '';
+      updated.account_number = updates.accountNumber || effectivePaymentSettings.bankDetails?.accountNumber || '';
+      updated.ifsc_code = updates.ifscCode || effectivePaymentSettings.bankDetails?.ifscCode || '';
+      updated.branch_name = updates.branchName || effectivePaymentSettings.bankDetails?.branchName || '';
+      updated.upi_id = updates.upiId || effectivePaymentSettings.upiId || '';
+      updated.upi_qr_code_url = updates.upiQrCodeUrl || effectivePaymentSettings.upiQrCodeUrl || '';
+      updated.razorpay_payment_link = updates.razorpayPaymentLink || effectivePaymentSettings.razorpayPaymentLink || '';
     }
 
     // Also sync to profiles for redundant persistence

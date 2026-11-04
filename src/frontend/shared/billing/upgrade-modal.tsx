@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Modal } from '@/frontend/shared/ui/modal';
 import { Button } from '@/frontend/shared/ui/button';
 import { BILLING_PLANS, PlanKey, BillingInterval } from '@/shared/billing';
-import { Check, Sparkles, Shield, AlertCircle, Loader2 } from 'lucide-react';
+import { Check, Zap, Shield, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 
 export interface UpgradeModalProps {
@@ -29,104 +29,96 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   const { showToast } = useToast();
 
   const handleCheckout = async (planKey: PlanKey) => {
-    if (planKey === 'free' || planKey === currentPlanKey || loadingPlan !== null) return;
-
-    setLoadingPlan(planKey);
-    setError(null);
-
     try {
+      setLoadingPlan(planKey);
+      setError(null);
+
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           planKey,
           interval,
+          notes: { client_portal: 'flowdesk_freelancer' },
         }),
       });
 
       const data = await res.json();
+
       if (!res.ok) {
-        throw new Error(data.error?.message || data.error || 'Failed to start checkout session.');
+        throw new Error(data.error || 'Failed to initiate checkout session');
       }
 
-      // If Razorpay SDK is available, open checkout modal
-      if (typeof window !== 'undefined' && (window as any).Razorpay && data.checkoutPayload) {
-        const options = {
-          key: data.checkoutPayload.keyId,
-          subscription_id: data.checkoutPayload.subscriptionId,
-          name: 'FlowDesk Workspace',
-          description: `Subscription to ${BILLING_PLANS[planKey].name} (${interval})`,
+      // Check if Razorpay is loaded
+      if (typeof window !== 'undefined' && (window as any).Razorpay) {
+        const rzp = new (window as any).Razorpay({
+          key: data.keyId,
+          subscription_id: data.subscriptionId,
+          name: 'FlowDesk Studio',
+          description: `${BILLING_PLANS[planKey].name} Plan Subscription`,
           handler: function (response: any) {
-            showToast(
-              'Subscription Initiated',
-              'Payment authorized. Your plan entitlements will update momentarily.',
-              'success'
-            );
+            showToast('Upgrade Successful', 'Your workspace limits have been updated.', 'success');
             onSuccess?.();
             onClose();
           },
-          prefill: {
-            name: data.checkoutPayload.customerName,
-            email: data.checkoutPayload.customerEmail,
-          },
           theme: {
-            color: '#0047AB',
+            color: '#176B5B',
           },
-        };
-        const rzp = new (window as any).Razorpay(options);
+        });
+
+        rzp.on('payment.failed', function (response: any) {
+          setError(response.error?.description || 'Payment authorization failed');
+        });
+
         rzp.open();
       } else {
-        // Mock / development confirmation
-        showToast(
-          'Plan Activated',
-          `Workspace successfully upgraded to ${BILLING_PLANS[planKey].name}.`,
-          'success'
-        );
-        onSuccess?.();
-        onClose();
+        // Fallback for demo / preview environments without Razorpay SDK injected
+        if (data.shortUrl) {
+          window.location.href = data.shortUrl;
+        } else {
+          showToast(
+            'Subscription Created',
+            `Subscription ID ${data.subscriptionId} initiated in test mode.`,
+            'info'
+          );
+          onSuccess?.();
+          onClose();
+        }
       }
     } catch (err: any) {
-      setError(err?.message || 'Checkout failed. Please try again.');
+      setError(err.message || 'Subscription checkout failed');
     } finally {
       setLoadingPlan(null);
     }
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Upgrade Your Workspace"
-      description="Unlock higher client limits, more storage, and custom branding."
-      size="xl"
-    >
-      <div className="space-y-6 pt-2">
+    <Modal isOpen={isOpen} onClose={onClose} title="Upgrade Workspace Plan" size="xl">
+      <div className="space-y-6">
         {featureNotice && (
-          <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-300">
-            <Sparkles className="w-4 h-4 shrink-0 text-emerald-400" />
+          <div className="flex items-center gap-2 p-3 bg-[#176B5B]/15 border border-[#176B5B]/40 rounded-xl text-xs text-[#F5F5F0]">
+            <Zap className="w-4 h-4 text-[#43D6B0] shrink-0" />
             <span>{featureNotice}</span>
           </div>
         )}
 
         {error && (
-          <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-300">
-            <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+          <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400">
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {/* Interval Switcher */}
         <div className="flex justify-center">
-          <div className="inline-flex items-center p-1 bg-zinc-900 border border-white/10 rounded-xl">
+          <div className="inline-flex items-center p-1 bg-[#101312] border border-[#176B5B]/30 rounded-xl">
             <button
               type="button"
               onClick={() => setInterval('monthly')}
               className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 interval === 'monthly'
-                  ? 'bg-[#0047AB] text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-[#176B5B]/30 text-[#F5F5F0] shadow-sm'
+                  : 'text-[#A6B4AE] hover:text-[#F5F5F0]'
               }`}
             >
               Monthly Billing
@@ -136,12 +128,12 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
               onClick={() => setInterval('yearly')}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 interval === 'yearly'
-                  ? 'bg-[#0047AB] text-white shadow-sm'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-[#176B5B]/30 text-[#F5F5F0] shadow-sm'
+                  : 'text-[#A6B4AE] hover:text-[#F5F5F0]'
               }`}
             >
               <span>Yearly Billing</span>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full font-mono">
+              <span className="text-[10px] bg-[#176B5B]/20 text-[#43D6B0] px-1.5 py-0.5 rounded-full font-mono">
                 Save ~16%
               </span>
             </button>
@@ -153,53 +145,50 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           {(['free', 'pro', 'studio'] as PlanKey[]).map((planKey) => {
             const plan = BILLING_PLANS[planKey];
             const isCurrent = currentPlanKey === planKey;
-            const isTarget = targetPlanKey === planKey;
             const price = plan.pricing[interval].INR;
 
             return (
               <div
                 key={planKey}
-                className={`flex flex-col justify-between p-5 rounded-2xl border transition-all ${
-                  isTarget || planKey === 'pro'
-                    ? 'bg-white/[0.04] border-[#2563EB]/60 shadow-[0_0_30px_rgba(0,71,171,0.15)]'
-                    : 'bg-zinc-900/60 border-white/10'
-                } ${isCurrent ? 'ring-1 ring-white/20' : ''}`}
+                className={`flex flex-col justify-between p-5 rounded-2xl border transition-all duration-200 bg-[#191F1D] border-[#176B5B]/30 hover:border-[#43D6B0]/60 hover:shadow-[0_4px_24px_rgba(23,107,91,0.2)] focus-within:border-[#43D6B0]/60 ${
+                  isCurrent ? 'ring-1 ring-[#43D6B0]/40' : ''
+                }`}
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-sm font-bold text-white tracking-tight">{plan.name}</span>
+                    <span className="text-sm font-bold text-[#F5F5F0] tracking-tight">{plan.name}</span>
                     {plan.badge && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#0047AB]/20 text-[#E8F0FF] border border-[#2563EB]/30">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/30">
                         {plan.badge}
                       </span>
                     )}
                     {isCurrent && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 border border-white/15">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/30">
                         Current
                       </span>
                     )}
                   </div>
 
-                  <p className="text-xs text-zinc-400 min-h-[32px] leading-relaxed mb-4">
+                  <p className="text-xs text-[#A6B4AE] min-h-[32px] leading-relaxed mb-4">
                     {plan.tagline}
                   </p>
 
                   <div className="mb-4">
                     <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-white tracking-tight">
+                      <span className="text-2xl font-bold text-[#F5F5F0] tracking-tight">
                         ₹{price.toLocaleString('en-IN')}
                       </span>
-                      <span className="text-xs text-zinc-400 font-mono">
+                      <span className="text-xs text-[#A6B4AE] font-mono">
                         /{interval === 'yearly' ? 'year' : 'month'}
                       </span>
                     </div>
-                    <span className="text-[10px] text-zinc-400 font-mono">+ 18% GST (Tax Invoice Included)</span>
+                    <span className="text-[10px] text-[#A6B4AE]">+ 18% GST (Tax Invoice Included)</span>
                   </div>
 
                   {/* Limits bullets */}
-                  <ul className="space-y-2 pt-3 border-t border-white/10 text-xs text-zinc-300 mb-6">
+                  <ul className="space-y-2 pt-3 border-t border-[#176B5B]/20 text-xs text-[#A6B4AE] mb-6">
                     <li className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
                       <span>
                         {plan.limits.activeClients >= 1000
                           ? 'Unlimited active clients (fair use)'
@@ -207,7 +196,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                       </span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
                       <span>
                         {plan.limits.activeProjects >= 1000
                           ? 'Unlimited active projects'
@@ -215,22 +204,22 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                       </span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
                       <span>{(plan.limits.storageMb / 1000).toFixed(0)} GB storage</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
                       <span>{plan.limits.invoicesPerMonth} invoices / month</span>
                     </li>
                     {plan.limits.brandedPortal && (
                       <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
                         <span>Custom branded client portal</span>
                       </li>
                     )}
                     {plan.limits.emailReminders && (
                       <li className="flex items-center gap-2">
-                        <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <Check className="w-3.5 h-3.5 text-[#43D6B0] shrink-0" />
                         <span>Automated payment reminders</span>
                       </li>
                     )}
@@ -249,12 +238,12 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                   ) : (
                     <Button
                       variant="primary"
-                      className="w-full text-xs shadow-[0_0_20px_rgba(0,71,171,0.25)]"
+                      className="w-full text-xs"
                       onClick={() => handleCheckout(planKey)}
                       disabled={loadingPlan !== null}
                     >
                       {loadingPlan === planKey ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center gap-2">
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           <span>Connecting...</span>
                         </div>
@@ -270,19 +259,17 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
         </div>
 
         {/* Policy Links & Razorpay e-Mandate disclosure */}
-        <div className="pt-3 border-t border-white/10 space-y-2 text-[11px] text-zinc-400">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Shield className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>Recurring payments authorized securely via Razorpay e-mandate.</span>
-            </div>
-            <div className="flex items-center gap-2 font-mono">
-              <Link href="/terms" target="_blank" className="hover:text-white underline">Terms</Link>
-              <span>&bull;</span>
-              <Link href="/refund-policy" target="_blank" className="hover:text-white underline">Refunds</Link>
-              <span>&bull;</span>
-              <Link href="/cancellation-policy" target="_blank" className="hover:text-white underline">Cancellations</Link>
-            </div>
+        <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-[#A6B4AE] pt-3 border-t border-[#176B5B]/20 gap-2">
+          <div className="flex items-center gap-2">
+            <Shield className="w-3.5 h-3.5 text-[#43D6B0]" />
+            <span>Secure recurring payments powered by Razorpay e-Mandate</span>
+          </div>
+          <div className="flex items-center gap-2 font-mono text-[11px]">
+            <Link href="/terms" target="_blank" className="hover:text-white underline">Terms</Link>
+            <span>•</span>
+            <Link href="/refund-policy" target="_blank" className="hover:text-white underline">Refunds</Link>
+            <span>•</span>
+            <Link href="/cancellation-policy" target="_blank" className="hover:text-white underline">Cancellations</Link>
           </div>
         </div>
       </div>

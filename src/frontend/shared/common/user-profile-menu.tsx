@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dropdown, DropdownItem } from '../ui/dropdown';
 import { Avatar } from '../ui/avatar';
-import { Settings, User, LogOut, Monitor, Building2 } from 'lucide-react';
+import { Settings, User, LogOut, Building2 } from 'lucide-react';
 import { UserProfile } from '@/shared/types';
 import { useAuth } from '@/frontend/auth/auth-context';
 
@@ -70,7 +70,7 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
           {
             id: 'item-client-portal',
             label: 'Switch to Client Portal',
-            icon: <Building2 className="w-4 h-4 text-emerald-400" />,
+            icon: <Building2 className="w-4 h-4 text-[#43D6B0]" />,
             onClick: handleSwitchToClient,
           },
         ]
@@ -80,12 +80,6 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
       label: 'Preferences & Rates',
       icon: <Settings className="w-4 h-4" />,
       onClick: () => onNavigate('settings'),
-    },
-    {
-      id: 'item-landing',
-      label: 'View Landing Page',
-      icon: <Monitor className="w-4 h-4" />,
-      onClick: () => onSwitchViewMode('landing'),
     },
     {
       id: 'item-logout',
@@ -100,13 +94,13 @@ export const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
     <Dropdown
       align="right"
       trigger={
-        <button className="flex items-center gap-2 p-1 rounded-xl hover:bg-white/10 transition-colors group">
+        <button className="flex items-center gap-2 p-1 rounded-xl hover:bg-[#176B5B]/20 transition-colors group">
           <Avatar name={displayName} src={profile?.avatarUrl} size="sm" />
           <div className="hidden sm:flex flex-col text-left pr-1">
-            <span className="text-xs font-semibold text-white group-hover:text-white truncate max-w-[120px]">
+            <span className="text-xs font-semibold text-[#F5F5F0] group-hover:text-white truncate max-w-[120px]">
               {displayName}
             </span>
-            <span className="text-[10px] text-zinc-400 truncate max-w-[120px]">
+            <span className="text-[10px] text-[#A6B4AE] truncate max-w-[120px]">
               {displayCompany}
             </span>
           </div>

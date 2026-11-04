@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/fro
 import { Button } from '@/frontend/shared/ui/button';
 import { Input } from '@/frontend/shared/ui/input';
 import { Modal } from '@/frontend/shared/ui/modal';
+import { Tabs, TabItem } from '@/frontend/shared/ui/tabs';
 import { SettingsService, FreelancerWorkspaceService } from '@/backend/freelancer';
 import { UserSettingsService, DEFAULT_USER_SETTINGS } from '@/backend/auth/user-settings-service';
 import { AuthService } from '@/backend/auth/auth-service';
@@ -12,6 +13,7 @@ import { UserProfile, UserSettings } from '@/shared/types';
 import { StorageHelper } from '@/backend/storage/storage-helper';
 import { updateWorkspaceBranding } from '@/backend/utilities/workspace';
 import { supabase } from '@/backend/utilities/supabase';
+import { FlowDeskStore } from '@/backend/store/storage-store';
 import {
   User,
   DollarSign,
@@ -19,7 +21,7 @@ import {
   Shield,
   Save,
   Loader2,
-  Sparkles,
+  TrendingUp,
   Mail,
   AlertTriangle,
   KeyRound,
@@ -65,13 +67,13 @@ export const SettingsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   // Fail-closed: no mock identity fallback in production. The authenticated
   // profile (or an empty shell that the user fills in) is the only source.
-  const [profile, setProfile] = useState<UserProfile>(() => authProfile || {
+  const [profile, setProfile] = useState<UserProfile>(() => authProfile || (typeof window !== 'undefined' ? FlowDeskStore.getUserProfile() : null) || {
     id: '',
     name: '',
     title: '',
     email: '',
     avatarUrl: '',
-    currency: 'USD',
+    currency: 'INR',
     companyName: '',
     hourlyRate: 120,
     profession: '',
@@ -143,17 +145,58 @@ export const SettingsView: React.FC = () => {
 
     const loadData = async () => {
       try {
+        // Pre-hydrate from local cache immediately so UI doesn't flash empty values on reload
+        const initialCachedSettings = UserSettingsService.getLocalSettings(user?.id || 'usr-default') || UserSettingsService.getLocalSettings('usr-default');
+        const initialPaymentSettings = UserSettingsService.getPaymentSettings(user?.id || 'usr-default') || UserSettingsService.getPaymentSettings('usr-default');
+        if ((initialCachedSettings || initialPaymentSettings) && mounted) {
+          setSettings((prev) => ({
+            ...prev,
+            ...(initialCachedSettings || {}),
+            payment_settings: {
+              ...(prev.payment_settings || {}),
+              ...(initialPaymentSettings || {}),
+              ...(initialCachedSettings?.payment_settings || {}),
+            },
+            bank_name: initialCachedSettings?.bank_name || initialPaymentSettings?.bankDetails?.bankName || prev.bank_name || '',
+            account_holder_name: initialCachedSettings?.account_holder_name || initialPaymentSettings?.bankDetails?.accountHolderName || prev.account_holder_name || '',
+            account_number: initialCachedSettings?.account_number || initialPaymentSettings?.bankDetails?.accountNumber || prev.account_number || '',
+            ifsc_code: initialCachedSettings?.ifsc_code || initialPaymentSettings?.bankDetails?.ifscCode || prev.ifsc_code || '',
+            branch_name: initialCachedSettings?.branch_name || initialPaymentSettings?.bankDetails?.branchName || prev.branch_name || '',
+            upi_id: initialCachedSettings?.upi_id || initialPaymentSettings?.upiId || prev.upi_id || '',
+            upi_qr_code_url: initialCachedSettings?.upi_qr_code_url || initialPaymentSettings?.upiQrCodeUrl || prev.upi_qr_code_url || '',
+            razorpay_payment_link: initialCachedSettings?.razorpay_payment_link || initialPaymentSettings?.razorpayPaymentLink || prev.razorpay_payment_link || '',
+          }));
+        }
+
         const [profileData, settingsData] = await Promise.all([
           SettingsService.getUserProfile(user?.id),
           UserSettingsService.getUserSettings(user?.id || 'usr-default'),
         ]);
 
         if (mounted) {
+          const effectiveCurrency = settingsData?.currency || profileData?.currency || 'INR';
           if (profileData) {
-            setProfile(profileData);
+            setProfile((prev) => ({
+              ...prev,
+              ...profileData,
+              currency: effectiveCurrency,
+              hourlyRate: typeof profileData.hourlyRate === 'number' ? profileData.hourlyRate : prev.hourlyRate,
+            }));
           }
           if (settingsData) {
-            setSettings(settingsData);
+            setSettings((prev) => ({
+              ...prev,
+              ...settingsData,
+              currency: effectiveCurrency,
+              bank_name: settingsData.bank_name || settingsData.payment_settings?.bankDetails?.bankName || prev.bank_name || '',
+              account_holder_name: settingsData.account_holder_name || settingsData.payment_settings?.bankDetails?.accountHolderName || prev.account_holder_name || '',
+              account_number: settingsData.account_number || settingsData.payment_settings?.bankDetails?.accountNumber || prev.account_number || '',
+              ifsc_code: settingsData.ifsc_code || settingsData.payment_settings?.bankDetails?.ifscCode || prev.ifsc_code || '',
+              branch_name: settingsData.branch_name || settingsData.payment_settings?.bankDetails?.branchName || prev.branch_name || '',
+              upi_id: settingsData.upi_id || settingsData.payment_settings?.upiId || prev.upi_id || '',
+              upi_qr_code_url: settingsData.upi_qr_code_url || settingsData.payment_settings?.upiQrCodeUrl || prev.upi_qr_code_url || '',
+              razorpay_payment_link: settingsData.razorpay_payment_link || settingsData.payment_settings?.razorpayPaymentLink || prev.razorpay_payment_link || '',
+            }));
           }
         }
       } catch (err) {
@@ -178,11 +221,56 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleSettingsChange = (field: keyof UserSettings, value: any) => {
-    setSettings((prev) => ({ ...prev, [field]: value }));
+    setSettings((prev) => {
+      const next = { ...prev, [field]: value };
+      if (['bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'branch_name'].includes(field)) {
+        const bd = { ...(next.payment_settings?.bankDetails || {}) };
+        if (field === 'bank_name') bd.bankName = value;
+        if (field === 'account_holder_name') bd.accountHolderName = value;
+        if (field === 'account_number') bd.accountNumber = value;
+        if (field === 'ifsc_code') bd.ifscCode = value;
+        if (field === 'branch_name') bd.branchName = value;
+        next.payment_settings = {
+          ...(next.payment_settings || {}),
+          bankDetails: bd,
+          bankTransferEnabled: true,
+        };
+      } else if (field === 'upi_id') {
+        next.payment_settings = {
+          ...(next.payment_settings || {}),
+          upiId: value,
+          upiEnabled: Boolean(value || next.upi_qr_code_url),
+        };
+      } else if (field === 'upi_qr_code_url') {
+        next.payment_settings = {
+          ...(next.payment_settings || {}),
+          upiQrCodeUrl: value,
+          upiEnabled: Boolean(value || next.upi_id),
+        };
+      } else if (field === 'razorpay_payment_link') {
+        next.payment_settings = {
+          ...(next.payment_settings || {}),
+          razorpayPaymentLink: value,
+          razorpayLinkEnabled: Boolean(value),
+        };
+      }
+      return next;
+    });
     setDirty(true);
-    if (field === 'default_deliverable_niche' && user?.id) {
-      UserSettingsService.saveUserSettings(user.id, { [field]: value }).catch((err) => {
-        console.warn('Background niche preference sync notice:', err);
+    const isNotificationPref = [
+      'email_notifications',
+      'email_deliverables',
+      'email_documents',
+      'email_invoices',
+      'email_invitations',
+      'invoice_reminders',
+      'comment_alerts',
+      'weekly_digest',
+    ].includes(field as string);
+
+    if (isNotificationPref || field === 'currency' || field === 'default_deliverable_niche') {
+      UserSettingsService.saveUserSettings(user?.id || 'usr-default', { [field]: value }).catch((err) => {
+        console.warn(`Background ${field} preference sync notice:`, err);
       });
     }
   };
@@ -373,6 +461,15 @@ export const SettingsView: React.FC = () => {
 
       // 3. Save user settings (tax, currency, prefix, terms, notifications)
       try {
+        const effectiveBankName = settings.bank_name || settings.payment_settings?.bankDetails?.bankName || '';
+        const effectiveHolderName = settings.account_holder_name || settings.payment_settings?.bankDetails?.accountHolderName || '';
+        const effectiveAccNum = settings.account_number || settings.payment_settings?.bankDetails?.accountNumber || '';
+        const effectiveIfsc = settings.ifsc_code || settings.payment_settings?.bankDetails?.ifscCode || '';
+        const effectiveBranch = settings.branch_name || settings.payment_settings?.bankDetails?.branchName || '';
+        const effectiveUpi = settings.upi_id || settings.payment_settings?.upiId || profile.upiId || '';
+        const effectiveQr = settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl || '';
+        const effectiveRzp = settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink || '';
+
         await UserSettingsService.saveUserSettings(user?.id || 'usr-default', {
           currency: profile.currency,
           default_tax_rate: settings.default_tax_rate,
@@ -389,30 +486,30 @@ export const SettingsView: React.FC = () => {
           weekly_digest: settings.weekly_digest,
           default_deliverable_niche: settings.default_deliverable_niche,
           payment_settings: {
-            bankTransferEnabled: settings.payment_settings?.bankTransferEnabled ?? true,
-            upiEnabled: settings.payment_settings?.upiEnabled ?? false,
-            razorpayLinkEnabled: settings.payment_settings?.razorpayLinkEnabled ?? false,
-            upiId: settings.upi_id || settings.payment_settings?.upiId || '',
-            upiQrCodeUrl: settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || '',
+            bankTransferEnabled: settings.payment_settings?.bankTransferEnabled ?? Boolean(effectiveBankName || effectiveAccNum || true),
+            upiEnabled: settings.payment_settings?.upiEnabled ?? Boolean(effectiveUpi || effectiveQr),
+            razorpayLinkEnabled: settings.payment_settings?.razorpayLinkEnabled ?? Boolean(effectiveRzp),
+            upiId: effectiveUpi,
+            upiQrCodeUrl: effectiveQr,
             bankDetails: {
-              accountHolderName: settings.account_holder_name || settings.payment_settings?.bankDetails?.accountHolderName || '',
-              bankName: settings.bank_name || settings.payment_settings?.bankDetails?.bankName || '',
-              accountNumber: settings.account_number || settings.payment_settings?.bankDetails?.accountNumber || '',
-              ifscCode: settings.ifsc_code || settings.payment_settings?.bankDetails?.ifscCode || '',
-              branchName: settings.branch_name || settings.payment_settings?.bankDetails?.branchName || '',
-              upiId: settings.upi_id || settings.payment_settings?.bankDetails?.upiId || '',
+              accountHolderName: effectiveHolderName,
+              bankName: effectiveBankName,
+              accountNumber: effectiveAccNum,
+              ifscCode: effectiveIfsc,
+              branchName: effectiveBranch,
+              upiId: effectiveUpi,
             },
-            razorpayPaymentLink: settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink || '',
+            razorpayPaymentLink: effectiveRzp,
             defaultPaymentInstructions: settings.payment_settings?.defaultPaymentInstructions || '',
           },
-          upi_id: settings.upi_id,
-          upi_qr_code_url: settings.upi_qr_code_url,
-          bank_name: settings.bank_name,
-          account_holder_name: settings.account_holder_name,
-          account_number: settings.account_number,
-          ifsc_code: settings.ifsc_code,
-          branch_name: settings.branch_name,
-          razorpay_payment_link: settings.razorpay_payment_link,
+          upi_id: effectiveUpi,
+          upi_qr_code_url: effectiveQr,
+          bank_name: effectiveBankName,
+          account_holder_name: effectiveHolderName,
+          account_number: effectiveAccNum,
+          ifsc_code: effectiveIfsc,
+          branch_name: effectiveBranch,
+          razorpay_payment_link: effectiveRzp,
         });
       } catch (settingsErr) {
         console.warn('UserSettingsService.saveUserSettings notice:', settingsErr);
@@ -611,15 +708,21 @@ export const SettingsView: React.FC = () => {
     );
   }
 
+  const settingsTabItems: TabItem[] = [
+    { id: 'profile', label: 'Studio Profile', icon: <User className="w-4 h-4" /> },
+    { id: 'portal', label: 'Client Portal', icon: <Link2 className="w-4 h-4" /> },
+    { id: 'billing', label: 'Rates & Invoicing', icon: <DollarSign className="w-4 h-4" /> },
+    { id: 'automations', label: 'Automations', icon: <RefreshCw className="w-4 h-4" /> },
+    { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
+    { id: 'security', label: 'Security & Danger Zone', icon: <Shield className="w-4 h-4" /> },
+  ];
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto w-full min-w-0 pb-12">
       {/* Top Header */}
       <div className="pb-6 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Settings & Preferences</h1>
-          <p className="text-sm text-zinc-400 mt-1">
-            Configure studio branding, hourly rates, invoices, and workspace alerts.
-          </p>
         </div>
 
         {dirty && (
@@ -636,92 +739,38 @@ export const SettingsView: React.FC = () => {
         )}
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="flex border-b border-white/10 gap-1 overflow-x-auto pb-1 text-xs">
-        <button
-          type="button"
-          onClick={() => setActiveTab('profile')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'profile'
-              ? 'bg-white/10 text-white shadow-sm border border-white/15'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-            }`}
-        >
-          <User className="w-4 h-4 text-emerald-400" />
-          <span>Studio Profile & Branding</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('portal')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'portal'
-              ? 'bg-white/10 text-white shadow-sm border border-white/15'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-            }`}
-        >
-          <Link2 className="w-4 h-4 text-emerald-400" />
-          <span>Client Portal & Link</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('billing')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'billing'
-              ? 'bg-white/10 text-white shadow-sm border border-white/15'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-            }`}
-        >
-          <DollarSign className="w-4 h-4 text-emerald-400" />
-          <span>Rates & Invoicing</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('automations')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'automations'
-              ? 'bg-white/10 text-white shadow-sm border border-white/15'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-            }`}
-        >
-          <RefreshCw className="w-4 h-4 text-cyan-400" />
-          <span>Automations & Jobs</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('notifications')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'notifications'
-              ? 'bg-white/10 text-white shadow-sm border border-white/15'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-            }`}
-        >
-          <Bell className="w-4 h-4 text-amber-400" />
-          <span>Notifications & Alerts</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('security')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'security'
-              ? 'bg-white/10 text-white shadow-sm border border-white/15'
-              : 'text-zinc-400 hover:text-white hover:bg-white/5'
-            }`}
-        >
-          <Shield className="w-4 h-4 text-cyan-400" />
-          <span>Security & Danger Zone</span>
-        </button>
+      {/* Tabs Navigation (Uniform Black & White Lucid Style) */}
+      <div className="pt-1 w-full max-w-full min-w-0">
+        <Tabs
+          id="settings"
+          items={settingsTabItems}
+          activeTab={activeTab}
+          onChange={(tabId) => setActiveTab(tabId as any)}
+        />
       </div>
 
       {/* TAB: PERMANENT CLIENT PORTAL LINK */}
       {activeTab === 'portal' && <PortalSettingsPanel />}
 
-      <form onSubmit={handleSave} className="space-y-6">
+      {/* TAB: BILLING & SUBSCRIPTION PLAN */}
+      {activeTab === 'billing' && <BillingPlanPanel />}
+
+      <form
+        onSubmit={handleSave}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+            e.preventDefault();
+            handleSave();
+          }
+        }}
+        className="space-y-6"
+      >
         {/* TAB 1: STUDIO PROFILE & BRANDING */}
         {activeTab === 'profile' && (
           <div className="space-y-6">
             <Card variant="crystal">
               <CardHeader>
                 <CardTitle>Studio Profile</CardTitle>
-                <CardDescription>Information displayed on client portals, deliverables, and invoice headers</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -783,7 +832,6 @@ export const SettingsView: React.FC = () => {
             <Card variant="crystal">
               <CardHeader>
                 <CardTitle>Studio Branding & PDF Identity</CardTitle>
-                <CardDescription>Upload your studio logo and signature to be embedded automatically in PDF invoices</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -899,7 +947,7 @@ export const SettingsView: React.FC = () => {
                       isLoading={isUploadingSignature}
                       onClick={() => signatureInputRef.current?.click()}
                       className="w-full text-xs"
-                      leftIcon={<Upload className="w-3.5 h-3.5 text-cyan-400" />}
+                      leftIcon={<Upload className="w-3.5 h-3.5 text-[#43D6B0]" />}
                     >
                       {profile.signatureUrl ? 'Replace Signature' : 'Upload Signature'}
                     </Button>
@@ -912,12 +960,9 @@ export const SettingsView: React.FC = () => {
             <Card variant="crystal">
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-[#2563EB]" />
+                  <Layers className="w-5 h-5 text-[#43D6B0]" />
                   <CardTitle>Deliverable Preferences</CardTitle>
                 </div>
-                <CardDescription>
-                  Choose the default workflow for creating deliverables. You can change this preference at any time.
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -925,32 +970,34 @@ export const SettingsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleSettingsChange('default_deliverable_niche', 'software_development')}
-                    className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${(settings.default_deliverable_niche || 'software_development') === 'software_development'
-                        ? 'bg-[#2563EB]/10 border-[#2563EB] shadow-[0_0_15px_rgba(37,99,235,0.15)] ring-1 ring-[#2563EB]/50'
-                        : 'bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.04]'
-                      }`}
+className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
+                      (settings.default_deliverable_niche || 'software_development') === 'software_development'
+                        ? 'bg-[#176B5B]/15 border-[#176B5B] shadow-[0_0_15px_rgba(23,107,91,0.2)] ring-1 ring-[#43D6B0]/50'
+                        : 'bg-[#191F1D] border-[#176B5B]/30 hover:border-[#176B5B]/60'
+                    }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2.5">
-                          <div className={`p-2 rounded-lg ${(settings.default_deliverable_niche || 'software_development') === 'software_development'
-                              ? 'bg-[#2563EB]/20 text-[#60A5FA]'
-                              : 'bg-white/5 text-zinc-400'
-                            }`}>
+                          <div className={`p-2 rounded-lg ${
+                            (settings.default_deliverable_niche || 'software_development') === 'software_development'
+                              ? 'bg-[#176B5B]/30 text-[#43D6B0]'
+                              : 'bg-white/5 text-[#A6B4AE]'
+                          }}`}
                             <Code2 className="w-4 h-4" />
                           </div>
-                          <span className="text-sm font-semibold text-white">Software Developer</span>
+                          <span className="text-sm font-semibold text-[#F5F5F0]">Software Developer</span>
                         </div>
                         {(settings.default_deliverable_niche || 'software_development') === 'software_development' && (
-                          <CheckCircle2 className="w-4 h-4 text-[#60A5FA]" />
+                          <CheckCircle2 className="w-4 h-4 text-[#43D6B0]" />
                         )}
                       </div>
-                      <p className="text-xs text-zinc-400 leading-relaxed mt-1">
+                      <p className="text-xs text-[#A6B4AE] leading-relaxed mt-1">
                         Preselects technical deliverable workflow with repository URL, branch, pull request, and deployment preview fields.
                       </p>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-wider">Default: Code & Tech</span>
+                    <div className="mt-3 pt-3 border-t border-[#176B5B]/20 flex items-center gap-2">
+                      <span className="text-[11px] font-mono text-[#A6B4AE]/70 uppercase tracking-wider">Default: Code & Tech</span>
                     </div>
                   </button>
 
@@ -958,27 +1005,29 @@ export const SettingsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleSettingsChange('default_deliverable_niche', 'others')}
-                    className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${settings.default_deliverable_niche === 'others'
-                        ? 'bg-[#2563EB]/10 border-[#2563EB] shadow-[0_0_15px_rgba(37,99,235,0.15)] ring-1 ring-[#2563EB]/50'
-                        : 'bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.04]'
-                      }`}
+className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
+                      settings.default_deliverable_niche === 'others'
+                        ? 'bg-[#176B5B]/15 border-[#176B5B] shadow-[0_0_15px_rgba(23,107,91,0.2)] ring-1 ring-[#43D6B0]/50'
+                        : 'bg-[#191F1D] border-[#176B5B]/30 hover:border-[#176B5B]/60'
+                    }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2.5">
-                          <div className={`p-2 rounded-lg ${settings.default_deliverable_niche === 'others'
-                              ? 'bg-[#2563EB]/20 text-[#60A5FA]'
-                              : 'bg-white/5 text-zinc-400'
-                            }`}>
+                          <div className={`p-2 rounded-lg ${
+                            settings.default_deliverable_niche === 'others'
+                              ? 'bg-[#176B5B]/30 text-[#43D6B0]'
+                              : 'bg-white/5 text-[#A6B4AE]'
+                          }}`}
                             <Briefcase className="w-4 h-4" />
                           </div>
-                          <span className="text-sm font-semibold text-white">Others</span>
+                          <span className="text-sm font-semibold text-[#F5F5F0]">Others</span>
                         </div>
                         {settings.default_deliverable_niche === 'others' && (
-                          <CheckCircle2 className="w-4 h-4 text-[#60A5FA]" />
+                          <CheckCircle2 className="w-4 h-4 text-[#43D6B0]" />
                         )}
                       </div>
-                      <p className="text-xs text-zinc-400 leading-relaxed mt-1">
+                      <p className="text-xs text-[#A6B4AE] leading-relaxed mt-1">
                         Preselects general-purpose deliverable workflow for design, video editing, copywriting, marketing, consulting, and other creative services.
                       </p>
                     </div>
@@ -995,13 +1044,10 @@ export const SettingsView: React.FC = () => {
         {/* TAB 2: RATES & INVOICE DEFAULTS + NUMBERING SYSTEM */}
         {activeTab === 'billing' && (
           <div className="space-y-6">
-            <BillingPlanPanel />
-
             {/* Rates & Financial Defaults */}
             <Card variant="crystal">
               <CardHeader>
                 <CardTitle>Rates & Financial Defaults</CardTitle>
-                <CardDescription>Default currency, tax rates, and standard payment terms for new invoices</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1015,8 +1061,12 @@ export const SettingsView: React.FC = () => {
                   <div>
                     <label className="block text-xs font-medium text-zinc-300 mb-1.5">Primary Studio Currency</label>
                     <select
-                      value={profile.currency}
-                      onChange={(e) => handleProfileChange('currency', e.target.value)}
+                      value={profile.currency || settings.currency || 'INR'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleProfileChange('currency', val);
+                        handleSettingsChange('currency', val);
+                      }}
                       className="w-full px-3 py-2 border border-white/10 rounded-xl bg-zinc-900 text-white text-sm focus:outline-none focus:border-white/30"
                     >
                       {SUPPORTED_CURRENCIES.map((c) => (
@@ -1285,7 +1335,7 @@ export const SettingsView: React.FC = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
                       label="Account Holder Name"
-                      value={settings.account_holder_name || ''}
+                      value={settings.account_holder_name || settings.payment_settings?.bankDetails?.accountHolderName || ''}
                       onChange={(e) => {
                         handleSettingsChange('account_holder_name', e.target.value);
                       }}
@@ -1293,7 +1343,7 @@ export const SettingsView: React.FC = () => {
                     />
                     <Input
                       label="Bank Name"
-                      value={settings.bank_name || ''}
+                      value={settings.bank_name || settings.payment_settings?.bankDetails?.bankName || ''}
                       onChange={(e) => {
                         handleSettingsChange('bank_name', e.target.value);
                       }}
@@ -1301,7 +1351,7 @@ export const SettingsView: React.FC = () => {
                     />
                     <Input
                       label="Account Number / IBAN"
-                      value={settings.account_number || ''}
+                      value={settings.account_number || settings.payment_settings?.bankDetails?.accountNumber || ''}
                       onChange={(e) => {
                         handleSettingsChange('account_number', e.target.value);
                       }}
@@ -1309,7 +1359,7 @@ export const SettingsView: React.FC = () => {
                     />
                     <Input
                       label="IFSC / Routing / SWIFT Code"
-                      value={settings.ifsc_code || ''}
+                      value={settings.ifsc_code || settings.payment_settings?.bankDetails?.ifscCode || ''}
                       onChange={(e) => {
                         handleSettingsChange('ifsc_code', e.target.value);
                       }}
@@ -1318,7 +1368,7 @@ export const SettingsView: React.FC = () => {
                     <div className="sm:col-span-2">
                       <Input
                         label="Branch Name (Optional)"
-                        value={settings.branch_name || ''}
+                        value={settings.branch_name || settings.payment_settings?.bankDetails?.branchName || ''}
                         onChange={(e) => {
                           handleSettingsChange('branch_name', e.target.value);
                         }}
@@ -1335,11 +1385,11 @@ export const SettingsView: React.FC = () => {
                       <QrCode className="w-4 h-4 text-emerald-400" />
                       <h3 className="text-sm font-semibold text-white">UPI Payment & Direct QR Upload</h3>
                     </div>
-                    {settings.upi_qr_code_url ? (
+                    {(settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl) ? (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         Custom QR Active
                       </span>
-                    ) : settings.upi_id ? (
+                    ) : (settings.upi_id || settings.payment_settings?.upiId || profile.upiId) ? (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                         Dynamic QR Active
                       </span>
@@ -1360,7 +1410,7 @@ export const SettingsView: React.FC = () => {
                       <div>
                         <Input
                           label="UPI ID / VPA (Optional if uploading QR directly)"
-                          value={settings.upi_id || ''}
+                          value={settings.upi_id || settings.payment_settings?.upiId || profile.upiId || ''}
                           onChange={(e) => {
                             handleSettingsChange('upi_id', e.target.value.trim());
                           }}
@@ -1387,11 +1437,11 @@ export const SettingsView: React.FC = () => {
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-colors cursor-pointer disabled:opacity-50 shadow-sm shrink-0"
                           >
                             <Upload className="w-3.5 h-3.5" />
-                            <span>{isUploadingQr ? 'Uploading...' : settings.upi_qr_code_url ? 'Replace QR' : 'Upload QR'}</span>
+                            <span>{isUploadingQr ? 'Uploading...' : (settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl) ? 'Replace QR' : 'Upload QR'}</span>
                           </button>
                         </div>
 
-                        {settings.upi_qr_code_url && (
+                        {(settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl) && (
                           <div className="flex items-center justify-between pt-2 border-t border-white/5">
                             <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
                               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1412,11 +1462,11 @@ export const SettingsView: React.FC = () => {
 
                     {/* QR Code Preview Box */}
                     <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col items-center justify-center text-center">
-                      {settings.upi_qr_code_url ? (
+                      {(settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl) ? (
                         <div className="space-y-2 flex flex-col items-center">
                           <div className="p-2 bg-white rounded-xl shadow-lg border border-zinc-200">
                             <QRCode
-                              src={settings.upi_qr_code_url}
+                              src={settings.upi_qr_code_url || settings.payment_settings?.upiQrCodeUrl || profile.upiQrCodeUrl}
                               size={120}
                               alt="Uploaded Payment QR"
                             />
@@ -1425,11 +1475,11 @@ export const SettingsView: React.FC = () => {
                             Uploaded QR Preview
                           </span>
                         </div>
-                      ) : settings.upi_id ? (
+                      ) : (settings.upi_id || settings.payment_settings?.upiId || profile.upiId) ? (
                         <div className="space-y-2 flex flex-col items-center">
                           <div className="p-2.5 bg-white rounded-xl shadow-lg border border-zinc-200">
                             <QRCode
-                              value={`upi://pay?pa=${encodeURIComponent(settings.upi_id)}&pn=${encodeURIComponent(profile.companyName || profile.name || 'FlowDesk')}&cu=${encodeURIComponent(profile.currency || 'INR')}`}
+                              value={`upi://pay?pa=${encodeURIComponent(settings.upi_id || settings.payment_settings?.upiId || profile.upiId || '')}&pn=${encodeURIComponent(profile.companyName || profile.name || 'FlowDesk')}&cu=${encodeURIComponent(profile.currency || 'INR')}`}
                               size={110}
                               darkColor="#000000"
                               lightColor="#ffffff"
@@ -1461,7 +1511,7 @@ export const SettingsView: React.FC = () => {
                       <ExternalLink className="w-4 h-4 text-cyan-400" />
                       <h3 className="text-sm font-semibold text-white">Method B: Freelancer Razorpay Payment Link</h3>
                     </div>
-                    {settings.razorpay_payment_link && isApprovedRazorpayUrl(settings.razorpay_payment_link) && (
+                    {(settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink) && isApprovedRazorpayUrl(settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink || '') && (
                       <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         Approved Razorpay Link
                       </span>
@@ -1471,22 +1521,22 @@ export const SettingsView: React.FC = () => {
                   <div className="space-y-3">
                     <Input
                       label="Your Razorpay Payment Page URL / Link"
-                      value={settings.razorpay_payment_link || ''}
+                      value={settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink || ''}
                       onChange={(e) => {
                         handleSettingsChange('razorpay_payment_link', e.target.value.trim());
                       }}
                       placeholder="e.g. https://rzp.io/l/your-link or https://pages.razorpay.com/your-page"
                     />
 
-                    {settings.razorpay_payment_link && (
+                    {(settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink) && (
                       <div>
-                        {isApprovedRazorpayUrl(settings.razorpay_payment_link) ? (
+                        {isApprovedRazorpayUrl(settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink || '') ? (
                           <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                             <span className="text-xs text-emerald-300">
                               Valid Razorpay URL detected. Clients will see a &quot;Pay Online&quot; button.
                             </span>
                             <a
-                              href={settings.razorpay_payment_link}
+                              href={settings.razorpay_payment_link || settings.payment_settings?.razorpayPaymentLink}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 transition-colors shrink-0"
@@ -1580,9 +1630,6 @@ export const SettingsView: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <CardDescription>
-                  Configure which transactional email events trigger delivery to you and your clients.
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {emailHealth.status === 'suspended_or_disabled' && (
@@ -1600,14 +1647,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Client Invitation Emails */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <UserPlus className="w-4 h-4 text-violet-400" />
-                      <span className="text-sm font-semibold text-white">Client Invitation Emails</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Send transactional email invitations containing secure one-time onboarding links when adding new clients.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <UserPlus className="w-4 h-4 text-violet-400" />
+                    <span className="text-sm font-semibold text-white">Client Invitation Emails</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1622,14 +1664,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Deliverable Emails */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                      <span className="text-sm font-semibold text-white">Deliverable Approval & Revision Emails</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Send email notifications when deliverables are submitted for review, approved by clients, or when revisions are requested.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-semibold text-white">Deliverable Approval & Revision Emails</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1644,14 +1681,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Document Upload Emails */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <Upload className="w-4 h-4 text-cyan-400" />
-                      <span className="text-sm font-semibold text-white">Document Intake Notifications</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Receive an instant email summary whenever a client uploads a document, brief, or required contract asset.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <Upload className="w-4 h-4 text-cyan-400" />
+                    <span className="text-sm font-semibold text-white">Document Intake Notifications</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1666,14 +1698,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Invoice & Payment Emails */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-emerald-400" />
-                      <span className="text-sm font-semibold text-white">Invoice & Payment Receipts</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Email official invoice notifications to clients upon issue, payment confirmations, and automated receipt vouchers.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <DollarSign className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-semibold text-white">Invoice & Payment Receipts</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1688,17 +1715,12 @@ export const SettingsView: React.FC = () => {
 
                 {/* Security & Account Lifecycle Alerts (Always Active) */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-zinc-950/50 border border-white/10 opacity-90">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-amber-400" />
-                      <span className="text-sm font-semibold text-white">Security & Account Lifecycle Alerts</span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        Always Enabled
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Password resets, account deletion grace period notices, and security alerts cannot be disabled for compliance.
-                    </p>
+                  <div className="flex items-center gap-2.5">
+                    <Shield className="w-4 h-4 text-amber-400" />
+                    <span className="text-sm font-semibold text-white">Security & Account Lifecycle Alerts</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      Always Enabled
+                    </span>
                   </div>
                   <label className="relative inline-flex items-center cursor-not-allowed">
                     <input
@@ -1717,19 +1739,13 @@ export const SettingsView: React.FC = () => {
             <Card variant="crystal">
               <CardHeader>
                 <CardTitle>In-App Alerts & Dashboard Feeds</CardTitle>
-                <CardDescription>Manage real-time in-app badges, dashboard alerts, and activity feed logging</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Workspace Notifications */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-emerald-400" />
-                      <span className="text-sm font-semibold text-white">In-App Banner Notifications</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Receive top-bar banner notifications on client approvals, document uploads, and milestone updates.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-zinc-400" />
+                    <span className="text-sm font-semibold text-white">In-App Banner Notifications</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1744,14 +1760,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Invoice Reminders */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-amber-400" />
-                      <span className="text-sm font-semibold text-white">Automated Overdue Tracking</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Flag approaching due dates automatically on the financial dashboard and highlight overdue statements.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-zinc-400" />
+                    <span className="text-sm font-semibold text-white">Automated Overdue Tracking</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1766,14 +1777,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Comment & Review Alerts */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-cyan-400" />
-                      <span className="text-sm font-semibold text-white">Deliverable Review & Comment Badges</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Badge deliverable cards and sidebar items when clients leave feedback or request revisions.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-zinc-400" />
+                    <span className="text-sm font-semibold text-white">Deliverable Review & Comment Badges</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1788,14 +1794,9 @@ export const SettingsView: React.FC = () => {
 
                 {/* Weekly Digest */}
                 <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/10">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-purple-400" />
-                      <span className="text-sm font-semibold text-white">Weekly Revenue & Pipeline Digest</span>
-                    </div>
-                    <p className="text-xs text-zinc-400">
-                      Compute weekly revenue totals and completed milestone summaries on Monday morning dashboard.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-zinc-400" />
+                    <span className="text-sm font-semibold text-white">Weekly Revenue & Pipeline Digest</span>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
@@ -1809,6 +1810,21 @@ export const SettingsView: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {dirty && (
+              <div className="flex justify-end pt-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  isLoading={saving}
+                  onClick={() => handleSave()}
+                  leftIcon={<Save className="w-4 h-4" />}
+                >
+                  Save Alert Preferences
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1819,7 +1835,6 @@ export const SettingsView: React.FC = () => {
             <Card variant="crystal">
               <CardHeader>
                 <CardTitle>Account & Authentication</CardTitle>
-                <CardDescription>Security credentials and authentication state</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 space-y-3">
@@ -2167,6 +2182,26 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Floating Save Action Bar for Mobile Viewports */}
+      {dirty && (
+        <div className="fixed bottom-20 md:hidden left-4 right-4 z-40 p-3 bg-[#131518]/95 backdrop-blur-xl border border-[#43D6B0]/40 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#43D6B0] animate-pulse" />
+            <span className="text-xs text-zinc-300 font-medium">Unsaved changes</span>
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            isLoading={saving}
+            onClick={() => handleSave()}
+            leftIcon={<Save className="w-3.5 h-3.5" />}
+          >
+            Save Changes
+          </Button>
+        </div>
       )}
     </div>
   );

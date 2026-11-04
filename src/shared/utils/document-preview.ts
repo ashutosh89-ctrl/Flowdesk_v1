@@ -62,7 +62,7 @@ export function generateDocumentPDFBlobUrl(doc: DocumentItem): string {
   const slateText = [51, 65, 85]; // #334155
   const mutedText = [100, 116, 139]; // #64748B
   const emeraldAccent = [16, 149, 114]; // #109572
-  const blueAccent = [37, 99, 235]; // #2563EB
+  const tealAccent = [23, 107, 91]; // #176B5B
   const borderGray = [226, 232, 240]; // #E2E8F0
   const lightBg = [248, 250, 252]; // #F8FAFC
 
@@ -97,7 +97,7 @@ export function generateDocumentPDFBlobUrl(doc: DocumentItem): string {
   const isVerified = doc.status === 'verified' || doc.status === 'signed';
   const isRejected = doc.status === 'rejected';
 
-  const badgeColor = isVerified ? emeraldAccent : isRejected ? [225, 29, 72] : blueAccent;
+  const badgeColor = isVerified ? emeraldAccent : isRejected ? [225, 29, 72] : tealAccent;
   const badgeText = isVerified ? 'VERIFIED & APPROVED' : isRejected ? 'REVISION REQUESTED' : 'CLIENT UPLOADED — PENDING REVIEW';
 
   pdf.setFontSize(8);

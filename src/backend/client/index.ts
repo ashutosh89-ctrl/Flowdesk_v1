@@ -288,7 +288,7 @@ export const ClientPortalService = {
             totalBilled: Number(canonicalData.total_billed) || 0,
             activeProjectsCount: canonicalData.active_projects_count || 0,
             country: canonicalData.country || 'India',
-            currency: canonicalData.currency || 'USD',
+            currency: canonicalData.currency || 'INR',
             createdAt: canonicalData.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
           };
           (client as any).workspace_id = canonicalData.workspace_id;
@@ -496,6 +496,16 @@ export const ClientPortalService = {
 
     // 8. Freelancer Studio Branding for Invoices & PDF
     const localProf = FlowDeskStore.getUserProfile();
+    const localBankDetails = (localProf as any).bankDetails || {
+      bankName: (localProf as any).bankName || '',
+      accountHolderName: (localProf as any).accountHolderName || localProf?.name || '',
+      accountNumber: (localProf as any).accountNumber || '',
+      ifscCode: (localProf as any).ifscCode || '',
+      branchName: (localProf as any).branchName || '',
+      upiId: localProf?.upiId || '',
+    };
+    const hasLocalBank = Boolean(localBankDetails.accountNumber || localBankDetails.bankName);
+
     let branding: any = {
       businessName: localProf?.companyName || localProf?.name || 'FlowDesk Freelance Studio',
       freelancerName: localProf?.name || 'Studio Lead',
@@ -503,6 +513,9 @@ export const ClientPortalService = {
       phone: localProf?.phone || '',
       logoUrl: localProf?.logoUrl || '/branding/flowdesk-symbol.png',
       signatureUrl: localProf?.signatureUrl || '',
+      upiQrCodeUrl: localProf?.upiQrCodeUrl || '',
+      upiId: localProf?.upiId || '',
+      bankDetails: hasLocalBank ? localBankDetails : undefined,
     };
 
     let brandingResolved = false;
@@ -627,9 +640,9 @@ export const ClientPortalService = {
 
               const bankDetails =
                 userSettingsData?.payment_settings?.bankDetails ||
-                (userSettingsData?.bank_name
+                (userSettingsData?.bank_name || userSettingsData?.account_number
                   ? {
-                      bankName: userSettingsData.bank_name,
+                      bankName: userSettingsData.bank_name || '',
                       accountHolderName: userSettingsData.account_holder_name || '',
                       accountNumber: userSettingsData.account_number || '',
                       ifscCode: userSettingsData.ifsc_code || '',
@@ -639,6 +652,11 @@ export const ClientPortalService = {
                   : undefined);
               if (bankDetails) {
                 branding.bankDetails = bankDetails;
+                (branding as any).bankName = bankDetails.bankName;
+                (branding as any).accountNumber = bankDetails.accountNumber;
+                (branding as any).accountHolderName = bankDetails.accountHolderName;
+                (branding as any).ifscCode = bankDetails.ifscCode;
+                (branding as any).branchName = bankDetails.branchName;
               }
 
               const razorpayPaymentLink =
@@ -657,6 +675,54 @@ export const ClientPortalService = {
         }
       } catch (bErr) {
         console.warn('Error resolving workspace branding in client portal:', bErr);
+      }
+    }
+
+    // Secondary fallback: pull from recent invoices if branding is still missing QR or Bank details
+    if (!branding.upiQrCodeUrl || !branding.bankDetails || !branding.upiId) {
+      for (const inv of invoices) {
+        if (!branding.upiQrCodeUrl && (inv.upiQrCodeUrl || inv.paymentMethods?.upiQrCodeUrl)) {
+          branding.upiQrCodeUrl = inv.upiQrCodeUrl || inv.paymentMethods?.upiQrCodeUrl;
+        }
+        if (!branding.upiId && (inv.upiId || inv.paymentMethods?.upiId)) {
+          branding.upiId = inv.upiId || inv.paymentMethods?.upiId;
+        }
+        if (!branding.bankDetails && (inv.bankDetails || inv.paymentMethods?.bankDetails)) {
+          branding.bankDetails = inv.bankDetails || inv.paymentMethods?.bankDetails;
+          (branding as any).bankName = branding.bankDetails?.bankName;
+          (branding as any).accountNumber = branding.bankDetails?.accountNumber;
+          (branding as any).accountHolderName = branding.bankDetails?.accountHolderName;
+          (branding as any).ifscCode = branding.bankDetails?.ifscCode;
+          (branding as any).branchName = branding.bankDetails?.branchName;
+        }
+      }
+
+      if (!branding.upiQrCodeUrl || !branding.bankDetails) {
+        try {
+          const localProf = FlowDeskStore.getUserProfile() || {};
+          if (!branding.upiQrCodeUrl && localProf.upiQrCodeUrl) {
+            branding.upiQrCodeUrl = localProf.upiQrCodeUrl;
+          }
+          if (!branding.upiId && localProf.upiId) {
+            branding.upiId = localProf.upiId;
+          }
+          if (!branding.bankDetails && ((localProf as any).bankName || (localProf as any).bankDetails)) {
+            branding.bankDetails = (localProf as any).bankDetails || {
+              bankName: (localProf as any).bankName || '',
+              accountHolderName: (localProf as any).accountHolderName || '',
+              accountNumber: (localProf as any).accountNumber || '',
+              ifscCode: (localProf as any).ifscCode || '',
+              branchName: (localProf as any).branchName || '',
+            };
+            (branding as any).bankName = branding.bankDetails?.bankName;
+            (branding as any).accountNumber = branding.bankDetails?.accountNumber;
+            (branding as any).accountHolderName = branding.bankDetails?.accountHolderName;
+            (branding as any).ifscCode = branding.bankDetails?.ifscCode;
+            (branding as any).branchName = branding.bankDetails?.branchName;
+          }
+        } catch {
+          // non-critical
+        }
       }
     }
 

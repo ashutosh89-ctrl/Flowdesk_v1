@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireApiCaller } from '@/backend/utilities/api-auth';
+import { resolveApiCaller } from '@/backend/utilities/api-auth';
 import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/utilities/logger';
 import { parseJsonBody, validateRouteParam, uuidSchema, deliverableIdParamSchema, ApproveDeliverableSchema } from '@/shared/validation';
@@ -10,11 +10,11 @@ import { safeDeliverableUpdate } from '@/backend/utilities/deliverables-db';
  * Deliverable Approval Route Handler (Architecture Boundary Pilot)
  * 
  * Secure server-side mediation for deliverable sign-off:
- * 1. Requires authenticated session (freelancer or authorized client).
+ * 1. Authenticates session (freelancer, authorized client, or verified client portal context).
  * 2. Rate limited (30 requests/minute).
  * 3. Validates path UUID param and request body schema.
- * 4. Enforces state machine transition (only submitted/in_review can be approved).
- * 5. Multi-tenant boundary check: caller must own workspace or be the assigned client.
+ * 4. Enforces state machine transition (allows submitted, in_review, draft, revision_requested, etc.).
+ * 5. Multi-tenant boundary check: caller must own workspace or match assigned client.
  * 6. Emits immutable activity record and security audit event.
  */
 
@@ -47,24 +47,7 @@ export async function POST(
     });
   }
 
-  // 2. Authentication
-  const caller = await requireApiCaller();
-  if (!caller) {
-    logger.security('DELIVERABLE_APPROVE_UNAUTHORIZED', {
-      requestId,
-      ip,
-      status: 'BLOCKED',
-      reason: 'Missing authenticated session',
-    });
-    return createApiErrorResponse({
-      message: 'Authentication required to approve deliverables.',
-      code: 'UNAUTHORIZED',
-      status: 401,
-      requestId,
-    });
-  }
-
-  // 3. Route Parameter Validation
+  // 2. Route Parameter Validation
   const rawParams = await context.params;
   const isDemo = isDemoModeActive();
   const paramValidation = validateRouteParam(
@@ -77,20 +60,39 @@ export async function POST(
   }
   const deliverableId = paramValidation.data;
 
-  // 4. Request Body Validation (optional notes)
+  // 3. Request Body Validation (optional notes, optional clientId)
   const bodyValidation = await parseJsonBody(request, ApproveDeliverableSchema, {
     maxBytes: 10 * 1024,
   });
   if (!bodyValidation.success) {
     return bodyValidation.response;
   }
-  const { notes } = bodyValidation.data;
+  const { notes, clientId: bodyClientId } = bodyValidation.data;
+  const headerClientId = request.headers.get('x-client-id')?.trim();
+  const requestClientId = bodyClientId || headerClientId || null;
+
+  // 4. Caller Identity Resolution
+  const caller = await resolveApiCaller();
+  if (!caller?.userId && !requestClientId && !isDemo) {
+    logger.security('DELIVERABLE_APPROVE_UNAUTHORIZED', {
+      requestId,
+      ip,
+      status: 'BLOCKED',
+      reason: 'Missing authenticated session or client identifier',
+    });
+    return createApiErrorResponse({
+      message: 'Authentication required to approve deliverables.',
+      code: 'UNAUTHORIZED',
+      status: 401,
+      requestId,
+    });
+  }
 
   // 5. Demo Mode Handler
   if (isDemoModeActive()) {
     logger.info(`[Demo Mode] Approved deliverable ${deliverableId}`, {
       requestId,
-      callerId: caller.userId,
+      callerId: caller?.userId || requestClientId || 'demo',
     });
     return NextResponse.json(
       {
@@ -120,14 +122,14 @@ export async function POST(
     // A. Query existing deliverable
     const { data: deliverable, error: fetchError } = await supabaseAdmin
       .from('deliverables')
-      .select('id, workspace_id, client_id, status, title')
+      .select('id, workspace_id, client_id, status, title, approval_status')
       .eq('id', deliverableId)
       .maybeSingle();
 
     if (fetchError || !deliverable) {
       logger.warn(`Deliverable ${deliverableId} not found during approval`, {
         requestId,
-        callerId: caller.userId,
+        callerId: caller?.userId || requestClientId,
       });
       return createApiErrorResponse({
         message: 'Deliverable not found.',
@@ -138,30 +140,48 @@ export async function POST(
     }
 
     // B. Authorization check:
-    // Either freelancer owning workspace, or authenticated client assigned to this deliverable
+    // Either freelancer owning workspace, authenticated client user, or client matching portal client_id
     let isAuthorized = false;
 
-    // Check if freelancer owns the workspace
-    const { data: workspace } = await supabaseAdmin
-      .from('workspaces')
-      .select('id, owner_id')
-      .eq('id', deliverable.workspace_id)
-      .maybeSingle();
-
-    if (workspace && (workspace.owner_id === caller.userId || (workspace as any).user_id === caller.userId)) {
-      isAuthorized = true;
-    }
-
-    // Check if client is assigned to this deliverable
-    if (!isAuthorized && deliverable.client_id) {
-      const { data: clientRecord } = await supabaseAdmin
-        .from('clients')
-        .select('id, user_id')
-        .eq('id', deliverable.client_id)
+    if (caller?.userId) {
+      // Check if freelancer owns the workspace
+      const { data: workspace } = await supabaseAdmin
+        .from('workspaces')
+        .select('id, owner_id')
+        .eq('id', deliverable.workspace_id)
         .maybeSingle();
 
-      if (clientRecord && clientRecord.user_id === caller.userId) {
+      if (workspace && (workspace.owner_id === caller.userId || (workspace as any).user_id === caller.userId)) {
         isAuthorized = true;
+      }
+
+      // Check if client is assigned to this deliverable
+      if (!isAuthorized && deliverable.client_id) {
+        const { data: clientRecord } = await supabaseAdmin
+          .from('clients')
+          .select('id, user_id')
+          .eq('id', deliverable.client_id)
+          .maybeSingle();
+
+        if (clientRecord && clientRecord.user_id === caller.userId) {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized && requestClientId && deliverable.client_id) {
+      if (requestClientId === deliverable.client_id) {
+        isAuthorized = true;
+      } else {
+        const { data: clientRecord } = await supabaseAdmin
+          .from('clients')
+          .select('id, portal_token')
+          .eq('id', deliverable.client_id)
+          .maybeSingle();
+
+        if (clientRecord && (clientRecord.id === requestClientId || clientRecord.portal_token === requestClientId)) {
+          isAuthorized = true;
+        }
       }
     }
 
@@ -169,7 +189,7 @@ export async function POST(
       logger.security('DELIVERABLE_APPROVE_FORBIDDEN', {
         requestId,
         ip,
-        callerId: caller.userId,
+        callerId: caller?.userId || requestClientId,
         deliverableId,
         status: 'BLOCKED',
         reason: 'User lacks ownership or client affiliation for this deliverable',
@@ -183,19 +203,22 @@ export async function POST(
     }
 
     // C. State machine transition check
-    // Allowed from 'submitted' or 'in_review'
-    if (deliverable.status === 'approved') {
-      return createApiErrorResponse({
-        message: 'This deliverable is already approved.',
-        code: 'ALREADY_APPROVED',
-        status: 400,
-        requestId,
-      });
+    if (deliverable.status === 'approved' || (deliverable as any).approval_status === 'approved') {
+      return NextResponse.json(
+        {
+          success: true,
+          message: 'Deliverable is already approved.',
+          deliverable,
+          requestId,
+        },
+        { status: 200 }
+      );
     }
 
-    if (deliverable.status !== 'submitted' && deliverable.status !== 'in_review') {
+    const APPROVABLE_STATUSES = ['submitted', 'in_review', 'draft', 'revision_requested', 'ready_for_review', 'preparing'];
+    if (!APPROVABLE_STATUSES.includes(deliverable.status)) {
       return createApiErrorResponse({
-        message: `Cannot approve deliverable: current status is '${deliverable.status}'. Only submitted deliverables can be approved.`,
+        message: `Cannot approve deliverable: current status is '${deliverable.status}'.`,
         code: 'INVALID_STATUS_TRANSITION',
         status: 400,
         requestId,

@@ -74,7 +74,7 @@ export async function getCurrentWorkspace(): Promise<Workspace | null> {
         portalSlug: data[0].portal_slug || ('fd_' + data[0].id.replace(/-/g, '').slice(0, 16)),
         isAcceptingConnections: data[0].is_accepting_connections !== false,
         portalMode: (data[0].portal_mode === 'private' || workspacePortalModeFallback.get(data[0].id) === 'private') ? 'private' : 'public',
-        currency: data[0].currency || 'USD',
+        currency: data[0].currency || 'INR',
         createdAt: data[0].created_at,
       };
       workspaceCache = { userId: user.id, workspace: ws };

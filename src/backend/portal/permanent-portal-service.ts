@@ -107,7 +107,7 @@ export const PermanentPortalService = {
           profession: res.profession || 'Independent Professional',
           avatarUrl: res.avatar_url || '',
           logoUrl: res.logo_url || '',
-          currency: res.currency || 'USD',
+          currency: res.currency || 'INR',
         };
       }
 
@@ -155,7 +155,7 @@ export const PermanentPortalService = {
         profession: profData?.profession || 'Independent Professional',
         avatarUrl: profData?.avatar_url || '',
         logoUrl: wsData.logo_url || profData?.logo_url || '',
-        currency: wsData.currency || 'USD',
+        currency: wsData.currency || 'INR',
       };
     } catch (err: any) {
       logger.error('Failed to resolve permanent portal link', { error: err.message, slug });
@@ -466,7 +466,7 @@ export const PermanentPortalService = {
               company: `${userName} Workspace`,
               email: userEmail || 'client@flowdesk.app',
               status: clientRowStatus,
-              currency: ws.currency || 'USD',
+              currency: ws.currency || 'INR',
             })
             .select('id')
             .single();
@@ -718,7 +718,7 @@ export const PermanentPortalService = {
           studioName: ws?.name || prof?.business_name || 'Studio Workspace',
           logoUrl: ws?.logo_url || prof?.logo_url || '',
           avatarUrl: prof?.avatar_url || '',
-          currency: ws?.currency || 'USD',
+          currency: ws?.currency || 'INR',
           status: 'active',
           connectedAt: conn.connected_at,
         });
@@ -741,7 +741,7 @@ export const PermanentPortalService = {
           studioName: ws?.name || prof?.business_name || 'Studio Workspace',
           logoUrl: ws?.logo_url || prof?.logo_url || '',
           avatarUrl: prof?.avatar_url || '',
-          currency: ws?.currency || 'USD',
+          currency: ws?.currency || 'INR',
           status: 'active',
           connectedAt: dc.created_at,
         });

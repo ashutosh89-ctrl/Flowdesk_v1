@@ -29,8 +29,33 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import { useAuth } from '@/frontend/auth/auth-context';
+import { UserSettingsService } from '@/backend/auth/user-settings-service';
+import { UserSettings } from '@/shared/types';
 
 export const InvoicesListView: React.FC = () => {
+  const { profile, userSettings } = useAuth();
+  const [activeCurrency, setActiveCurrency] = useState<string>(() => {
+    return userSettings?.currency || profile?.currency || UserSettingsService.getLocalSettings('usr-default')?.currency || 'INR';
+  });
+
+  useEffect(() => {
+    const cur = userSettings?.currency || profile?.currency;
+    if (cur) setActiveCurrency(cur);
+  }, [userSettings?.currency, profile?.currency]);
+
+  useEffect(() => {
+    const handleSettingsUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<UserSettings>;
+      if (customEvent.detail?.currency) {
+        setActiveCurrency(customEvent.detail.currency);
+      }
+    };
+    window.addEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    return () => {
+      window.removeEventListener('flowdesk:settings-updated', handleSettingsUpdated);
+    };
+  }, []);
+
   const [viewMode, setViewMode] = useState<'dashboard' | 'directory'>('dashboard');
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [metrics, setMetrics] = useState<FinancialDashboardMetrics>({
@@ -80,7 +105,6 @@ export const InvoicesListView: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   const { showToast } = useToast();
-  const { profile } = useAuth();
 
   const refreshData = async () => {
     try {
@@ -149,6 +173,11 @@ export const InvoicesListView: React.FC = () => {
         `Invoice ${payload.invoiceNumber} ${invoiceToEdit ? 'updated' : 'created and recorded'}.`,
         'success'
       );
+      if (invoiceToEdit) {
+        setInvoices((prev) => prev.map((inv) => (inv.id === payload.id ? { ...inv, ...payload } : inv)));
+      } else if (payload?.id) {
+        setInvoices((prev) => [payload, ...prev]);
+      }
       await refreshData();
     } catch (err) {
       showToast('Error', err instanceof Error ? err.message : 'Unable to refresh invoices.', 'error');
@@ -287,13 +316,13 @@ export const InvoicesListView: React.FC = () => {
 
         <div className="flex items-center gap-3 self-stretch sm:self-auto">
           {/* View Mode Toggle */}
-          <div className="inline-flex items-center p-1 bg-[#111111] border border-[#2A2A2A] rounded-xl text-xs">
+          <div className="inline-flex items-center p-1 bg-[#101312] border border-[#176B5B]/30 rounded-xl text-xs">
             <button
               onClick={() => setViewMode('dashboard')}
               className={`px-3.5 py-1.5 font-bold rounded-lg flex items-center gap-1.5 transition-all ${
                 viewMode === 'dashboard'
-                  ? 'bg-[#0047AB] text-white shadow-md shadow-[#0047AB]/25'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-[#176B5B]/30 text-[#43D6B0] border border-[#176B5B]/50 shadow-sm'
+                  : 'text-[#A6B4AE] hover:text-[#F5F5F0]'
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" /> Dashboard
@@ -302,8 +331,8 @@ export const InvoicesListView: React.FC = () => {
               onClick={() => setViewMode('directory')}
               className={`px-3.5 py-1.5 font-bold rounded-lg flex items-center gap-1.5 transition-all ${
                 viewMode === 'directory'
-                  ? 'bg-[#0047AB] text-white shadow-md shadow-[#0047AB]/25'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-[#176B5B]/30 text-[#43D6B0] border border-[#176B5B]/50 shadow-sm'
+                  : 'text-[#A6B4AE] hover:text-[#F5F5F0]'
               }`}
             >
               <ListFilter className="w-3.5 h-3.5" /> All Invoices ({invoices.length})
@@ -312,7 +341,7 @@ export const InvoicesListView: React.FC = () => {
 
           <button
             onClick={handleOpenCreate}
-            className="px-4 py-2 rounded-xl bg-[#0047AB] hover:bg-[#003A8C] text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#0047AB]/25 transition-all cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-[#43D6B0] hover:bg-[#43D6B0]/90 text-[#101312] text-xs font-bold flex items-center gap-1.5 shadow-md shadow-[#43D6B0]/20 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Create Invoice
           </button>
@@ -333,6 +362,7 @@ export const InvoicesListView: React.FC = () => {
       {!isLoading && (viewMode === 'dashboard' ? (
         <InvoiceDashboard
           metrics={metrics}
+          currency={activeCurrency}
           onSelectInvoice={handleOpenDetails}
           onCreateInvoice={handleOpenCreate}
         />
@@ -349,17 +379,17 @@ export const InvoicesListView: React.FC = () => {
                   placeholder="Search invoice #, client, or project..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 border border-[#2A2A2A] rounded-xl bg-[#111111] text-white placeholder-zinc-500 focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]/40 transition-colors text-xs"
+                  className="w-full pl-10 pr-3.5 py-2.5 border border-[#176B5B]/30 rounded-xl bg-[#191F1D] text-[#F5F5F0] placeholder-[#A6B4AE]/60 focus:outline-none focus:border-[#43D6B0] focus:ring-1 focus:ring-[#43D6B0]/40 transition-colors text-xs"
                 />
               </div>
 
               {/* Filter Selectors */}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
                 {/* Workflow Status Filter */}
                 <select
                   value={workflowFilter}
                   onChange={(e) => setWorkflowFilter(e.target.value)}
-                  className="px-3 py-2.5 border border-[#2A2A2A] rounded-xl bg-[#111111] text-zinc-200 focus:outline-none focus:border-[#2563EB] transition-colors text-xs"
+                  className="px-3 py-2.5 border border-[#176B5B]/30 rounded-xl bg-[#191F1D] text-[#F5F5F0] focus:outline-none focus:border-[#43D6B0] transition-colors text-xs"
                 >
                   <option value="all">Workflow: All</option>
                   <option value="draft">Draft</option>
@@ -372,7 +402,7 @@ export const InvoicesListView: React.FC = () => {
                 <select
                   value={paymentFilter}
                   onChange={(e) => setPaymentFilter(e.target.value)}
-                  className="px-3 py-2.5 border border-[#2A2A2A] rounded-xl bg-[#111111] text-zinc-200 focus:outline-none focus:border-[#2563EB] transition-colors text-xs"
+                  className="px-3 py-2.5 border border-[#176B5B]/30 rounded-xl bg-[#191F1D] text-[#F5F5F0] focus:outline-none focus:border-[#43D6B0] transition-colors text-xs"
                 >
                   <option value="all">Payment: All</option>
                   <option value="pending">Pending</option>
@@ -383,7 +413,7 @@ export const InvoicesListView: React.FC = () => {
                 <select
                   value={currencyFilter}
                   onChange={(e) => setCurrencyFilter(e.target.value)}
-                  className="px-3 py-2.5 border border-[#2A2A2A] rounded-xl bg-[#111111] text-zinc-200 focus:outline-none focus:border-[#2563EB] transition-colors text-xs"
+                  className="px-3 py-2.5 border border-[#176B5B]/30 rounded-xl bg-[#191F1D] text-[#F5F5F0] focus:outline-none focus:border-[#43D6B0] transition-colors text-xs"
                 >
                   <option value="all">Currency: All</option>
                   <option value="USD">USD ($)</option>
@@ -396,7 +426,7 @@ export const InvoicesListView: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-3 py-2.5 border border-[#2A2A2A] rounded-xl bg-[#111111] text-zinc-200 focus:outline-none focus:border-[#2563EB] transition-colors text-xs"
+                  className="px-3 py-2.5 border border-[#176B5B]/30 rounded-xl bg-[#191F1D] text-[#F5F5F0] focus:outline-none focus:border-[#43D6B0] transition-colors text-xs"
                 >
                   <option value="newest">Sort: Newest First</option>
                   <option value="oldest">Sort: Oldest First</option>
@@ -408,14 +438,14 @@ export const InvoicesListView: React.FC = () => {
 
             {/* Bulk Selection Bar */}
             {selectedIds.length > 0 && (
-              <div className="p-3 rounded-xl bg-[#181818] border border-[#2A2A2A] text-white flex items-center justify-between text-xs animate-in fade-in">
-                <span className="font-bold font-mono pl-2">
+              <div className="p-3 rounded-xl bg-[#141817] border border-[#176B5B]/30 text-white flex items-center justify-between text-xs animate-in fade-in">
+                <span className="font-bold font-mono pl-2 text-[#F5F5F0]">
                   {selectedIds.length} invoice(s) selected
                 </span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleBulkMarkPaid}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center gap-1.5 transition-colors"
+                    className="px-3 py-1.5 rounded-lg bg-[#176B5B] hover:bg-[#176B5B]/80 text-[#F5F5F0] font-semibold flex items-center gap-1.5 transition-colors"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
                   </button>
@@ -430,17 +460,141 @@ export const InvoicesListView: React.FC = () => {
             )}
           </div>
 
-          {/* Directory Table */}
-          <div className="border border-[#2A2A2A] rounded-2xl overflow-hidden bg-[#111111] shadow-2xl backdrop-blur-xl">
-            <table className="w-full text-left border-collapse text-xs">
+          {/* Mobile Invoices Card List (Phone < 768px) */}
+          <div className="block md:hidden space-y-3">
+            {sortedInvoices.length === 0 ? (
+              <div className="p-10 text-center text-xs text-[#A6B4AE] border border-[#176B5B]/30 rounded-2xl bg-[#191F1D]">
+                No invoices found matching current criteria
+              </div>
+            ) : (
+              sortedInvoices.map((inv) => {
+                const isSelected = selectedIds.includes(inv.id);
+                return (
+                  <div
+                    key={inv.id}
+                    onClick={() => handleOpenDetails(inv)}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer bg-[#191F1D] shadow-lg space-y-3 ${
+                      isSelected ? 'border-[#43D6B0] bg-[#176B5B]/15' : 'border-[#176B5B]/30 hover:border-[#176B5B]/60'
+                    }`}
+                  >
+                    {/* Header: Checkbox + Number + Badges */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => handleToggleSelect(inv.id, e as any)}
+                          className="rounded border-[#176B5B]/40 bg-[#101312] text-[#43D6B0] focus:ring-[#43D6B0]/40 accent-[#43D6B0] w-4 h-4 cursor-pointer"
+                        />
+                        <div>
+                          <div className="font-bold font-mono text-white text-sm flex items-center gap-1.5">
+                            <span>{inv.invoiceNumber}</span>
+                            <RecurringInvoiceBadge scheduleId={(inv as any).recurringScheduleId || (inv as any).recurring_schedule_id} />
+                          </div>
+                          <div className="text-xs text-zinc-400 font-medium">{inv.clientName}</div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <PaymentStatusPill status={inv.paymentStatus} />
+                        <WorkflowStatusPill status={inv.workflowStatus} />
+                      </div>
+                    </div>
+
+                    {/* Middle: Project & Due Date & Amount */}
+                    <div className="pt-2 border-t border-[#176B5B]/20 flex items-center justify-between text-xs">
+                      <div className="space-y-1">
+                        {inv.projectName && (
+                          <div className="text-zinc-300 font-medium max-w-[180px] truncate text-[11px]">
+                            📁 {inv.projectName}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <DueIndicatorBadge
+                            dueDate={inv.dueDate}
+                            paymentStatus={inv.paymentStatus}
+                            workflowStatus={inv.workflowStatus}
+                          />
+                          <span className="text-[10px] text-zinc-500 font-mono">Due: {inv.dueDate}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-base font-extrabold font-mono text-[#43D6B0]">
+                          {formatCurrency(inv.total, inv.currency)}
+                        </div>
+                        <div className="text-[10px] text-zinc-500 font-mono uppercase">{inv.currency}</div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Actions Row */}
+                    <div
+                      className="pt-2 border-t border-[#176B5B]/20 flex items-center justify-end gap-1.5 flex-wrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDetails(inv)}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-200 text-xs font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-[#43D6B0]" /> Details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenPortal(inv, e)}
+                        className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-200 text-xs font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-[#43D6B0]" /> Portal
+                      </button>
+                      {inv.paymentStatus !== 'paid' && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenMarkPaid(inv, e)}
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center gap-1 transition-colors"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Pay
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenEdit(inv, e)}
+                        className="p-1.5 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+                        title="Edit Invoice"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (window.confirm(`Delete invoice ${inv.invoiceNumber}?`)) {
+                            await InvoiceService.deleteInvoice(inv.id);
+                            showToast('Deleted', `Invoice ${inv.invoiceNumber} removed.`, 'info');
+                            await refreshData();
+                          }
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-400 transition-colors"
+                        title="Delete Invoice"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop Directory Table */}
+          <div className="hidden md:block border border-[#176B5B]/30 rounded-2xl overflow-x-auto w-full bg-[#191F1D] shadow-2xl backdrop-blur-xl">
+            <table className="w-full text-left border-collapse text-xs min-w-[720px]">
               <thead>
-                <tr className="bg-[#181818] border-b border-[#2A2A2A] font-bold text-zinc-400">
+                <tr className="bg-[#141817] border-b border-[#176B5B]/30 font-bold text-[#A6B4AE]">
                   <th className="p-4 w-10 text-center">
                     <input
                       type="checkbox"
                       checked={selectedIds.length === filteredInvoices.length && filteredInvoices.length > 0}
                       onChange={(e) => handleSelectAll(e.target.checked)}
-                      className="rounded border-[#2A2A2A] bg-[#181818] text-[#0047AB] focus:ring-[#2563EB]/40 accent-[#0047AB]"
+                      className="rounded border-[#176B5B]/40 bg-[#101312] text-[#43D6B0] focus:ring-[#43D6B0]/40 accent-[#43D6B0]"
                     />
                   </th>
                   <th className="p-4">Invoice # & Client</th>
@@ -452,10 +606,10 @@ export const InvoicesListView: React.FC = () => {
                   <th className="p-4 text-center">Quick Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#2A2A2A]">
+              <tbody className="divide-y divide-[#176B5B]/20">
                 {sortedInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-14 text-center text-zinc-500">
+                    <td colSpan={8} className="p-14 text-center text-[#A6B4AE]">
                       No invoices found matching current criteria
                     </td>
                   </tr>
@@ -466,8 +620,8 @@ export const InvoicesListView: React.FC = () => {
                       <tr
                         key={inv.id}
                         onClick={() => handleOpenDetails(inv)}
-                        className={`hover:bg-[#0047AB]/5 cursor-pointer transition-colors ${
-                          isSelected ? 'bg-[#0047AB]/10' : ''
+                        className={`hover:bg-[#176B5B]/10 cursor-pointer transition-colors ${
+                          isSelected ? 'bg-[#176B5B]/15' : ''
                         }`}
                       >
                         <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
@@ -621,11 +775,13 @@ export const InvoicesListView: React.FC = () => {
         }}
         onDelete={async (id) => {
           try {
+            setInvoices((prev) => prev.filter((item) => item.id !== id));
             await InvoiceService.deleteInvoice(id);
             showToast('Invoice Deleted', 'Invoice has been deleted.', 'info');
             await refreshData();
           } catch (err) {
             showToast('Error', 'Unable to delete invoice.', 'error');
+            await refreshData();
           }
         }}
       />

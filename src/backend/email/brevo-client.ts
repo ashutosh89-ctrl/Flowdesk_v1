@@ -77,7 +77,10 @@ export const getBrevoApiKey = (): string => {
       // Non-critical if filesystem read is restricted
     }
   }
-  return key.trim().replace(/^['"]|['"]$/g, '');
+  key = key.trim();
+  key = key.replace(/^BREVO_API_KEY\s*=\s*/i, '');
+  key = key.replace(/^Bearer\s+/i, '');
+  return key.trim().replace(/^['"]|['"]$/g, '').trim();
 };
 
 /**
