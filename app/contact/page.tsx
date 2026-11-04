@@ -40,7 +40,13 @@ function ContactFormInner() {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('General support' as any);
+  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>(() => {
+    const queryCategory = searchParams.get('category');
+    if (queryCategory && (CATEGORIES as readonly string[]).includes(queryCategory)) {
+      return queryCategory as (typeof CATEGORIES)[number];
+    }
+    return CATEGORIES[0];
+  });
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [orderOrPaymentId, setOrderOrPaymentId] = useState('');
@@ -54,10 +60,8 @@ function ContactFormInner() {
   // Initialize category from query param if available
   useEffect(() => {
     const queryCategory = searchParams.get('category');
-    if (queryCategory && CATEGORIES.includes(queryCategory as any)) {
-      setCategory(queryCategory as any);
-    } else {
-      setCategory('General support' as any in CATEGORIES ? ('General support' as any) : 'Account and Login');
+    if (queryCategory && (CATEGORIES as readonly string[]).includes(queryCategory)) {
+      setCategory(queryCategory as (typeof CATEGORIES)[number]);
     }
   }, [searchParams]);
 
@@ -229,6 +233,7 @@ function ContactFormInner() {
           </label>
           <select
             id="category"
+            suppressHydrationWarning
             value={category}
             onChange={(e) => setCategory(e.target.value as any)}
             className="w-full h-10 px-3 rounded-xl bg-[#111111] border border-[#2A2A2A] text-sm text-white focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-colors"
@@ -267,6 +272,7 @@ function ContactFormInner() {
           </label>
           <textarea
             id="message"
+            suppressHydrationWarning
             rows={5}
             placeholder="Please explain your question or issue in detail..."
             value={message}
@@ -280,6 +286,7 @@ function ContactFormInner() {
         <div className="flex items-start gap-2.5 pt-1">
           <input
             id="privacyConsent"
+            suppressHydrationWarning
             type="checkbox"
             checked={privacyConsent}
             onChange={(e) => setPrivacyConsent(e.target.checked)}

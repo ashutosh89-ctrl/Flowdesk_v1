@@ -251,18 +251,34 @@ body.no-scrollbar::-webkit-scrollbar,
    PRINT STYLES — Invoice & Document Print Layout
    ============================================================ */
 @media print {
-  /* Hide everything by default */
-  body * {
-    visibility: hidden;
+  /* Hide print-irrelevant elements */
+  .print\:hidden,
+  .print-no-display {
+    display: none !important;
   }
 
-  /* Show only the print target */
+  /* Global Page Print Defaults */
+  html,
+  body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #111111 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* When printing an invoice modal, isolate it */
+  body:has(.print-invoice) *:not(.print-invoice, .print-invoice *) {
+    visibility: hidden !important;
+  }
+
+  /* Show invoice target */
   .print-invoice,
   .print-invoice * {
     visibility: visible !important;
   }
 
-  /* Position the print area */
+  /* Position the print area for invoice modal */
   .print-invoice {
     position: absolute;
     left: 0;
@@ -278,9 +294,10 @@ body.no-scrollbar::-webkit-scrollbar,
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+    overflow: visible !important;
   }
 
-  /* Force light theme for print */
+  /* Force light theme for print invoices */
   .print-invoice .bg-zinc-950,
   .print-invoice .bg-zinc-900,
   .print-invoice .bg-zinc-800,
@@ -290,7 +307,6 @@ body.no-scrollbar::-webkit-scrollbar,
     background: #fff !important;
   }
 
-  /* Print content area - remove scroll限制 */
   .print-invoice-content {
     max-height: none !important;
     overflow: visible !important;
@@ -316,12 +332,6 @@ body.no-scrollbar::-webkit-scrollbar,
     border-color: #ddd !important;
   }
 
-  /* Hide print-irrelevant elements */
-  .print-no-display {
-    display: none !important;
-  }
-
-  /* Tables */
   .print-invoice table {
     border-collapse: collapse;
     width: 100%;
@@ -333,28 +343,13 @@ body.no-scrollbar::-webkit-scrollbar,
     border-bottom: 1px solid #eee !important;
   }
 
-  /* Page-break handling */
-  .print-invoice-section {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  .print-invoice-table tr {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
+  .print-invoice-section,
+  .print-invoice-table tr,
   .print-invoice-totals {
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
-  /* Hide any overflow */
-  .print-invoice {
-    overflow: visible !important;
-  }
-
-  /* Ensure dark-themed elements print correctly */
   .print-invoice .bg-emerald-950,
   .print-invoice .bg-emerald-900,
   .print-invoice .bg-amber-950,
@@ -369,11 +364,136 @@ body.no-scrollbar::-webkit-scrollbar,
     color: #555 !important;
   }
 
-  /* Page settings */
+  /* ============================================================
+     LEGAL & GENERAL DOCUMENT PRINT STYLES
+     ============================================================ */
+  .print-legal-document,
+  .print-legal-document * {
+    visibility: visible !important;
+  }
+
+  .print-legal-document {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    color: #111111 !important;
+    font-size: 11pt !important;
+    line-height: 1.6 !important;
+  }
+
+  .print-legal-document h1,
+  .print-legal-document h2,
+  .print-legal-document h3,
+  .print-legal-document h4,
+  .print-legal-document h5,
+  .print-legal-document h6 {
+    color: #000000 !important;
+    font-weight: 700 !important;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .print-legal-document h1 {
+    font-size: 22pt !important;
+    margin-bottom: 8pt !important;
+  }
+
+  .print-legal-document h2 {
+    font-size: 15pt !important;
+    margin-top: 18pt !important;
+    margin-bottom: 6pt !important;
+    border-bottom: 1.5px solid #d1d5db !important;
+    padding-bottom: 4pt !important;
+  }
+
+  .print-legal-document h3 {
+    font-size: 12pt !important;
+    margin-top: 14pt !important;
+    margin-bottom: 4pt !important;
+  }
+
+  .print-legal-document p,
+  .print-legal-document li,
+  .print-legal-document span,
+  .print-legal-document label {
+    color: #1f2937 !important;
+  }
+
+  .print-legal-document .text-zinc-200,
+  .print-legal-document .text-zinc-300,
+  .print-legal-document .text-zinc-400,
+  .print-legal-document .text-zinc-500 {
+    color: #374151 !important;
+  }
+
+  .print-legal-document .text-white {
+    color: #111111 !important;
+  }
+
+  /* Reset dark cards/sections to clean printable boxes */
+  .print-legal-document section,
+  .print-legal-document article,
+  .print-legal-document div[class*="bg-"],
+  .print-legal-document div[class*="border-"] {
+    background-color: #ffffff !important;
+    border-color: #e5e7eb !important;
+    box-shadow: none !important;
+    color: #111111 !important;
+  }
+
+  /* Form controls and inputs if present */
+  .print-legal-document input,
+  .print-legal-document textarea,
+  .print-legal-document select {
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: 1px solid #d1d5db !important;
+  }
+
+  /* Clean tables */
+  .print-legal-document table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 12pt 0 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-legal-document th,
+  .print-legal-document td {
+    border: 1px solid #d1d5db !important;
+    padding: 6pt 10pt !important;
+    text-align: left !important;
+    color: #111111 !important;
+  }
+
+  .print-legal-document th {
+    background-color: #f3f4f6 !important;
+    font-weight: 700 !important;
+  }
+
+  .print-legal-document tr:nth-child(even) td {
+    background-color: #f9fafb !important;
+  }
+
+  .print-legal-document a {
+    color: #1d4ed8 !important;
+    text-decoration: underline !important;
+  }
+
+  /* Pagination rules */
+  .print-legal-document section,
+  .print-legal-document table,
+  .print-legal-document tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
   @page {
     size: A4 portrait;
     margin: 15mm;
   }
 }
-
-

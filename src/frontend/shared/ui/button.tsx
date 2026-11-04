@@ -91,6 +91,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
+        suppressHydrationWarning
         className={`${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
         {...props}
       >
