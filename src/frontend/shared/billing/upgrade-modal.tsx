@@ -74,7 +74,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
       } else {
         // Fallback for demo / preview environments without Razorpay SDK injected
         if (data.shortUrl) {
-          window.location.href = data.shortUrl;
+          window.location.assign(data.shortUrl);
         } else {
           showToast(
             'Subscription Created',

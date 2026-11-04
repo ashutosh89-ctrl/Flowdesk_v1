@@ -689,7 +689,7 @@ export const SettingsView: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      showToast('Export Complete', 'Your account data archive has been downloaded as JSON.', 'success');
+      showToast('Export Complete', 'Your complete account data archive has been downloaded as JSON.', 'success');
     } catch (err: any) {
       showToast('Export Failed', err.message || 'Could not export your data. Please try again or contact support.', 'error');
     } finally {
@@ -970,20 +970,18 @@ export const SettingsView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleSettingsChange('default_deliverable_niche', 'software_development')}
-className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
-                      (settings.default_deliverable_niche || 'software_development') === 'software_development'
+                    className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${(settings.default_deliverable_niche || 'software_development') === 'software_development'
                         ? 'bg-[#176B5B]/15 border-[#176B5B] shadow-[0_0_15px_rgba(23,107,91,0.2)] ring-1 ring-[#43D6B0]/50'
                         : 'bg-[#191F1D] border-[#176B5B]/30 hover:border-[#176B5B]/60'
-                    }`}
+                      }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2.5">
-                          <div className={`p-2 rounded-lg ${
-                            (settings.default_deliverable_niche || 'software_development') === 'software_development'
+                          <div className={`p-2 rounded-lg ${(settings.default_deliverable_niche || 'software_development') === 'software_development'
                               ? 'bg-[#176B5B]/30 text-[#43D6B0]'
                               : 'bg-white/5 text-[#A6B4AE]'
-                          }}`}
+                            }`}>
                             <Code2 className="w-4 h-4" />
                           </div>
                           <span className="text-sm font-semibold text-[#F5F5F0]">Software Developer</span>
@@ -1005,20 +1003,18 @@ className={`relative p-4 rounded-xl border text-left transition-all duration-200
                   <button
                     type="button"
                     onClick={() => handleSettingsChange('default_deliverable_niche', 'others')}
-className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${
-                      settings.default_deliverable_niche === 'others'
+                    className={`relative p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${settings.default_deliverable_niche === 'others'
                         ? 'bg-[#176B5B]/15 border-[#176B5B] shadow-[0_0_15px_rgba(23,107,91,0.2)] ring-1 ring-[#43D6B0]/50'
                         : 'bg-[#191F1D] border-[#176B5B]/30 hover:border-[#176B5B]/60'
-                    }`}
+                      }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2.5">
-                          <div className={`p-2 rounded-lg ${
-                            settings.default_deliverable_niche === 'others'
+                          <div className={`p-2 rounded-lg ${settings.default_deliverable_niche === 'others'
                               ? 'bg-[#176B5B]/30 text-[#43D6B0]'
                               : 'bg-white/5 text-[#A6B4AE]'
-                          }}`}
+                            }`}>
                             <Briefcase className="w-4 h-4" />
                           </div>
                           <span className="text-sm font-semibold text-[#F5F5F0]">Others</span>
