@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -95,9 +97,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <span
             className="absolute inset-0 pointer-events-none transition-opacity duration-300"
             style={{
-              background: `radial-gradient(circle 80px at ${coords.x}px ${coords.y}px, ${
-                variant === 'primary' ? 'rgba(37, 99, 235, 0.45)' : 'rgba(255, 255, 255, 0.15)'
-              }, transparent 70%)`,
+              background: `radial-gradient(circle 80px at ${coords.x}px ${coords.y}px, ${variant === 'primary' ? 'rgba(37, 99, 235, 0.45)' : 'rgba(255, 255, 255, 0.15)'
+                }, transparent 70%)`,
             }}
           />
         )}
@@ -106,9 +107,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {ripples.map((r) => (
           <span
             key={r.id}
-            className={`absolute rounded-full pointer-events-none animate-ping ${
-              variant === 'primary' ? 'bg-white/35' : 'bg-white/25'
-            }`}
+            className={`absolute rounded-full pointer-events-none animate-ping ${variant === 'primary' ? 'bg-white/35' : 'bg-white/25'
+              }`}
             style={{
               left: r.x - 20,
               top: r.y - 20,

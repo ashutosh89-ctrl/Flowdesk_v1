@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { motion } from 'motion/react';
 import { Button } from '@/frontend/shared/ui/button';
 import { BILLING_PLANS, PlanKey, BillingInterval } from '@/shared/billing';
@@ -33,7 +34,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
     { title: 'Document Vaults', icon: <FileText className="w-4 h-4 text-white" />, desc: 'Store contracts, briefs, and client onboarding files in one secure repository.' },
     { title: 'Professional Invoicing', icon: <Receipt className="w-4 h-4 text-white" />, desc: 'Itemized invoices with custom tax rates, discounts, and clear payment terms.' },
     { title: 'Multi-Currency Billing', icon: <Printer className="w-4 h-4 text-white" />, desc: 'Issue invoices and receive payments in USD, INR, EUR, GBP, and more.' },
-    { title: 'Client Review Portal', icon: <ShieldCheck className="w-4 h-4 text-white" />, desc: 'Password-free magic link portal for clients to review work, files, and invoices.' },
+    { title: 'Client Review Portal', icon: <ShieldCheck className="w-4 h-4 text-white" />, desc: 'Dedicated client portal for clients to review deliverables, files, and invoices.' },
     { title: 'Threaded Discussions', icon: <MessageSquare className="w-4 h-4 text-white" />, desc: 'Keep project and deliverable conversations connected to the relevant work.' },
     { title: 'Activity History', icon: <Activity className="w-4 h-4 text-white" />, desc: 'A transparent chronological audit trail of all workspace milestones and updates.' },
   ];
@@ -54,7 +55,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
           Plans That Grow With Your Freelance Business
         </h2>
         <p className="text-lg sm:text-xl lg:text-[22px] text-zinc-300 max-w-3xl mx-auto leading-relaxed font-normal">
-          Start with the essentials. Upgrade when your clients, projects, and business grow.
+          Start with Starter for free. Upgrade to Standard or Studio when your clients, active projects, and storage requirements expand.
         </p>
 
         {/* Interval Selector */}
@@ -90,7 +91,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
       </motion.div>
 
       {/* 3-Column Plan Cards Sourced from BILLING_PLANS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         {(['free', 'pro', 'studio'] as PlanKey[]).map((planKey) => {
           const plan = BILLING_PLANS[planKey];
           const price = plan.pricing[interval].INR;
@@ -99,7 +100,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
             planKey === 'free'
               ? 'Start for Free'
               : planKey === 'pro'
-              ? 'Upgrade to Pro'
+              ? 'Upgrade to Standard'
               : 'Choose Studio';
 
           return (
@@ -170,6 +171,23 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
         })}
       </div>
 
+      {/* Near-CTA Policy Links & Fair Use Notice */}
+      <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-400 font-mono mb-16 gap-3 px-2">
+        <div>
+          <span>Studio &quot;Unlimited&quot; clients is subject to fair use. </span>
+          <Link href="/terms#upgrades-downgrades" className="text-zinc-300 underline hover:text-white">
+            Learn more in Terms &rarr;
+          </Link>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+          <span>&bull;</span>
+          <Link href="/refund-policy" className="hover:text-white transition-colors">Refunds</Link>
+          <span>&bull;</span>
+          <Link href="/cancellation-policy" className="hover:text-white transition-colors">Cancellations</Link>
+        </div>
+      </div>
+
       {/* Capabilities Overview Section */}
       <motion.div
         initial={{ opacity: 0, y: 28, filter: 'blur(4px)' }}
@@ -197,7 +215,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth, onLa
             size="lg"
             className="text-base sm:text-lg font-semibold px-8 py-4 shadow-md shadow-[#0047AB]/30 shrink-0"
             onClick={() => onOpenAuth('signup')}
-            rightIcon={<ArrowRight className="w-5 h-5" />}
+            rightIcon={<ArrowRight className="w-4 h-4" />}
           >
             Create Free Workspace
           </Button>

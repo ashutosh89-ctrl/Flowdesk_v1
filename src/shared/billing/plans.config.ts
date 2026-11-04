@@ -1,16 +1,12 @@
 /**
  * FlowDesk SaaS Billing Plans & Entitlements Configuration
- * 
- * IMPORTANT FOR OWNER / PRODUCT LEAD:
- * All prices, currency defaults, quota limits, and Razorpay Plan IDs below are
- * PLACEHOLDERS. You must configure real business values before launching to production.
- * 
- * TODO [OWNER]:
- * 1. Set real subscription prices in INR and USD.
- * 2. Set actual quota limits for Free, Pro, and Studio tiers.
- * 3. Pre-create recurring Plans in Razorpay Dashboard and paste the resulting
- *    Plan IDs (e.g., 'plan_M1234567890ABC') into `providerPlanIds.razorpay`.
- * 4. Verify GST compliance and subscription tax requirements with your accountant.
+ *
+ * Single Source of Truth for SaaS tiers, pricing, quotas, and feature flags.
+ * Used identically across:
+ * - Public Pricing Page (`/pricing` and landing)
+ * - Freelancer Billing Settings (`BillingPlanPanel`)
+ * - Checkout and Upgrade Modals (`UpgradeModal`)
+ * - Backend Quota Assertion Middleware (`assertWithinLimit`)
  */
 
 export type PlanKey = 'free' | 'pro' | 'studio';
@@ -19,12 +15,12 @@ export type CurrencyCode = 'INR' | 'USD';
 
 export interface PlanPricing {
   monthly: {
-    INR: number; // Placeholder in INR (e.g. 999 = ₹999/mo)
-    USD: number; // Placeholder in USD (e.g. 15 = $15/mo)
+    INR: number;
+    USD: number;
   };
   yearly: {
-    INR: number; // Placeholder in INR (e.g. 9990 = ₹9,990/yr)
-    USD: number; // Placeholder in USD (e.g. 150 = $150/yr)
+    INR: number;
+    USD: number;
   };
 }
 
@@ -41,7 +37,7 @@ export interface PlanLimits {
   brandedPortal: boolean;
   /** Whether automatic transactional email payment reminders are enabled */
   emailReminders: boolean;
-  /** AI assistance credits per month (placeholder, currently unmetered/unused) */
+  /** AI assistance credits per month (placeholder) */
   aiCreditsPerMonth: number;
 }
 
@@ -60,25 +56,26 @@ export interface PlanDefinition {
       yearly?: string;
     };
   };
+  isPopular?: boolean;
 }
 
 export const BILLING_PLANS: Record<PlanKey, PlanDefinition> = {
   free: {
     key: 'free',
-    name: 'Free Starter',
-    tagline: 'Essential tools for solo freelancers starting out.',
+    name: 'Starter',
+    tagline: 'Essential tools for solo freelancers and emerging creators starting out.',
     pricing: {
       monthly: { INR: 0, USD: 0 },
       yearly: { INR: 0, USD: 0 },
     },
     limits: {
-      activeClients: 2,           // TODO [OWNER]: Set final Free limit
-      activeProjects: 3,          // TODO [OWNER]: Set final Free limit
-      storageMb: 250,             // 250 MB storage
-      invoicesPerMonth: 5,        // 5 invoices / month
-      brandedPortal: false,       // Default FlowDesk portal branding
-      emailReminders: false,      // Manual reminders only
-      aiCreditsPerMonth: 0,       // Unused placeholder
+      activeClients: 2,
+      activeProjects: 3,
+      storageMb: 250,
+      invoicesPerMonth: 5,
+      brandedPortal: false,
+      emailReminders: false,
+      aiCreditsPerMonth: 0,
     },
     features: [
       'Up to 2 active clients',
@@ -86,7 +83,7 @@ export const BILLING_PLANS: Record<PlanKey, PlanDefinition> = {
       '250 MB secure document storage',
       'Up to 5 invoices per month',
       'Standard client review portal',
-      'Basic payment tracking',
+      'Manual invoice tracking',
     ],
     providerPlanIds: {
       razorpay: {},
@@ -95,72 +92,73 @@ export const BILLING_PLANS: Record<PlanKey, PlanDefinition> = {
 
   pro: {
     key: 'pro',
-    name: 'Pro Freelancer',
-    tagline: 'Advanced tools for full-time professionals scaling client work.',
+    name: 'Standard',
+    tagline: 'Reliable operating system for growing freelancers with ongoing client engagements.',
     badge: 'Most Popular',
+    isPopular: true,
     pricing: {
-      monthly: { INR: 799, USD: 12 },    // TODO [OWNER]: Replace placeholder ₹799/mo ($12/mo)
-      yearly: { INR: 7990, USD: 120 },   // TODO [OWNER]: Replace placeholder ₹7,990/yr ($120/yr)
+      monthly: { INR: 399, USD: 6 },
+      yearly: { INR: 3990, USD: 60 },
     },
     limits: {
-      activeClients: 15,          // TODO [OWNER]: Set final Pro limit
-      activeProjects: 25,         // TODO [OWNER]: Set final Pro limit
-      storageMb: 5000,            // 5 GB storage
-      invoicesPerMonth: 50,       // 50 invoices / month
-      brandedPortal: true,        // Custom studio branding enabled
-      emailReminders: true,       // Automated invoice payment reminders
-      aiCreditsPerMonth: 100,     // Unused placeholder
+      activeClients: 10,
+      activeProjects: 15,
+      storageMb: 5000, // 5 GB
+      invoicesPerMonth: 50,
+      brandedPortal: true,
+      emailReminders: true,
+      aiCreditsPerMonth: 100,
     },
     features: [
-      'Up to 15 active clients',
-      'Up to 25 active projects',
+      'Up to 10 active clients',
+      'Up to 15 active projects',
       '5 GB secure document storage',
       '50 invoices per month with auto-numbering',
       'Custom branded client portal',
-      'Automated invoice payment reminders',
-      'Multi-currency invoicing & payment receipts',
-      'Priority email support',
+      'Automated email payment reminders',
+      'Multi-currency invoicing & receipts',
+      'Standard support via contact portal',
     ],
     providerPlanIds: {
       razorpay: {
-        monthly: 'plan_placeholder_pro_monthly', // TODO [OWNER]: Set Razorpay Plan ID
-        yearly: 'plan_placeholder_pro_yearly',   // TODO [OWNER]: Set Razorpay Plan ID
+        monthly: process.env.RAZORPAY_PLAN_STANDARD_MONTHLY || 'plan_placeholder_standard_monthly',
+        yearly: process.env.RAZORPAY_PLAN_STANDARD_YEARLY || 'plan_placeholder_standard_yearly',
       },
     },
   },
 
   studio: {
     key: 'studio',
-    name: 'Studio Agency',
-    tagline: 'High-capacity workspace for boutique agencies and top-tier studios.',
+    name: 'Studio',
+    tagline: 'High-capacity workspace for established studios and boutique agency teams.',
     badge: 'High Capacity',
     pricing: {
-      monthly: { INR: 1999, USD: 29 },   // TODO [OWNER]: Replace placeholder ₹1,999/mo ($29/mo)
-      yearly: { INR: 19990, USD: 290 },  // TODO [OWNER]: Replace placeholder ₹19,990/yr ($290/yr)
+      monthly: { INR: 899, USD: 14 },
+      yearly: { INR: 8990, USD: 140 },
     },
     limits: {
-      activeClients: 100,         // TODO [OWNER]: Set final Studio limit
-      activeProjects: 150,        // TODO [OWNER]: Set final Studio limit
-      storageMb: 25000,           // 25 GB storage
-      invoicesPerMonth: 500,      // 500 invoices / month
-      brandedPortal: true,        // Custom studio branding enabled
-      emailReminders: true,       // Automated invoice payment reminders
-      aiCreditsPerMonth: 500,     // Unused placeholder
+      activeClients: 10000, // Unlimited subject to fair use
+      activeProjects: 10000, // Unlimited
+      storageMb: 25000, // 25 GB
+      invoicesPerMonth: 500,
+      brandedPortal: true,
+      emailReminders: true,
+      aiCreditsPerMonth: 500,
     },
     features: [
-      'Up to 100 active clients',
-      'Up to 150 active projects',
+      'Unlimited active clients (fair use)',
+      'Unlimited active projects',
       '25 GB secure document storage',
       '500 invoices per month',
-      'Fully branded client experience & custom subpaths',
-      'Automated multi-stage dunning & invoice reminders',
+      'Custom branded client portal',
+      'Automated invoice payment reminders & dunning',
       'High-throughput deliverable versioning',
-      'Dedicated support & audit log exports',
+      'Priority email support & audit exports',
     ],
     providerPlanIds: {
       razorpay: {
-        monthly: 'plan_placeholder_studio_monthly', // TODO [OWNER]: Set Razorpay Plan ID
-        yearly: 'plan_placeholder_studio_yearly',   // TODO [OWNER]: Set Razorpay Plan ID
+        monthly: process.env.RAZORPAY_PLAN_STUDIO_MONTHLY || 'plan_placeholder_studio_monthly',
+        yearly: process.env.RAZORPAY_PLAN_STUDIO_YEARLY || 'plan_placeholder_studio_yearly',
       },
     },
   },
@@ -172,13 +170,16 @@ export const DEFAULT_BILLING_CURRENCY: CurrencyCode = 'INR';
 /** Grace period duration in days after payment exhaustion before workspace is restricted */
 export const DEFAULT_GRACE_PERIOD_DAYS = 7;
 
-/** Default trial duration in days when a new workspace activates a Pro trial */
+/** Default trial duration in days when a new workspace activates a trial */
 export const DEFAULT_TRIAL_PERIOD_DAYS = 14;
 
 /** Helper to retrieve a plan definition safely, falling back to 'free' */
 export function getBillingPlan(planKey: string | undefined | null): PlanDefinition {
-  if (planKey && planKey in BILLING_PLANS) {
-    return BILLING_PLANS[planKey as PlanKey];
+  if (planKey) {
+    if (planKey === 'standard') return BILLING_PLANS.pro;
+    if (planKey in BILLING_PLANS) {
+      return BILLING_PLANS[planKey as PlanKey];
+    }
   }
   return BILLING_PLANS.free;
 }

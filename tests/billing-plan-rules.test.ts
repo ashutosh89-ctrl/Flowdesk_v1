@@ -44,7 +44,7 @@ test('Billing Plan Rules: Plan Resolution & Fallbacks', async (suite) => {
   await suite.test('gracefully falls back to free plan for unknown plan keys', () => {
     const plan = getBillingPlan('enterprise_nonexistent' as any);
     assert.equal(plan.key, 'free');
-    assert.equal(plan.name, 'Free Starter');
+    assert.equal(plan.name, BILLING_PLANS.free.name);
   });
 });
 

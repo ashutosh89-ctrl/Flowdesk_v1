@@ -29,9 +29,17 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // 2. Freelancer Public Routes
+  // 2. Freelancer Public Routes & Public Information Pages
   const isFreelancerPublicRoute =
     path === '/' ||
+    path === '/terms' ||
+    path === '/privacy' ||
+    path === '/refund-policy' ||
+    path === '/cancellation-policy' ||
+    path === '/security' ||
+    path === '/about' ||
+    path === '/contact' ||
+    path === '/pricing' ||
     path.startsWith('/login') ||
     path.startsWith('/signup') ||
     path.startsWith('/auth') ||

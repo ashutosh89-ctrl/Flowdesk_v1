@@ -1,8 +1,10 @@
 import React from 'react';
+import Link from 'next/link';
 import { motion } from 'motion/react';
 import { Button } from '@/frontend/shared/ui/button';
 import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
-import { ArrowRight, ShieldCheck } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Mail, Shield } from 'lucide-react';
+import { siteConfig } from '@/shared/config/site-config';
 
 export interface LandingFooterProps {
   onLaunchApp?: () => void;
@@ -59,83 +61,93 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onLaunchApp, onOpe
       </div>
 
       <div className="pt-16 pb-12 px-6 lg:px-12 border-t border-[#2A2A2A]">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 mb-16 text-zinc-300">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-16 text-zinc-300">
           {/* Brand Overview Column */}
-          <div className="sm:col-span-2 md:col-span-1 space-y-4">
+          <div className="sm:col-span-2 lg:col-span-2 space-y-4">
             <FlowDeskLogo variant="full" size="sm" />
-            <p className="text-base text-zinc-300 max-w-sm leading-relaxed font-normal">
-              FlowDesk brings the moving parts of freelance work into one organized workspace, from client onboarding to payment tracking.
+            <p className="text-sm sm:text-base text-zinc-300 max-w-sm leading-relaxed font-normal">
+              FlowDesk brings the moving parts of freelance client work into one organized workspace—from client onboarding to deliverable sign-offs and payment tracking.
             </p>
-            <div className="flex items-center gap-3 pt-2">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono text-emerald-400 font-semibold">
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono text-emerald-400 font-semibold">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 FlowDesk v1.0
+              </span>
+              <span className="text-xs text-zinc-400 font-mono">
+                Operated primarily in India
               </span>
             </div>
           </div>
 
           {/* Product Column */}
           <div>
-            <h5 className="text-sm font-mono font-bold text-white uppercase tracking-widest mb-4">Features</h5>
-            <ul className="space-y-3.5 text-base text-zinc-300">
-              <li><a href="#features" className="hover:text-white transition-colors">Client Workspaces</a></li>
-              <li><a href="#features" className="hover:text-white transition-colors">Deliverables & Approvals</a></li>
-              <li><a href="#features" className="hover:text-white transition-colors">Invoicing</a></li>
-              <li><a href="#features" className="hover:text-white transition-colors">Client Portal</a></li>
-              <li><a href="#features" className="hover:text-white transition-colors">Documents</a></li>
+            <h5 className="text-xs font-mono font-bold text-white uppercase tracking-widest mb-4">Product</h5>
+            <ul className="space-y-3 text-sm text-zinc-300">
+              <li><Link href="/#features" className="hover:text-white transition-colors">Workspace Features</Link></li>
+              <li><Link href="/pricing" className="hover:text-white transition-colors">Pricing & Plans</Link></li>
+              <li><Link href="/about" className="hover:text-white transition-colors">About FlowDesk</Link></li>
+              <li>
+                <Link href="/client/login" className="hover:text-white transition-colors flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" />
+                  Client Portal
+                </Link>
+              </li>
             </ul>
           </div>
 
-          {/* Workflow & Resources Column */}
+          {/* Support Column */}
           <div>
-            <h5 className="text-sm font-mono font-bold text-white uppercase tracking-widest mb-4">Workflow</h5>
-            <ul className="space-y-3.5 text-base text-zinc-300">
-              <li><a href="#workflow" className="hover:text-white transition-colors">Freelance Workflow</a></li>
-              <li><a href="#benefits" className="hover:text-white transition-colors">Benefits</a></li>
-              <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
-              <li><a href="#faq" className="hover:text-white transition-colors">FAQ</a></li>
-            </ul>
-          </div>
-
-          {/* Quick Access Column */}
-          <div>
-            <h5 className="text-sm font-mono font-bold text-white uppercase tracking-widest mb-4">Quick Access</h5>
-            <ul className="space-y-3.5 text-base text-zinc-300">
+            <h5 className="text-xs font-mono font-bold text-white uppercase tracking-widest mb-4">Support</h5>
+            <ul className="space-y-3 text-sm text-zinc-300">
+              <li><Link href="/contact" className="hover:text-white transition-colors">Contact Support</Link></li>
+              <li><Link href="/contact?category=Refund%20Request" className="hover:text-white transition-colors">Refund Inquiries</Link></li>
+              <li><Link href="/contact?category=Subscription%20and%20Billing" className="hover:text-white transition-colors">Billing & Payments</Link></li>
+              <li><Link href="/contact?category=Privacy%20and%20Data%20Deletion" className="hover:text-white transition-colors">Privacy Rights (DPDP)</Link></li>
               <li>
-                <button
-                  type="button"
-                  onClick={() => onOpenAuth?.('login')}
-                  className="hover:text-white transition-colors text-left"
-                >
-                  Sign In
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => onOpenAuth?.('signup')}
-                  className="hover:text-white transition-colors text-left"
-                >
-                  Create Free Workspace
-                </button>
-              </li>
-              <li>
-                <a href="/client/login" className="hover:text-white transition-colors flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-zinc-400" />
-                  Client Portal Login
+                <a href={`mailto:${siteConfig.supportEmail}`} className="hover:text-white transition-colors flex items-center gap-1.5 text-xs font-mono text-zinc-400 truncate">
+                  <Mail className="w-3 h-3 text-zinc-400 shrink-0" />
+                  {siteConfig.supportEmail}
                 </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Legal Column */}
+          <div>
+            <h5 className="text-xs font-mono font-bold text-white uppercase tracking-widest mb-4">Legal</h5>
+            <ul className="space-y-3 text-sm text-zinc-300">
+              <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+              <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/refund-policy" className="hover:text-white transition-colors">Refund Policy</Link></li>
+              <li><Link href="/cancellation-policy" className="hover:text-white transition-colors">Cancellation Policy</Link></li>
+              <li>
+                <Link href="/security" className="hover:text-white transition-colors flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-zinc-400" />
+                  Security Overview
+                </Link>
               </li>
             </ul>
           </div>
         </div>
 
         {/* Bottom Legal & Copyright Bar */}
-        <div className="max-w-7xl mx-auto pt-8 border-t border-[#2A2A2A] flex flex-col sm:flex-row items-center justify-between text-base text-zinc-400 gap-4">
-          <div>
-            <p>© 2026 FlowDesk. All rights reserved.</p>
+        <div className="max-w-7xl mx-auto pt-8 border-t border-[#2A2A2A] flex flex-col md:flex-row items-center justify-between text-xs sm:text-sm text-zinc-400 gap-4">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-center md:text-left">
+            <p>© 2026 {siteConfig.brandName}. All rights reserved.</p>
+            <div className="flex items-center gap-4 text-xs">
+              <Link href="/terms" className="hover:text-white transition-colors underline-offset-4 hover:underline">Terms</Link>
+              <span>•</span>
+              <Link href="/privacy" className="hover:text-white transition-colors underline-offset-4 hover:underline">Privacy</Link>
+              <span>•</span>
+              <Link href="/refund-policy" className="hover:text-white transition-colors underline-offset-4 hover:underline">Refunds</Link>
+              <span>•</span>
+              <Link href="/cancellation-policy" className="hover:text-white transition-colors underline-offset-4 hover:underline">Cancellation</Link>
+              <span>•</span>
+              <Link href="/security" className="hover:text-white transition-colors underline-offset-4 hover:underline">Security</Link>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-xs sm:text-sm font-mono text-zinc-400">
-            <span>Designed for independent freelancers and modern client work.</span>
+          <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
+            <span>Built for independent freelancers and modern client workflows.</span>
           </div>
         </div>
       </div>

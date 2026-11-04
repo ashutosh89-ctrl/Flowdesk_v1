@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Modal } from '@/frontend/shared/ui/modal';
 import { Button } from '@/frontend/shared/ui/button';
 import { BILLING_PLANS, PlanKey, BillingInterval } from '@/shared/billing';
@@ -28,7 +29,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   const { showToast } = useToast();
 
   const handleCheckout = async (planKey: PlanKey) => {
-    if (planKey === 'free' || planKey === currentPlanKey) return;
+    if (planKey === 'free' || planKey === currentPlanKey || loadingPlan !== null) return;
 
     setLoadingPlan(planKey);
     setError(null);
@@ -71,7 +72,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
             email: data.checkoutPayload.customerEmail,
           },
           theme: {
-            color: '#10b981',
+            color: '#0047AB',
           },
         };
         const rzp = new (window as any).Razorpay(options);
@@ -124,7 +125,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
               onClick={() => setInterval('monthly')}
               className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 interval === 'monthly'
-                  ? 'bg-white/10 text-white shadow-sm'
+                  ? 'bg-[#0047AB] text-white shadow-sm'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -135,7 +136,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
               onClick={() => setInterval('yearly')}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 interval === 'yearly'
-                  ? 'bg-white/10 text-white shadow-sm'
+                  ? 'bg-[#0047AB] text-white shadow-sm'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -160,7 +161,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                 key={planKey}
                 className={`flex flex-col justify-between p-5 rounded-2xl border transition-all ${
                   isTarget || planKey === 'pro'
-                    ? 'bg-white/[0.04] border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.1)]'
+                    ? 'bg-white/[0.04] border-[#2563EB]/60 shadow-[0_0_30px_rgba(0,71,171,0.15)]'
                     : 'bg-zinc-900/60 border-white/10'
                 } ${isCurrent ? 'ring-1 ring-white/20' : ''}`}
               >
@@ -168,7 +169,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="text-sm font-bold text-white tracking-tight">{plan.name}</span>
                     {plan.badge && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#0047AB]/20 text-[#E8F0FF] border border-[#2563EB]/30">
                         {plan.badge}
                       </span>
                     )}
@@ -192,18 +193,26 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                         /{interval === 'yearly' ? 'year' : 'month'}
                       </span>
                     </div>
-                    <span className="text-[10px] text-zinc-400">+ 18% GST</span>
+                    <span className="text-[10px] text-zinc-400 font-mono">+ 18% GST (Tax Invoice Included)</span>
                   </div>
 
                   {/* Limits bullets */}
                   <ul className="space-y-2 pt-3 border-t border-white/10 text-xs text-zinc-300 mb-6">
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span>{plan.limits.activeClients} active clients</span>
+                      <span>
+                        {plan.limits.activeClients >= 1000
+                          ? 'Unlimited active clients (fair use)'
+                          : `${plan.limits.activeClients} active clients`}
+                      </span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span>{plan.limits.activeProjects} active projects</span>
+                      <span>
+                        {plan.limits.activeProjects >= 1000
+                          ? 'Unlimited active projects'
+                          : `${plan.limits.activeProjects} active projects`}
+                      </span>
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -240,14 +249,14 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                   ) : (
                     <Button
                       variant="primary"
-                      className="w-full text-xs shadow-[0_0_20px_rgba(16,185,129,0.25)]"
+                      className="w-full text-xs shadow-[0_0_20px_rgba(0,71,171,0.25)]"
                       onClick={() => handleCheckout(planKey)}
                       disabled={loadingPlan !== null}
                     >
                       {loadingPlan === planKey ? (
                         <div className="flex items-center gap-2">
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Preparing...</span>
+                          <span>Connecting...</span>
                         </div>
                       ) : (
                         `Upgrade to ${plan.name}`
@@ -260,12 +269,21 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
           })}
         </div>
 
-        <div className="flex items-center justify-between text-xs text-zinc-400 pt-2 border-t border-white/10">
-          <div className="flex items-center gap-2">
-            <Shield className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Secure recurring payments powered by Razorpay e-Mandate</span>
+        {/* Policy Links & Razorpay e-Mandate disclosure */}
+        <div className="pt-3 border-t border-white/10 space-y-2 text-[11px] text-zinc-400">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Shield className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>Recurring payments authorized securely via Razorpay e-mandate.</span>
+            </div>
+            <div className="flex items-center gap-2 font-mono">
+              <Link href="/terms" target="_blank" className="hover:text-white underline">Terms</Link>
+              <span>&bull;</span>
+              <Link href="/refund-policy" target="_blank" className="hover:text-white underline">Refunds</Link>
+              <span>&bull;</span>
+              <Link href="/cancellation-policy" target="_blank" className="hover:text-white underline">Cancellations</Link>
+            </div>
           </div>
-          <span>Cancel anytime from settings</span>
         </div>
       </div>
     </Modal>
