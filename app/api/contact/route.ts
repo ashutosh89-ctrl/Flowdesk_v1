@@ -187,7 +187,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     return createApiErrorResponse({
-      message: 'Failed to deliver support message. Please email support directly at support@flowdesk.app.',
+      message: `Failed to deliver support message. Please email support directly at ${siteConfig.supportEmail}.`,
       code: 'DELIVERY_FAILED',
       status: 500,
       requestId,

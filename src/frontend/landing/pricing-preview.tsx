@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { motion } from 'motion/react';
 import { Button } from '@/frontend/shared/ui/button';
 import { BILLING_PLANS, PlanKey, BillingInterval } from '@/shared/billing';
@@ -9,7 +8,7 @@ import { Check, ArrowRight } from 'lucide-react';
 
 export interface PricingPreviewProps {
   onOpenAuth: (view: 'signup' | 'login') => void;
-  onLaunchApp?: () => void;
+  onLaunchApp: () => void;
 }
 
 export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth }) => {
@@ -28,7 +27,7 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth }) =>
           Simple, Transparent Pricing
         </h2>
         <p className="text-base sm:text-lg text-[#A6B4AE] max-w-2xl mx-auto leading-relaxed">
-          Start with Starter for free. Upgrade to Standard or Studio as your clients, active projects, and storage requirements expand.
+          Start for free, then upgrade as your clients and projects grow.
         </p>
 
         {/* Interval Selector */}
@@ -65,10 +64,10 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth }) =>
 
       {/* 3-Column Plan Cards Sourced from BILLING_PLANS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {(['free', 'pro', 'studio'] as PlanKey[]).map((planKey) => {
+        {(['free', 'standard', 'studio'] as PlanKey[]).map((planKey) => {
           const plan = BILLING_PLANS[planKey];
           const price = plan.pricing[interval].INR;
-          const isPopular = planKey === 'pro';
+          const isPopular = planKey === 'standard';
 
           return (
             <motion.div
@@ -128,29 +127,16 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth }) =>
                   onClick={() => onOpenAuth('signup')}
                   rightIcon={<ArrowRight className="w-4 h-4" />}
                 >
-                  {planKey === 'free' ? 'Start for Free' : `Upgrade to ${plan.name}`}
+                  {planKey === 'free'
+                    ? 'Start for Free'
+                    : planKey === 'standard' || planKey === 'pro'
+                    ? 'Get Standard'
+                    : 'Choose Studio'}
                 </Button>
               </div>
             </motion.div>
           );
         })}
-      </div>
-
-      {/* Near-CTA Policy Links & Fair Use Notice */}
-      <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-[#9CA3AF] font-mono mt-8 gap-3 px-2">
-        <div>
-          <span>Studio &quot;Unlimited&quot; clients is subject to fair use. </span>
-          <Link href="/terms#upgrades-downgrades" className="text-[#F5F5F0] underline hover:text-[#43D6B0]">
-            Learn more in Terms &rarr;
-          </Link>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
-          <span>&bull;</span>
-          <Link href="/refund-policy" className="hover:text-white transition-colors">Refunds</Link>
-          <span>&bull;</span>
-          <Link href="/cancellation-policy" className="hover:text-white transition-colors">Cancellations</Link>
-        </div>
       </div>
     </section>
   );

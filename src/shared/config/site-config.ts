@@ -57,9 +57,9 @@ export interface SiteConfig {
 export const siteConfig: SiteConfig = {
   brandName: 'FlowDesk',
   legalEntityName: '[TO BE CONFIRMED: Legal Entity Name e.g. FlowDesk Technologies Private Limited]',
-  supportEmail: 'support@flowdesk.app',
-  privacyEmail: 'privacy@flowdesk.app',
-  securityEmail: 'security@flowdesk.app',
+  supportEmail: 'flowdesk11@gmail.com',
+  privacyEmail: 'flowdesk11@gmail.com',
+  securityEmail: 'flowdesk11@gmail.com',
   contactResponseTarget: 'Within 1-2 business days',
 
   registeredAddress: {
@@ -73,7 +73,7 @@ export const siteConfig: SiteConfig = {
   grievanceOfficer: {
     name: '[TO BE CONFIRMED: Grievance Officer Name]',
     title: 'Grievance Redressal Officer & Data Protection Liaison',
-    email: 'grievance@flowdesk.app',
+    email: 'flowdesk11@gmail.com',
     address: '[TO BE CONFIRMED: Postal Address for Grievances, India]',
   },
 

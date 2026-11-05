@@ -259,7 +259,7 @@ export async function POST(
           title: 'Revision Requested',
           message: `${clientName} requested changes on "${deliverable.title}"`,
           category: 'warning',
-          link: '/deliverables',
+          link: 'deliverables',
         });
 
         const { data: profile } = await supabaseAdmin

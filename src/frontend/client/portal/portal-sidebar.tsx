@@ -15,6 +15,7 @@ import {
   Sparkles,
   LogOut,
   BriefcaseBusiness,
+  FileCheck2,
 } from 'lucide-react';
 import { ClientAuthService } from '@/backend/client/client-auth-service';
 import { isSafeImageUrl } from '@/shared/utils/safe-url';
@@ -23,6 +24,7 @@ export type PortalTabType =
   | 'overview'
   | 'projects'
   | 'deliverables'
+  | 'contracts'
   | 'documents'
   | 'invoices'
   | 'comments'
@@ -112,6 +114,11 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       icon: CheckSquare,
       badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
       badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    },
+    {
+      id: 'contracts',
+      label: 'Agreements & Intake',
+      icon: FileCheck2,
     },
     {
       id: 'documents',

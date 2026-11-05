@@ -107,7 +107,7 @@ export const WorkflowSection: React.FC = () => {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
           className="text-center max-w-3xl mx-auto mb-16 space-y-4"
         >
-          <span className="text-xs sm:text-[13px] font-mono uppercase tracking-widest text-[#43D6B0] bg-[#191F1D] px-4 py-1.5 rounded-full border border-[#176B5B]/40 font-medium">
+          <span className="text-xs sm:text-[13px] font-semibold uppercase tracking-wider text-[#43D6B0]">
             Lifecycle Blueprint
           </span>
           <h2 className="text-4xl sm:text-5xl lg:text-[50px] font-extrabold text-[#F5F5F0] tracking-tight leading-tight">
@@ -187,15 +187,16 @@ export const WorkflowSection: React.FC = () => {
                 {steps[activeStep].icon}
               </div>
               <div className="space-y-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-mono uppercase text-[#43D6B0] bg-[#176B5B]/20 px-3.5 py-1 rounded-full border border-[#176B5B]/40 font-semibold">
+                <div className="flex items-center gap-3 flex-wrap text-xs text-[#43D6B0] font-medium">
+                  <span className="uppercase tracking-wider">
                     {steps[activeStep].stage}
                   </span>
-                  <span className="text-xs font-mono text-[#43D6B0] bg-[#176B5B]/15 px-3.5 py-1 rounded-full border border-[#176B5B]/30 flex items-center gap-1 font-semibold">
-                    <ShieldCheck className="w-4 h-4" />
+                  <span>•</span>
+                  <span className="flex items-center gap-1 text-[#A6B4AE]">
                     {steps[activeStep].featureTag}
                   </span>
-                  <span className="text-xs sm:text-sm text-[#A6B4AE] font-mono">Stage {activeStep + 1} of 7</span>
+                  <span>•</span>
+                  <span className="text-[#A6B4AE]">Stage {activeStep + 1} of 7</span>
                 </div>
                 <h3 className="text-2xl sm:text-3xl lg:text-[32px] font-bold text-[#F5F5F0] tracking-tight">{steps[activeStep].title}</h3>
                 <p className="text-base sm:text-lg lg:text-xl text-[#A6B4AE] max-w-3xl leading-relaxed">

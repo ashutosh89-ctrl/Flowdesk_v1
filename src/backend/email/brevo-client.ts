@@ -432,6 +432,11 @@ export async function sendBrevoEmail(payload: SendBrevoEmailPayload): Promise<Br
 
   if (payload.replyTo) {
     requestBody.replyTo = payload.replyTo;
+  } else {
+    requestBody.replyTo = {
+      name: 'FlowDesk Support',
+      email: 'flowdesk11@gmail.com',
+    };
   }
 
   if (payload.tags && payload.tags.length > 0) {

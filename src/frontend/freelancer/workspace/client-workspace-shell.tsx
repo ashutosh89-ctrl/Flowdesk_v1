@@ -17,6 +17,8 @@ import { InvoicesTab } from './tabs/invoices-tab';
 import { ClientPortalTab } from './tabs/client-portal-tab';
 import { ActivityTab } from './tabs/activity-tab';
 import { WorkspaceSettingsTab } from './tabs/workspace-settings-tab';
+import { ContractsTab } from './tabs/contracts-tab';
+import { QuestionnairesTab } from './tabs/questionnaires-tab';
 import {
   ArrowLeft,
   LayoutDashboard,
@@ -32,6 +34,8 @@ import {
   Activity,
   Settings,
   Link2,
+  FileCheck2,
+  ClipboardList,
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 
@@ -145,6 +149,8 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'projects', label: 'Projects', count: summary.projects.length, icon: <FolderKanban className="w-4 h-4" /> },
     { id: 'deliverables', label: 'Deliverables', count: summary.deliverables.length, icon: <CheckCircle2 className="w-4 h-4" /> },
+    { id: 'contracts', label: 'Contracts', icon: <FileCheck2 className="w-4 h-4" /> },
+    { id: 'questionnaires', label: 'Questionnaires', icon: <ClipboardList className="w-4 h-4" /> },
     { id: 'documents', label: 'Documents', count: summary.documents.length, icon: <FileText className="w-4 h-4" /> },
     { id: 'invoices', label: 'Invoices', count: summary.invoices.length, icon: <Receipt className="w-4 h-4" /> },
     { id: 'comments', label: 'Messages', count: summary.comments.length, icon: <MessageSquare className="w-4 h-4" /> },
@@ -244,6 +250,8 @@ export const ClientWorkspaceShell: React.FC<ClientWorkspaceShellProps> = ({
         {activeTab === 'projects' && <ProjectsTab summary={summary} onRefresh={loadSummary} />}
         {activeTab === 'invoices' && <InvoicesTab summary={summary} onRefresh={loadSummary} />}
         {activeTab === 'deliverables' && <DeliverablesTab summary={summary} onRefresh={loadSummary} />}
+        {activeTab === 'contracts' && <ContractsTab summary={summary} onRefresh={loadSummary} />}
+        {activeTab === 'questionnaires' && <QuestionnairesTab summary={summary} onRefresh={loadSummary} />}
         {activeTab === 'documents' && <DocumentsTab summary={summary} onRefresh={loadSummary} />}
         {activeTab === 'history' && (
           <div className="space-y-6">

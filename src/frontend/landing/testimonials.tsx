@@ -69,12 +69,9 @@ export const TestimonialsSection: React.FC = () => {
 
   return (
     <section className="py-24 px-6 lg:px-12 bg-[#101312] border-y border-[#176B5B]/20 relative overflow-hidden">
-      {/* Background Accent Effect */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[300px] bg-[#176B5B]/05 rounded-full blur-[160px] pointer-events-none" />
-
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-          <span className="text-[11px] font-mono uppercase tracking-widest text-[#43D6B0] bg-[#176B5B]/20 px-3.5 py-1 rounded-full border border-[#176B5B]/40">
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#43D6B0]">
             Lifecycle Blueprint
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-[#F5F5F0] tracking-tight">
@@ -90,7 +87,7 @@ export const TestimonialsSection: React.FC = () => {
           {/* Progress Connecting Line */}
           <div className="hidden lg:block absolute top-[44px] left-8 right-8 h-0.5 bg-[#176B5B]/25 -z-0">
             <motion.div
-              className="h-full bg-[#43D6B0] shadow-[0_0_12px_rgba(67,214,176,0.6)]"
+              className="h-full bg-[#43D6B0]"
               initial={{ width: '0%' }}
               whileInView={{ width: `${(activeStep / (steps.length - 1)) * 100}%` }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -117,7 +114,7 @@ export const TestimonialsSection: React.FC = () => {
                       <div
                         className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs transition-colors ${
                           isActive
-                            ? 'bg-[#43D6B0] text-[#101312] shadow-[0_0_16px_rgba(67,214,176,0.4)]'
+                            ? 'bg-[#43D6B0] text-[#101312]'
                             : 'bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/30'
                         }`}
                       >
@@ -154,10 +151,10 @@ export const TestimonialsSection: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-mono uppercase text-[#43D6B0] bg-[#176B5B]/20 px-2.5 py-0.5 rounded-full border border-[#176B5B]/30">
+                <span className="text-xs text-[#43D6B0] font-semibold uppercase tracking-wider">
                   {steps[activeStep].tag}
                 </span>
-                <span className="text-xs text-[#A6B4AE] font-mono">Stage {activeStep + 1} of 7</span>
+                <span className="text-xs text-[#A6B4AE]">Stage {activeStep + 1} of 7</span>
               </div>
               <h3 className="text-xl font-bold text-[#F5F5F0] tracking-tight">{steps[activeStep].title}</h3>
               <p className="text-sm text-[#A6B4AE] mt-1 max-w-2xl leading-relaxed">

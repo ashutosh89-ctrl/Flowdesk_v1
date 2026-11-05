@@ -31,7 +31,10 @@ import {
   PortalProfile,
   PortalFileRequest,
   InvoiceBranding,
+  Contract,
+  Questionnaire,
 } from '@/shared/types';
+import { ContractsQuestionnairesPanel } from './contracts-questionnaires-panel';
 import {
   CheckCircle2,
   ShieldCheck,
@@ -56,6 +59,10 @@ interface ClientPortalShellProps {
   profile: PortalProfile;
   branding?: InvoiceBranding | null;
   fileRequests: PortalFileRequest[];
+  contracts?: Contract[];
+  questionnaires?: Questionnaire[];
+  onSignContract?: (contractId: string, signData: { signedByName: string; signatureDataUrl: string }) => Promise<void>;
+  onSubmitQuestionnaire?: (questionnaireId: string, responses: Record<string, any>) => Promise<void>;
   onApproveDeliverable: (deliverableId: string, notes?: string) => Promise<any>;
   onRequestRevision: (deliverableId: string, reason: string, priority: string, comment: string, attachmentFile?: File) => Promise<void>;
   onUploadDocument: (docId: string, fileData: { fileName: string; size: string; file?: File; downloadUrl?: string }) => Promise<void>;
@@ -83,6 +90,10 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
   profile,
   branding,
   fileRequests,
+  contracts = [],
+  questionnaires = [],
+  onSignContract,
+  onSubmitQuestionnaire,
   onApproveDeliverable,
   onRequestRevision,
   onUploadDocument,
@@ -138,6 +149,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
     overview: 'Workspace Overview',
     projects: 'Project Roadmap & Status',
     deliverables: 'Deliverables & Work Sign-Off',
+    contracts: 'Agreements, Contracts & Intake Questionnaires',
     documents: 'Documents & File Requests',
     invoices: 'Billing Statements & Payments',
     comments: 'Workspace Discussion Thread',
@@ -339,6 +351,26 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
                       showToast(`No file available for ${deliv.title}. Please ask your freelancer to upload a file.`);
                     }
 
+                  }}
+                />
+              )}
+
+              {activeTab === 'contracts' && (
+                <ContractsQuestionnairesPanel
+                  clientId={client.id}
+                  contracts={contracts}
+                  questionnaires={questionnaires}
+                  onSignContract={async (contractId, signData) => {
+                    if (onSignContract) {
+                      await onSignContract(contractId, signData);
+                      showToast('Agreement signed successfully!');
+                    }
+                  }}
+                  onSubmitQuestionnaire={async (questionnaireId, responses) => {
+                    if (onSubmitQuestionnaire) {
+                      await onSubmitQuestionnaire(questionnaireId, responses);
+                      showToast('Intake responses submitted successfully!');
+                    }
                   }}
                 />
               )}

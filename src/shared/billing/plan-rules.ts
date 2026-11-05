@@ -19,7 +19,6 @@ export type SubscriptionStatus =
 export type EntitlementMetric =
   | 'activeClients'
   | 'activeProjects'
-  | 'storageMb'
   | 'invoicesPerMonth'
   | 'aiCreditsPerMonth';
 
@@ -117,7 +116,6 @@ export function resolveEffectiveLimits(
   // Apply explicit numeric overrides if present and not expired
   if (typeof overrides.activeClients === 'number') baseLimits.activeClients = overrides.activeClients;
   if (typeof overrides.activeProjects === 'number') baseLimits.activeProjects = overrides.activeProjects;
-  if (typeof overrides.storageMb === 'number') baseLimits.storageMb = overrides.storageMb;
   if (typeof overrides.invoicesPerMonth === 'number') baseLimits.invoicesPerMonth = overrides.invoicesPerMonth;
   if (typeof overrides.brandedPortal === 'boolean') baseLimits.brandedPortal = overrides.brandedPortal;
   if (typeof overrides.emailReminders === 'boolean') baseLimits.emailReminders = overrides.emailReminders;

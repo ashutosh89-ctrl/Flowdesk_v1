@@ -17,20 +17,26 @@ test('Billing Plan Rules: Plan Resolution & Fallbacks', async (suite) => {
     assert.equal(plan.key, 'free');
     assert.equal(plan.limits.activeClients, BILLING_PLANS.free.limits.activeClients);
     assert.equal(plan.limits.activeProjects, BILLING_PLANS.free.limits.activeProjects);
-    assert.equal(plan.limits.storageMb, BILLING_PLANS.free.limits.storageMb);
     assert.equal(plan.limits.brandedPortal, false);
     assert.equal(plan.limits.emailReminders, false);
     assert.equal(plan.pricing.monthly.INR, 0);
   });
 
-  await suite.test('resolves pro tier with expanded limits and features', () => {
-    const plan = getBillingPlan('pro');
-    assert.equal(plan.key, 'pro');
-    assert.equal(plan.limits.activeClients, BILLING_PLANS.pro.limits.activeClients);
-    assert.equal(plan.limits.activeProjects, BILLING_PLANS.pro.limits.activeProjects);
+  await suite.test('resolves standard tier with expanded limits and features', () => {
+    const plan = getBillingPlan('standard');
+    assert.equal(plan.key, 'standard');
+    assert.equal(plan.limits.activeClients, BILLING_PLANS.standard.limits.activeClients);
+    assert.equal(plan.limits.activeProjects, BILLING_PLANS.standard.limits.activeProjects);
     assert.equal(plan.limits.brandedPortal, true);
     assert.equal(plan.limits.emailReminders, true);
-    assert.ok(plan.pricing.monthly.INR > 0);
+    assert.equal(plan.pricing.monthly.INR, 399);
+    assert.equal(plan.pricing.yearly.INR, 3990);
+  });
+
+  await suite.test('resolves legacy pro key as alias to standard tier', () => {
+    const plan = getBillingPlan('pro');
+    assert.equal(plan.limits.activeClients, BILLING_PLANS.standard.limits.activeClients);
+    assert.equal(plan.pricing.monthly.INR, 399);
   });
 
   await suite.test('resolves studio tier with higher capacity', () => {
@@ -39,6 +45,8 @@ test('Billing Plan Rules: Plan Resolution & Fallbacks', async (suite) => {
     assert.equal(plan.limits.activeClients, BILLING_PLANS.studio.limits.activeClients);
     assert.equal(plan.limits.activeProjects, BILLING_PLANS.studio.limits.activeProjects);
     assert.equal(plan.limits.brandedPortal, true);
+    assert.equal(plan.pricing.monthly.INR, 899);
+    assert.equal(plan.pricing.yearly.INR, 8990);
   });
 
   await suite.test('gracefully falls back to free plan for unknown plan keys', () => {
@@ -52,14 +60,13 @@ test('Billing Plan Rules: Effective Limits & Support Overrides', async (suite) =
   await suite.test('returns base limits when no overrides provided', () => {
     const limits = resolveEffectiveLimits('free');
     assert.equal(limits.activeClients, BILLING_PLANS.free.limits.activeClients);
-    assert.equal(limits.storageMb, BILLING_PLANS.free.limits.storageMb);
     assert.equal(limits.brandedPortal, false);
   });
 
   await suite.test('applies specific numeric overrides while keeping other defaults', () => {
-    const limits = resolveEffectiveLimits('free', { activeClients: 10, storageMb: 2000 });
+    const limits = resolveEffectiveLimits('free', { activeClients: 10, invoicesPerMonth: 100 });
     assert.equal(limits.activeClients, 10);
-    assert.equal(limits.storageMb, 2000);
+    assert.equal(limits.invoicesPerMonth, 100);
     assert.equal(limits.activeProjects, BILLING_PLANS.free.limits.activeProjects); // unchanged free limit
     assert.equal(limits.brandedPortal, false);
   });

@@ -362,7 +362,7 @@ export const AccountDeletionRestoreSchema = z.object({
 // Billing & Subscriptions Schemas
 // ==========================================
 
-export const BillingPlanKeyEnum = z.enum(['pro', 'studio']);
+export const BillingPlanKeyEnum = z.enum(['standard', 'pro', 'studio']);
 export const BillingIntervalEnum = z.enum(['monthly', 'yearly']);
 
 export const BillingCheckoutSchema = z.object({
@@ -450,11 +450,92 @@ export const UpdateReminderSettingsSchema = z.object({
   weekdaysOnly: z.boolean().optional(),
 }).strict();
 
+export const ProjectMilestoneSchema = z.object({
+  id: z.string().trim().optional(),
+  title: z.string().trim().min(1, 'Milestone title is required').max(200),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Milestone due date must be YYYY-MM-DD'),
+  completed: z.boolean().default(false),
+  desc: z.string().trim().max(1000).optional(),
+});
+
+export const CreateProjectSchema = z.object({
+  clientId: z.string().trim().min(1, 'Client ID is required'),
+  clientName: z.string().trim().max(255).optional(),
+  title: z.string().trim().min(1, 'Project title is required').max(200),
+  description: z.string().trim().max(5000).optional().default(''),
+  status: z.enum(['in_progress', 'review', 'completed', 'on_hold', 'archived']).default('in_progress'),
+  priority: z.enum(['low', 'medium', 'high']).optional().default('medium'),
+  budget: z.number().nonnegative('Budget must be positive or zero').finite().max(100_000_000).default(0),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date must be YYYY-MM-DD').optional(),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must be YYYY-MM-DD').optional(),
+  tags: z.array(z.string().trim().max(50)).max(20).optional().default([]),
+  milestones: z.array(ProjectMilestoneSchema).optional().default([]),
+}).strict();
+
+export const UpdateProjectSchema = CreateProjectSchema.partial().strict();
+
+// Task Management Schemas
+export const CreateTaskSchema = z.object({
+  projectId: z.string().trim().optional().nullable(),
+  clientId: z.string().trim().optional().nullable(),
+  title: z.string().trim().min(1, 'Task title is required').max(255),
+  description: z.string().trim().max(5000).optional().default(''),
+  status: z.enum(['todo', 'in_progress', 'completed', 'blocked']).default('todo'),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  dueDate: z.preprocess((val) => {
+    if (typeof val !== 'string' || !val.trim()) return null;
+    return val.trim();
+  }, z.string().max(50).optional().nullable()),
+}).strict();
+
+export const UpdateTaskSchema = CreateTaskSchema.partial().strict();
+
+// Client Questionnaire Schemas
+export const QuestionnaireQuestionSchema = z.object({
+  id: z.string().trim().default(() => crypto.randomUUID()),
+  prompt: z.string().trim().min(1, 'Question prompt is required').max(1000),
+  type: z.enum(['text', 'textarea', 'select', 'multiselect']).default('text'),
+  options: z.array(z.string().trim().max(200)).optional(),
+  required: z.boolean().default(false),
+});
+
+export const CreateQuestionnaireSchema = z.object({
+  clientId: z.string().trim().min(1, 'Client ID is required'),
+  projectId: z.string().trim().optional().nullable(),
+  title: z.string().trim().min(1, 'Title is required').max(255),
+  description: z.string().trim().max(5000).optional().default(''),
+  questions: z.array(QuestionnaireQuestionSchema).min(1, 'At least one question is required'),
+}).strict();
+
+export const SubmitQuestionnaireSchema = z.object({
+  responses: z.record(z.string(), z.any()),
+}).strict();
+
+// Contract Schemas
+export const CreateContractSchema = z.object({
+  clientId: z.string().trim().min(1, 'Client ID is required'),
+  projectId: z.string().trim().optional().nullable(),
+  title: z.string().trim().min(1, 'Contract title is required').max(255),
+  content: z.string().trim().min(1, 'Contract content is required').max(50000),
+  terms: z.string().trim().max(10000).optional().default(''),
+}).strict();
+
+export const SignContractSchema = z.object({
+  signedByName: z.string().trim().min(1, 'Signer name is required').max(150),
+  signatureDataUrl: z.string().trim().min(10, 'Signature is required').max(1_000_000),
+}).strict();
+
+export type CreateTaskPayload = z.infer<typeof CreateTaskSchema>;
+export type UpdateTaskPayload = z.infer<typeof UpdateTaskSchema>;
+export type CreateQuestionnairePayload = z.infer<typeof CreateQuestionnaireSchema>;
+export type SubmitQuestionnairePayload = z.infer<typeof SubmitQuestionnaireSchema>;
+export type CreateContractPayload = z.infer<typeof CreateContractSchema>;
+export type SignContractPayload = z.infer<typeof SignContractSchema>;
+export type CreateProjectPayload = z.infer<typeof CreateProjectSchema>;
+export type UpdateProjectPayload = z.infer<typeof UpdateProjectSchema>;
 export type CreateRecurringSchedulePayload = z.infer<typeof CreateRecurringScheduleSchema>;
 export type UpdateRecurringSchedulePayload = z.infer<typeof UpdateRecurringScheduleSchema>;
 export type UpdateReminderSettingsPayload = z.infer<typeof UpdateReminderSettingsSchema>;
-
-
 
 // ==========================================
 // Contact & Support Ticket Schema
@@ -487,3 +568,4 @@ export const ContactSubmissionSchema = z.object({
 
 export type ContactCategory = z.infer<typeof ContactCategoryEnum>;
 export type ContactSubmissionPayload = z.infer<typeof ContactSubmissionSchema>;
+

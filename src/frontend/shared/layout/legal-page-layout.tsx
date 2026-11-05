@@ -6,8 +6,6 @@ import { usePathname } from 'next/navigation';
 import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 import { Button } from '@/frontend/shared/ui/button';
 import {
-  ShieldCheck,
-  Calendar,
   ArrowLeft,
   Printer,
   AlertTriangle,
@@ -111,12 +109,6 @@ export const LegalPageLayout: React.FC<LegalPageLayoutProps> = ({
 
   return (
     <div className="min-h-screen bg-[#0D0E10] text-[#F5F5F0] font-sans antialiased selection:bg-[#43D6B0]/30 selection:text-white flex flex-col relative print:bg-white print:text-black print:min-h-0">
-      {/* Subtle top ambient glow */}
-      <div
-        className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(67,214,176,0.06),rgba(255,255,255,0))] print:hidden"
-        aria-hidden="true"
-      />
-
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-40 w-full bg-[#0D0E10]/85 backdrop-blur-md border-b border-white/[0.08] print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -124,10 +116,6 @@ export const LegalPageLayout: React.FC<LegalPageLayoutProps> = ({
             <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity" aria-label="FlowDesk Home">
               <FlowDeskLogo variant="full" size="sm" />
             </Link>
-            <div className="hidden sm:flex items-center gap-1.5 text-xs font-mono text-zinc-400 border-l border-white/[0.08] pl-4">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#43D6B0]" />
-              <span className="text-zinc-300">Trust &amp; Compliance Center</span>
-            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -168,15 +156,10 @@ export const LegalPageLayout: React.FC<LegalPageLayoutProps> = ({
           <main className="lg:col-span-8 space-y-8 print:w-full print:max-w-none print:space-y-6 print-legal-document" id="legal-content">
             {/* Header Landmark */}
             <div className="border-b border-white/[0.08] pb-8 space-y-4 print:border-b-2 print:border-zinc-300 print:pb-4 print:space-y-2">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#43D6B0]/10 border border-[#43D6B0]/20 text-xs font-mono text-[#43D6B0] font-medium print:bg-transparent print:border-zinc-400 print:text-zinc-800">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#43D6B0] print:text-zinc-700" />
-                  <span>Version {version}</span>
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-xs text-zinc-400 font-mono print:text-zinc-700">
-                  <Calendar className="w-3.5 h-3.5 text-zinc-500 print:text-zinc-700" />
-                  <span>Last Updated: {lastUpdated}</span>
-                </span>
+              <div className="flex items-center justify-between gap-4">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#F5F5F0] tracking-tight print:text-black print:text-3xl">
+                  {title}
+                </h1>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -185,7 +168,7 @@ export const LegalPageLayout: React.FC<LegalPageLayoutProps> = ({
                       window.print();
                     }
                   }}
-                  className="ml-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.12] border border-white/[0.08] hover:border-white/[0.16] text-xs font-medium text-zinc-200 hover:text-white transition-all cursor-pointer print:hidden shadow-sm active:scale-95"
+                  className="shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.12] border border-white/[0.08] hover:border-white/[0.16] text-xs font-medium text-zinc-200 hover:text-white transition-all cursor-pointer print:hidden shadow-sm active:scale-95"
                   suppressHydrationWarning
                   aria-label="Print Document"
                   title="Print this document or save as PDF"
@@ -194,10 +177,6 @@ export const LegalPageLayout: React.FC<LegalPageLayoutProps> = ({
                   <span>Print / Save PDF</span>
                 </button>
               </div>
-
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#F5F5F0] tracking-tight print:text-black print:text-3xl">
-                {title}
-              </h1>
 
               {intro && (
                 <p className="text-base sm:text-lg text-[#9CA3AF] leading-relaxed max-w-prose print:text-zinc-800 print:text-base print:max-w-none">
@@ -218,13 +197,10 @@ export const LegalPageLayout: React.FC<LegalPageLayoutProps> = ({
               <div className="sticky top-24 rounded-2xl bg-[#121514]/75 border border-white/[0.08] p-5 shadow-2xl shadow-black/40 backdrop-blur-md space-y-4 max-w-sm ml-auto">
                 {/* TOC Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#43D6B0] shadow-[0_0_8px_rgba(67,214,176,0.8)]" />
-                    <h2 className="text-xs font-mono font-semibold uppercase tracking-wider text-[#F5F5F0]">
-                      Contents
-                    </h2>
-                  </div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.04] text-zinc-400 border border-white/[0.06]">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-[#F5F5F0]">
+                    Contents
+                  </h2>
+                  <span className="text-[11px] text-zinc-400">
                     {sections.length} {sections.length === 1 ? 'part' : 'parts'}
                   </span>
                 </div>
@@ -241,9 +217,9 @@ export const LegalPageLayout: React.FC<LegalPageLayoutProps> = ({
                           <a
                             href={`#${section.id}`}
                             onClick={(e) => handleScrollTo(e, section.id)}
-                            className={`group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all duration-200 cursor-pointer ${
+                            className={`group flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer ${
                               isActive
-                                ? 'bg-[#43D6B0]/10 text-white font-medium border border-[#43D6B0]/25 shadow-[0_0_12px_rgba(67,214,176,0.12)]'
+                                ? 'bg-[#43D6B0]/10 text-white font-medium border border-[#43D6B0]/30'
                                 : 'text-zinc-400 hover:text-white hover:bg-white/[0.04] border border-transparent'
                             }`}
                           >

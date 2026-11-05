@@ -52,7 +52,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   // 3. Demo Mode Fallback
   if (isDemoModeActive()) {
-    const entitlements = await getWorkspaceEntitlements('demo-workspace');
+    const entitlements = await getWorkspaceEntitlements('demo-workspace', caller.userEmail);
     return NextResponse.json(
       {
         entitlements,
@@ -85,7 +85,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    const entitlements = await getWorkspaceEntitlements(workspace.id);
+    let userEmail = caller.userEmail;
+    if (!userEmail && caller.userId && supabaseAdmin) {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('email')
+        .eq('id', caller.userId)
+        .maybeSingle();
+      if (profile?.email) {
+        userEmail = profile.email;
+      }
+    }
+
+    const entitlements = await getWorkspaceEntitlements(workspace.id, userEmail);
 
     return NextResponse.json(
       {

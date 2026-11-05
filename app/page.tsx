@@ -89,12 +89,8 @@ function FlowDeskAppContent() {
             <Loader2 className="w-6 h-6 animate-spin text-[#43D6B0]" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-[#F5F5F0] tracking-tight">FlowDesk OS</h3>
-            <p className="text-xs text-[#A6B4AE] mt-1">Verifying identity & restoring persistent session...</p>
-          </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#176B5B]/15 border border-[#176B5B]/30 text-[10px] text-[#A6B4AE]">
-            <ShieldCheck className="w-3 h-3 text-[#43D6B0]" />
-            <span>Secure Workspace Session Active</span>
+            <h3 className="text-lg font-bold text-[#F5F5F0] tracking-tight">FlowDesk</h3>
+            <p className="text-xs text-[#A6B4AE] mt-1">Loading workspace...</p>
           </div>
         </div>
       </div>

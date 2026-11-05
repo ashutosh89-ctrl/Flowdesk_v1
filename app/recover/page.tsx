@@ -98,15 +98,11 @@ function RecoverAccountContent() {
 
   return (
     <div className="min-h-screen bg-[#070708] text-zinc-100 flex flex-col items-center justify-center p-4 sm:p-6 selection:bg-white selection:text-zinc-950 relative overflow-hidden">
-      {/* Ambient lighting */}
-      <div className="absolute top-1/4 -left-32 w-80 h-80 bg-rose-500/[0.05] rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-32 w-80 h-80 bg-rose-500/[0.05] rounded-full blur-[100px] pointer-events-none" />
-
       <div className="w-full max-w-md p-7 sm:p-9 rounded-3xl bg-zinc-900/90 border border-rose-500/20 shadow-[0_30px_90px_rgba(0,0,0,0.85),inset_0_1px_0_0_rgba(255,255,255,0.15)] backdrop-blur-2xl space-y-6 relative z-10">
         <div className="flex items-center justify-between">
           <FlowDeskLogo variant="full" size="sm" priority />
 
-          <span className="px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[10px] font-mono font-bold flex items-center gap-1">
+          <span className="px-2.5 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-medium flex items-center gap-1.5">
             <ShieldAlert className="w-3 h-3" />
             Pending Deletion
           </span>

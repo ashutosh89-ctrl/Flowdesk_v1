@@ -19,14 +19,8 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenAuth }) => {
           <p className="text-sm text-[#9CA3AF] max-w-sm leading-relaxed font-normal">
             FlowDesk brings the moving parts of freelance client work into one organized workspace—from client onboarding to deliverable sign-offs and payment tracking.
           </p>
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#43D6B0]/10 border border-[#43D6B0]/20 text-xs font-mono text-[#43D6B0] font-semibold">
-              <span className="w-2 h-2 rounded-full bg-[#43D6B0]" />
-              FlowDesk v1.0
-            </span>
-            <span className="text-xs text-[#9CA3AF]/60 font-mono">
-              Operated primarily in India
-            </span>
+          <div className="pt-1 text-xs text-[#9CA3AF]/60">
+            Operated primarily in India
           </div>
         </div>
 

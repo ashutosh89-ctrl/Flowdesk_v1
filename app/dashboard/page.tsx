@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { isDemoMode } from '@/backend/utilities/supabase';
 import { AuthProvider, useAuth } from '@/frontend/auth/auth-context';
 import { ToastProvider } from '@/frontend/shared/ui/toast';
@@ -13,6 +13,8 @@ import { ProjectsListView } from '@/frontend/freelancer/projects/projects-list-v
 import { DeliverablesListView } from '@/frontend/freelancer/deliverables/deliverables-list-view';
 import { InvoicesListView } from '@/frontend/freelancer/invoices/invoices-list-view';
 import { DocumentsListView } from '@/frontend/freelancer/documents/documents-list-view';
+import { TasksView } from '@/frontend/freelancer/tasks/tasks-view';
+import { ReportsView } from '@/frontend/freelancer/reports/reports-view';
 import { ActivityFeedView } from '@/frontend/freelancer/activity/activity-feed-view';
 import { SettingsView } from '@/frontend/freelancer/settings/settings-view';
 import { QuickActionsModal } from '@/frontend/freelancer/dashboard/components/quick-actions-modal';
@@ -20,11 +22,24 @@ import { Loader2 } from 'lucide-react';
 
 function DashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedView = searchParams.get('view');
+  const requestedClient = searchParams.get('clientId');
+
   const { user, profile, isLoading, isAuthenticated } = useAuth();
-  const [currentView, setCurrentView] = useState<string>('dashboard');
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<string>(requestedView || 'dashboard');
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(requestedClient || null);
   const [workspaceChecked, setWorkspaceChecked] = useState(false);
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+
+  useEffect(() => {
+    if (requestedView) {
+      setCurrentView(requestedView);
+    }
+    if (requestedClient) {
+      setSelectedClientId(requestedClient);
+    }
+  }, [requestedView, requestedClient]);
 
   useEffect(() => {
     let mounted = true;
@@ -175,9 +190,11 @@ function DashboardContent() {
           />
         )}
         {currentView === 'projects' && <ProjectsListView />}
+        {currentView === 'tasks' && <TasksView />}
         {currentView === 'deliverables' && <DeliverablesListView onOpenClientWorkspace={handleOpenWorkspace} />}
         {currentView === 'invoices' && <InvoicesListView />}
         {currentView === 'documents' && <DocumentsListView />}
+        {currentView === 'reports' && <ReportsView />}
         {currentView === 'activity' && <ActivityFeedView />}
         {currentView === 'settings' && <SettingsView />}
       </AppShell>
@@ -196,7 +213,16 @@ export default function DashboardPage() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <DashboardContent />
+        <Suspense
+          fallback={
+            <div className="h-screen w-full flex flex-col items-center justify-center bg-[#101312] text-zinc-400 gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-[#43D6B0]" />
+              <p className="text-xs font-mono">Loading FlowDesk...</p>
+            </div>
+          }
+        >
+          <DashboardContent />
+        </Suspense>
       </AuthProvider>
     </ToastProvider>
   );

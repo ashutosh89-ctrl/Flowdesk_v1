@@ -2862,5 +2862,200 @@ export const FlowDeskStore = {
       lastIndexedAt: new Date().toISOString(),
     };
   },
+
+  // Task Management (Core Feature)
+  getTasks: (): any[] => {
+    return loadStore<any[]>('flowdesk_tasks', [
+      {
+        id: 'tsk-1',
+        title: 'Complete brand guidelines document',
+        description: 'Prepare color palette, typography and asset usage rules',
+        status: 'todo',
+        priority: 'high',
+        dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'tsk-2',
+        title: 'Review landing page animations',
+        description: 'Verify smooth transition curves and responsive layouts',
+        status: 'in_progress',
+        priority: 'medium',
+        dueDate: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0],
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'tsk-3',
+        title: 'Send milestone 2 invoice',
+        description: 'Generate and email itemized invoice upon sign-off',
+        status: 'completed',
+        priority: 'urgent',
+        dueDate: new Date().toISOString().split('T')[0],
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  },
+
+  getTaskById: (id: string): any | undefined => {
+    return FlowDeskStore.getTasks().find((t: any) => t.id === id);
+  },
+
+  createTask: (taskData: any): any => {
+    const tasks = FlowDeskStore.getTasks();
+    const newTask = {
+      id: `tsk-${Date.now()}`,
+      title: taskData.title,
+      description: taskData.description || '',
+      status: taskData.status || 'todo',
+      priority: taskData.priority || 'medium',
+      dueDate: taskData.dueDate || null,
+      projectId: taskData.projectId || null,
+      clientId: taskData.clientId || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    tasks.unshift(newTask);
+    saveStore('flowdesk_tasks', tasks);
+    return newTask;
+  },
+
+  updateTask: (id: string, updates: any): any | undefined => {
+    const tasks = FlowDeskStore.getTasks();
+    const idx = tasks.findIndex((t: any) => t.id === id);
+    if (idx === -1) return undefined;
+    tasks[idx] = { ...tasks[idx], ...updates, updatedAt: new Date().toISOString() };
+    saveStore('flowdesk_tasks', tasks);
+    return tasks[idx];
+  },
+
+  deleteTask: (id: string): boolean => {
+    const tasks = FlowDeskStore.getTasks();
+    const filtered = tasks.filter((t: any) => t.id !== id);
+    saveStore('flowdesk_tasks', filtered);
+    return filtered.length < tasks.length;
+  },
+
+  // Client Onboarding Questionnaires
+  getQuestionnaires: (clientId?: string): any[] => {
+    const list = loadStore<any[]>('flowdesk_questionnaires', [
+      {
+        id: 'qnr-1',
+        clientId: 'client-1',
+        title: 'Brand Discovery & Project Intake',
+        description: 'Essential questions regarding your brand vision, target audience, and style preferences.',
+        status: 'submitted',
+        questions: [
+          { id: 'q-1', prompt: 'What is your primary brand objective?', type: 'text', required: true },
+          { id: 'q-2', prompt: 'Describe your target demographic and competitors.', type: 'textarea', required: true },
+        ],
+        responses: {
+          'q-1': 'Scale modern digital presence with high conversion rate',
+          'q-2': 'B2B enterprise designers and startup founders',
+        },
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+    if (clientId) return list.filter((q: any) => q.clientId === clientId);
+    return list;
+  },
+
+  getQuestionnaireById: (id: string): any | undefined => {
+    return FlowDeskStore.getQuestionnaires().find((q: any) => q.id === id);
+  },
+
+  createQuestionnaire: (data: any): any => {
+    const list = FlowDeskStore.getQuestionnaires();
+    const newQ = {
+      id: `qnr-${Date.now()}`,
+      clientId: data.clientId,
+      projectId: data.projectId || null,
+      title: data.title,
+      description: data.description || '',
+      questions: data.questions || [],
+      responses: {},
+      status: 'sent',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    list.unshift(newQ);
+    saveStore('flowdesk_questionnaires', list);
+    return newQ;
+  },
+
+  submitQuestionnaire: (id: string, responses: any): any | undefined => {
+    const list = FlowDeskStore.getQuestionnaires();
+    const idx = list.findIndex((q: any) => q.id === id);
+    if (idx === -1) return undefined;
+    list[idx] = {
+      ...list[idx],
+      responses,
+      status: 'submitted',
+      submittedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    saveStore('flowdesk_questionnaires', list);
+    return list[idx];
+  },
+
+  // Digital Contracts
+  getContracts: (clientId?: string): any[] => {
+    const list = loadStore<any[]>('flowdesk_contracts', [
+      {
+        id: 'cnt-1',
+        clientId: 'client-1',
+        title: 'Master Services Agreement & IP Assignment',
+        content: '# Master Services Agreement\n\nThis agreement outlines deliverable timelines, payment milestones, and intellectual property transfer upon final invoice payment.',
+        terms: 'Payment due net-15. IP transfers automatically upon receipt of full settlement.',
+        status: 'signed',
+        signedAt: new Date().toISOString(),
+        signedByName: 'Sarah Jenkins (Apex Global)',
+        signatureDataUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="40"><text y="25" font-family="cursive" font-size="20">S. Jenkins</text></svg>',
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+    if (clientId) return list.filter((c: any) => c.clientId === clientId);
+    return list;
+  },
+
+  getContractById: (id: string): any | undefined => {
+    return FlowDeskStore.getContracts().find((c: any) => c.id === id);
+  },
+
+  createContract: (data: any): any => {
+    const list = FlowDeskStore.getContracts();
+    const newContract = {
+      id: `cnt-${Date.now()}`,
+      clientId: data.clientId,
+      projectId: data.projectId || null,
+      title: data.title,
+      content: data.content,
+      terms: data.terms || '',
+      status: 'sent',
+      signedAt: null,
+      signedByName: null,
+      signatureDataUrl: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    list.unshift(newContract);
+    saveStore('flowdesk_contracts', list);
+    return newContract;
+  },
+
+  signContract: (id: string, signData: { signedByName: string; signatureDataUrl: string }): any | undefined => {
+    const list = FlowDeskStore.getContracts();
+    const idx = list.findIndex((c: any) => c.id === id);
+    if (idx === -1) return undefined;
+    list[idx] = {
+      ...list[idx],
+      status: 'signed',
+      signedAt: new Date().toISOString(),
+      signedByName: signData.signedByName,
+      signatureDataUrl: signData.signatureDataUrl,
+      updatedAt: new Date().toISOString(),
+    };
+    saveStore('flowdesk_contracts', list);
+    return list[idx];
+  },
 };
 

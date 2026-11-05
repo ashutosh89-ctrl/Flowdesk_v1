@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import './globals.css';
 import { RootProviders } from '@/frontend/shared/providers/root-providers';
 import { getAppBaseUrl } from '@/shared/utils/url';
@@ -181,6 +182,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className="bg-[#101312] text-[#F5F5F0] min-h-screen font-sans selection:bg-[#43D6B0] selection:text-[#101312] antialiased"
         suppressHydrationWarning
       >
+        <Script
+          src="https://checkout.razorpay.com/v1/checkout.js"
+          strategy="lazyOnload"
+        />
         <RootProviders>{children}</RootProviders>
       </body>
     </html>

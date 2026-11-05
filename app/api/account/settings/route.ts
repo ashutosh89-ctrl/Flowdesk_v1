@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireApiCaller, resolveApiCaller } from '@/backend/utilities/api-auth';
+import { requireApiCaller } from '@/backend/utilities/api-auth';
 import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/utilities/logger';
 import { parseJsonBody, UpdateUserSettingsSchema } from '@/shared/validation';
@@ -31,7 +31,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
   }
 
-  const caller = await resolveApiCaller();
+  const caller = await requireApiCaller();
+  if (!caller || (!caller.isDemo && !caller.userId)) {
+    return createApiErrorResponse({
+      message: 'Authentication required to retrieve account settings.',
+      code: 'UNAUTHORIZED',
+      status: 401,
+      requestId,
+    });
+  }
 
   if (isDemoModeActive() || caller.isDemo) {
     const { FlowDeskStore } = await import('@/backend/store/storage-store');
@@ -39,6 +47,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       success: true,
       settings: {
+        id: caller.userId || 'usr-demo-freelancer',
         currency: (localProf as any).currency || 'INR',
         default_tax_rate: (localProf as any).defaultTaxRate || 0,
         tax_name: (localProf as any).taxName || 'GST',
@@ -54,28 +63,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     let settings: any = null;
     const userId = caller.userId;
 
-    if (userId) {
-      const { data, error } = await supabaseAdmin
-        .from('user_settings')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (!error && data) {
-        settings = data;
-      }
+    if (!userId) {
+      return createApiErrorResponse({
+        message: 'Valid user session required.',
+        code: 'UNAUTHORIZED',
+        status: 401,
+        requestId,
+      });
     }
 
-    if (!settings) {
-      const { data: latestSettings } = await supabaseAdmin
-        .from('user_settings')
-        .select('*')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (latestSettings) {
-        settings = latestSettings;
-      }
+    const { data, error } = await supabaseAdmin
+      .from('user_settings')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!error && data) {
+      settings = data;
+    } else if (!data) {
+      // Default empty settings strictly scoped to the authenticated user
+      settings = {
+        id: userId,
+        currency: 'INR',
+        default_tax_rate: 0,
+        tax_name: 'GST',
+        upi_id: '',
+        upi_qr_code_url: '',
+        payment_settings: {},
+      };
     }
 
     if (settings && userId) {

@@ -39,7 +39,7 @@ export const BenefitsSection: React.FC = () => {
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         className="text-center max-w-3xl mx-auto mb-16 space-y-4"
       >
-        <span className="text-xs sm:text-[13px] font-mono uppercase tracking-widest text-[#43D6B0] bg-[#191F1D] px-4 py-1.5 rounded-full border border-[#176B5B]/40 font-medium">
+        <span className="text-xs sm:text-[13px] font-semibold uppercase tracking-wider text-[#43D6B0]">
           Why FlowDesk
         </span>
         <h2 className="text-4xl sm:text-5xl lg:text-[50px] font-extrabold text-[#F5F5F0] tracking-tight leading-tight">

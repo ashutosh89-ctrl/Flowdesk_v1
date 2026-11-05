@@ -10,9 +10,11 @@ import {
   NavDashboardIcon,
   NavClientsIcon,
   NavProjectsIcon,
+  NavTasksIcon,
   NavDeliverablesIcon,
   NavInvoicesIcon,
   NavDocumentsIcon,
+  NavReportsIcon,
   NavActivityIcon,
   NavSettingsIcon,
 } from './nav-icons';
@@ -21,9 +23,11 @@ export type NavItemKey =
   | 'dashboard'
   | 'clients'
   | 'projects'
+  | 'tasks'
   | 'deliverables'
   | 'invoices'
   | 'documents'
+  | 'reports'
   | 'activity'
   | 'settings';
 
@@ -71,9 +75,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { key: 'dashboard', label: 'Dashboard', icon: <NavDashboardIcon className="w-4 h-4" /> },
     { key: 'clients', label: 'Clients', icon: <NavClientsIcon className="w-4 h-4" /> },
     { key: 'projects', label: 'Projects', icon: <NavProjectsIcon className="w-4 h-4" /> },
+    { key: 'tasks', label: 'Tasks', icon: <NavTasksIcon className="w-4 h-4" /> },
     { key: 'deliverables', label: 'Deliverables', icon: <NavDeliverablesIcon className="w-4 h-4" /> },
     { key: 'invoices', label: 'Invoices', icon: <NavInvoicesIcon className="w-4 h-4" /> },
     { key: 'documents', label: 'Documents', icon: <NavDocumentsIcon className="w-4 h-4" /> },
+    { key: 'reports', label: 'Reports', icon: <NavReportsIcon className="w-4 h-4" /> },
     { key: 'activity', label: 'Activity', icon: <NavActivityIcon className="w-4 h-4" /> },
     { key: 'settings', label: 'Settings', icon: <NavSettingsIcon className="w-4 h-4" /> },
   ];

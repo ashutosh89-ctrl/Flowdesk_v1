@@ -26,6 +26,8 @@ import {
   PortalProfile,
   PortalFileRequest,
   InvoiceBranding,
+  Questionnaire,
+  Contract,
 } from '@/shared/types';
 
 export interface ClientPortalDataset {
@@ -42,6 +44,8 @@ export interface ClientPortalDataset {
   branding?: InvoiceBranding | null;
   isConfigured?: boolean;
   isPendingApproval?: boolean;
+  questionnaires?: Questionnaire[];
+  contracts?: Contract[];
 }
 
 const portalDataCache = new Map<string, { data: ClientPortalDataset; timestamp: number }>();
@@ -214,6 +218,8 @@ export const ClientPortalService = {
           requestedBy: 'Studio Owner', category: 'Brand Assets', status: d.status === 'uploaded' || d.status === 'verified' ? 'fulfilled' as const : 'pending' as const,
           dueDate: d.dueDate || 'Required', requestedAt: 'Recent',
         })),
+        questionnaires: FlowDeskStore.getQuestionnaires(mockClient.id),
+        contracts: FlowDeskStore.getContracts(mockClient.id),
         isConfigured: true,
       };
       portalDataCache.set(cleanId, { data: demoResult, timestamp: Date.now() });
@@ -726,6 +732,15 @@ export const ClientPortalService = {
       }
     }
 
+    let questionnaires: Questionnaire[] = [];
+    let contracts: Contract[] = [];
+    try {
+      questionnaires = FlowDeskStore.getQuestionnaires(resolvedClientId);
+      contracts = FlowDeskStore.getContracts(resolvedClientId);
+    } catch {
+      // non-critical
+    }
+
     const result: ClientPortalDataset = {
       client,
       projects,
@@ -738,6 +753,8 @@ export const ClientPortalService = {
       profile,
       branding,
       fileRequests,
+      questionnaires,
+      contracts,
       isConfigured: true,
     };
 
@@ -750,6 +767,20 @@ export const ClientPortalService = {
   },
 
   // Action proxies delegating to domain client services
+  submitQuestionnaire: async (clientId: string, questionnaireId: string, responses: Record<string, any>) => {
+    invalidatePortalCache(clientId);
+    return FlowDeskStore.submitQuestionnaire(questionnaireId, responses);
+  },
+
+  signContract: async (
+    clientId: string,
+    contractId: string,
+    signData: { signedByName: string; signatureDataUrl: string }
+  ) => {
+    invalidatePortalCache(clientId);
+    return FlowDeskStore.signContract(contractId, signData);
+  },
+
   approveDeliverable: async (clientId: string, deliverableId: string, notes?: string) => {
     invalidatePortalCache(clientId);
     return ClientDeliverableService.approveDeliverable(clientId, deliverableId, notes);

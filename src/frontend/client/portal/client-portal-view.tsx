@@ -17,6 +17,8 @@ import {
   PortalProfile,
   PortalFileRequest,
   InvoiceBranding,
+  Contract,
+  Questionnaire,
 } from '@/shared/types';
 import { AlertCircle } from 'lucide-react';
 
@@ -37,6 +39,8 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
   const [profile, setProfile] = useState<PortalProfile | null>(null);
   const [branding, setBranding] = useState<InvoiceBranding | null>(null);
   const [fileRequests, setFileRequests] = useState<PortalFileRequest[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
 
   const loadPortalData = useCallback(async (forceRefresh = false) => {
     try {
@@ -56,6 +60,8 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
         setProfile(data.profile);
         setBranding(data.branding || null);
         setFileRequests(data.fileRequests);
+        setContracts(data.contracts || []);
+        setQuestionnaires(data.questionnaires || []);
       } else {
         setClient(null);
       }
@@ -238,6 +244,16 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
       profile={profile}
       branding={branding}
       fileRequests={fileRequests}
+      contracts={contracts}
+      questionnaires={questionnaires}
+      onSignContract={async (contractId, signData) => {
+        await ClientPortalService.signContract(client.id, contractId, signData);
+        await loadPortalData(true);
+      }}
+      onSubmitQuestionnaire={async (questionnaireId, responses) => {
+        await ClientPortalService.submitQuestionnaire(client.id, questionnaireId, responses);
+        await loadPortalData(true);
+      }}
       onApproveDeliverable={handleApproveDeliverable}
       onRequestRevision={handleRequestRevision}
       onUploadDocument={handleUploadDocument}

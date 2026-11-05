@@ -15,6 +15,7 @@ import { createRouteSupabaseClient } from './supabase-server';
  */
 export interface ApiCallerIdentity {
   userId: string | null;
+  userEmail?: string | null;
   clientId: string | null;
   workspaceId: string | null;
   isDemo: boolean;
@@ -30,23 +31,23 @@ export async function resolveApiCaller(): Promise<ApiCallerIdentity> {
       const { ClientAuthService } = await import('@/backend/client/client-auth-service');
       const client = await ClientAuthService.getAuthenticatedClient();
       if (client) {
-        return { userId: null, clientId: client.id, workspaceId: null, isDemo: true };
+        return { userId: null, userEmail: client.email || null, clientId: client.id, workspaceId: null, isDemo: true };
       }
     } catch {
       // fall through to anonymous demo caller
     }
-    return { userId: null, clientId: null, workspaceId: null, isDemo: true };
+    return { userId: null, userEmail: null, clientId: null, workspaceId: null, isDemo: true };
   }
 
   try {
     const supabaseServer = await createRouteSupabaseClient();
     if (!supabaseServer) {
-      return { userId: null, clientId: null, workspaceId: null, isDemo: false };
+      return { userId: null, userEmail: null, clientId: null, workspaceId: null, isDemo: false };
     }
 
     const { data: { user }, error: userError } = await supabaseServer.auth.getUser();
     if (userError || !user) {
-      return { userId: null, clientId: null, workspaceId: null, isDemo: false };
+      return { userId: null, userEmail: null, clientId: null, workspaceId: null, isDemo: false };
     }
 
     // Resolve client identity and workspace identity in parallel using user-scoped server client (RLS enforced)
@@ -76,7 +77,7 @@ export async function resolveApiCaller(): Promise<ApiCallerIdentity> {
       // Fall through to null identities
     }
 
-    return { userId: user.id, clientId, workspaceId, isDemo: false };
+    return { userId: user.id, userEmail: user.email || null, clientId, workspaceId, isDemo: false };
   } catch (err) {
     console.warn('resolveApiCaller error:', err);
     return { userId: null, clientId: null, workspaceId: null, isDemo: false };

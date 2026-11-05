@@ -1,5 +1,6 @@
 export * from './client-management-service';
 
+import type { Task, Questionnaire, Contract } from '@/shared/types';
 import { supabase, isDemoModeActive } from '@/backend/utilities/supabase';
 import { StorageHelper } from '@/backend/storage/storage-helper';
 import { getCurrentWorkspace } from '@/backend/utilities/workspace';
@@ -261,6 +262,33 @@ export const FreelancerProjectService = {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       return FlowDeskStore.createProject(project as any);
     }
+
+    // Call server-side API endpoint for authoritative quota enforcement and validation
+    if (typeof window !== 'undefined') {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: project.clientId,
+          clientName: project.clientName,
+          title: project.title,
+          description: project.description || '',
+          status: project.status || 'in_progress',
+          budget: Number(project.budget) || 0,
+          startDate: project.startDate,
+          dueDate: project.dueDate,
+          tags: project.tags || [],
+          milestones: project.milestones || [],
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error?.message || data?.message || 'Failed to create project');
+      }
+      return data.project;
+    }
+
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) throw new Error('No active workspace');
 
@@ -286,8 +314,6 @@ export const FreelancerProjectService = {
         start_date: project.startDate,
         due_date: project.dueDate,
         tags: project.tags || [],
-        // JSONB column: pass the array itself. JSON.stringify() here would store a
-        // double-encoded JSON *string* instead of an array.
         milestones: project.milestones || [],
       };
 
@@ -565,8 +591,26 @@ export const FreelancerDocumentService = {
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return false;
     try {
+      // Fetch document metadata to clean up underlying storage file (S-08)
+      const { data: doc } = await supabase
+        .from('documents')
+        .select('file_url')
+        .eq('id', docId)
+        .eq('workspace_id', wsId)
+        .maybeSingle();
+
       const { error } = await supabase.from('documents').delete().eq('id', docId).eq('workspace_id', wsId);
-      return !error;
+      if (error) return false;
+
+      if (doc?.file_url) {
+        try {
+          await StorageHelper.deleteFile('documents', doc.file_url);
+        } catch (storageErr) {
+          console.warn('[deleteDocument] Storage cleanup notice:', storageErr);
+        }
+      }
+
+      return true;
     } catch { return false; }
   },
 };
@@ -3447,4 +3491,117 @@ export const SettingsService = {
     }
   },
 };
+
+export const FreelancerTaskService = {
+  getTasks: async (filters?: { projectId?: string; clientId?: string; status?: string }): Promise<Task[]> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      let tasks = FlowDeskStore.getTasks();
+      if (filters?.projectId) tasks = tasks.filter((t: any) => t.projectId === filters.projectId);
+      if (filters?.clientId) tasks = tasks.filter((t: any) => t.clientId === filters.clientId);
+      if (filters?.status) tasks = tasks.filter((t: any) => t.status === filters.status);
+      return tasks;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const queryParams = new URLSearchParams();
+        if (filters?.projectId) queryParams.set('projectId', filters.projectId);
+        if (filters?.clientId) queryParams.set('clientId', filters.clientId);
+        if (filters?.status) queryParams.set('status', filters.status);
+        const res = await fetch(`/api/tasks?${queryParams.toString()}`, { cache: 'no-store' });
+        const data = await res.json();
+        const apiTasks: Task[] = data.tasks || [];
+        const localTasks: Task[] = FlowDeskStore.getTasks();
+        const seen = new Set(apiTasks.map((t) => t.id));
+        const combined = [...apiTasks];
+        for (const lt of localTasks) {
+          if (!seen.has(lt.id)) {
+            combined.push(lt);
+          }
+        }
+        return combined;
+      } catch {
+        return FlowDeskStore.getTasks();
+      }
+    }
+    return FlowDeskStore.getTasks();
+  },
+  createTask: async (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      return FlowDeskStore.createTask(task);
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...task,
+            dueDate: task.dueDate || null,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data?.task) {
+          return data.task;
+        }
+      } catch (err) {
+        console.warn('API task creation network error, saving locally:', err);
+      }
+      return FlowDeskStore.createTask(task);
+    }
+    return FlowDeskStore.createTask(task);
+  },
+  updateTask: async (id: string, updates: Partial<Task>): Promise<Task | undefined> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      return FlowDeskStore.updateTask(id, updates);
+    }
+    if (typeof window !== 'undefined') {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json();
+      return data.task;
+    }
+    return FlowDeskStore.updateTask(id, updates);
+  },
+  deleteTask: async (id: string): Promise<boolean> => {
+    if (DemoDataProvider.isDemo() || isDemoModeActive()) {
+      return FlowDeskStore.deleteTask(id);
+    }
+    if (typeof window !== 'undefined') {
+      const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      return res.ok;
+    }
+    return FlowDeskStore.deleteTask(id);
+  },
+};
+
+export const FreelancerQuestionnaireService = {
+  getQuestionnaires: async (clientId?: string): Promise<Questionnaire[]> => {
+    return FlowDeskStore.getQuestionnaires(clientId);
+  },
+  createQuestionnaire: async (data: any): Promise<Questionnaire> => {
+    return FlowDeskStore.createQuestionnaire(data);
+  },
+  submitQuestionnaire: async (id: string, responses: any): Promise<Questionnaire | undefined> => {
+    return FlowDeskStore.submitQuestionnaire(id, responses);
+  },
+};
+
+export const FreelancerContractService = {
+  getContracts: async (clientId?: string): Promise<Contract[]> => {
+    return FlowDeskStore.getContracts(clientId);
+  },
+  createContract: async (data: any): Promise<Contract> => {
+    return FlowDeskStore.createContract(data);
+  },
+  signContract: async (id: string, signData: { signedByName: string; signatureDataUrl: string }): Promise<Contract | undefined> => {
+    return FlowDeskStore.signContract(id, signData);
+  },
+};
+
+export const TaskService = FreelancerTaskService;
+export const QuestionnaireService = FreelancerQuestionnaireService;
+export const ContractService = FreelancerContractService;
 

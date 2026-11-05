@@ -45,6 +45,81 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  async redirects() {
+    return [
+      {
+        source: '/deliverables',
+        destination: '/dashboard?view=deliverables',
+        permanent: false,
+      },
+      {
+        source: '/invoices',
+        destination: '/dashboard?view=invoices',
+        permanent: false,
+      },
+      {
+        source: '/projects',
+        destination: '/dashboard?view=projects',
+        permanent: false,
+      },
+      {
+        source: '/clients',
+        destination: '/dashboard?view=clients',
+        permanent: false,
+      },
+      {
+        source: '/documents',
+        destination: '/dashboard?view=documents',
+        permanent: false,
+      },
+      {
+        source: '/settings',
+        destination: '/dashboard?view=settings',
+        permanent: false,
+      },
+      {
+        source: '/freelancer/settings',
+        destination: '/dashboard?view=settings',
+        permanent: false,
+      },
+      {
+        source: '/freelancer/:path*',
+        destination: '/dashboard?view=:path*',
+        permanent: false,
+      },
+      {
+        source: '/refund',
+        destination: '/refund-policy',
+        permanent: true,
+      },
+      {
+        source: '/refunds',
+        destination: '/refund-policy',
+        permanent: true,
+      },
+      {
+        source: '/cancellation',
+        destination: '/cancellation-policy',
+        permanent: true,
+      },
+      {
+        source: '/cancellations',
+        destination: '/cancellation-policy',
+        permanent: true,
+      },
+      {
+        source: '/terms-of-service',
+        destination: '/terms',
+        permanent: true,
+      },
+      {
+        source: '/privacy-policy',
+        destination: '/privacy',
+        permanent: true,
+      },
+    ];
+  },
+
   webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve = config.resolve || {};

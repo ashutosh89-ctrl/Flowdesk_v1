@@ -64,47 +64,19 @@ const ScrollSectionReveal: React.FC<{
 };
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLaunchApp, onOpenAuth }) => {
-  // Track cursor position for page-wide ambient neon glow aura
-  const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
-  const [isHovering, setIsHovering] = useState(false);
-
   // Hide browser scrollbar on landing page while keeping smooth scroll
   useEffect(() => {
     document.documentElement.classList.add('no-scrollbar');
     document.body.classList.add('no-scrollbar');
 
-    const handlePointerMove = (e: PointerEvent) => {
-      setMousePos({ x: e.clientX, y: e.clientY });
-      setIsHovering(true);
-    };
-
-    const handlePointerLeave = () => {
-      setIsHovering(false);
-    };
-
-    window.addEventListener('pointermove', handlePointerMove, { passive: true });
-    document.documentElement.addEventListener('pointerleave', handlePointerLeave);
-
     return () => {
       document.documentElement.classList.remove('no-scrollbar');
       document.body.classList.remove('no-scrollbar');
-      window.removeEventListener('pointermove', handlePointerMove);
-      document.documentElement.removeEventListener('pointerleave', handlePointerLeave);
     };
   }, []);
 
   return (
     <div className="min-h-screen bg-[#0D0E10] text-[#F8F9FA] selection:bg-[#43D6B0] selection:text-[#0D0E10] font-sans relative overflow-x-hidden no-scrollbar">
-      {/* High-intensity ambient cursor glow across the entire landing page */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-500 ease-out"
-        style={{
-          opacity: isHovering ? 1 : 0,
-          background: `radial-gradient(650px circle at ${mousePos.x}px ${mousePos.y}px, rgba(67, 214, 176, 0.16), rgba(23, 107, 91, 0.05) 50%, transparent 80%)`,
-        }}
-        aria-hidden="true"
-      />
-
       <LandingNav onOpenAuth={onOpenAuth} onLaunchApp={onLaunchApp} />
       <main className="pt-20 relative z-10 space-y-6">
         <Hero onLaunchApp={onLaunchApp} onOpenAuth={onOpenAuth} />

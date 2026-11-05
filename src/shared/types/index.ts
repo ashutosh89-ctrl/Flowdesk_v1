@@ -82,6 +82,72 @@ export interface Project {
   isArchived?: boolean;
 }
 
+export type TaskStatus = 'todo' | 'in_progress' | 'completed' | 'blocked';
+export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface Task {
+  id: string;
+  workspaceId?: string;
+  projectId?: string | null;
+  projectTitle?: string;
+  clientId?: string | null;
+  clientName?: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type QuestionnaireStatus = 'draft' | 'sent' | 'submitted' | 'reviewed';
+
+export interface QuestionnaireQuestion {
+  id: string;
+  prompt: string;
+  type: 'text' | 'textarea' | 'select' | 'multiselect';
+  options?: string[];
+  required: boolean;
+}
+
+export interface Questionnaire {
+  id: string;
+  workspaceId?: string;
+  clientId: string;
+  clientName?: string;
+  projectId?: string | null;
+  projectTitle?: string;
+  title: string;
+  description?: string;
+  questions: QuestionnaireQuestion[];
+  responses?: Record<string, any>;
+  status: QuestionnaireStatus;
+  submittedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type ContractStatus = 'draft' | 'sent' | 'signed' | 'declined';
+
+export interface Contract {
+  id: string;
+  workspaceId?: string;
+  clientId: string;
+  clientName?: string;
+  projectId?: string | null;
+  projectTitle?: string;
+  title: string;
+  content: string;
+  terms?: string;
+  status: ContractStatus;
+  signedAt?: string | null;
+  signedByName?: string | null;
+  signatureDataUrl?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export type DeliverableStatus =
   | 'draft'
   | 'preparing'
@@ -748,7 +814,7 @@ export interface NotificationItem {
   type: 'info' | 'success' | 'warning' | 'error';
   link?: string;
   clientId?: string;
-  category?: 'document' | 'deliverable' | 'comment' | 'portal' | 'invoice' | 'project';
+  category?: 'document' | 'deliverable' | 'comment' | 'portal' | 'invoice' | 'project' | 'task';
 }
 
 export interface WorkspaceProgressBreakdown {

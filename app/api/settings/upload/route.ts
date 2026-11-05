@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
-import { resolveApiCaller } from '@/backend/utilities/api-auth';
+import { requireApiCaller } from '@/backend/utilities/api-auth';
 import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { createApiErrorResponse, getOrCreateRequestId } from '@/backend/utilities/logger';
 import { validateUploadFile } from '@/backend/storage/upload-validator';
@@ -28,15 +28,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
   }
 
-  // 2. Caller Identity Resolution
-  const caller = await resolveApiCaller();
+  // 2. Caller Identity Resolution & Authentication (Fail-Closed)
+  const caller = await requireApiCaller();
+  if (!caller || (!caller.isDemo && !caller.userId)) {
+    return createApiErrorResponse({
+      message: 'Authentication required for branding upload.',
+      code: 'UNAUTHORIZED',
+      status: 401,
+      requestId,
+    });
+  }
 
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const type = formData.get('type') as 'logo' | 'signature' | 'qr' | null;
-    const requestedWsId = formData.get('workspaceId') as string | null;
-    const requestedUserId = formData.get('userId') as string | null;
 
     if (!file || !type || (type !== 'logo' && type !== 'signature' && type !== 'qr')) {
       return NextResponse.json(
@@ -70,8 +76,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const mimeType = validation.sniffedMime || file.type || 'image/png';
-    const targetUserId = caller.userId || requestedUserId || null;
-    const targetWsId = caller.workspaceId || requestedWsId || targetUserId || 'branding';
+    // Strictly derive target identities from verified session — NEVER trust FormData userId or workspaceId
+    const targetUserId = caller.userId;
+    const targetWsId = caller.workspaceId || targetUserId || 'branding';
 
     // 4. Handle Demo Mode (Return Safe Data URL)
     if (isDemoModeActive()) {

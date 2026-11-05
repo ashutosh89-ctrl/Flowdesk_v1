@@ -234,7 +234,7 @@ test('Billing API Routes: Endpoint Security & Verification', async (suite) => {
     assert.equal(res.status, 403);
   });
 
-  await suite.test('Status: returns current entitlements, plans, and no-store header in demo mode', async () => {
+  await suite.test('Status: returns free starter entitlements by default in demo mode', async () => {
     const req = new NextRequest('http://localhost:3000/api/billing/status', {
       method: 'GET',
     });
@@ -243,7 +243,15 @@ test('Billing API Routes: Endpoint Security & Verification', async (suite) => {
     const data = await res.json();
     assert.ok(data.entitlements);
     assert.ok(data.plans);
-    assert.equal(data.entitlements.planKey, 'pro');
+    assert.equal(data.entitlements.planKey, 'free');
     assert.equal(res.headers.get('cache-control'), 'no-store');
+  });
+
+  await suite.test('Status: grants 30-day standard package to ashutoshcmishra720@gmail.com', async () => {
+    const { getWorkspaceEntitlements } = await import('@/backend/billing/entitlements');
+    const entitlements = await getWorkspaceEntitlements('demo-workspace', 'ashutoshcmishra720@gmail.com');
+    assert.equal(entitlements.planKey, 'standard');
+    assert.equal(entitlements.status, 'active');
+    assert.ok(entitlements.currentPeriodEnd);
   });
 });

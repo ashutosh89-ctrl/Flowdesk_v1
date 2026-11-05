@@ -136,9 +136,10 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
                     <div
                       key={n.id}
                       onClick={() => {
-                        // Route to specific entity when possible
-                        if (n.link) {
-                          onNavigate(n.link);
+                        // Route to specific entity when possible, normalizing links
+                        const cleanLink = (n.link || '').replace(/^\//, '').split('?')[0];
+                        if (cleanLink) {
+                          onNavigate(cleanLink);
                         } else if (n.category === 'invoice') {
                           onNavigate('invoices');
                         } else if (n.category === 'deliverable') {
@@ -147,6 +148,8 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
                           onNavigate('documents');
                         } else if (n.category === 'project') {
                           onNavigate('projects');
+                        } else if (n.category === 'task') {
+                          onNavigate('tasks');
                         } else if (n.category === 'comment') {
                           onNavigate('activity');
                         } else {

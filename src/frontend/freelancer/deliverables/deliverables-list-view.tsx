@@ -11,6 +11,7 @@ import { Button } from '@/frontend/shared/ui/button';
 import { Input } from '@/frontend/shared/ui/input';
 import { Pagination } from '@/frontend/shared/ui/pagination';
 import { useToast } from '@/frontend/shared/ui/toast';
+import { LocalStorageIndicator } from '@/frontend/shared/local-storage/local-storage-indicator';
 import {
   Layers,
   Plus,
@@ -364,6 +365,8 @@ export const DeliverablesListView: React.FC<DeliverablesListViewProps> = ({
           </Button>
         </div>
       </div>
+
+      <LocalStorageIndicator />
 
       {/* Metric Cards Summary Bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

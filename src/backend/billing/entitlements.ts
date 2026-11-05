@@ -34,7 +34,6 @@ export interface WorkspaceEntitlements {
   usage: {
     activeClients: number;
     activeProjects: number;
-    storageMb: number;
     invoicesPerMonth: number;
     aiCreditsPerMonth: number;
   };
@@ -49,41 +48,80 @@ const entitlementsMemoryCache = new Map<string, { data: WorkspaceEntitlements; t
 const CACHE_TTL_MS = 60 * 1000;
 
 export function invalidateWorkspaceEntitlements(workspaceId: string): void {
-  entitlementsMemoryCache.delete(workspaceId);
+  for (const key of entitlementsMemoryCache.keys()) {
+    if (key.startsWith(workspaceId)) {
+      entitlementsMemoryCache.delete(key);
+    }
+  }
 }
 
 /**
  * Request-scoped resolution of workspace subscription and active overrides.
  */
 export const getWorkspaceEntitlements = cache(
-  async (workspaceId: string): Promise<WorkspaceEntitlements> => {
+  async (workspaceId: string, callerEmail?: string | null): Promise<WorkspaceEntitlements> => {
+    const cacheKey = `${workspaceId}_${callerEmail || ''}`;
     // 0. Check in-memory cache first
-    const cached = entitlementsMemoryCache.get(workspaceId);
+    const cached = entitlementsMemoryCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
       return cached.data;
     }
 
-    // 1. In demo mode or if workspaceId is missing, return generous Pro entitlements
+    let userEmail = callerEmail?.toLowerCase()?.trim() || '';
+
+    // If callerEmail was not provided, look up the workspace owner's email
+    if (!userEmail && supabaseAdmin && workspaceId && !workspaceId.startsWith('demo-')) {
+      try {
+        const { data: ws } = await supabaseAdmin
+          .from('workspaces')
+          .select('owner_id')
+          .eq('id', workspaceId)
+          .maybeSingle();
+
+        if (ws?.owner_id) {
+          const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('email')
+            .eq('id', ws.owner_id)
+            .maybeSingle();
+          if (profile?.email) {
+            userEmail = profile.email.toLowerCase().trim();
+          } else {
+            const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(ws.owner_id);
+            if (authUser?.user?.email) {
+              userEmail = authUser.user.email.toLowerCase().trim();
+            }
+          }
+        }
+      } catch (err) {
+        // Safe fall-through
+      }
+    }
+
+    const isAshutosh = userEmail === 'ashutoshcmishra720@gmail.com';
+    const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    // 1. In demo mode or if workspaceId is missing
     if (isDemoModeActive() || !workspaceId || workspaceId.startsWith('demo-')) {
-      const demoPlan = BILLING_PLANS.pro;
+      const activePlanKey: PlanKey = isAshutosh ? 'standard' : 'free';
+      const assignedPlan = BILLING_PLANS[activePlanKey];
       return {
         workspaceId,
-        planKey: 'pro',
-        planName: demoPlan.name,
+        planKey: activePlanKey,
+        planName: assignedPlan.name,
         status: 'active',
-        currentPeriodEnd: null,
+        currentPeriodEnd: isAshutosh ? thirtyDaysFromNow : null,
         cancelAtPeriodEnd: false,
-        limits: demoPlan.limits,
+        limits: assignedPlan.limits,
         usage: {
-          activeClients: 1,
-          activeProjects: 1,
-          storageMb: 10,
-          invoicesPerMonth: 1,
+          activeClients: 0,
+          activeProjects: 0,
+          invoicesPerMonth: 0,
           aiCreditsPerMonth: 0,
         },
         isGrace: false,
         isPastDue: false,
-        isTrialing: false,
+        isTrialing: isAshutosh,
         isWriteAllowed: true,
       };
     }
@@ -133,17 +171,29 @@ export const getWorkspaceEntitlements = cache(
       }
     }
 
+    // SPECIAL RULE PER PRODUCT SPEC:
+    // 1. ashutoshcmishra720@gmail.com gets Standard Freelancer package active for 30 days
+    // 2. Studio packages are temporarily restricted across all accounts
+    // 3. All other non-subscribed users default to Free Starter
+    if (isAshutosh) {
+      planKey = 'standard';
+      status = 'active';
+      currentPeriodEnd = thirtyDaysFromNow;
+      cancelAtPeriodEnd = false;
+    } else if (planKey === 'studio') {
+      planKey = 'standard';
+    }
+
     // 3. Compute live usage metrics for the workspace
     let activeClients = 0;
     let activeProjects = 0;
-    let storageMb = 0;
     let invoicesPerMonth = 0;
 
     if (supabaseAdmin) {
       try {
         const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
-        const [clientsRes, projectsRes, invoicesRes, storageRes] = await Promise.all([
+        const [clientsRes, projectsRes, invoicesRes] = await Promise.all([
           supabaseAdmin
             .from('clients')
             .select('id', { count: 'exact', head: true })
@@ -159,21 +209,11 @@ export const getWorkspaceEntitlements = cache(
             .select('id', { count: 'exact', head: true })
             .eq('workspace_id', workspaceId)
             .gte('created_at', startOfMonth),
-          // Storage estimation: query usage_counters or fallback to documents size
-          supabaseAdmin
-            .from('usage_counters')
-            .select('value')
-            .eq('workspace_id', workspaceId)
-            .eq('metric', 'storage_bytes')
-            .maybeSingle(),
         ]);
 
         activeClients = clientsRes.count ?? 0;
         activeProjects = projectsRes.count ?? 0;
         invoicesPerMonth = invoicesRes.count ?? 0;
-        if (storageRes.data?.value) {
-          storageMb = Math.round(Number(storageRes.data.value) / (1024 * 1024));
-        }
       } catch (countErr) {
         console.warn(`[getWorkspaceEntitlements] Usage count notice for workspace ${workspaceId}:`, countErr);
       }
@@ -193,7 +233,6 @@ export const getWorkspaceEntitlements = cache(
       usage: {
         activeClients,
         activeProjects,
-        storageMb,
         invoicesPerMonth,
         aiCreditsPerMonth: 0,
       },
@@ -203,7 +242,7 @@ export const getWorkspaceEntitlements = cache(
       isWriteAllowed: isWriteAllowedInStatus(status),
     };
 
-    entitlementsMemoryCache.set(workspaceId, { data: result, timestamp: Date.now() });
+    entitlementsMemoryCache.set(cacheKey, { data: result, timestamp: Date.now() });
     return result;
   }
 );

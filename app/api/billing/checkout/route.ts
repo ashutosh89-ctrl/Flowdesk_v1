@@ -60,6 +60,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
   const payload = bodyValidation.data;
 
+  // Gate Studio packages: Currently restricted to invite-only preview
+  if (payload.planKey === 'studio') {
+    return createApiErrorResponse({
+      message: 'The Studio Agency package is currently in private preview. Only the Standard Freelancer package is available for activation.',
+      code: 'FEATURE_DISABLED',
+      status: 400,
+      requestId,
+    });
+  }
+
   // 4. Demo Mode Fallback
   if (isDemoModeActive()) {
     const plan = getBillingPlan(payload.planKey);
@@ -108,12 +118,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
+    let userEmail = caller.userEmail;
+    let userName = workspace.name || 'Studio Owner';
+
+    if (!userEmail && caller.userId) {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', caller.userId)
+        .maybeSingle();
+      if (profile?.email) userEmail = profile.email;
+      if (profile?.full_name) userName = profile.full_name;
+    }
+
     // Server-authoritative subscription creation
     const subscriptionResult = await razorpaySubscriptionProvider.createSubscription({
       workspaceId: workspace.id,
       workspaceOwnerId: caller.userId || workspace.owner_id,
-      workspaceOwnerEmail: 'billing@flowdesk.app',
-      workspaceOwnerName: workspace.name || 'Studio Owner',
+      workspaceOwnerEmail: userEmail || 'user@flowdesk.app',
+      workspaceOwnerName: userName,
       planKey: payload.planKey,
       interval: payload.interval,
     });

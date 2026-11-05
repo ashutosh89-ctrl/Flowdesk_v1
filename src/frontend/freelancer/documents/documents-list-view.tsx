@@ -12,6 +12,7 @@ import { DocumentService, ClientService, InvoiceService, SettingsService } from 
 import { DocumentItem, Client } from '@/shared/types';
 import { generateInvoicePDF, printInvoiceDocument } from '@/shared/utils/invoice-pdf';
 import { getDocumentPreviewUrl } from '@/shared/utils/document-preview';
+import { LocalStorageIndicator } from '@/frontend/shared/local-storage/local-storage-indicator';
 import {
   FileText,
   Download,
@@ -227,6 +228,8 @@ export const DocumentsListView: React.FC = () => {
           Request Document
         </Button>
       </div>
+
+      <LocalStorageIndicator />
 
       {/* Filters */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
