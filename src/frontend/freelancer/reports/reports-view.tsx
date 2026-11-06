@@ -13,6 +13,7 @@ import {
 } from '@/backend/freelancer';
 import { formatCurrency } from '@/shared/utils/currency';
 import { useToast } from '@/frontend/shared/ui/toast';
+import { UpgradeModal } from '@/frontend/shared/billing/upgrade-modal';
 import {
   BarChart3,
   Download,
@@ -25,6 +26,8 @@ import {
   CheckSquare,
   Loader2,
   Calendar,
+  Lock,
+  Activity,
 } from 'lucide-react';
 
 export const ReportsView: React.FC = () => {
@@ -34,6 +37,8 @@ export const ReportsView: React.FC = () => {
   const [projects, setProjects] = useState<any[]>([]);
   const [deliverables, setDeliverables] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [entitlements, setEntitlements] = useState<any>(null);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
 
@@ -41,13 +46,14 @@ export const ReportsView: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [m, invs, clis, projs, dels, tsks] = await Promise.all([
+        const [m, invs, clis, projs, dels, tsks, billRes] = await Promise.all([
           DashboardService.getMetrics(),
           InvoiceService.getInvoices(),
           ClientService.getClients(),
           ProjectService.getProjects(),
           DeliverableService.getDeliverables(),
           TaskService.getTasks(),
+          fetch('/api/billing/status').then((r) => (r.ok ? r.json() : null)).catch(() => null),
         ]);
         setMetrics(m);
         setInvoices(invs || []);
@@ -55,6 +61,9 @@ export const ReportsView: React.FC = () => {
         setProjects(projs || []);
         setDeliverables(dels || []);
         setTasks(tsks || []);
+        if (billRes?.entitlements) {
+          setEntitlements(billRes.entitlements);
+        }
       } catch {
         showToast('Error', 'Failed to calculate analytics.', 'error');
       } finally {
@@ -143,6 +152,35 @@ export const ReportsView: React.FC = () => {
       t.description || '',
     ]);
     downloadCsv(`flowdesk_tasks_${new Date().toISOString().split('T')[0]}.csv`, headers, rows);
+  };
+
+  const handleAuditExport = async () => {
+    if (!entitlements?.limits?.auditLogExports) {
+      setIsUpgradeModalOpen(true);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/audit/export');
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast('Export Restricted', data.error || 'Failed to export audit logs.', 'error');
+        return;
+      }
+      const logs = data.auditLogs || [];
+      const headers = ['Timestamp', 'Action', 'Target', 'User', 'Category', 'Details'];
+      const rows = logs.map((l: any) => [
+        l.created_at || l.timestamp || '',
+        l.action || '',
+        l.title || l.target || '',
+        l.user_name || l.user || '',
+        l.resource_type || l.category || '',
+        l.description || l.metadata || '',
+      ]);
+      downloadCsv(`flowdesk_audit_log_${new Date().toISOString().split('T')[0]}.csv`, headers, rows);
+    } catch {
+      showToast('Error', 'Failed to generate audit log export.', 'error');
+    }
   };
 
   // Financial calculations
@@ -334,10 +372,38 @@ export const ReportsView: React.FC = () => {
               >
                 Tasks CSV ({tasks.length})
               </Button>
+
+              <Button
+                type="button"
+                variant={entitlements?.limits?.auditLogExports ? 'secondary' : 'primary'}
+                size="sm"
+                onClick={handleAuditExport}
+                className={`justify-start text-xs col-span-1 sm:col-span-2 ${
+                  !entitlements?.limits?.auditLogExports ? 'border-amber-500/30 bg-amber-500/10 text-amber-200' : ''
+                }`}
+                leftIcon={
+                  entitlements?.limits?.auditLogExports ? (
+                    <Activity className="w-4 h-4 text-[#43D6B0]" />
+                  ) : (
+                    <Lock className="w-4 h-4 text-amber-400" />
+                  )
+                }
+              >
+                {entitlements?.limits?.auditLogExports
+                  ? 'Audit Log CSV Export (Studio)'
+                  : 'Audit Log CSV Export (Studio Only)'}
+              </Button>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        currentPlanKey={entitlements?.planKey || 'free'}
+        featureNotice="Forensic audit log exports and CSV downloads are exclusively available on the Studio Agency plan."
+      />
     </div>
   );
 };

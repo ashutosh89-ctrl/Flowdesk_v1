@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { LegalPageLayout } from '@/frontend/shared/layout/legal-page-layout';
 import { Button } from '@/frontend/shared/ui/button';
 import { BILLING_PLANS } from '@/shared/billing';
-import { Check, ArrowRight, ShieldCheck, HelpCircle } from 'lucide-react';
+import { Check, ArrowRight, ShieldCheck } from 'lucide-react';
 import { siteConfig } from '@/shared/config/site-config';
 
 export const metadata: Metadata = {
@@ -16,21 +16,21 @@ export const metadata: Metadata = {
 };
 
 export default function PricingPage() {
-  const starter = BILLING_PLANS.free;
-  const standard = BILLING_PLANS.pro;
+  const starter = BILLING_PLANS.starter;
+  const standard = BILLING_PLANS.standard;
   const studio = BILLING_PLANS.studio;
 
   return (
     <LegalPageLayout
       title="Transparent Plans for Independent Professionals"
-      intro="Start for free with essential freelancer tools. Upgrade to Standard or Studio as your client base, active projects, and document storage expand."
+      intro="Start for free with essential freelancer operations tools. Upgrade to Standard or Studio as your client base, active projects, and operational throughput expand."
+      version={siteConfig.policies.terms.version}
       lastUpdated={siteConfig.policies.terms.lastUpdated}
-      version="1.0.0"
       sections={[
         { id: 'plan-cards', title: '1. Plans & Subscription Rates' },
         { id: 'feature-matrix', title: '2. Detailed Feature Matrix' },
         { id: 'taxes-billing', title: '3. Taxes, Billing & Invoicing' },
-        { id: 'cancellation-terms', title: '4. Cancellation & Data Protection' },
+        { id: 'cancellation-terms', title: '4. Cancellation & Zero Data Deletion Guarantee' },
       ]}
     >
       {/* Plan Cards Grid */}
@@ -67,7 +67,7 @@ export default function PricingPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>250 MB secure document storage</span>
+                  <span>Local device storage (Zero cloud caps)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -76,6 +76,10 @@ export default function PricingPage() {
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                   <span>Standard client review portal</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Basic payment tracking</span>
                 </li>
               </ul>
             </div>
@@ -113,27 +117,35 @@ export default function PricingPage() {
               <ul className="space-y-2.5 text-xs text-zinc-300">
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span><strong>Up to 10 active clients</strong></span>
+                  <span><strong>Up to 15 active clients</strong></span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span><strong>Up to 15 active projects</strong></span>
+                  <span><strong>Up to 25 active projects</strong></span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span><strong>5 GB</strong> secure document storage</span>
+                  <span>Local device storage (Zero cloud caps)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>50 invoices per month</span>
+                  <span>50 invoices per month with auto-numbering</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Custom studio portal branding</span>
+                  <span>Custom branded client portal</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Automated email payment reminders</span>
+                  <span>Automated invoice payment reminders</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Multi-currency invoicing &amp; payment receipts</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Priority email support</span>
                 </li>
               </ul>
             </div>
@@ -170,15 +182,15 @@ export default function PricingPage() {
               <ul className="space-y-2.5 text-xs text-zinc-300">
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span><strong>Unlimited active clients</strong> (fair use*)</span>
+                  <span><strong>Up to 100 active clients</strong></span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span><strong>Unlimited active projects</strong></span>
+                  <span><strong>Up to 150 active projects</strong></span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span><strong>25 GB</strong> secure document storage</span>
+                  <span>Local device storage (Zero cloud caps)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -186,11 +198,19 @@ export default function PricingPage() {
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Custom studio portal branding</span>
+                  <span>Fully branded client experience &amp; custom subpaths</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Priority email support</span>
+                  <span>Automated multi-stage dunning &amp; invoice reminders</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>High-throughput deliverable versioning</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Dedicated support &amp; audit log exports</span>
                 </li>
               </ul>
             </div>
@@ -202,9 +222,6 @@ export default function PricingPage() {
             </Link>
           </div>
         </div>
-        <p className="text-xs text-zinc-400 italic">
-          * &quot;Unlimited active clients&quot; is subject to reasonable commercial fair use guidelines detailed in Section 8 of our <Link href="/terms" className="text-white underline">Terms of Service</Link>.
-        </p>
       </section>
 
       {/* Feature Matrix Table */}
@@ -224,74 +241,98 @@ export default function PricingPage() {
               <tr>
                 <td className="p-3.5 font-medium text-white">Active Clients</td>
                 <td className="p-3.5">2</td>
-                <td className="p-3.5 font-semibold text-white">10</td>
-                <td className="p-3.5 font-semibold text-white">Unlimited (fair use)</td>
+                <td className="p-3.5 font-semibold text-white">15</td>
+                <td className="p-3.5 font-semibold text-white">100</td>
               </tr>
               <tr>
                 <td className="p-3.5 font-medium text-white">Active Projects</td>
                 <td className="p-3.5">3</td>
-                <td className="p-3.5 font-semibold text-white">15</td>
-                <td className="p-3.5 font-semibold text-white">Unlimited</td>
+                <td className="p-3.5 font-semibold text-white">25</td>
+                <td className="p-3.5 font-semibold text-white">150</td>
               </tr>
               <tr>
-                <td className="p-3.5 font-medium text-white">Secure Storage</td>
-                <td className="p-3.5">250 MB</td>
-                <td className="p-3.5">5 GB</td>
-                <td className="p-3.5">25 GB</td>
+                <td className="p-3.5 font-medium text-white">Storage Architecture</td>
+                <td className="p-3.5">Local device storage (Zero cloud caps)</td>
+                <td className="p-3.5 font-semibold text-white">Local device storage (Zero cloud caps)</td>
+                <td className="p-3.5 font-semibold text-white">Local device storage (Zero cloud caps)</td>
               </tr>
               <tr>
-                <td className="p-3.5 font-medium text-white">Invoices / Month</td>
+                <td className="p-3.5 font-medium text-white">Monthly Invoices</td>
                 <td className="p-3.5">5</td>
-                <td className="p-3.5">50</td>
-                <td className="p-3.5">500</td>
+                <td className="p-3.5 font-semibold text-white">50</td>
+                <td className="p-3.5 font-semibold text-white">500</td>
               </tr>
               <tr>
-                <td className="p-3.5 font-medium text-white">Client Review Portal</td>
-                <td className="p-3.5">Yes</td>
-                <td className="p-3.5">Yes</td>
-                <td className="p-3.5">Yes</td>
+                <td className="p-3.5 font-medium text-white">Invoice Auto-Numbering</td>
+                <td className="p-3.5 text-zinc-500">Default numbering only</td>
+                <td className="p-3.5 text-emerald-400">Custom prefix, padding &amp; sequence</td>
+                <td className="p-3.5 text-emerald-400">Custom prefix, padding &amp; sequence</td>
               </tr>
               <tr>
-                <td className="p-3.5 font-medium text-white">Custom Portal Branding</td>
-                <td className="p-3.5 text-zinc-500">FlowDesk Default</td>
-                <td className="p-3.5 text-emerald-400">Custom Logo &amp; Accent</td>
-                <td className="p-3.5 text-emerald-400">Custom Logo &amp; Accent</td>
+                <td className="p-3.5 font-medium text-white">Payment Tracking</td>
+                <td className="p-3.5">Basic manual payment tracking</td>
+                <td className="p-3.5 font-semibold text-white">Advanced ledger &amp; receipts</td>
+                <td className="p-3.5 font-semibold text-white">Advanced ledger &amp; receipts</td>
+              </tr>
+              <tr>
+                <td className="p-3.5 font-medium text-white">Payment Receipts</td>
+                <td className="p-3.5 text-zinc-500">—</td>
+                <td className="p-3.5 text-emerald-400">Automated client receipts</td>
+                <td className="p-3.5 text-emerald-400">Automated client receipts</td>
               </tr>
               <tr>
                 <td className="p-3.5 font-medium text-white">Automated Payment Reminders</td>
                 <td className="p-3.5 text-zinc-500">Manual Only</td>
                 <td className="p-3.5 text-emerald-400">Yes (Automated Email)</td>
-                <td className="p-3.5 text-emerald-400">Yes (Multi-Stage Dunning)</td>
+                <td className="p-3.5 text-emerald-400">Yes (Automated Email)</td>
               </tr>
               <tr>
-                <td className="p-3.5 font-medium text-white">Deliverable Niche Workspaces (7 Niches)</td>
-                <td className="p-3.5">Yes</td>
-                <td className="p-3.5">Yes</td>
-                <td className="p-3.5">Yes</td>
-              </tr>
-              <tr>
-                <td className="p-3.5 font-medium text-white">Data Export (JSON/CSV)</td>
-                <td className="p-3.5">Yes</td>
-                <td className="p-3.5">Yes</td>
-                <td className="p-3.5">Yes</td>
-              </tr>
-              <tr>
-                <td className="p-3.5 font-medium text-white">Support Channels</td>
-                <td className="p-3.5">Community &amp; Contact Form</td>
-                <td className="p-3.5">Standard Email Support</td>
-                <td className="p-3.5 font-semibold text-white">Priority Support</td>
-              </tr>
-              <tr>
-                <td className="p-3.5 font-medium text-white">Multi-Member Team Collaboration</td>
+                <td className="p-3.5 font-medium text-white">Automated Multi-Stage Dunning</td>
                 <td className="p-3.5 text-zinc-500">—</td>
-                <td className="p-3.5 text-zinc-500"><span className="text-amber-400/80 font-mono text-[10px]">Coming soon</span></td>
-                <td className="p-3.5 text-zinc-500"><span className="text-amber-400/80 font-mono text-[10px]">Coming soon</span></td>
+                <td className="p-3.5 text-zinc-500">—</td>
+                <td className="p-3.5 text-emerald-400">Yes (Escalating multi-interval dunning)</td>
               </tr>
               <tr>
-                <td className="p-3.5 font-medium text-white">Advanced Financial Analytics</td>
+                <td className="p-3.5 font-medium text-white">Multi-Currency Invoicing</td>
+                <td className="p-3.5 text-zinc-500">INR Base Currency Only</td>
+                <td className="p-3.5 text-emerald-400">Multi-Currency (INR, USD, EUR, etc.)</td>
+                <td className="p-3.5 text-emerald-400">Multi-Currency (INR, USD, EUR, etc.)</td>
+              </tr>
+              <tr>
+                <td className="p-3.5 font-medium text-white">Client Review Portal</td>
+                <td className="p-3.5">Standard review portal</td>
+                <td className="p-3.5">Standard review portal</td>
+                <td className="p-3.5">Standard review portal</td>
+              </tr>
+              <tr>
+                <td className="p-3.5 font-medium text-white">Custom Portal Branding</td>
+                <td className="p-3.5 text-zinc-500">Default FlowDesk Branding</td>
+                <td className="p-3.5 text-emerald-400">Custom Logo, Signature &amp; Colors</td>
+                <td className="p-3.5 text-emerald-400">Fully Branded Studio Experience</td>
+              </tr>
+              <tr>
+                <td className="p-3.5 font-medium text-white">Custom Subpaths / Slugs</td>
                 <td className="p-3.5 text-zinc-500">—</td>
-                <td className="p-3.5 text-zinc-500"><span className="text-amber-400/80 font-mono text-[10px]">Coming soon</span></td>
-                <td className="p-3.5 text-zinc-500"><span className="text-amber-400/80 font-mono text-[10px]">Coming soon</span></td>
+                <td className="p-3.5 text-zinc-500">—</td>
+                <td className="p-3.5 text-emerald-400">Custom portal join slug (/portal/join/...)</td>
+              </tr>
+              <tr>
+                <td className="p-3.5 font-medium text-white">Deliverable Versioning</td>
+                <td className="p-3.5">Up to 3 versions / deliverable</td>
+                <td className="p-3.5">Up to 5 versions / deliverable</td>
+                <td className="p-3.5 text-emerald-400">High-Throughput Versioning (Unlimited)</td>
+              </tr>
+              <tr>
+                <td className="p-3.5 font-medium text-white">Audit Log Exports</td>
+                <td className="p-3.5 text-zinc-500">—</td>
+                <td className="p-3.5 text-zinc-500">—</td>
+                <td className="p-3.5 text-emerald-400">Forensic CSV/JSON Audit Log Exports</td>
+              </tr>
+              <tr>
+                <td className="p-3.5 font-medium text-white">Support Level</td>
+                <td className="p-3.5">Community &amp; Self-Serve</td>
+                <td className="p-3.5 font-semibold text-white">Priority Email Support</td>
+                <td className="p-3.5 font-semibold text-white">Dedicated Support Desk</td>
               </tr>
             </tbody>
           </table>
@@ -305,13 +346,13 @@ export default function PricingPage() {
           {siteConfig.registration.taxStatement}
         </p>
         <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-2 text-xs text-zinc-300">
-          <p><strong>Payment Gateway:</strong> All recurring subscription debits are processed via Razorpay e-mandate on credit cards, debit cards, or supported UPI auto-pay channels.</p>
+          <p><strong>Payment Gateway:</strong> All recurring subscription debits are processed securely via Razorpay recurring e-mandates.</p>
           <p><strong>Billing Cycle:</strong> You may choose Monthly or Annual billing. Annual plans include a ~16% discount over monthly billing.</p>
-          <p><strong>Receipts:</strong> Invoices with your business name and GST identification (if provided in your profile) are issued for every payment.</p>
+          <p><strong>Receipts:</strong> Invoices with your business name and GST identification (if provided in your profile) are issued for every subscription payment.</p>
         </div>
       </section>
 
-      {/* Cancellation & Data Protection Guarantee */}
+      {/* Cancellation & Zero Data Deletion Guarantee */}
       <section id="cancellation-terms" className="space-y-4 pt-6 border-t border-[#2A2A2A]">
         <h2 className="text-2xl font-bold text-white tracking-tight">4. Cancellation &amp; Zero Data Deletion Guarantee</h2>
         <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 text-xs sm:text-sm space-y-2">
@@ -343,4 +384,3 @@ export default function PricingPage() {
     </LegalPageLayout>
   );
 }
-

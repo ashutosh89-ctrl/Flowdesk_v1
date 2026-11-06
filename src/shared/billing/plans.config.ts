@@ -1,19 +1,11 @@
 /**
  * FlowDesk SaaS Billing Plans & Entitlements Configuration
  * 
- * IMPORTANT FOR OWNER / PRODUCT LEAD:
- * All prices, currency defaults, quota limits, and Razorpay Plan IDs below are
- * PLACEHOLDERS. You must configure real business values before launching to production.
- * 
- * TODO [OWNER]:
- * 1. Set real subscription prices in INR and USD.
- * 2. Set actual quota limits for Free, Pro, and Studio tiers.
- * 3. Pre-create recurring Plans in Razorpay Dashboard and paste the resulting
- *    Plan IDs (e.g., 'plan_M1234567890ABC') into `providerPlanIds.razorpay`.
- * 4. Verify GST compliance and subscription tax requirements with your accountant.
+ * Single authoritative source of truth for all FlowDesk subscription plans,
+ * pricing, limits, and feature flags across Starter, Standard, and Studio.
  */
 
-export type PlanKey = 'free' | 'standard' | 'studio' | 'pro';
+export type PlanKey = 'starter' | 'standard' | 'studio' | 'free' | 'pro';
 export type BillingInterval = 'monthly' | 'yearly';
 export type CurrencyCode = 'INR' | 'USD';
 
@@ -35,11 +27,35 @@ export interface PlanLimits {
   activeProjects: number;
   /** Maximum number of invoices created per calendar month */
   invoicesPerMonth: number;
+  /** Local device storage architecture (zero cloud quotas) */
+  localStorageOnly: boolean;
   /** Whether the workspace client portal can be custom-branded */
+  customBranding: boolean;
+  /** Compatibility alias for customBranding */
   brandedPortal: boolean;
-  /** Whether automatic transactional email payment reminders are enabled */
+  /** Whether automatic invoice payment reminders are enabled */
+  automatedReminders: boolean;
+  /** Compatibility alias for automatedReminders */
   emailReminders: boolean;
-  /** AI assistance credits per month (placeholder, currently unmetered/unused) */
+  /** Multi-currency invoicing allowed */
+  multiCurrency: boolean;
+  /** Payment receipts issued to clients upon payment confirmation */
+  paymentReceipts: boolean;
+  /** Custom portal subpaths / slugs */
+  customSubpaths: boolean;
+  /** Multi-stage automated dunning sequences */
+  multiStageDunning: boolean;
+  /** High-throughput deliverable versioning without artificial version caps */
+  highThroughputVersioning: boolean;
+  /** Dedicated priority support */
+  dedicatedSupport: boolean;
+  /** Export audit logs as structured data / CSV */
+  auditLogExports: boolean;
+  /** Invoice auto-numbering and custom sequence formats */
+  autoNumbering: boolean;
+  /** Maximum deliverable versions allowed per deliverable (Infinity for Studio) */
+  maxVersionsPerDeliverable: number;
+  /** AI assistance credits per month (placeholder) */
   aiCreditsPerMonth: number;
 }
 
@@ -60,6 +76,47 @@ export interface PlanDefinition {
   };
 }
 
+const starterPlan: PlanDefinition = {
+  key: 'starter',
+  name: 'Free Starter',
+  tagline: 'Essential tools for solo freelancers starting out.',
+  pricing: {
+    monthly: { INR: 0, USD: 0 },
+    yearly: { INR: 0, USD: 0 },
+  },
+  limits: {
+    activeClients: 2,
+    activeProjects: 3,
+    invoicesPerMonth: 5,
+    localStorageOnly: true,
+    customBranding: false,
+    brandedPortal: false,
+    automatedReminders: false,
+    emailReminders: false,
+    multiCurrency: false,
+    paymentReceipts: false,
+    customSubpaths: false,
+    multiStageDunning: false,
+    highThroughputVersioning: false,
+    dedicatedSupport: false,
+    auditLogExports: false,
+    autoNumbering: false,
+    maxVersionsPerDeliverable: 3,
+    aiCreditsPerMonth: 0,
+  },
+  features: [
+    'Up to 2 active clients',
+    'Up to 3 active projects',
+    'Local device storage (zero cloud quotas)',
+    'Up to 5 invoices per month',
+    'Standard client review portal',
+    'Basic payment tracking',
+  ],
+  providerPlanIds: {
+    razorpay: {},
+  },
+};
+
 const standardPlan: PlanDefinition = {
   key: 'standard',
   name: 'Standard Freelancer',
@@ -73,8 +130,20 @@ const standardPlan: PlanDefinition = {
     activeClients: 15,
     activeProjects: 25,
     invoicesPerMonth: 50,
+    localStorageOnly: true,
+    customBranding: true,
     brandedPortal: true,
+    automatedReminders: true,
     emailReminders: true,
+    multiCurrency: true,
+    paymentReceipts: true,
+    customSubpaths: false,
+    multiStageDunning: false,
+    highThroughputVersioning: false,
+    dedicatedSupport: false,
+    auditLogExports: false,
+    autoNumbering: true,
+    maxVersionsPerDeliverable: 5,
     aiCreditsPerMonth: 100,
   },
   features: [
@@ -95,77 +164,65 @@ const standardPlan: PlanDefinition = {
   },
 };
 
-export const BILLING_PLANS: Record<PlanKey, PlanDefinition> = {
-  free: {
-    key: 'free',
-    name: 'Free Starter',
-    tagline: 'Essential tools for solo freelancers starting out.',
-    pricing: {
-      monthly: { INR: 0, USD: 0 },
-      yearly: { INR: 0, USD: 0 },
-    },
-    limits: {
-      activeClients: 2,
-      activeProjects: 3,
-      invoicesPerMonth: 5,
-      brandedPortal: false,
-      emailReminders: false,
-      aiCreditsPerMonth: 0,
-    },
-    features: [
-      'Up to 2 active clients',
-      'Up to 3 active projects',
-      'Local device storage (zero cloud quotas)',
-      'Up to 5 invoices per month',
-      'Standard client review portal',
-      'Basic payment tracking',
-    ],
-    providerPlanIds: {
-      razorpay: {},
+const studioPlan: PlanDefinition = {
+  key: 'studio',
+  name: 'Studio Agency',
+  tagline: 'High-capacity workspace for boutique agencies and top-tier studios.',
+  badge: 'High Capacity',
+  pricing: {
+    monthly: { INR: 899, USD: 19 },
+    yearly: { INR: 8990, USD: 190 },
+  },
+  limits: {
+    activeClients: 100,
+    activeProjects: 150,
+    invoicesPerMonth: 500,
+    localStorageOnly: true,
+    customBranding: true,
+    brandedPortal: true,
+    automatedReminders: true,
+    emailReminders: true,
+    multiCurrency: true,
+    paymentReceipts: true,
+    customSubpaths: true,
+    multiStageDunning: true,
+    highThroughputVersioning: true,
+    dedicatedSupport: true,
+    auditLogExports: true,
+    autoNumbering: true,
+    maxVersionsPerDeliverable: 1000,
+    aiCreditsPerMonth: 500,
+  },
+  features: [
+    'Up to 100 active clients',
+    'Up to 150 active projects',
+    'Local device storage (zero cloud quotas)',
+    '500 invoices per month',
+    'Fully branded client experience & custom subpaths',
+    'Automated multi-stage dunning & invoice reminders',
+    'High-throughput deliverable versioning',
+    'Dedicated support & audit log exports',
+  ],
+  providerPlanIds: {
+    razorpay: {
+      monthly: 'plan_placeholder_studio_monthly',
+      yearly: 'plan_placeholder_studio_yearly',
     },
   },
+};
 
+export const BILLING_PLANS: Record<PlanKey, PlanDefinition> = {
+  starter: starterPlan,
   standard: standardPlan,
-
-  // Backward compatibility alias for legacy 'pro' records
+  studio: studioPlan,
+  // Backward compatibility aliases
+  free: {
+    ...starterPlan,
+    key: 'free',
+  },
   pro: {
     ...standardPlan,
     key: 'pro',
-  },
-
-  studio: {
-    key: 'studio',
-    name: 'Studio Agency',
-    tagline: 'High-capacity workspace for boutique agencies and top-tier studios.',
-    badge: 'High Capacity',
-    pricing: {
-      monthly: { INR: 899, USD: 19 },
-      yearly: { INR: 8990, USD: 190 },
-    },
-    limits: {
-      activeClients: 100,
-      activeProjects: 150,
-      invoicesPerMonth: 500,
-      brandedPortal: true,
-      emailReminders: true,
-      aiCreditsPerMonth: 500,
-    },
-    features: [
-      'Up to 100 active clients',
-      'Up to 150 active projects',
-      'Local device storage (zero cloud quotas)',
-      '500 invoices per month',
-      'Fully branded client experience & custom subpaths',
-      'Automated multi-stage dunning & invoice reminders',
-      'High-throughput deliverable versioning',
-      'Dedicated support & audit log exports',
-    ],
-    providerPlanIds: {
-      razorpay: {
-        monthly: 'plan_placeholder_studio_monthly',
-        yearly: 'plan_placeholder_studio_yearly',
-      },
-    },
   },
 };
 
@@ -178,10 +235,22 @@ export const DEFAULT_GRACE_PERIOD_DAYS = 7;
 /** Default trial duration in days when a new workspace activates a Standard trial */
 export const DEFAULT_TRIAL_PERIOD_DAYS = 14;
 
-/** Helper to retrieve a plan definition safely, falling back to 'free' */
+/** Helper to retrieve a plan definition safely, falling back to 'free' / 'starter' */
 export function getBillingPlan(planKey: string | undefined | null): PlanDefinition {
   if (planKey === 'pro') {
+    return BILLING_PLANS.pro;
+  }
+  if (planKey === 'standard') {
     return BILLING_PLANS.standard;
+  }
+  if (planKey === 'studio') {
+    return BILLING_PLANS.studio;
+  }
+  if (planKey === 'free') {
+    return BILLING_PLANS.free;
+  }
+  if (planKey === 'starter') {
+    return BILLING_PLANS.starter;
   }
   if (planKey && planKey in BILLING_PLANS) {
     return BILLING_PLANS[planKey as PlanKey];

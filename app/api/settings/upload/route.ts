@@ -5,6 +5,8 @@ import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { createApiErrorResponse, getOrCreateRequestId } from '@/backend/utilities/logger';
 import { validateUploadFile } from '@/backend/storage/upload-validator';
 import { sanitizeFileName } from '@/backend/storage/storage-helper';
+import { assertCan } from '@/backend/billing';
+import { PlanLimitError } from '@/shared/billing';
 
 export const runtime = 'nodejs';
 
@@ -78,7 +80,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const mimeType = validation.sniffedMime || file.type || 'image/png';
     // Strictly derive target identities from verified session — NEVER trust FormData userId or workspaceId
     const targetUserId = caller.userId;
-    const targetWsId = caller.workspaceId || targetUserId || 'branding';
+    let targetWsId = caller.workspaceId;
+    if (!targetWsId && targetUserId && supabaseAdmin) {
+      const { data: ws } = await supabaseAdmin
+        .from('workspaces')
+        .select('id')
+        .eq('owner_id', targetUserId)
+        .limit(1)
+        .maybeSingle();
+      if (ws?.id) targetWsId = ws.id;
+    }
+    const effectiveWsId = targetWsId || targetUserId || 'branding';
+
+    // Enforce customBranding entitlement for logo and signature
+    if (type === 'logo' || type === 'signature') {
+      try {
+        await assertCan(effectiveWsId, 'customBranding');
+      } catch (planErr: any) {
+        if (planErr instanceof PlanLimitError) {
+          return createApiErrorResponse({
+            message: 'Custom branding and signatures require a Standard or Studio subscription.',
+            code: planErr.code,
+            status: planErr.statusCode,
+            requestId,
+          });
+        }
+        throw planErr;
+      }
+    }
 
     // 4. Handle Demo Mode (Return Safe Data URL)
     if (isDemoModeActive()) {

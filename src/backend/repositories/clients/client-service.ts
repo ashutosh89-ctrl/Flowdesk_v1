@@ -98,6 +98,11 @@ export const ClientRepository = {
       }
     }
 
+    if (workspaceId) {
+      const { assertWithinLimit } = await import('@/backend/billing');
+      await assertWithinLimit(workspaceId, 'activeClients', 1);
+    }
+
     // Check if client email already corresponds to a registered FlowDesk account
     let matchedUserId: string | null = null;
     if (clientData.email && clientData.email.includes('@')) {

@@ -25,6 +25,39 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const body = await request.json();
+
+    // Enforce customSubpaths entitlement: Only Studio plan can customize portalSlug
+    if (body.portalSlug !== undefined && body.portalSlug !== null) {
+      const { assertCan } = await import('@/backend/billing');
+      const { PlanLimitError } = await import('@/shared/billing');
+      let wsId = caller.workspaceId;
+      if (!wsId && caller.userId) {
+        const { supabaseAdmin } = await import('@/backend/utilities/supabase');
+        if (supabaseAdmin) {
+          const { data: ws } = await supabaseAdmin
+            .from('workspaces')
+            .select('id')
+            .eq('owner_id', caller.userId)
+            .limit(1)
+            .maybeSingle();
+          if (ws?.id) wsId = ws.id;
+        }
+      }
+
+      try {
+        await assertCan(wsId || caller.userId || 'portal', 'customSubpaths');
+      } catch (err: any) {
+        if (err instanceof PlanLimitError) {
+          return NextResponse.json({
+            success: false,
+            error: 'Custom portal subpaths and unique URLs are exclusively available on the Studio Agency plan.',
+            code: err.code,
+          }, { status: 403 });
+        }
+        throw err;
+      }
+    }
+
     const result = await PermanentPortalService.updateFreelancerPortalSettings(
       {
         isAcceptingConnections: body.isAcceptingConnections,

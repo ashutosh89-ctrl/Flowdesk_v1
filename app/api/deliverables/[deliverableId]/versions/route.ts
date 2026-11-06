@@ -128,6 +128,25 @@ export async function POST(
       });
     }
 
+    // 6a. Entitlement Check: High-throughput deliverable versioning
+    const { getWorkspaceEntitlements } = await import('@/backend/billing');
+    const entitlements = await getWorkspaceEntitlements(workspace.id);
+    const maxVersions = entitlements.limits.maxVersionsPerDeliverable || 3;
+
+    const { count: currentVersionsCount } = await supabaseAdmin
+      .from('deliverable_versions')
+      .select('id', { count: 'exact', head: true })
+      .eq('deliverable_id', deliverableId);
+
+    if ((currentVersionsCount ?? 0) >= maxVersions && !entitlements.limits.highThroughputVersioning) {
+      return createApiErrorResponse({
+        message: `Version limit reached for this deliverable (${maxVersions} max). High-throughput deliverable versioning is exclusively available on the Studio Agency plan.`,
+        code: 'PLAN_LIMIT_REACHED',
+        status: 403,
+        requestId,
+      });
+    }
+
     // 7. Calculate next version string
     const currentVer = deliverable.current_version || 'v1.0';
     const match = currentVer.match(/v?(\d+)(?:\.(\d+))?/);

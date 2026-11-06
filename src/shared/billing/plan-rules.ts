@@ -20,11 +20,22 @@ export type EntitlementMetric =
   | 'activeClients'
   | 'activeProjects'
   | 'invoicesPerMonth'
+  | 'maxVersionsPerDeliverable'
   | 'aiCreditsPerMonth';
 
 export type EntitlementFeature =
+  | 'customBranding'
   | 'brandedPortal'
-  | 'emailReminders';
+  | 'automatedReminders'
+  | 'emailReminders'
+  | 'multiCurrency'
+  | 'paymentReceipts'
+  | 'customSubpaths'
+  | 'multiStageDunning'
+  | 'highThroughputVersioning'
+  | 'dedicatedSupport'
+  | 'auditLogExports'
+  | 'autoNumbering';
 
 export type PlanLimitErrorCode =
   | 'PLAN_LIMIT_REACHED'
@@ -117,9 +128,34 @@ export function resolveEffectiveLimits(
   if (typeof overrides.activeClients === 'number') baseLimits.activeClients = overrides.activeClients;
   if (typeof overrides.activeProjects === 'number') baseLimits.activeProjects = overrides.activeProjects;
   if (typeof overrides.invoicesPerMonth === 'number') baseLimits.invoicesPerMonth = overrides.invoicesPerMonth;
-  if (typeof overrides.brandedPortal === 'boolean') baseLimits.brandedPortal = overrides.brandedPortal;
-  if (typeof overrides.emailReminders === 'boolean') baseLimits.emailReminders = overrides.emailReminders;
+  if (typeof overrides.maxVersionsPerDeliverable === 'number') baseLimits.maxVersionsPerDeliverable = overrides.maxVersionsPerDeliverable;
   if (typeof overrides.aiCreditsPerMonth === 'number') baseLimits.aiCreditsPerMonth = overrides.aiCreditsPerMonth;
+
+  // Apply boolean feature overrides
+  if (typeof overrides.customBranding === 'boolean') {
+    baseLimits.customBranding = overrides.customBranding;
+    baseLimits.brandedPortal = overrides.customBranding;
+  }
+  if (typeof overrides.brandedPortal === 'boolean') {
+    baseLimits.brandedPortal = overrides.brandedPortal;
+    baseLimits.customBranding = overrides.brandedPortal;
+  }
+  if (typeof overrides.automatedReminders === 'boolean') {
+    baseLimits.automatedReminders = overrides.automatedReminders;
+    baseLimits.emailReminders = overrides.automatedReminders;
+  }
+  if (typeof overrides.emailReminders === 'boolean') {
+    baseLimits.emailReminders = overrides.emailReminders;
+    baseLimits.automatedReminders = overrides.emailReminders;
+  }
+  if (typeof overrides.multiCurrency === 'boolean') baseLimits.multiCurrency = overrides.multiCurrency;
+  if (typeof overrides.paymentReceipts === 'boolean') baseLimits.paymentReceipts = overrides.paymentReceipts;
+  if (typeof overrides.customSubpaths === 'boolean') baseLimits.customSubpaths = overrides.customSubpaths;
+  if (typeof overrides.multiStageDunning === 'boolean') baseLimits.multiStageDunning = overrides.multiStageDunning;
+  if (typeof overrides.highThroughputVersioning === 'boolean') baseLimits.highThroughputVersioning = overrides.highThroughputVersioning;
+  if (typeof overrides.dedicatedSupport === 'boolean') baseLimits.dedicatedSupport = overrides.dedicatedSupport;
+  if (typeof overrides.auditLogExports === 'boolean') baseLimits.auditLogExports = overrides.auditLogExports;
+  if (typeof overrides.autoNumbering === 'boolean') baseLimits.autoNumbering = overrides.autoNumbering;
 
   return baseLimits;
 }
@@ -133,15 +169,38 @@ export function resolveFeaturePermission(
   status: SubscriptionStatus,
   overrides?: Record<string, any>
 ): boolean {
-  // Check override first
-  if (overrides && typeof overrides[feature] === 'boolean') {
-    return overrides[feature];
+  // Check override first (supporting feature aliases)
+  if (overrides) {
+    if (typeof overrides[feature] === 'boolean') {
+      return overrides[feature];
+    }
+    if (feature === 'customBranding' && typeof overrides.brandedPortal === 'boolean') {
+      return overrides.brandedPortal;
+    }
+    if (feature === 'brandedPortal' && typeof overrides.customBranding === 'boolean') {
+      return overrides.customBranding;
+    }
+    if (feature === 'automatedReminders' && typeof overrides.emailReminders === 'boolean') {
+      return overrides.emailReminders;
+    }
+    if (feature === 'emailReminders' && typeof overrides.automatedReminders === 'boolean') {
+      return overrides.automatedReminders;
+    }
   }
 
-  // If workspace is expired, fall back to Free plan capabilities
-  const effectivePlanKey = (status === 'expired' || status === 'canceled') ? 'free' : planKey;
+  // If workspace is expired, fall back to Starter/Free plan capabilities
+  const effectivePlanKey = (status === 'expired' || status === 'canceled') ? 'starter' : planKey;
   const plan = getBillingPlan(effectivePlanKey);
-  return Boolean(plan.limits[feature]);
+
+  // Normalize aliases
+  if (feature === 'brandedPortal' || feature === 'customBranding') {
+    return Boolean(plan.limits.customBranding || plan.limits.brandedPortal);
+  }
+  if (feature === 'emailReminders' || feature === 'automatedReminders') {
+    return Boolean(plan.limits.automatedReminders || plan.limits.emailReminders);
+  }
+
+  return Boolean(plan.limits[feature as keyof PlanLimits]);
 }
 
 /**
@@ -172,8 +231,8 @@ export function resolveMetricLimitCheck(
     };
   }
 
-  // If expired or canceled, evaluate against Free tier limits
-  const effectivePlanKey = (status === 'expired' || status === 'canceled') ? 'free' : planKey;
+  // If expired or canceled, evaluate against Starter/Free tier limits
+  const effectivePlanKey = (status === 'expired' || status === 'canceled') ? 'starter' : planKey;
   const effectiveLimits = resolveEffectiveLimits(effectivePlanKey, overrides);
   const limit = effectiveLimits[metric];
 

@@ -455,6 +455,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       bankDetails: branding.bankDetails,
     };
 
+    // Enforce workspace branding plan entitlements:
+    // If the workspace does not have customBranding / brandedPortal entitlement,
+    // revert to standard FlowDesk branding for client portals.
+    if (targetWsId) {
+      try {
+        const { can } = await import('@/backend/billing');
+        const hasCustomBranding = await can(targetWsId, 'customBranding');
+        if (!hasCustomBranding) {
+          branding.logoUrl = '/branding/flowdesk-symbol.png';
+          branding.signatureUrl = '';
+          (branding as any).isCustomBranded = false;
+        } else {
+          (branding as any).isCustomBranded = true;
+        }
+      } catch {
+        // Fallback safe
+      }
+    }
+
     return NextResponse.json({
       success: true,
       branding,

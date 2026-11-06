@@ -103,8 +103,8 @@ export const getWorkspaceEntitlements = cache(
 
     // 1. In demo mode or if workspaceId is missing
     if (isDemoModeActive() || !workspaceId || workspaceId.startsWith('demo-')) {
-      const activePlanKey: PlanKey = isAshutosh ? 'standard' : 'free';
-      const assignedPlan = BILLING_PLANS[activePlanKey];
+      const activePlanKey: PlanKey = isAshutosh ? 'standard' : 'starter';
+      const assignedPlan = getBillingPlan(activePlanKey);
       return {
         workspaceId,
         planKey: activePlanKey,
@@ -127,7 +127,7 @@ export const getWorkspaceEntitlements = cache(
     }
 
     // Default fallback to Free Starter
-    let planKey: PlanKey = 'free';
+    let planKey: PlanKey = 'starter';
     let status: SubscriptionStatus = 'active';
     let currentPeriodEnd: string | null = null;
     let cancelAtPeriodEnd = false;
@@ -146,7 +146,7 @@ export const getWorkspaceEntitlements = cache(
           .maybeSingle();
 
         if (subData) {
-          planKey = (subData.plan_key as PlanKey) || 'free';
+          planKey = (subData.plan_key as PlanKey) || 'starter';
           status = (subData.status as SubscriptionStatus) || 'active';
           currentPeriodEnd = subData.current_period_end;
           cancelAtPeriodEnd = Boolean(subData.cancel_at_period_end);
@@ -172,43 +172,44 @@ export const getWorkspaceEntitlements = cache(
     }
 
     // SPECIAL RULE PER PRODUCT SPEC:
-    // 1. ashutoshcmishra720@gmail.com gets Standard Freelancer package active for 30 days
-    // 2. Studio packages are temporarily restricted across all accounts
-    // 3. All other non-subscribed users default to Free Starter
-    if (isAshutosh) {
+    // 1. ashutoshcmishra720@gmail.com gets Standard Freelancer package active for 30 days if without a paid sub
+    // 2. All other non-subscribed users default to Free Starter
+    // 3. Subscribed accounts preserve their true DB planKey (starter, standard, studio)
+    if (isAshutosh && (planKey === 'free' || planKey === 'starter')) {
       planKey = 'standard';
       status = 'active';
       currentPeriodEnd = thirtyDaysFromNow;
       cancelAtPeriodEnd = false;
-    } else if (planKey === 'studio') {
-      planKey = 'standard';
     }
 
     // 3. Compute live usage metrics for the workspace
+    // Active records: Exclude archived and deleted records
     let activeClients = 0;
     let activeProjects = 0;
     let invoicesPerMonth = 0;
 
     if (supabaseAdmin) {
       try {
-        const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+        const startOfMonth = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString();
 
         const [clientsRes, projectsRes, invoicesRes] = await Promise.all([
           supabaseAdmin
             .from('clients')
             .select('id', { count: 'exact', head: true })
             .eq('workspace_id', workspaceId)
-            .neq('status', 'pending_deletion'),
+            .not('status', 'in', '("archived","pending_deletion")')
+            .is('deleted_at', null),
           supabaseAdmin
             .from('projects')
             .select('id', { count: 'exact', head: true })
             .eq('workspace_id', workspaceId)
-            .neq('status', 'archived'),
+            .not('status', 'in', '("archived","completed_archived")'),
           supabaseAdmin
             .from('invoices')
             .select('id', { count: 'exact', head: true })
             .eq('workspace_id', workspaceId)
-            .gte('created_at', startOfMonth),
+            .gte('created_at', startOfMonth)
+            .neq('status', 'cancelled'),
         ]);
 
         activeClients = clientsRes.count ?? 0;
@@ -270,7 +271,8 @@ export async function checkLimit(
   code?: PlanLimitErrorCode;
 }> {
   const entitlements = await getWorkspaceEntitlements(workspaceId);
-  const current = entitlements.usage[metric] ?? 0;
+  const usageRecord = entitlements.usage as Record<string, number | undefined>;
+  const current = usageRecord[metric] ?? 0;
   return resolveMetricLimitCheck(
     metric,
     current,
@@ -287,7 +289,7 @@ export async function assertCan(workspaceId: string, feature: EntitlementFeature
   const allowed = await can(workspaceId, feature);
   if (!allowed) {
     throw new PlanLimitError(
-      `Feature '${feature}' is not included in your current workspace plan. Please upgrade to access.`,
+      `Feature '${feature}' is not included in your current workspace plan. Please upgrade your subscription to access this feature.`,
       'FEATURE_NOT_IN_PLAN',
       { statusCode: 403 }
     );

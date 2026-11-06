@@ -218,6 +218,61 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
   // 5. Production DB Execution & Upsert
   try {
+    const hasAutoNumberingUpdates =
+      updates.invoicePrefix !== undefined ||
+      updates.invoiceNumberFormat !== undefined ||
+      updates.invoiceSeparator !== undefined ||
+      updates.invoiceIncludeYear !== undefined ||
+      updates.invoicePadding !== undefined ||
+      updates.invoiceNextSequence !== undefined;
+
+    if (hasAutoNumberingUpdates || (updates.currency && updates.currency !== 'INR')) {
+      const { assertCan } = await import('@/backend/billing');
+      const { PlanLimitError } = await import('@/shared/billing');
+      let wsId = caller.workspaceId;
+      if (!wsId && caller.userId && supabaseAdmin) {
+        const { data: ws } = await supabaseAdmin
+          .from('workspaces')
+          .select('id')
+          .eq('owner_id', caller.userId)
+          .limit(1)
+          .maybeSingle();
+        if (ws?.id) wsId = ws.id;
+      }
+
+      if (hasAutoNumberingUpdates) {
+        try {
+          await assertCan(wsId || caller.userId || '', 'autoNumbering');
+        } catch (err: any) {
+          if (err instanceof PlanLimitError) {
+            return createApiErrorResponse({
+              message: 'Custom invoice auto-numbering is available on Standard and Studio plans.',
+              code: err.code,
+              status: err.statusCode,
+              requestId,
+            });
+          }
+          throw err;
+        }
+      }
+
+      if (updates.currency && updates.currency !== 'INR') {
+        try {
+          await assertCan(wsId || caller.userId || '', 'multiCurrency');
+        } catch (err: any) {
+          if (err instanceof PlanLimitError) {
+            return createApiErrorResponse({
+              message: 'Multi-currency configuration is available on Standard and Studio plans. Starter is limited to INR.',
+              code: err.code,
+              status: err.statusCode,
+              requestId,
+            });
+          }
+          throw err;
+        }
+      }
+    }
+
     const dbPayload: Record<string, any> = {
       id: caller.userId,
       updated_at: new Date().toISOString(),

@@ -4,7 +4,8 @@ import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/utilities/logger';
 import { parseJsonBody, UpdateReminderSettingsSchema } from '@/shared/validation';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
-import { getWorkspaceEntitlements } from '@/backend/billing';
+import { getWorkspaceEntitlements, assertCan } from '@/backend/billing';
+import { PlanLimitError } from '@/shared/billing';
 
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -185,6 +186,41 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         status: 403,
         requestId,
       });
+    }
+
+    // Entitlement checks:
+    // 1. Automated invoice payment reminders require Standard or Studio
+    if (updates.enabled === true) {
+      try {
+        await assertCan(workspace.id, 'automatedReminders');
+      } catch (err: any) {
+        if (err instanceof PlanLimitError) {
+          return createApiErrorResponse({
+            message: 'Automated payment reminders require a Standard or Studio subscription.',
+            code: err.code,
+            status: err.statusCode,
+            requestId,
+          });
+        }
+        throw err;
+      }
+    }
+
+    // 2. Multi-stage dunning (multiple overdue reminder intervals) requires Studio
+    if (updates.daysAfterDue && Array.isArray(updates.daysAfterDue) && updates.daysAfterDue.length > 1) {
+      try {
+        await assertCan(workspace.id, 'multiStageDunning');
+      } catch (err: any) {
+        if (err instanceof PlanLimitError) {
+          return createApiErrorResponse({
+            message: 'Automated multi-stage dunning sequences are exclusively available on the Studio Agency plan.',
+            code: err.code,
+            status: err.statusCode,
+            requestId,
+          });
+        }
+        throw err;
+      }
     }
 
     const nowIso = new Date().toISOString();

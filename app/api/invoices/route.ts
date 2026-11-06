@@ -156,6 +156,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       throw limitErr;
     }
 
+    // 6b. Feature Enforcement: Multi-Currency Invoicing
+    // Starter tier is restricted to base INR currency; Standard and Studio support multi-currency
+    const reqCurrency = (payload.currency || 'INR').toUpperCase().trim();
+    if (reqCurrency !== 'INR') {
+      try {
+        const { assertCan } = await import('@/backend/billing');
+        await assertCan(targetWorkspaceId, 'multiCurrency');
+      } catch (curErr: any) {
+        if (curErr instanceof PlanLimitError) {
+          return createApiErrorResponse({
+            message: `Multi-currency invoicing (${reqCurrency}) requires a Standard or Studio subscription. Free Starter is limited to INR.`,
+            code: curErr.code,
+            status: curErr.statusCode,
+            requestId,
+          });
+        }
+        throw curErr;
+      }
+    }
+
     // 7. Calculate Financial Totals Server-Side (Zero Client Trust)
     const calc = calculateInvoiceTotals({
       items: payload.items,
