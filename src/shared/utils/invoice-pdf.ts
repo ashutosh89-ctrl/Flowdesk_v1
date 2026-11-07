@@ -177,17 +177,20 @@ function resolveBranding(branding?: InvoiceBranding | UserProfile | null) {
     (branding as any)?.taxNumber ||
     '';
 
-  const logoUrl =
-    (branding as InvoiceBranding)?.logoUrl ||
-    (branding as UserProfile)?.logoUrl ||
-    fallbackProfile?.logoUrl ||
-    '';
+  const isCustomBranded = (branding as any)?.isCustomBranded !== false;
+  const logoUrl = !isCustomBranded
+    ? '/branding/flowdesk-symbol.png'
+    : (branding as InvoiceBranding)?.logoUrl ||
+      (branding as UserProfile)?.logoUrl ||
+      fallbackProfile?.logoUrl ||
+      '';
 
-  const signatureUrl =
-    (branding as InvoiceBranding)?.signatureUrl ||
-    (branding as UserProfile)?.signatureUrl ||
-    fallbackProfile?.signatureUrl ||
-    '';
+  const signatureUrl = !isCustomBranded
+    ? ''
+    : (branding as InvoiceBranding)?.signatureUrl ||
+      (branding as UserProfile)?.signatureUrl ||
+      fallbackProfile?.signatureUrl ||
+      '';
 
   const bankDetails = (branding as any)?.bankDetails || {};
   const bankName = bankDetails.bankName || (branding as any)?.bankName || '';

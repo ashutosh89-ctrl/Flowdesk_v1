@@ -143,6 +143,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .update(updatePayload)
       .eq('id', subscription.id);
 
+    const { invalidateWorkspaceEntitlements } = await import('@/backend/billing/entitlements');
+    invalidateWorkspaceEntitlements(workspace.id);
+
+    if (!payload.atPeriodEnd) {
+      const { NotificationHelper } = await import('@/backend/utilities/notification-helper');
+      await NotificationHelper.billingBrandingTemporarilyUnavailable({
+        workspaceId: workspace.id,
+        userId: caller.userId || undefined,
+      });
+    }
+
     logger.security('BILLING_SUBSCRIPTION_CANCELLED', {
       status: 'SUCCESS',
       workspaceId: workspace.id,

@@ -6,6 +6,7 @@ import { razorpaySubscriptionProvider } from '@/backend/billing/razorpay-subscri
 import { DEFAULT_GRACE_PERIOD_DAYS, BILLING_PLANS } from '@/shared/billing';
 import { EmailService } from '@/backend/email/email-service';
 import { NotificationHelper } from '@/backend/utilities/notification-helper';
+import { invalidateWorkspaceEntitlements } from '@/backend/billing/entitlements';
 import { getAppBaseUrl } from '@/shared/utils/url';
 
 // Fast in-memory deduplication cache for demo/test mode
@@ -158,6 +159,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           .update(updateFields)
           .eq('id', storedSub.id);
 
+        // Immediate entitlement cache invalidation for the workspace
+        if (storedSub.workspace_id) {
+          invalidateWorkspaceEntitlements(storedSub.workspace_id);
+        }
+
         logger.security('BILLING_SUBSCRIPTION_STATE_TRANSITION', {
           status: 'SUCCESS',
           workspaceId,
@@ -185,6 +191,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             const baseUrl = getAppBaseUrl();
 
             if (eventType === 'subscription.activated' || eventType === 'subscription.charged') {
+              // Mark any previous branding downgrade notification as read / resolved
+              try {
+                await supabaseAdmin
+                  .from('notifications')
+                  .update({ read: true })
+                  .eq('workspace_id', storedSub.workspace_id)
+                  .eq('category', 'branding_downgrade');
+              } catch {}
+
               await NotificationHelper.billingSubscriptionActivated(planDisplayName, {
                 workspaceId: storedSub.workspace_id,
                 userId: ws.owner_id,
@@ -246,6 +261,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                 workspaceId: storedSub.workspace_id,
                 userId: ws.owner_id,
               });
+
+              // If subscription cancels immediately without current_end period remaining, dispatch branding notice
+              const isEffectiveNow = !subscriptionEntity?.current_end || (subscriptionEntity.current_end * 1000) <= Date.now();
+              if (isEffectiveNow) {
+                await NotificationHelper.billingBrandingTemporarilyUnavailable({
+                  workspaceId: storedSub.workspace_id,
+                  userId: ws.owner_id,
+                });
+              }
+
               if (ownerEmail) {
                 await EmailService.sendBillingSubscriptionCanceled(
                   ownerEmail,

@@ -42,7 +42,14 @@ export const FreelancerClientManagementService = {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to create client.');
+        const err: any = new Error(data?.error?.message || data?.message || data?.error || 'Failed to create client.');
+        err.code = data?.error?.code || data?.code;
+        err.metric = data?.error?.metric || data?.metric || 'activeClients';
+        err.currentUsage = data?.error?.currentUsage ?? data?.currentUsage;
+        err.maxAllowed = data?.error?.maxAllowed ?? data?.maxAllowed;
+        err.currentPlan = data?.error?.currentPlan || data?.currentPlan;
+        err.recommendedPlan = data?.error?.recommendedPlan || data?.recommendedPlan;
+        throw err;
       }
       return data.client;
     }

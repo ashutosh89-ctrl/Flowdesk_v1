@@ -219,12 +219,22 @@ export function createApiErrorResponse({
   status = 500,
   internalError,
   requestId,
+  metric,
+  currentPlan,
+  currentUsage,
+  maxAllowed,
+  recommendedPlan,
 }: {
   message?: string;
   code?: string;
   status?: number;
   internalError?: unknown;
   requestId?: string;
+  metric?: string;
+  currentPlan?: string;
+  currentUsage?: number;
+  maxAllowed?: number;
+  recommendedPlan?: string | null;
 }): NextResponse {
   const reqId = requestId || crypto.randomUUID();
 
@@ -234,6 +244,10 @@ export function createApiErrorResponse({
       requestId: reqId,
       code,
       status,
+      metric,
+      currentPlan,
+      currentUsage,
+      maxAllowed,
     });
   }
 
@@ -241,15 +255,20 @@ export function createApiErrorResponse({
   const isProd = process.env.NODE_ENV === 'production';
   const clientMessage = isProd && status >= 500 ? 'An unexpected error occurred. Please try again later.' : message;
 
-  const response = NextResponse.json(
-    {
-      success: false,
-      error: clientMessage,
-      code,
-      requestId: reqId,
-    },
-    { status }
-  );
+  const payload: Record<string, any> = {
+    success: false,
+    error: clientMessage,
+    code,
+    requestId: reqId,
+  };
+
+  if (metric !== undefined) payload.metric = metric;
+  if (currentPlan !== undefined) payload.currentPlan = currentPlan;
+  if (currentUsage !== undefined) payload.currentUsage = currentUsage;
+  if (maxAllowed !== undefined) payload.maxAllowed = maxAllowed;
+  if (recommendedPlan !== undefined) payload.recommendedPlan = recommendedPlan;
+
+  const response = NextResponse.json(payload, { status });
 
   response.headers.set('X-Request-Id', reqId);
   response.headers.set('Cache-Control', 'no-store');

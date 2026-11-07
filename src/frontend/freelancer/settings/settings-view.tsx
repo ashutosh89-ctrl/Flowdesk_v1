@@ -44,6 +44,7 @@ import {
   QrCode,
   ExternalLink,
   Download,
+  Sparkles,
 } from 'lucide-react';
 import { useToast } from '@/frontend/shared/ui/toast';
 import Link from 'next/link';
@@ -59,6 +60,8 @@ import { switchCountryPrefix } from '@/shared/utils/countries';
 import { BillingPlanPanel } from './billing-plan-panel';
 import { AutomationsPanel } from './automations-panel';
 import { PortalSettingsPanel } from './portal-settings-panel';
+import { UpgradeModal } from '@/frontend/shared/billing';
+import type { WorkspaceEntitlements } from '@/backend/billing/entitlements';
 
 type SettingsTab = 'profile' | 'portal' | 'billing' | 'automations' | 'notifications' | 'security';
 
@@ -111,7 +114,26 @@ export const SettingsView: React.FC = () => {
     loading: boolean;
   }>({ status: 'checking', loading: true });
 
+  // Subscription plan & entitlements state
+  const [entitlements, setEntitlements] = useState<WorkspaceEntitlements | null>(null);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+
   const { showToast } = useToast();
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/billing/status', { headers: { 'Cache-Control': 'no-store' } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (mounted && data?.entitlements) {
+          setEntitlements(data.entitlements);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -276,6 +298,12 @@ export const SettingsView: React.FC = () => {
   };
 
   const uploadBrandingAsset = async (file: File, type: 'logo' | 'signature' | 'qr'): Promise<string> => {
+    const hasCustomBranding = Boolean(entitlements?.limits?.customBranding);
+    if ((type === 'logo' || type === 'signature') && !hasCustomBranding) {
+      setIsUpgradeModalOpen(true);
+      throw new Error('Custom branding and signatures require a Standard or Studio subscription. Please upgrade to unlock.');
+    }
+
     let wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId && user?.id) {
       const { getCurrentWorkspace } = await import('@/backend/utilities/workspace');
@@ -283,7 +311,7 @@ export const SettingsView: React.FC = () => {
       wsId = ws?.id || null;
     }
 
-    // 1. Attempt upload via server API route (bypasses RLS with service role if available)
+    // 1. Attempt upload via server API route (authoritative plan entitlement enforcement)
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -301,12 +329,25 @@ export const SettingsView: React.FC = () => {
         if (result?.url) {
           return result.url;
         }
+      } else {
+        const errJson = await response.json().catch(() => ({}));
+        if (response.status === 403 || errJson?.code === 'FEATURE_NOT_IN_PLAN') {
+          setIsUpgradeModalOpen(true);
+        }
+        throw new Error(errJson?.error || errJson?.message || `Upload rejected (${response.status})`);
       }
     } catch (apiErr) {
+      if (apiErr instanceof Error && (apiErr.message.includes('Standard or Studio') || apiErr.message.includes('rejected'))) {
+        throw apiErr;
+      }
       console.warn(`[SettingsView] Server upload route attempt failed, falling back to client storage:`, apiErr);
     }
 
     // 2. Direct StorageHelper upload fallback (uses client session)
+    if ((type === 'logo' || type === 'signature') && !hasCustomBranding) {
+      throw new Error('Custom branding and signatures require a Standard or Studio subscription.');
+    }
+
     const effectiveWsId = wsId || user?.id;
     if (!effectiveWsId) {
       throw new Error('Could not identify active workspace or account. Please try reloading the page.');
@@ -842,7 +883,7 @@ export const SettingsView: React.FC = () => {
                         <ImageIcon className="w-4 h-4 text-emerald-400" />
                         <span className="text-xs font-bold text-white uppercase tracking-wider">Studio Logo</span>
                       </div>
-                      {profile.logoUrl && (
+                      {Boolean(entitlements?.limits?.customBranding) && profile.logoUrl && (
                         <button
                           type="button"
                           onClick={() => handleProfileChange('logoUrl', '')}
@@ -857,41 +898,78 @@ export const SettingsView: React.FC = () => {
                       Displayed on the top header of invoice statements and generated PDFs (PNG or JPG).
                     </p>
 
-                    {profile.logoUrl ? (
-                      <div className="h-24 w-full bg-zinc-950/80 rounded-lg border border-white/10 flex items-center justify-center p-2 overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={profile.logoUrl}
-                          alt="Studio Logo"
-                          className="max-h-full max-w-full object-contain"
-                        />
-                      </div>
+                    {!entitlements?.limits?.customBranding ? (
+                      <>
+                        {profile.logoUrl && (
+                          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200">
+                            <div className="font-semibold flex items-center gap-1.5 mb-1 text-amber-300">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                              Custom Branding Temporarily Inactive
+                            </div>
+                            Your custom logo is safely preserved. Upgrade to Standard or Studio to reactivate your custom branding across your portal and invoices.
+                          </div>
+                        )}
+                        <div className="h-24 w-full bg-zinc-950/80 rounded-lg border border-white/10 flex flex-col items-center justify-center p-2 overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="/branding/flowdesk-symbol.png"
+                            alt="FlowDesk Official Branding"
+                            className="max-h-12 max-w-full object-contain mb-1"
+                          />
+                          <span className="text-[10px] text-zinc-400 font-mono">
+                            {profile.logoUrl ? 'FlowDesk Official Branding (Active on Starter)' : 'FlowDesk Official Branding (Default)'}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant={profile.logoUrl ? 'primary' : 'secondary'}
+                          size="sm"
+                          onClick={() => setIsUpgradeModalOpen(true)}
+                          className="w-full text-xs"
+                          leftIcon={<Sparkles className="w-3.5 h-3.5 text-emerald-400" />}
+                        >
+                          {profile.logoUrl ? 'Upgrade to Reactivate Logo' : 'Upgrade to Add Custom Logo'}
+                        </Button>
+                      </>
                     ) : (
-                      <div className="h-24 w-full bg-zinc-950/40 rounded-lg border border-dashed border-white/10 flex flex-col items-center justify-center text-zinc-500 text-xs">
-                        <ImageIcon className="w-6 h-6 mb-1 opacity-50" />
-                        <span>No logo uploaded</span>
-                      </div>
+                      <>
+                        {profile.logoUrl ? (
+                          <div className="h-24 w-full bg-zinc-950/80 rounded-lg border border-white/10 flex items-center justify-center p-2 overflow-hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={profile.logoUrl}
+                              alt="Studio Logo"
+                              className="max-h-full max-w-full object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-24 w-full bg-zinc-950/40 rounded-lg border border-dashed border-white/10 flex flex-col items-center justify-center text-zinc-500 text-xs">
+                            <ImageIcon className="w-6 h-6 mb-1 opacity-50" />
+                            <span>No logo uploaded</span>
+                          </div>
+                        )}
+
+                        <input
+                          ref={logoInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                        />
+
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          isLoading={isUploadingLogo}
+                          onClick={() => logoInputRef.current?.click()}
+                          className="w-full text-xs"
+                          leftIcon={<Upload className="w-3.5 h-3.5 text-emerald-400" />}
+                        >
+                          {profile.logoUrl ? 'Replace Studio Logo' : 'Upload Studio Logo'}
+                        </Button>
+                      </>
                     )}
-
-                    <input
-                      ref={logoInputRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={handleLogoUpload}
-                      className="hidden"
-                    />
-
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      isLoading={isUploadingLogo}
-                      onClick={() => logoInputRef.current?.click()}
-                      className="w-full text-xs"
-                      leftIcon={<Upload className="w-3.5 h-3.5 text-emerald-400" />}
-                    >
-                      {profile.logoUrl ? 'Replace Studio Logo' : 'Upload Studio Logo'}
-                    </Button>
                   </div>
 
                   {/* Authorized Signature Upload */}
@@ -901,7 +979,7 @@ export const SettingsView: React.FC = () => {
                         <PenTool className="w-4 h-4 text-cyan-400" />
                         <span className="text-xs font-bold text-white uppercase tracking-wider">Authorized Signature</span>
                       </div>
-                      {profile.signatureUrl && (
+                      {Boolean(entitlements?.limits?.customBranding) && profile.signatureUrl && (
                         <button
                           type="button"
                           onClick={() => handleProfileChange('signatureUrl', '')}
@@ -916,41 +994,71 @@ export const SettingsView: React.FC = () => {
                       Rendered on the footer of invoice PDFs above the Authorized Signature line.
                     </p>
 
-                    {profile.signatureUrl ? (
-                      <div className="h-24 w-full bg-zinc-950/80 rounded-lg border border-white/10 flex items-center justify-center p-2 overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={profile.signatureUrl}
-                          alt="Authorized Signature"
-                          className="max-h-full max-w-full object-contain filter invert opacity-90"
-                        />
-                      </div>
+                    {!entitlements?.limits?.customBranding ? (
+                      <>
+                        {profile.signatureUrl && (
+                          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200">
+                            <div className="font-semibold flex items-center gap-1.5 mb-1 text-amber-300">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                              Custom Signature Inactive
+                            </div>
+                            Your authorized signature is safely preserved. Upgrade to Standard or Studio to reactivate signature on your invoices.
+                          </div>
+                        )}
+                        <div className="h-24 w-full bg-zinc-950/40 rounded-lg border border-dashed border-white/10 flex flex-col items-center justify-center text-zinc-500 text-xs">
+                          <PenTool className="w-6 h-6 mb-1 opacity-50" />
+                          <span>Custom signatures require Standard or Studio plan</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant={profile.signatureUrl ? 'primary' : 'secondary'}
+                          size="sm"
+                          onClick={() => setIsUpgradeModalOpen(true)}
+                          className="w-full text-xs"
+                          leftIcon={<Sparkles className="w-3.5 h-3.5 text-[#43D6B0]" />}
+                        >
+                          {profile.signatureUrl ? 'Upgrade to Reactivate Signature' : 'Upgrade to Unlock Signature'}
+                        </Button>
+                      </>
                     ) : (
-                      <div className="h-24 w-full bg-zinc-950/40 rounded-lg border border-dashed border-white/10 flex flex-col items-center justify-center text-zinc-500 text-xs">
-                        <PenTool className="w-6 h-6 mb-1 opacity-50" />
-                        <span>No signature uploaded</span>
-                      </div>
+                      <>
+                        {profile.signatureUrl ? (
+                          <div className="h-24 w-full bg-zinc-950/80 rounded-lg border border-white/10 flex items-center justify-center p-2 overflow-hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={profile.signatureUrl}
+                              alt="Authorized Signature"
+                              className="max-h-full max-w-full object-contain filter invert opacity-90"
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-24 w-full bg-zinc-950/40 rounded-lg border border-dashed border-white/10 flex flex-col items-center justify-center text-zinc-500 text-xs">
+                            <PenTool className="w-6 h-6 mb-1 opacity-50" />
+                            <span>No signature uploaded</span>
+                          </div>
+                        )}
+
+                        <input
+                          ref={signatureInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          onChange={handleSignatureUpload}
+                          className="hidden"
+                        />
+
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          isLoading={isUploadingSignature}
+                          onClick={() => signatureInputRef.current?.click()}
+                          className="w-full text-xs"
+                          leftIcon={<Upload className="w-3.5 h-3.5 text-[#43D6B0]" />}
+                        >
+                          {profile.signatureUrl ? 'Replace Signature' : 'Upload Signature'}
+                        </Button>
+                      </>
                     )}
-
-                    <input
-                      ref={signatureInputRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={handleSignatureUpload}
-                      className="hidden"
-                    />
-
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      isLoading={isUploadingSignature}
-                      onClick={() => signatureInputRef.current?.click()}
-                      className="w-full text-xs"
-                      leftIcon={<Upload className="w-3.5 h-3.5 text-[#43D6B0]" />}
-                    >
-                      {profile.signatureUrl ? 'Replace Signature' : 'Upload Signature'}
-                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -2199,6 +2307,12 @@ export const SettingsView: React.FC = () => {
           </Button>
         </div>
       )}
+
+      {/* Upgrade Modal triggered from branding limits or billing actions */}
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+      />
     </div>
   );
 };

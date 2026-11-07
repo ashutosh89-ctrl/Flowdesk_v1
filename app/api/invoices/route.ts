@@ -113,18 +113,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const effectiveWorkspaceId: string = workspaceId!;
 
-    // 6. Verify Client Affiliation
+    // 6. Verify Client Affiliation (Strict Workspace Ownership - IDOR Protection)
     let { data: client } = await supabaseAdmin
       .from('clients')
       .select('id, name, email, workspace_id')
       .eq('id', payload.clientId)
+      .eq('workspace_id', effectiveWorkspaceId)
       .maybeSingle();
 
     if (!client) {
-      // Also check if clientId was passed as portal_token or email
+      // Also check if clientId was passed as portal_token or email within caller's workspace
       const { data: altClient } = await supabaseAdmin
         .from('clients')
         .select('id, name, email, workspace_id')
+        .eq('workspace_id', effectiveWorkspaceId)
         .or(`portal_token.eq.${payload.clientId},email.eq.${payload.clientId}`)
         .maybeSingle();
       client = altClient;
@@ -139,7 +141,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    const targetWorkspaceId = client.workspace_id || effectiveWorkspaceId;
+    const targetWorkspaceId = effectiveWorkspaceId;
 
     // 6a. Quota Enforcement: Verify within plan limit for invoices per month (cached)
     try {
@@ -151,6 +153,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           code: limitErr.code,
           status: limitErr.statusCode,
           requestId,
+          metric: limitErr.metric || 'invoicesPerMonth',
+          currentPlan: limitErr.currentPlan,
+          currentUsage: limitErr.current,
+          maxAllowed: limitErr.limit,
+          recommendedPlan: limitErr.recommendedPlan,
         });
       }
       throw limitErr;
@@ -418,6 +425,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         requestId,
       });
     }
+
+    // Invalidate workspace entitlement cache so invoice counts are fresh immediately
+    const { invalidateWorkspaceEntitlements } = await import('@/backend/billing/entitlements');
+    invalidateWorkspaceEntitlements(targetWorkspaceId);
 
     // 10. Insert Line Items
     if (payload.items.length > 0) {

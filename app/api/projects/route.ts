@@ -221,9 +221,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         });
         return createApiErrorResponse({
           message: err.message,
-          code: 'PLAN_LIMIT_EXCEEDED',
-          status: 403,
+          code: err.code || 'PLAN_LIMIT_REACHED',
+          status: err.statusCode || 403,
           requestId,
+          metric: err.metric || 'activeProjects',
+          currentPlan: err.currentPlan,
+          currentUsage: err.current,
+          maxAllowed: err.limit,
+          recommendedPlan: err.recommendedPlan,
         });
       }
       throw err;
@@ -282,6 +287,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         requestId,
       });
     }
+
+    // Invalidate entitlement cache immediately so next count is fresh
+    const { invalidateWorkspaceEntitlements } = await import('@/backend/billing/entitlements');
+    invalidateWorkspaceEntitlements(workspaceId);
 
     // Log activity
     try {

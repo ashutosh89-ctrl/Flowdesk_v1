@@ -126,7 +126,27 @@ export async function PATCH(
 
     if (updates.issueDate) dbPayload.issue_date = updates.issueDate;
     if (updates.dueDate) dbPayload.due_date = updates.dueDate;
-    if (updates.currency) dbPayload.currency = updates.currency;
+    if (updates.currency) {
+      const newCurr = updates.currency.toUpperCase().trim();
+      if (newCurr !== 'INR') {
+        const { assertCan } = await import('@/backend/billing');
+        const { PlanLimitError } = await import('@/shared/billing');
+        try {
+          await assertCan(existing.workspace_id, 'multiCurrency');
+        } catch (curErr: any) {
+          if (curErr instanceof PlanLimitError) {
+            return createApiErrorResponse({
+              message: `Multi-currency invoicing (${newCurr}) requires a Standard or Studio subscription. Free Starter is limited to INR.`,
+              code: curErr.code,
+              status: curErr.statusCode,
+              requestId,
+            });
+          }
+          throw curErr;
+        }
+      }
+      dbPayload.currency = newCurr;
+    }
     if (updates.notes !== undefined) dbPayload.notes = updates.notes;
     if (updates.paymentInstructions !== undefined) dbPayload.payment_instructions = updates.paymentInstructions;
     if (updates.internalNotes !== undefined) dbPayload.internal_notes = updates.internalNotes;
@@ -328,6 +348,9 @@ export async function DELETE(
         requestId,
       });
     }
+
+    const { invalidateWorkspaceEntitlements } = await import('@/backend/billing/entitlements');
+    invalidateWorkspaceEntitlements(existing.workspace_id);
 
     try {
       await supabaseAdmin.from('activities').insert({

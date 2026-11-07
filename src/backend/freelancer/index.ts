@@ -284,7 +284,14 @@ export const FreelancerProjectService = {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data?.error?.message || data?.message || 'Failed to create project');
+        const err: any = new Error(data?.error?.message || data?.message || data?.error || 'Failed to create project');
+        err.code = data?.error?.code || data?.code;
+        err.metric = data?.error?.metric || data?.metric || 'activeProjects';
+        err.currentUsage = data?.error?.currentUsage ?? data?.currentUsage;
+        err.maxAllowed = data?.error?.maxAllowed ?? data?.maxAllowed;
+        err.currentPlan = data?.error?.currentPlan || data?.currentPlan;
+        err.recommendedPlan = data?.error?.recommendedPlan || data?.recommendedPlan;
+        throw err;
       }
       return data.project;
     }
@@ -1908,7 +1915,14 @@ export const FreelancerInvoiceService = {
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to create invoice.');
+        const err: any = new Error(data?.error?.message || data?.message || data?.error || 'Failed to create invoice.');
+        err.code = data?.error?.code || data?.code;
+        err.metric = data?.error?.metric || data?.metric || 'invoicesPerMonth';
+        err.currentUsage = data?.error?.currentUsage ?? data?.currentUsage;
+        err.maxAllowed = data?.error?.maxAllowed ?? data?.maxAllowed;
+        err.currentPlan = data?.error?.currentPlan || data?.currentPlan;
+        err.recommendedPlan = data?.error?.recommendedPlan || data?.recommendedPlan;
+        throw err;
       }
       if (data.invoice) {
         return mapApiInvoiceData(data.invoice, invoice);
@@ -1926,6 +1940,13 @@ export const FreelancerInvoiceService = {
         return created;
       }
       throw new Error('No active workspace. Please complete onboarding before creating invoices.');
+    }
+
+    // Authoritative plan entitlement checks: monthly invoice quota and multi-currency
+    await assertWithinLimit(wsId, 'invoicesPerMonth', 1);
+    if (invoice.currency && invoice.currency !== 'INR') {
+      const { assertCan } = await import('@/backend/billing');
+      await assertCan(wsId, 'multiCurrency');
     }
 
     // Fetch existing invoice numbers in this workspace and settings for collision-free sequential generation

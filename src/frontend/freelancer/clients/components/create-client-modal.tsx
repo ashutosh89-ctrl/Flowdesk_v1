@@ -10,6 +10,8 @@ import { useToast } from '@/frontend/shared/ui/toast';
 import { useAuth } from '@/frontend/auth/auth-context';
 import { Client } from '@/shared/types';
 import { Building2, User, Mail, DollarSign, Tag, FileText } from 'lucide-react';
+import { PlanLimitModal } from '@/frontend/shared/billing';
+import { PlanKey } from '@/shared/billing';
 
 interface CreateClientModalProps {
   isOpen: boolean;
@@ -39,6 +41,14 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
   const [sendInviteNow, setSendInviteNow] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limitModalData, setLimitModalData] = useState<{
+    isOpen: boolean;
+    metric: 'activeClients';
+    currentPlan: PlanKey;
+    currentUsage: number;
+    maxAllowed: number;
+    recommendedPlan?: PlanKey | null;
+  } | null>(null);
 
   const resetForm = () => {
     setName('');
@@ -112,6 +122,23 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
       }
     } catch (err: any) {
       console.error('Create client error:', err);
+      const isLimitError =
+        err?.code === 'PLAN_LIMIT_REACHED' ||
+        err?.code === 'PLAN_LIMIT_EXCEEDED' ||
+        err?.metric === 'activeClients' ||
+        err?.name === 'PlanLimitError';
+
+      if (isLimitError) {
+        setLimitModalData({
+          isOpen: true,
+          metric: 'activeClients',
+          currentPlan: err?.currentPlan || 'starter',
+          currentUsage: Number(err?.current ?? err?.currentUsage ?? 2),
+          maxAllowed: Number(err?.limit ?? err?.maxAllowed ?? 2),
+          recommendedPlan: err?.recommendedPlan || 'standard',
+        });
+        return;
+      }
       setError(err?.message || 'Failed to create client workspace. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -230,6 +257,19 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
           </Button>
         </div>
       </form>
+
+      {/* Plan Limit Modal for Client Quota Exceeded */}
+      {limitModalData && (
+        <PlanLimitModal
+          isOpen={limitModalData.isOpen}
+          onClose={() => setLimitModalData(null)}
+          metric={limitModalData.metric}
+          currentPlan={limitModalData.currentPlan}
+          currentUsage={limitModalData.currentUsage}
+          maxAllowed={limitModalData.maxAllowed}
+          recommendedPlan={limitModalData.recommendedPlan}
+        />
+      )}
     </Modal>
   );
 };

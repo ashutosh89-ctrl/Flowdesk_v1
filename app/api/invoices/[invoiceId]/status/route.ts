@@ -215,6 +215,10 @@ export async function POST(
       });
     }
 
+    // Invalidate entitlement cache so monthly active invoice counts update immediately
+    const { invalidateWorkspaceEntitlements } = await import('@/backend/billing/entitlements');
+    invalidateWorkspaceEntitlements(invoice.workspace_id);
+
     // 9. Server-Side Side Effects (Non-blocking)
     // A. Activity Feed Log
     try {

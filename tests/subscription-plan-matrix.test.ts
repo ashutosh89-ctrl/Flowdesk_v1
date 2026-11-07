@@ -318,3 +318,4 @@ test('FLOWDESK SUBSCRIPTION AUDIT: CROSS-PLAN UPGRADE & DOWNGRADE LIFECYCLE', as
     assert.equal(canTransitionSubscription('active', 'expired'), false); // Cannot jump directly from active to expired
   });
 });
+

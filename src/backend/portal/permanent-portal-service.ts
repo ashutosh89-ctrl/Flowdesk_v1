@@ -145,6 +145,17 @@ export const PermanentPortalService = {
 
       const resolvedMode = (wsData.portal_mode === 'private' || workspacePortalModeFallback.get(wsData.id) === 'private') ? 'private' : 'public';
 
+      let effectiveLogoUrl = '/branding/flowdesk-symbol.png';
+      try {
+        const { can } = await import('@/backend/billing');
+        const hasCustomBranding = await can(wsData.id, 'customBranding');
+        if (hasCustomBranding) {
+          effectiveLogoUrl = wsData.logo_url || profData?.logo_url || '/branding/flowdesk-symbol.png';
+        }
+      } catch {
+        effectiveLogoUrl = wsData.logo_url || profData?.logo_url || '/branding/flowdesk-symbol.png';
+      }
+
       return {
         valid: true,
         slug: cleanSlug,
@@ -154,7 +165,7 @@ export const PermanentPortalService = {
         studioName: wsData.name || profData?.business_name || 'Studio Workspace',
         profession: profData?.profession || 'Independent Professional',
         avatarUrl: profData?.avatar_url || '',
-        logoUrl: wsData.logo_url || profData?.logo_url || '',
+        logoUrl: effectiveLogoUrl,
         currency: wsData.currency || 'INR',
       };
     } catch (err: any) {
@@ -915,7 +926,21 @@ export const PermanentPortalService = {
         payload.is_accepting_connections = settings.isAcceptingConnections;
       }
       if (settings.portalSlug !== undefined) {
-        payload.portal_slug = settings.portalSlug.trim().toLowerCase();
+        const cleanSlug = settings.portalSlug.trim().toLowerCase();
+        // Check if slug is already claimed by another workspace
+        if (cleanSlug) {
+          const { data: existingSlug } = await db
+            .from('workspaces')
+            .select('id')
+            .eq('portal_slug', cleanSlug)
+            .neq('id', targetWsId)
+            .maybeSingle();
+
+          if (existingSlug) {
+            return { success: false, error: 'This portal slug is already claimed by another workspace.' };
+          }
+        }
+        payload.portal_slug = cleanSlug;
       }
       if (settings.portalMode !== undefined) {
         payload.portal_mode = settings.portalMode;

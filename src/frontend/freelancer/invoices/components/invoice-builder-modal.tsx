@@ -8,6 +8,8 @@ import { X, Plus, Trash2, Copy, FileText, Check, DollarSign, AlertCircle, Buildi
 import { calculateInvoiceTotals, generateNextInvoiceNumber } from '@/shared/utils/invoice-calculations';
 import { isApprovedRazorpayUrl } from '@/shared/utils/safe-url';
 import { QRCode } from '@/frontend/shared/ui/qr-code';
+import { PlanLimitModal } from '@/frontend/shared/billing';
+import { PlanKey } from '@/shared/billing';
 
 interface InvoiceBuilderModalProps {
   isOpen: boolean;
@@ -71,6 +73,14 @@ export function InvoiceBuilderModal({
 
   // Loading state
   const [savingAction, setSavingAction] = useState<'draft' | 'issue' | null>(null);
+  const [limitModalData, setLimitModalData] = useState<{
+    isOpen: boolean;
+    metric: 'invoicesPerMonth';
+    currentPlan: PlanKey;
+    currentUsage: number;
+    maxAllowed: number;
+    recommendedPlan?: PlanKey | null;
+  } | null>(null);
 
   // Dynamic sync when settings are updated elsewhere in the app
   useEffect(() => {
@@ -409,7 +419,24 @@ export function InvoiceBuilderModal({
         await onSave(payload, savedInvoice);
       }
       onClose();
-    } catch (err) {
+    } catch (err: any) {
+      const isLimitError =
+        err?.code === 'PLAN_LIMIT_REACHED' ||
+        err?.code === 'PLAN_LIMIT_EXCEEDED' ||
+        err?.metric === 'invoicesPerMonth' ||
+        err?.name === 'PlanLimitError';
+
+      if (isLimitError) {
+        setLimitModalData({
+          isOpen: true,
+          metric: 'invoicesPerMonth',
+          currentPlan: err?.currentPlan || 'starter',
+          currentUsage: Number(err?.current ?? err?.currentUsage ?? 5),
+          maxAllowed: Number(err?.limit ?? err?.maxAllowed ?? 5),
+          recommendedPlan: err?.recommendedPlan || 'standard',
+        });
+        return;
+      }
       setValidationErrors([err instanceof Error ? err.message : 'Failed to save invoice.']);
     } finally {
       setSavingAction(null);
@@ -952,6 +979,19 @@ export function InvoiceBuilderModal({
           </div>
         </div>
       </div>
+
+      {/* Plan Limit Modal for Monthly Invoice Quota Exceeded */}
+      {limitModalData && (
+        <PlanLimitModal
+          isOpen={limitModalData.isOpen}
+          onClose={() => setLimitModalData(null)}
+          metric={limitModalData.metric}
+          currentPlan={limitModalData.currentPlan}
+          currentUsage={limitModalData.currentUsage}
+          maxAllowed={limitModalData.maxAllowed}
+          recommendedPlan={limitModalData.recommendedPlan}
+        />
+      )}
     </div>
   );
 }

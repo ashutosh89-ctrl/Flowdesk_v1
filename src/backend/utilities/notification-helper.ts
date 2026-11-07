@@ -292,4 +292,40 @@ export const NotificationHelper = {
       userId: meta?.userId,
     });
   },
+
+  /**
+   * Dispatched when a workspace subscription changes/downgrades to Starter and custom branding is inactivated.
+   * Deduplicated so it only triggers once per downgrade event.
+   */
+  billingBrandingTemporarilyUnavailable: async (meta: { workspaceId: string; userId?: string | null }) => {
+    const client = supabaseAdmin || supabase;
+    if (client) {
+      try {
+        const { data: existing } = await client
+          .from('notifications')
+          .select('id')
+          .eq('workspace_id', meta.workspaceId)
+          .eq('category', 'branding_downgrade')
+          .limit(1)
+          .maybeSingle();
+
+        if (existing) {
+          return; // Already notified for this downgrade state
+        }
+      } catch {
+        // Fallback safe
+      }
+    }
+
+    await NotificationHelper.notifyFreelancer({
+      title: 'Custom branding temporarily unavailable',
+      message:
+        'Your FlowDesk subscription has changed to Starter. Your previously uploaded logo and signature are safely retained, but custom branding is not available on the Starter plan. FlowDesk\'s official branding will now appear on your client portal. Upgrade to Standard or Studio to reactivate your saved branding.',
+      category: 'branding_downgrade',
+      link: 'pricing',
+      priority: 'high',
+      workspaceId: meta.workspaceId,
+      userId: meta.userId || undefined,
+    });
+  },
 };

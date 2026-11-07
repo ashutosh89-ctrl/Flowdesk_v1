@@ -154,15 +154,18 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
       (branding as any)?.taxNumber ||
       '';
 
-    const logoUrl =
-      (branding as InvoiceBranding)?.logoUrl ||
-      (branding as UserProfile)?.logoUrl ||
-      '';
+    const isCustomBranded = (branding as any)?.isCustomBranded !== false;
+    const logoUrl = !isCustomBranded
+      ? '/branding/flowdesk-symbol.png'
+      : (branding as InvoiceBranding)?.logoUrl ||
+        (branding as UserProfile)?.logoUrl ||
+        '';
 
-    const signatureUrl =
-      (branding as InvoiceBranding)?.signatureUrl ||
-      (branding as UserProfile)?.signatureUrl ||
-      '';
+    const signatureUrl = !isCustomBranded
+      ? ''
+      : (branding as InvoiceBranding)?.signatureUrl ||
+        (branding as UserProfile)?.signatureUrl ||
+        '';
 
     const upiQrCodeUrl =
       invoice.upiQrCodeUrl ||

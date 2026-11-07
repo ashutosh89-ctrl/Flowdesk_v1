@@ -50,19 +50,30 @@ export class PlanLimitError extends Error {
   public readonly metric?: string;
   public readonly limit?: number;
   public readonly current?: number;
+  public readonly currentPlan?: PlanKey;
+  public readonly recommendedPlan?: PlanKey | null;
 
   constructor(
     message: string,
     code: PlanLimitErrorCode = 'PLAN_LIMIT_REACHED',
-    options?: { statusCode?: number; metric?: string; limit?: number; current?: number }
+    options?: {
+      statusCode?: number;
+      metric?: string;
+      limit?: number;
+      current?: number;
+      currentPlan?: PlanKey;
+      recommendedPlan?: PlanKey | null;
+    }
   ) {
     super(message);
     this.name = 'PlanLimitError';
     this.code = code;
-    this.statusCode = options?.statusCode ?? (code === 'FEATURE_NOT_IN_PLAN' ? 403 : 402);
+    this.statusCode = options?.statusCode ?? (code === 'FEATURE_NOT_IN_PLAN' ? 403 : 403);
     this.metric = options?.metric;
     this.limit = options?.limit;
     this.current = options?.current;
+    this.currentPlan = options?.currentPlan;
+    this.recommendedPlan = options?.recommendedPlan;
     Object.setPrototypeOf(this, PlanLimitError.prototype);
   }
 }

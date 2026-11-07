@@ -89,7 +89,7 @@ export async function PATCH(
   try {
     const { data: existing, error: fetchErr } = await supabaseAdmin
       .from('clients')
-      .select('id, workspace_id, name, company')
+      .select('id, workspace_id, name, company, status')
       .eq('id', clientId)
       .maybeSingle();
 
@@ -115,6 +115,29 @@ export async function PATCH(
         status: 403,
         requestId,
       });
+    }
+
+    if (updates.status === 'active' && existing.status !== 'active') {
+      const { assertWithinLimit } = await import('@/backend/billing');
+      const { PlanLimitError } = await import('@/shared/billing');
+      try {
+        await assertWithinLimit(existing.workspace_id, 'activeClients', 1);
+      } catch (limitErr: any) {
+        if (limitErr instanceof PlanLimitError) {
+          return createApiErrorResponse({
+            message: limitErr.message,
+            code: limitErr.code,
+            status: limitErr.statusCode,
+            requestId,
+            metric: limitErr.metric || 'activeClients',
+            currentPlan: limitErr.currentPlan,
+            currentUsage: limitErr.current,
+            maxAllowed: limitErr.limit,
+            recommendedPlan: limitErr.recommendedPlan,
+          });
+        }
+        throw limitErr;
+      }
     }
 
     const dbPayload: any = {
@@ -143,6 +166,10 @@ export async function PATCH(
         requestId,
       });
     }
+
+    // Invalidate workspace entitlement cache so active counts reflect status changes
+    const { invalidateWorkspaceEntitlements } = await import('@/backend/billing/entitlements');
+    invalidateWorkspaceEntitlements(existing.workspace_id);
 
     // Activity Log
     try {
@@ -267,6 +294,9 @@ export async function DELETE(
         requestId,
       });
     }
+
+    const { invalidateWorkspaceEntitlements } = await import('@/backend/billing/entitlements');
+    invalidateWorkspaceEntitlements(existing.workspace_id);
 
     try {
       await supabaseAdmin.from('activities').insert({

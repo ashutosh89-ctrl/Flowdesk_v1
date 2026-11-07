@@ -129,6 +129,7 @@ export const getWorkspaceEntitlements = cache(
     // Default fallback to Free Starter
     let planKey: PlanKey = 'starter';
     let status: SubscriptionStatus = 'active';
+    let currentPeriodStart: string | null = null;
     let currentPeriodEnd: string | null = null;
     let cancelAtPeriodEnd = false;
     let overrides: Record<string, any> = {};
@@ -139,7 +140,7 @@ export const getWorkspaceEntitlements = cache(
         // Query active or latest subscription
         const { data: subData } = await supabaseAdmin
           .from('subscriptions')
-          .select('plan_key, status, current_period_end, cancel_at_period_end')
+          .select('plan_key, status, current_period_start, current_period_end, cancel_at_period_end')
           .eq('workspace_id', workspaceId)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -148,6 +149,7 @@ export const getWorkspaceEntitlements = cache(
         if (subData) {
           planKey = (subData.plan_key as PlanKey) || 'starter';
           status = (subData.status as SubscriptionStatus) || 'active';
+          currentPeriodStart = subData.current_period_start;
           currentPeriodEnd = subData.current_period_end;
           cancelAtPeriodEnd = Boolean(subData.cancel_at_period_end);
         }
@@ -190,7 +192,11 @@ export const getWorkspaceEntitlements = cache(
 
     if (supabaseAdmin) {
       try {
+        const now = Date.now();
         const startOfMonth = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString();
+        const billingCycleStart = (currentPeriodStart && new Date(currentPeriodStart).getTime() <= now)
+          ? currentPeriodStart
+          : startOfMonth;
 
         const [clientsRes, projectsRes, invoicesRes] = await Promise.all([
           supabaseAdmin
@@ -208,7 +214,7 @@ export const getWorkspaceEntitlements = cache(
             .from('invoices')
             .select('id', { count: 'exact', head: true })
             .eq('workspace_id', workspaceId)
-            .gte('created_at', startOfMonth)
+            .gte('created_at', billingCycleStart)
             .neq('status', 'cancelled'),
         ]);
 
@@ -286,12 +292,21 @@ export async function checkLimit(
  * Asserts that a feature is permitted. Throws PlanLimitError if denied.
  */
 export async function assertCan(workspaceId: string, feature: EntitlementFeature): Promise<void> {
+  const entitlements = await getWorkspaceEntitlements(workspaceId);
   const allowed = await can(workspaceId, feature);
   if (!allowed) {
+    const recommendedPlan: PlanKey | null =
+      entitlements.planKey === 'starter' ? 'standard' :
+      entitlements.planKey === 'standard' ? 'studio' : null;
+
     throw new PlanLimitError(
       `Feature '${feature}' is not included in your current workspace plan. Please upgrade your subscription to access this feature.`,
       'FEATURE_NOT_IN_PLAN',
-      { statusCode: 403 }
+      {
+        statusCode: 403,
+        currentPlan: entitlements.planKey,
+        recommendedPlan,
+      }
     );
   }
 }
@@ -304,16 +319,25 @@ export async function assertWithinLimit(
   metric: EntitlementMetric,
   increment: number = 1
 ): Promise<void> {
+  // Clear cached entitlements for mutation calls so real-time counts are authoritative
+  invalidateWorkspaceEntitlements(workspaceId);
+  const entitlements = await getWorkspaceEntitlements(workspaceId);
   const check = await checkLimit(workspaceId, metric, increment);
   if (!check.allowed) {
+    const recommendedPlan: PlanKey | null =
+      entitlements.planKey === 'starter' ? 'standard' :
+      entitlements.planKey === 'standard' ? 'studio' : null;
+
     throw new PlanLimitError(
       check.reason || `Plan limit reached for ${metric}.`,
       check.code || 'PLAN_LIMIT_REACHED',
       {
-        statusCode: check.code === 'SUBSCRIPTION_PAST_DUE' ? 402 : 402,
+        statusCode: check.code === 'SUBSCRIPTION_PAST_DUE' ? 402 : 403,
         metric,
         limit: check.limit,
         current: check.current,
+        currentPlan: entitlements.planKey,
+        recommendedPlan,
       }
     );
   }

@@ -8,6 +8,8 @@ import { useToast } from '@/frontend/shared/ui/toast';
 import { useAuth } from '@/frontend/auth/auth-context';
 import { getCurrencySymbol } from '@/shared/utils/currency';
 import { Plus, Trash2, CheckCircle2 } from 'lucide-react';
+import { PlanLimitModal } from '@/frontend/shared/billing';
+import { PlanKey } from '@/shared/billing';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -67,6 +69,14 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limitModalData, setLimitModalData] = useState<{
+    isOpen: boolean;
+    metric: 'activeProjects';
+    currentPlan: PlanKey;
+    currentUsage: number;
+    maxAllowed: number;
+    recommendedPlan?: PlanKey | null;
+  } | null>(null);
 
   useEffect(() => {
     if (defaultClientId) {
@@ -162,6 +172,23 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       }
     } catch (err: any) {
       console.error('Create project error:', err);
+      const isLimitError =
+        err?.code === 'PLAN_LIMIT_REACHED' ||
+        err?.code === 'PLAN_LIMIT_EXCEEDED' ||
+        err?.metric === 'activeProjects' ||
+        err?.name === 'PlanLimitError';
+
+      if (isLimitError) {
+        setLimitModalData({
+          isOpen: true,
+          metric: 'activeProjects',
+          currentPlan: err?.currentPlan || 'starter',
+          currentUsage: Number(err?.current ?? err?.currentUsage ?? 3),
+          maxAllowed: Number(err?.limit ?? err?.maxAllowed ?? 3),
+          recommendedPlan: err?.recommendedPlan || 'standard',
+        });
+        return;
+      }
       setError(err?.message || 'Failed to create project. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -315,6 +342,19 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
           </Button>
         </div>
       </form>
+
+      {/* Plan Limit Modal for Project Quota Exceeded */}
+      {limitModalData && (
+        <PlanLimitModal
+          isOpen={limitModalData.isOpen}
+          onClose={() => setLimitModalData(null)}
+          metric={limitModalData.metric}
+          currentPlan={limitModalData.currentPlan}
+          currentUsage={limitModalData.currentUsage}
+          maxAllowed={limitModalData.maxAllowed}
+          recommendedPlan={limitModalData.recommendedPlan}
+        />
+      )}
     </Modal>
   );
 };

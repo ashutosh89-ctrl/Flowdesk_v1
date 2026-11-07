@@ -120,6 +120,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           code: limitErr.code,
           status: limitErr.statusCode,
           requestId,
+          metric: limitErr.metric || 'activeClients',
+          currentPlan: limitErr.currentPlan,
+          currentUsage: limitErr.current,
+          maxAllowed: limitErr.limit,
+          recommendedPlan: limitErr.recommendedPlan,
         });
       }
       throw limitErr;
@@ -153,6 +158,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         requestId,
       });
     }
+
+    // Invalidate entitlement cache immediately so next count is fresh
+    const { invalidateWorkspaceEntitlements } = await import('@/backend/billing/entitlements');
+    invalidateWorkspaceEntitlements(effectiveWorkspaceId);
 
     // 6. Fast invitation link generation
     let inviteUrl: string | undefined;
