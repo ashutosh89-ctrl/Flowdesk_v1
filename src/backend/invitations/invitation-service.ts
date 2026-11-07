@@ -200,7 +200,7 @@ export const InvitationService = {
         p_token_hash: tokenHash,
       });
 
-      if (!error && data) {
+      if (!error && data && (data as any).isValid) {
         return data as PublicInvitationDetails;
       }
     } catch {
@@ -235,7 +235,7 @@ export const InvitationService = {
         }
 
         if (inv.status === 'revoked') {
-          // Check if this token was merely superseded by a newer pending invite for an unclaimed client
+          // Check if this token is for an unclaimed client with an unexpired link
           const { data: clientData } = await db
             .from('clients')
             .select('id, name, company, email, user_id')
@@ -246,33 +246,21 @@ export const InvitationService = {
           const notExpired = new Date(inv.expires_at) >= now;
 
           if (clientData && !clientData.user_id && notExpired) {
-            const { data: activePending } = await db
-              .from('client_invitations')
-              .select('id')
-              .eq('client_id', inv.client_id)
-              .eq('status', 'pending')
-              .gt('expires_at', now.toISOString())
-              .limit(1)
+            const { data: freelancer } = await db
+              .from('profiles')
+              .select('business_name, full_name')
+              .eq('id', inv.freelancer_id)
               .maybeSingle();
 
-            // If an active pending invitation exists, seamlessly allow this superseded token
-            if (activePending) {
-              const { data: freelancer } = await db
-                .from('profiles')
-                .select('business_name, full_name')
-                .eq('id', inv.freelancer_id)
-                .maybeSingle();
-
-              return {
-                isValid: true,
-                status: 'pending',
-                freelancerName: freelancer?.business_name || freelancer?.full_name || 'FlowDesk Studio',
-                clientName: clientData?.name || 'Client',
-                companyName: clientData?.company || '',
-                maskedEmail: maskEmail(inv.recipient_email || clientData?.email),
-                expiresAt: inv.expires_at,
-              };
-            }
+            return {
+              isValid: true,
+              status: 'pending',
+              freelancerName: freelancer?.business_name || freelancer?.full_name || 'FlowDesk Studio',
+              clientName: clientData?.name || 'Client',
+              companyName: clientData?.company || '',
+              maskedEmail: maskEmail(inv.recipient_email || clientData?.email),
+              expiresAt: inv.expires_at,
+            };
           }
 
           return {
@@ -444,17 +432,7 @@ export const InvitationService = {
 
           let allowSuperseded = false;
           if (clientCheck && !clientCheck.user_id && notExpired) {
-            const { data: activePending } = await db
-              .from('client_invitations')
-              .select('id')
-              .eq('client_id', inv.client_id)
-              .eq('status', 'pending')
-              .gt('expires_at', now.toISOString())
-              .limit(1)
-              .maybeSingle();
-            if (activePending) {
-              allowSuperseded = true;
-            }
+            allowSuperseded = true;
           }
 
           if (!allowSuperseded) {

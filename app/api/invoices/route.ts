@@ -217,6 +217,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let defaultUpiId: string | null = null;
     let defaultBankDetails: any = null;
     let defaultRazorpayLink: string | null = null;
+    let userSettingsData: any = null;
+    let profileData: any = null;
 
     if (caller.userId) {
       try {
@@ -237,6 +239,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             userSettings = latestSettings;
           }
         }
+
+        userSettingsData = userSettings;
 
         if (userSettings) {
           defaultQrUrl = userSettings.upi_qr_code_url || userSettings.payment_settings?.upiQrCodeUrl || null;
@@ -259,6 +263,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             .eq('id', caller.userId)
             .maybeSingle();
           if (prof) {
+            profileData = prof;
             if (!defaultQrUrl && prof.upi_qr_code_url) defaultQrUrl = prof.upi_qr_code_url;
             if (!defaultUpiId && prof.upi_id) defaultUpiId = prof.upi_id;
           }
@@ -275,6 +280,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // 9. Insert Invoice Record
     const nowIso = new Date().toISOString();
+    const isSent = payload.workflowStatus === 'sent' || payload.status === 'sent';
     const primaryPayload: Record<string, any> = {
       workspace_id: targetWorkspaceId,
       client_id: client.id,
@@ -283,8 +289,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       client_email: client.email || 'client@example.com',
       project_id: payload.projectId || null,
       invoice_number: invoiceNumber,
-      status: payload.workflowStatus === 'sent' ? 'sent' : 'draft',
-      workflow_status: payload.workflowStatus || 'draft',
+      status: isSent ? 'sent' : 'draft',
+      workflow_status: isSent ? 'sent' : 'draft',
+      ...(isSent ? { issued_at: nowIso } : {}),
       payment_status: 'pending',
       issue_date: payload.issueDate,
       due_date: payload.dueDate,
@@ -346,8 +353,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         client_email: client.email || 'client@example.com',
         project_id: payload.projectId || null,
         invoice_number: invoiceNumber,
-        status: payload.workflowStatus === 'sent' ? 'sent' : 'draft',
-        workflow_status: payload.workflowStatus || 'draft',
+        status: isSent ? 'sent' : 'draft',
+        workflow_status: isSent ? 'sent' : 'draft',
         payment_status: 'pending',
         issue_date: payload.issueDate,
         due_date: payload.dueDate,
@@ -385,7 +392,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           client_email: client.email || 'client@example.com',
           project_id: payload.projectId || null,
           invoice_number: invoiceNumber,
-          status: 'draft',
+          status: isSent ? 'sent' : 'draft',
           issue_date: payload.issueDate,
           due_date: payload.dueDate,
           subtotal: calc.subtotal,
@@ -441,6 +448,65 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }));
 
       await supabaseAdmin.from('invoice_items').insert(itemsPayload);
+    }
+
+    // 10a. Send email and create notifications if issued directly
+    if (isSent) {
+      try {
+        const { getAppBaseUrl } = await import('@/shared/utils/url');
+        const { EmailService } = await import('@/backend/email/email-service');
+        const studioName = userSettingsData?.studio_name || userSettingsData?.business_name || profileData?.business_name || profileData?.full_name || 'FlowDesk Studio';
+        const portalUrl = `${getAppBaseUrl()}/portal/${client.id}`;
+        const currencySymbol = payload.currency || 'INR';
+
+        if (client.email) {
+          EmailService.sendInvoiceIssued(
+            client.email,
+            {
+              clientName: client.name || 'Client',
+              freelancerName: profileData?.full_name || 'Your Freelancer',
+              businessName: studioName,
+              invoiceNumber,
+              amount: `${currencySymbol} ${calc.total.toLocaleString()}`,
+              amountFormatted: `${currencySymbol} ${calc.total.toLocaleString()}`,
+              dueDate: payload.dueDate,
+              portalUrl,
+            },
+            {
+              workspaceId: targetWorkspaceId,
+              invoiceId: insertedInvoice.id,
+            }
+          ).catch((e: any) => logger.warn('Invoice issued email delivery failed:', { error: e?.message }));
+        }
+
+        // Insert notification into notifications table for the client
+        await supabaseAdmin.from('notifications').insert({
+          workspace_id: targetWorkspaceId,
+          client_id: client.id,
+          user_id: null,
+          title: `New Invoice Issued: #${invoiceNumber}`,
+          message: `An invoice #${invoiceNumber} for ${payload.currency || 'INR'} ${calc.total.toLocaleString()} has been issued and is available for payment.`,
+          category: 'invoice',
+          link: 'invoices',
+          priority: 'high',
+          read: false,
+        });
+
+        // Insert notification for freelancer in notifications table
+        await supabaseAdmin.from('notifications').insert({
+          workspace_id: targetWorkspaceId,
+          client_id: client.id,
+          user_id: caller.userId,
+          title: `Invoice #${invoiceNumber} Issued`,
+          message: `Invoice #${invoiceNumber} for ${client.name} has been issued and sent.`,
+          category: 'invoice',
+          link: 'invoices',
+          priority: 'medium',
+          read: false,
+        });
+      } catch (postErr: any) {
+        logger.warn('Failed to dispatch invoice notifications/email:', { error: postErr?.message });
+      }
     }
 
     // 11. Activity Log (NON-BLOCKING)

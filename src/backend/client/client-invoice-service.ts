@@ -29,6 +29,38 @@ export const ClientInvoiceService = {
       }
 
       if (data && data.length > 0) {
+        // Query reminders for these invoices
+        const invoiceIds = data.map((i) => i.id);
+        let remindersByInvoice: Record<string, any[]> = {};
+        if (invoiceIds.length > 0) {
+          try {
+            const { data: reminderLogs } = await supabase
+              .from('reminder_log')
+              .select('*')
+              .in('invoice_id', invoiceIds)
+              .order('sent_at', { ascending: true });
+
+            if (reminderLogs) {
+              remindersByInvoice = reminderLogs.reduce((acc: any, r: any) => {
+                if (!acc[r.invoice_id]) acc[r.invoice_id] = [];
+                const count = acc[r.invoice_id].length + 1;
+                acc[r.invoice_id].push({
+                  id: r.id,
+                  invoiceId: r.invoice_id,
+                  reminderNumber: count,
+                  date: r.sent_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+                  method: 'email',
+                  status: 'sent',
+                  notes: `Payment reminder #${count} dispatched to ${r.recipient_email}`,
+                });
+                return acc;
+              }, {});
+            }
+          } catch {
+            // ignore
+          }
+        }
+
         // Resolve default fallback branding/settings via server API route (bypasses RLS)
         let defaultQrUrl: string | undefined;
         let defaultUpiId: string | undefined;
@@ -163,6 +195,7 @@ export const ClientInvoiceService = {
             razorpayPaymentLink: i.razorpay_payment_link || undefined,
             paymentNotification: i.payment_notification || undefined,
             receipts,
+            reminders: remindersByInvoice[i.id] || [],
           } as Invoice;
         });
       }

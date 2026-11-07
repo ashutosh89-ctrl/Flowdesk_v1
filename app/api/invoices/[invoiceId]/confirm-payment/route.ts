@@ -237,7 +237,7 @@ export async function POST(
       })
       .eq('id', invoiceId);
 
-    // 3. Activity Log
+    // 3. Activity Log & In-App Notifications
     try {
       await supabaseAdmin.from('activities').insert({
         workspace_id: invoice.workspace_id,
@@ -247,6 +247,34 @@ export async function POST(
         description: `Confirmed payment of ${invoice.currency} ${settleAmount} via ${paymentMethod} (Receipt: ${receiptNumber})`,
         resource_type: 'invoice',
         resource_id: invoice.id,
+      });
+
+      // Persistent In-App Notification for Client
+      if (invoice.client_id) {
+        await supabaseAdmin.from('notifications').insert({
+          workspace_id: invoice.workspace_id,
+          user_id: null,
+          client_id: invoice.client_id,
+          title: 'Payment Confirmed & Receipt Issued',
+          message: `Payment of ${invoice.currency} ${settleAmount} confirmed for Statement #${invoice.invoice_number}. Receipt #${receiptNumber} generated.`,
+          category: 'invoice',
+          link: 'invoices',
+          priority: 'medium',
+          read: false,
+        });
+      }
+
+      // Persistent In-App Notification for Freelancer
+      await supabaseAdmin.from('notifications').insert({
+        workspace_id: invoice.workspace_id,
+        user_id: caller.userId,
+        client_id: invoice.client_id || null,
+        title: 'Payment Confirmed & Settled',
+        message: `Payment of ${invoice.currency} ${settleAmount} confirmed for Invoice #${invoice.invoice_number}. Receipt #${receiptNumber} generated.`,
+        category: 'invoice',
+        link: 'invoices',
+        priority: 'medium',
+        read: false,
       });
     } catch {}
 

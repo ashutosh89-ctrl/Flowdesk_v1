@@ -210,6 +210,7 @@ export const CreateInvoiceSchema = z.object({
   projectId: z.string().trim().optional().nullable().transform((v) => (v && v.trim() !== '' ? v : null)),
   invoiceNumber: z.string().trim().min(1).max(100).optional(),
   workflowStatus: z.enum(['draft', 'sent']).optional().default('draft'),
+  status: z.enum(['draft', 'sent']).optional(),
   issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Issue date must be YYYY-MM-DD'),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must be YYYY-MM-DD'),
   items: z.array(InvoiceItemInputSchema).min(1, 'At least one line item is required'),

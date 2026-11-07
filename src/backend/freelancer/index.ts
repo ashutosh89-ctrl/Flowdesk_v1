@@ -22,6 +22,14 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+/** Helper: format local Date into YYYY-MM-DD */
+const getLocalDateISOString = (d: Date = new Date()): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 /** Helper: get current user display name from profile or session */
 const getCurrentUserName = async (): Promise<string> => {
   try {
@@ -1568,8 +1576,8 @@ function mapApiInvoiceData(raw: any, fallback?: Partial<Invoice>): Invoice {
     clientEmail: raw.client_email || raw.clientEmail || fallback?.clientEmail || 'client@example.com',
     projectId: raw.project_id || raw.projectId || fallback?.projectId || undefined,
     projectName: raw.project_name || raw.projectName || fallback?.projectName || undefined,
-    issueDate: raw.issue_date || raw.issueDate || fallback?.issueDate || new Date().toISOString().split('T')[0],
-    dueDate: raw.due_date || raw.dueDate || fallback?.dueDate || new Date().toISOString().split('T')[0],
+    issueDate: raw.issue_date || raw.issueDate || fallback?.issueDate || getLocalDateISOString(),
+    dueDate: raw.due_date || raw.dueDate || fallback?.dueDate || getLocalDateISOString(),
     workflowStatus: (raw.workflow_status || raw.workflowStatus || raw.status || fallback?.workflowStatus || 'draft') as any,
     paymentStatus: (raw.payment_status || raw.paymentStatus || (rawStatus === 'paid' ? 'paid' : 'pending')) as any,
     status: isOverdue ? 'overdue' : (raw.status || fallback?.status || 'draft'),
@@ -1892,8 +1900,10 @@ export const FreelancerInvoiceService = {
           clientId: invoice.clientId,
           projectId: invoice.projectId || undefined,
           invoiceNumber: invoice.invoiceNumber || undefined,
-          issueDate: invoice.issueDate || new Date().toISOString().split('T')[0],
-          dueDate: invoice.dueDate || new Date().toISOString().split('T')[0],
+          workflowStatus: invoice.workflowStatus || (invoice.status === 'sent' ? 'sent' : 'draft'),
+          status: invoice.workflowStatus === 'sent' || invoice.status === 'sent' ? 'sent' : 'draft',
+          issueDate: invoice.issueDate || getLocalDateISOString(),
+          dueDate: invoice.dueDate || getLocalDateISOString(),
           items: (invoice.items || []).map((it) => ({
             description: it.description || 'Item',
             quantity: Number(it.quantity) || 1,
@@ -2001,8 +2011,8 @@ export const FreelancerInvoiceService = {
         project_name: invoice.projectName || null,
         invoice_number: finalInvoiceNumber,
         status: invoice.workflowStatus || invoice.status || 'draft',
-        issue_date: invoice.issueDate || new Date().toISOString().split('T')[0],
-        due_date: invoice.dueDate || new Date().toISOString().split('T')[0],
+        issue_date: invoice.issueDate || getLocalDateISOString(),
+        due_date: invoice.dueDate || getLocalDateISOString(),
         subtotal: calc.subtotal,
         tax_percentage: calc.taxPercentage,
         tax_name: invoice.taxName || 'GST',
@@ -2121,8 +2131,8 @@ export const FreelancerInvoiceService = {
           project_name: invoice.projectName || null,
           invoice_number: finalInvoiceNumber,
           status: invoice.workflowStatus || invoice.status || 'draft',
-          issue_date: invoice.issueDate || new Date().toISOString().split('T')[0],
-          due_date: invoice.dueDate || new Date().toISOString().split('T')[0],
+          issue_date: invoice.issueDate || getLocalDateISOString(),
+          due_date: invoice.dueDate || getLocalDateISOString(),
           subtotal: calc.subtotal,
           tax_percentage: calc.taxPercentage,
           tax_amount: calc.taxAmount,
@@ -2246,7 +2256,7 @@ export const FreelancerInvoiceService = {
         workflowStatus: 'draft',
         paymentStatus: 'pending',
         status: 'draft',
-        issueDate: new Date().toISOString().split('T')[0],
+        issueDate: getLocalDateISOString(),
       } as any);
     }
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
@@ -2262,10 +2272,11 @@ export const FreelancerInvoiceService = {
       ]);
 
       const nextNum = generateNextInvoiceNumber(settings, existing.map((e: Invoice) => e.invoiceNumber));
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateISOString();
       const paymentTerms = settings.default_payment_terms || 14;
-      const dueDateMs = new Date(today).getTime() + paymentTerms * 86400000;
-      const dueDateStr = new Date(dueDateMs).toISOString().split('T')[0];
+      const dueDateObj = new Date();
+      dueDateObj.setDate(dueDateObj.getDate() + paymentTerms);
+      const dueDateStr = getLocalDateISOString(dueDateObj);
 
       return FreelancerInvoiceService.createInvoice({
         clientId: original.clientId,
@@ -2640,7 +2651,7 @@ export const FreelancerInvoiceService = {
   sendReminder: async (
     id: string,
     notes?: string
-  ): Promise<{ success: boolean; message: string; reminder?: any; invoice?: Invoice }> => {
+  ): Promise<{ success: boolean; message: string; reminder?: any; invoice?: Invoice; reminderCount?: number }> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       const inv = FlowDeskStore.getInvoiceById(id);
       if (!inv) return { success: false, message: 'Invoice not found' };
@@ -2692,9 +2703,14 @@ export const FreelancerInvoiceService = {
             message: data.message || data.error?.message || data.error || 'Failed to dispatch payment reminder.',
           };
         }
+        window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+
         return {
           success: true,
           message: data.message || 'Payment reminder dispatched successfully.',
+          reminderCount: data.reminderCount,
+          reminder: data.reminder,
+          invoice: data.invoice,
         };
       } catch (err: any) {
         return {
@@ -3248,8 +3264,12 @@ export const NotificationService = {
         .eq('workspace_id', wsId)
         .order('created_at', { ascending: false });
 
-      if (error || !data || data.length === 0) {
+      if (error) {
         return FlowDeskStore.getNotifications();
+      }
+
+      if (!data || data.length === 0) {
+        return [];
       }
 
       return data.map((n) => ({

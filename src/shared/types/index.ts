@@ -591,7 +591,7 @@ export interface Invoice {
   dueDate: string;
   workflowStatus: InvoiceWorkflowStatus;
   paymentStatus: InvoicePaymentStatus;
-  status?: 'paid' | 'pending' | 'overdue' | 'draft' | 'partially_paid' | 'cancelled';
+  status?: 'paid' | 'pending' | 'overdue' | 'draft' | 'partially_paid' | 'cancelled' | 'sent';
   items: InvoiceItem[];
   subtotal: number;
   discount?: number;

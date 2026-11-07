@@ -19,6 +19,13 @@ interface InvoiceBuilderModalProps {
   defaultClientId?: string;
 }
 
+const getLocalDateISOString = (d: Date = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export function InvoiceBuilderModal({
   isOpen,
   onClose,
@@ -155,7 +162,7 @@ export function InvoiceBuilderModal({
         );
         FreelancerProjectService.getProjectsByClientId(invoiceToEdit.clientId).then(setProjects);
       } else {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalDateISOString();
 
         // Immediate sync from local settings cache so tax %, name, and payment details reflect instantly
         const localSettings = UserSettingsService.getLocalSettings(user?.id || 'usr-default') ||
@@ -195,8 +202,9 @@ export function InvoiceBuilderModal({
 
         const studioCurrency = settings?.currency || userSettings?.currency || profile?.currency || 'INR';
         const paymentTerms = settings?.default_payment_terms || 14;
-        const dueDateMs = new Date(today).getTime() + paymentTerms * 86400000;
-        const dueDateStr = new Date(dueDateMs).toISOString().split('T')[0];
+        const dueDateObj = new Date();
+        dueDateObj.setDate(dueDateObj.getDate() + paymentTerms);
+        const dueDateStr = getLocalDateISOString(dueDateObj);
 
         const nextNum = generateNextInvoiceNumber(
           settings || undefined,
@@ -380,6 +388,7 @@ export function InvoiceBuilderModal({
         issueDate,
         dueDate,
         workflowStatus: isDraft ? ('draft' as const) : ('sent' as const),
+        status: isDraft ? ('draft' as const) : ('sent' as const),
         paymentStatus: 'pending' as const,
         currency,
         items,
