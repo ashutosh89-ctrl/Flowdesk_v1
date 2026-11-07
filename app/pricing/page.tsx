@@ -108,8 +108,7 @@ export default function PricingPage() {
                   <span className="text-4xl font-extrabold text-white tracking-tight">₹399</span>
                   <span className="text-xs text-zinc-400 font-mono">/month</span>
                 </div>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs text-zinc-400 font-mono">+ 18% GST</span>
+                <div className="flex items-center justify-end mt-1">
                   <span className="text-[11px] text-zinc-400 font-mono">₹3,990/year (~16% off)</span>
                 </div>
               </div>
@@ -173,8 +172,7 @@ export default function PricingPage() {
                   <span className="text-4xl font-extrabold text-white tracking-tight">₹899</span>
                   <span className="text-xs text-zinc-400 font-mono">/month</span>
                 </div>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs text-zinc-400 font-mono">+ 18% GST</span>
+                <div className="flex items-center justify-end mt-1">
                   <span className="text-[11px] text-zinc-400 font-mono">₹8,990/year (~16% off)</span>
                 </div>
               </div>

@@ -211,9 +211,9 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                       <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/30 font-medium">
                         Current
                       </span>
-                    ) : planKey === 'studio' ? (
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 border border-zinc-700 font-medium">
-                        Invite Only
+                    ) : plan.badge ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/30 font-medium">
+                        {plan.badge}
                       </span>
                     ) : null}
                   </div>
@@ -231,7 +231,6 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                         /{interval === 'yearly' ? 'year' : 'month'}
                       </span>
                     </div>
-                    <span className="text-[10px] text-[#A6B4AE]">+ 18% GST</span>
                   </div>
 
                   {/* Limits bullets */}
@@ -275,10 +274,6 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
                   ) : planKey === 'free' ? (
                     <Button variant="secondary" className="w-full text-xs" disabled>
                       Default Tier
-                    </Button>
-                  ) : planKey === 'studio' ? (
-                    <Button variant="secondary" className="w-full text-xs opacity-60 cursor-not-allowed" disabled>
-                      Studio Preview (Invite Only)
                     </Button>
                   ) : (
                     <Button

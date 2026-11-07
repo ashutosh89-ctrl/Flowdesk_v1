@@ -70,16 +70,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
   }
 
-  // Gate Studio packages: Currently restricted to invite-only preview
-  if (payload.planKey === 'studio') {
-    return createApiErrorResponse({
-      message: 'The Studio Agency package is currently in private preview. Only the Standard Freelancer package is available for activation.',
-      code: 'FEATURE_DISABLED',
-      status: 400,
-      requestId,
-    });
-  }
-
   // 4. Demo Mode Fallback
   if (isDemoModeActive()) {
     const plan = getBillingPlan(payload.planKey);

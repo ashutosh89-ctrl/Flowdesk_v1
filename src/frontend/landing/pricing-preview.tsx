@@ -104,9 +104,11 @@ export const PricingPreview: React.FC<PricingPreviewProps> = ({ onOpenAuth }) =>
                       /{interval === 'yearly' ? 'yr' : 'mo'}
                     </span>
                   </div>
-                  <span className="text-xs text-[#9CA3AF] font-mono mt-1 block">
-                    {price > 0 ? '+ 18% GST (Tax Invoice Included)' : 'Free forever'}
-                  </span>
+                  {price === 0 ? (
+                    <span className="text-xs text-[#9CA3AF] font-mono mt-1 block">
+                      Free forever
+                    </span>
+                  ) : null}
                 </div>
 
                 <ul className="space-y-3 text-sm text-[#A6B4AE] mb-8">
