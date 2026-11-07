@@ -97,9 +97,10 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
       loadPortalData(true);
     };
     window.addEventListener('flowdesk:settings-updated', onSettingsUpdate);
+    window.addEventListener('flowdesk:client-notifications-updated', onSettingsUpdate);
     window.addEventListener('storage', onSettingsUpdate);
 
-    // 3. Supabase Realtime Channel: Instantly syncs whenever freelancer updates workspaces, profiles, deliverables, invoices, or comments
+    // 3. Supabase Realtime Channel: Instantly syncs whenever freelancer updates workspaces, profiles, deliverables, invoices, documents, notifications, or comments
     let channel: any = null;
     try {
       channel = supabase
@@ -119,6 +120,12 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
         .on('postgres_changes', { event: '*', schema: 'public', table: 'documents' }, () => {
           loadPortalData(true);
         })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+          loadPortalData(true);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'reminder_log' }, () => {
+          loadPortalData(true);
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'deliverable_comments' }, () => {
           loadPortalData(true);
         })
@@ -136,6 +143,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
       window.removeEventListener('focus', onWindowFocus);
       document.removeEventListener('visibilitychange', onWindowFocus);
       window.removeEventListener('flowdesk:settings-updated', onSettingsUpdate);
+      window.removeEventListener('flowdesk:client-notifications-updated', onSettingsUpdate);
       window.removeEventListener('storage', onSettingsUpdate);
       if (channel) {
         try {
@@ -219,6 +227,17 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
 
   const handleMarkNotificationsRead = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      if (client?.id) {
+        await fetch('/api/portal/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId: client.id, action: 'markAllRead' }),
+        });
+      }
+    } catch {
+      // non-critical
+    }
   };
 
   if (loading) {

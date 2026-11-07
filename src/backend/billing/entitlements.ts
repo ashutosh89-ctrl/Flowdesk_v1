@@ -206,7 +206,7 @@ export const getWorkspaceEntitlements = cache(
             .select('id', { count: 'exact', head: true })
             .eq('workspace_id', workspaceId)
             .gte('created_at', billingCycleStart)
-            .neq('status', 'cancelled'),
+            .not('status', 'in', '("draft","cancelled")'),
         ]);
 
         activeClients = clientsRes.count ?? 0;

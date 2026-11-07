@@ -464,24 +464,41 @@ export const ClientPortalService = {
     // 6. Notifications from Supabase (client-scoped)
     let notifications: PortalNotification[] = [];
     try {
-      const { data: notifData } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('client_id', resolvedClientId)
-        .order('created_at', { ascending: false })
-        .limit(20);
+      if (typeof window !== 'undefined') {
+        const notifRes = await fetch(`/api/portal/notifications?clientId=${encodeURIComponent(resolvedClientId)}`, {
+          cache: 'no-store',
+        });
+        if (notifRes.ok) {
+          const notifJson = await notifRes.json();
+          if (notifJson?.success && Array.isArray(notifJson.notifications)) {
+            notifications = notifJson.notifications;
+          }
+        }
+      }
 
-      if (notifData && notifData.length > 0) {
-        notifications = notifData.map((n) => ({
-          id: n.id,
-          clientId: resolvedClientId,
-          title: n.title,
-          message: n.message,
-          read: n.read || false,
-          timestamp: n.created_at?.split('T')[0] || 'Recent',
-          priority: (n.priority as 'high' | 'medium' | 'low') || 'low',
-          type: (n.category as any) || 'comment',
-        }));
+      if (notifications.length === 0) {
+        const { supabaseAdmin } = await import('@/backend/utilities/supabase');
+        const db = supabaseAdmin || supabase;
+        const { data: notifData } = await db
+          .from('notifications')
+          .select('*')
+          .eq('client_id', resolvedClientId)
+          .order('created_at', { ascending: false })
+          .limit(25);
+
+        if (notifData && notifData.length > 0) {
+          notifications = notifData.map((n) => ({
+            id: n.id,
+            clientId: resolvedClientId,
+            title: n.title,
+            message: n.message,
+            read: n.read || false,
+            timestamp: n.created_at?.split('T')[0] || 'Recent',
+            priority: (n.priority as 'high' | 'medium' | 'low') || 'low',
+            type: (n.category as any) || 'comment',
+            link: n.link || undefined,
+          }));
+        }
       }
     } catch {
       // Non-critical: return empty if query fails

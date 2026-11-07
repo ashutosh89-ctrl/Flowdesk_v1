@@ -237,7 +237,7 @@ export async function POST(
       })
       .eq('id', invoiceId);
 
-    // 3. Activity Log
+    // 3. Activity Log & In-App Notification
     try {
       await supabaseAdmin.from('activities').insert({
         workspace_id: invoice.workspace_id,
@@ -248,6 +248,20 @@ export async function POST(
         resource_type: 'invoice',
         resource_id: invoice.id,
       });
+
+      if (invoice.client_id) {
+        await supabaseAdmin.from('notifications').insert({
+          workspace_id: invoice.workspace_id,
+          user_id: null,
+          client_id: invoice.client_id,
+          title: 'Payment Confirmed & Receipt Issued',
+          message: `Payment of ${invoice.currency} ${settleAmount} confirmed for Statement #${invoice.invoice_number}. Receipt #${receiptNumber} generated.`,
+          category: 'invoice',
+          link: 'invoices',
+          priority: 'medium',
+          read: false,
+        });
+      }
     } catch {}
 
     // 4. Send Brevo Receipt Email to Client (Non-blocking)

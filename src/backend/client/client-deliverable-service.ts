@@ -326,7 +326,7 @@ export const ClientDeliverableService = {
       // 1. Verify that deliverable belongs to this client
       const { data: existing, error: fetchError } = await supabase
         .from('deliverables')
-        .select('id, client_id, status, title')
+        .select('id, client_id, status, title, workspace_id')
         .eq('id', deliverableId)
         .eq('client_id', clientId)
         .maybeSingle();
@@ -377,6 +377,9 @@ export const ClientDeliverableService = {
 
       // 5. Create notification for freelancer
       try {
+        const { NotificationHelper } = await import('@/backend/utilities/notification-helper');
+        await NotificationHelper.deliverableApproved(existing.title, clientId, existing.workspace_id);
+
         const { data: { user } } = await supabase.auth.getUser();
         const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user?.id).maybeSingle();
         const clientName = profile?.full_name || user?.email?.split('@')[0] || 'Client';
@@ -389,15 +392,6 @@ export const ClientDeliverableService = {
           const { data: workspace } = await supabase.from('workspaces').select('owner_id').eq('id', deliverable.workspace_id).single();
 
           if (workspace?.owner_id) {
-            await supabase.from('notifications').insert({
-              workspace_id: deliverable.workspace_id,
-              user_id: workspace.owner_id,
-              title: 'Deliverable Approved',
-              message: `${clientName} approved "${existing.title}"`,
-              category: 'success',
-              link: `/deliverables`,
-            });
-
             // Dispatch transactional email to freelancer
             try {
               const { data: profile } = await supabase.from('profiles').select('email, full_name').eq('id', workspace.owner_id).single();
@@ -583,6 +577,9 @@ export const ClientDeliverableService = {
 
       // 6. Create notification for freelancer
       try {
+        const { NotificationHelper } = await import('@/backend/utilities/notification-helper');
+        await NotificationHelper.revisionRequested(existing.title, clientId, existing.workspace_id);
+
         const { data: { user } } = await supabase.auth.getUser();
         const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user?.id).maybeSingle();
         const clientName = profile?.full_name || user?.email?.split('@')[0] || 'Client';
@@ -591,15 +588,6 @@ export const ClientDeliverableService = {
           const { data: workspace } = await supabase.from('workspaces').select('owner_id').eq('id', existing.workspace_id).single();
 
           if (workspace?.owner_id) {
-            await supabase.from('notifications').insert({
-              workspace_id: existing.workspace_id,
-              user_id: workspace.owner_id,
-              title: 'Revision Requested',
-              message: `${clientName} requested revision on "${existing.title}": ${revisionComment.trim().substring(0, 100)}`,
-              category: 'warning',
-              link: `/deliverables`,
-            });
-
             // Dispatch transactional email to freelancer
             try {
               const { data: profile } = await supabase.from('profiles').select('email, full_name').eq('id', workspace.owner_id).single();

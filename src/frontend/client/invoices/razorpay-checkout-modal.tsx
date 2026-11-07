@@ -235,14 +235,17 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
 
   // Active payment method tab
   const [activeTab, setActiveTab] = useState<PaymentMethodTab>(() => {
-    if (hasQr || hasBank) return 'qr';
+    if (hasQr) return 'qr';
+    if (hasBank) return 'bank';
     return 'online';
   });
 
   // Switch to QR or Bank tab when live payment details become available
   useEffect(() => {
-    if (hasQr || hasBank) {
+    if (hasQr) {
       setActiveTab((prev) => (prev === 'online' ? 'qr' : prev));
+    } else if (hasBank) {
+      setActiveTab((prev) => (prev === 'qr' || prev === 'online' ? 'bank' : prev));
     }
   }, [hasQr, hasBank]);
 
@@ -549,8 +552,8 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
                 }`}
               >
                 <QrCode className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline">{hasBank ? 'QR & Bank Transfer' : 'Scan & Pay QR'}</span>
-                <span className="sm:hidden">{hasBank ? 'QR / Bank' : 'QR Pay'}</span>
+                <span className="hidden sm:inline">{hasQr ? (hasBank ? 'QR & Bank Transfer' : 'Scan & Pay QR') : 'UPI QR (Not Set)'}</span>
+                <span className="sm:hidden">{hasQr ? (hasBank ? 'QR / Bank' : 'QR Pay') : 'UPI QR'}</span>
               </button>
 
               <button
@@ -584,7 +587,28 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
             {/* TAB 1: INSTANT QR CODE & BANK TRANSFER PAYMENT */}
             {activeTab === 'qr' && (
               <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-900/70 border border-white/10 space-y-4">
-                {/* QR Section */}
+                {!hasQr ? (
+                  <div className="p-5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center space-y-3">
+                    <QrCode className="w-8 h-8 mx-auto text-amber-400" />
+                    <div>
+                      <h4 className="text-sm font-bold text-white">No UPI QR Configured</h4>
+                      <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+                        The freelancer hasn&apos;t configured a UPI ID or custom QR code yet. Please use Bank Wire or Card / Online to complete your payment.
+                      </p>
+                    </div>
+                    {hasBank && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('bank')}
+                        className="px-4 py-2 rounded-lg bg-amber-500 text-zinc-950 text-xs font-bold hover:bg-amber-400 transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                      >
+                        <Landmark className="w-3.5 h-3.5" />
+                        <span>View Direct Bank Wire Details</span>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                /* QR Section */
                 <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4">
                   {/* The QR Code Image / SVG */}
                   <div className="relative p-2 bg-white rounded-xl shadow-lg border border-zinc-200 w-[140px] h-[140px] flex items-center justify-center shrink-0 overflow-hidden">
@@ -653,6 +677,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Embedded Direct Bank Transfer Details (Visible on client side if user updated bank details) */}
                 {hasBank && (

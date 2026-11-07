@@ -151,10 +151,12 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
         },
       };
 
-      if (isRealSubscription) {
-        options.subscription_id = data.checkoutPayload.subscriptionId;
-      } else if (data.checkoutPayload.orderId) {
+      if (data.checkoutPayload.orderId) {
         options.order_id = data.checkoutPayload.orderId;
+      } else if (isRealSubscription) {
+        options.subscription_id = data.checkoutPayload.subscriptionId;
+        delete options.amount;
+        delete options.currency;
       }
 
       const rzp = new (window as any).Razorpay(options);

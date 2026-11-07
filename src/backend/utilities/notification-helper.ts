@@ -23,10 +23,52 @@ export const NotificationHelper = {
     userId?: string;
   }): Promise<void> => {
     try {
-      const wsId = params.workspaceId || (await getCurrentWorkspace())?.id;
+      const client = supabaseAdmin || supabase;
+      let wsId = params.workspaceId;
+
+      // 1. Resolve workspace ID from clientId if not provided
+      if (!wsId && params.clientId && client) {
+        try {
+          const { data: clientRow } = await client
+            .from('clients')
+            .select('workspace_id')
+            .eq('id', params.clientId)
+            .maybeSingle();
+          if (clientRow?.workspace_id) {
+            wsId = clientRow.workspace_id;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // 2. Fallback to active workspace session
+      if (!wsId) {
+        try {
+          wsId = (await getCurrentWorkspace())?.id;
+        } catch {
+          // ignore
+        }
+      }
+
       if (!wsId) return;
 
       let targetUserId = params.userId || null;
+      if (!targetUserId && client) {
+        try {
+          const { data: wsRow } = await client
+            .from('workspaces')
+            .select('owner_id')
+            .eq('id', wsId)
+            .maybeSingle();
+          if (wsRow?.owner_id) {
+            targetUserId = wsRow.owner_id;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       if (!targetUserId) {
         try {
           const { data: { user } } = await supabase.auth.getUser();
@@ -36,18 +78,23 @@ export const NotificationHelper = {
         }
       }
 
-      const client = supabaseAdmin || supabase;
-      await client.from('notifications').insert({
-        workspace_id: wsId,
-        user_id: targetUserId,
-        client_id: params.clientId || null,
-        title: params.title,
-        message: params.message,
-        category: params.category || 'info',
-        link: params.link || null,
-        priority: params.priority || 'medium',
-        read: false,
-      });
+      if (client) {
+        await client.from('notifications').insert({
+          workspace_id: wsId,
+          user_id: targetUserId,
+          client_id: params.clientId || null,
+          title: params.title,
+          message: params.message,
+          category: params.category || 'info',
+          link: params.link || null,
+          priority: params.priority || 'medium',
+          read: false,
+        });
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+        }
+      }
     } catch (err) {
       console.warn('Failed to create freelancer notification:', err);
     }
@@ -63,24 +110,55 @@ export const NotificationHelper = {
     category?: string;
     link?: string;
     priority?: 'high' | 'medium' | 'low';
+    workspaceId?: string;
   }): Promise<void> => {
     try {
-      const ws = await getCurrentWorkspace();
-      if (!ws?.id) return;
+      const client = supabaseAdmin || supabase;
+      let wsId = params.workspaceId;
 
-      const { data: { user } } = await supabase.auth.getUser();
+      if (!wsId && client) {
+        try {
+          const { data: clientRow } = await client
+            .from('clients')
+            .select('workspace_id')
+            .eq('id', params.clientId)
+            .maybeSingle();
+          if (clientRow?.workspace_id) {
+            wsId = clientRow.workspace_id;
+          }
+        } catch {
+          // ignore
+        }
+      }
 
-      await supabase.from('notifications').insert({
-        workspace_id: ws.id,
-        user_id: null,
-        client_id: params.clientId,
-        title: params.title,
-        message: params.message,
-        category: params.category || 'info',
-        link: params.link || null,
-        priority: params.priority || 'medium',
-        read: false,
-      });
+      if (!wsId) {
+        try {
+          const ws = await getCurrentWorkspace();
+          if (ws?.id) wsId = ws.id;
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!wsId) return;
+
+      if (client) {
+        await client.from('notifications').insert({
+          workspace_id: wsId,
+          user_id: null,
+          client_id: params.clientId,
+          title: params.title,
+          message: params.message,
+          category: params.category || 'info',
+          link: params.link || null,
+          priority: params.priority || 'medium',
+          read: false,
+        });
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('flowdesk:client-notifications-updated'));
+        }
+      }
     } catch (err) {
       console.warn('Failed to create client notification:', err);
     }
@@ -88,9 +166,10 @@ export const NotificationHelper = {
 
   // --- Convenience methods for common business events ---
 
-  deliverableSubmitted: async (deliverableTitle: string, clientId: string) => {
+  deliverableSubmitted: async (deliverableTitle: string, clientId: string, workspaceId?: string) => {
     await NotificationHelper.notifyClient({
       clientId,
+      workspaceId,
       title: 'Deliverable Submitted',
       message: `"${deliverableTitle}" has been submitted for your review.`,
       category: 'deliverable',
@@ -99,18 +178,31 @@ export const NotificationHelper = {
     });
   },
 
-  deliverableApproved: async (deliverableTitle: string, clientId: string) => {
+  deliverableApproved: async (deliverableTitle: string, clientId: string, workspaceId?: string) => {
     await NotificationHelper.notifyClient({
       clientId,
+      workspaceId,
       title: 'Deliverable Approved',
       message: `"${deliverableTitle}" has been approved.`,
       category: 'deliverable',
       link: 'deliverables',
     });
+    // Also notify freelancer that client approved
+    await NotificationHelper.notifyFreelancer({
+      clientId,
+      workspaceId,
+      title: 'Deliverable Approved',
+      message: `Client approved "${deliverableTitle}".`,
+      category: 'deliverable',
+      link: 'deliverables',
+      priority: 'medium',
+    });
   },
 
-  revisionRequested: async (deliverableTitle: string) => {
+  revisionRequested: async (deliverableTitle: string, clientId?: string, workspaceId?: string) => {
     await NotificationHelper.notifyFreelancer({
+      clientId,
+      workspaceId,
       title: 'Revision Requested',
       message: `Client requested revision for "${deliverableTitle}".`,
       category: 'deliverable',
@@ -119,8 +211,10 @@ export const NotificationHelper = {
     });
   },
 
-  clientDocumentUploaded: async (docTitle: string, clientName: string, category: string) => {
+  clientDocumentUploaded: async (docTitle: string, clientName: string, category: string, clientId?: string, workspaceId?: string) => {
     await NotificationHelper.notifyFreelancer({
+      clientId,
+      workspaceId,
       title: 'Client Uploaded Document',
       message: `${clientName} uploaded "${docTitle}" (${category}).`,
       category: 'document',
@@ -129,9 +223,10 @@ export const NotificationHelper = {
     });
   },
 
-  documentUploaded: async (docTitle: string, clientId: string) => {
+  documentUploaded: async (docTitle: string, clientId: string, workspaceId?: string) => {
     await NotificationHelper.notifyClient({
       clientId,
+      workspaceId,
       title: 'Document Uploaded',
       message: `"${docTitle}" has been uploaded successfully.`,
       category: 'document',
@@ -139,9 +234,10 @@ export const NotificationHelper = {
     });
   },
 
-  documentRequested: async (docTitle: string, clientId: string) => {
+  documentRequested: async (docTitle: string, clientId: string, workspaceId?: string) => {
     await NotificationHelper.notifyClient({
       clientId,
+      workspaceId,
       title: 'Document Requested',
       message: `A new document "${docTitle}" has been requested.`,
       category: 'document',
@@ -150,9 +246,10 @@ export const NotificationHelper = {
     });
   },
 
-  documentVerified: async (docTitle: string, clientId: string) => {
+  documentVerified: async (docTitle: string, clientId: string, workspaceId?: string) => {
     await NotificationHelper.notifyClient({
       clientId,
+      workspaceId,
       title: 'Document Verified',
       message: `"${docTitle}" has been verified and accepted.`,
       category: 'document',
@@ -160,9 +257,10 @@ export const NotificationHelper = {
     });
   },
 
-  documentRejected: async (docTitle: string, clientId: string) => {
+  documentRejected: async (docTitle: string, clientId: string, workspaceId?: string) => {
     await NotificationHelper.notifyClient({
       clientId,
+      workspaceId,
       title: 'Document Rejected',
       message: `"${docTitle}" has been rejected. Please re-upload.`,
       category: 'document',
@@ -171,29 +269,69 @@ export const NotificationHelper = {
     });
   },
 
-  invoiceCreated: async (invoiceNumber: string, clientId: string) => {
+  invoiceCreated: async (invoiceNumber: string, clientId: string, workspaceId?: string) => {
     await NotificationHelper.notifyClient({
       clientId,
+      workspaceId,
       title: 'Invoice Created',
-      message: `Invoice ${invoiceNumber} has been created.`,
+      message: `Invoice ${invoiceNumber} has been created and is available for review.`,
       category: 'invoice',
       link: 'invoices',
     });
   },
 
-  invoicePaid: async (invoiceNumber: string) => {
+  invoicePaid: async (invoiceNumber: string, clientId?: string, workspaceId?: string) => {
     await NotificationHelper.notifyFreelancer({
+      clientId,
+      workspaceId,
       title: 'Invoice Paid',
       message: `Invoice ${invoiceNumber} has been marked as paid.`,
       category: 'invoice',
       link: 'invoices',
+      priority: 'medium',
+    });
+    if (clientId) {
+      await NotificationHelper.notifyClient({
+        clientId,
+        workspaceId,
+        title: 'Payment Received',
+        message: `Payment confirmed for Statement #${invoiceNumber}. Receipt generated.`,
+        category: 'invoice',
+        link: 'invoices',
+        priority: 'medium',
+      });
+    }
+  },
+
+  paymentSubmitted: async (invoiceNumber: string, clientName: string, utrNumber?: string, clientId?: string, workspaceId?: string) => {
+    await NotificationHelper.notifyFreelancer({
+      clientId,
+      workspaceId,
+      title: 'Payment Submitted (Pending Verification)',
+      message: `${clientName} submitted payment details for #${invoiceNumber}${utrNumber ? ` (UTR: ${utrNumber})` : ''}. Please verify in Invoices.`,
+      category: 'invoice',
+      link: 'invoices',
+      priority: 'high',
     });
   },
 
-  newComment: async (commenterName: string, entityTitle: string, recipientClientId?: string) => {
+  invoiceReminderSent: async (invoiceNumber: string, reminderNum: number, amountFormatted: string, clientId: string, workspaceId?: string) => {
+    await NotificationHelper.notifyClient({
+      clientId,
+      workspaceId,
+      title: `Payment Reminder: Invoice #${invoiceNumber}`,
+      message: `Payment reminder #${reminderNum} for ${amountFormatted} on Invoice #${invoiceNumber}.`,
+      category: 'invoice',
+      link: 'invoices',
+      priority: 'high',
+    });
+  },
+
+  newComment: async (commenterName: string, entityTitle: string, recipientClientId?: string, workspaceId?: string) => {
     if (recipientClientId) {
       await NotificationHelper.notifyClient({
         clientId: recipientClientId,
+        workspaceId,
         title: 'New Comment',
         message: `${commenterName} commented on "${entityTitle}".`,
         category: 'comment',
@@ -201,6 +339,7 @@ export const NotificationHelper = {
       });
     } else {
       await NotificationHelper.notifyFreelancer({
+        workspaceId,
         title: 'New Comment',
         message: `${commenterName} commented on "${entityTitle}".`,
         category: 'comment',
