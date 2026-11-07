@@ -17,28 +17,28 @@ export function renderClientInvitationEmail(params: ClientInvitationParams) {
 
   const contentHtml = `
     <p>Hello <strong>${clientName}</strong>,</p>
-    <p><strong>${sender}</strong> has invited you to access your dedicated collaboration portal on FlowDesk.</p>
-    <p>From your portal, you can securely review deliverables, approve milestones, upload project documents, and track invoices in one private workspace.</p>
+    <p><strong>${sender}</strong> has invited you to collaborate in their client workspace on FlowDesk.</p>
+    <p>You can use your dedicated client portal to review deliverables, approve project milestones, share project files, and track invoices in one secure place.</p>
     <div class="info-box">
       <div class="info-row"><span class="info-label">Client</span><span class="info-value">${clientName}</span></div>
       <div class="info-row"><span class="info-label">Invited By</span><span class="info-value">${sender}</span></div>
       <div class="info-row"><span class="info-label">Access Type</span><span class="info-value">Client Collaboration Portal</span></div>
-      <div class="info-row"><span class="info-label">Link Validity</span><span class="info-value">7 Days</span></div>
+      <div class="info-row"><span class="info-label">Valid For</span><span class="info-value">7 Days</span></div>
     </div>
-    <p>Click below to verify your email and connect your workspace:</p>
-    <p style="font-size: 12px; color: #71717a; margin-top: 24px;">When you accept, you will authenticate with your verified email address to establish this workspace connection. If you did not expect this invitation from ${sender}, you can safely ignore this email.</p>
+    <p>Click below to open your workspace:</p>
+    <p style="font-size: 12px; color: #71717a; margin-top: 24px;">If you have any questions or did not expect this message, you can reply directly to this email or contact ${sender}.</p>
   `;
 
   return {
-    subject: sanitizeHeader(`Invitation: Access your client portal from ${cleanSender}`),
+    subject: sanitizeHeader(`${cleanSender} invited you to collaborate on FlowDesk`),
     html: renderEmailLayout({
-      title: 'Welcome to your Client Portal',
+      title: 'Your Client Portal is Ready',
       previewText: `${cleanSender} has invited you to collaborate on FlowDesk.`,
       contentHtml,
-      ctaText: 'Accept Invitation & Enter Portal',
+      ctaText: 'Open Client Portal',
       ctaUrl: safePortalUrl,
     }),
-    text: `Hello ${cleanClientName},\n\n${cleanSender} has invited you to your dedicated collaboration portal on FlowDesk.\n\nFrom your portal, you can securely review deliverables, approve milestones, and track invoices.\n\nAccept your invitation and access your portal here (valid for 7 days):\n${safePortalUrl}\n\nNote: If you did not expect this invitation, you can safely ignore this message.\n\nFlowDesk Team`,
+    text: `Hello ${cleanClientName},\n\n${cleanSender} has invited you to collaborate in their client workspace on FlowDesk.\n\nYou can use your client portal to review deliverables, approve project milestones, and track invoices.\n\nOpen your portal here (valid for 7 days):\n${safePortalUrl}\n\nIf you have any questions, you can reply directly to this email.\n\nFlowDesk Team`,
   };
 }
 

@@ -302,6 +302,7 @@ export const CreateClientSchema = z.object({
   phone: z.string().trim().max(50).optional(),
   hourlyRate: z.number().min(0).optional(),
   currency: z.string().trim().length(3).optional().default('USD'),
+  sendInviteNow: z.boolean().optional().default(true),
 }).strict();
 
 export const UpdateClientSchema = CreateClientSchema.partial().extend({

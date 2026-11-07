@@ -89,7 +89,8 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
         currency: currency || studioCurrency,
         notes: notes.trim(),
         tags,
-      });
+        sendInviteNow,
+      } as any);
 
       // Immediately clear form, close modal, and notify caller for zero-latency UX
       resetForm();
@@ -97,29 +98,11 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
       if (onSuccess) {
         onSuccess(newClient);
       }
-      showToast('Client Workspace Created', `Workspace for "${company.trim()}" is ready.`, 'success');
-
-      // Dispatch invitation asynchronously in background so client creation is instant
-      if (sendInviteNow && newClient?.id) {
-        fetch(`/api/clients/${encodeURIComponent(newClient.id)}/invitation`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            recipientEmail: email.trim(),
-            forceNew: true,
-            sendEmail: true,
-          }),
-        })
-          .then((res) => res.json())
-          .then((invData) => {
-            if (invData.emailDispatched) {
-              showToast('Invitation Email Dispatched', `Sent onboarding invitation to ${email.trim()}`, 'success');
-            }
-          })
-          .catch((invErr) => {
-            console.warn('Auto invitation send notice:', invErr);
-          });
-      }
+      showToast(
+        'Client Workspace Created',
+        `Workspace for "${company.trim()}" is ready.${sendInviteNow ? ' Invitation email dispatched.' : ''}`,
+        'success'
+      );
     } catch (err: any) {
       console.error('Create client error:', err);
       const isLimitError =

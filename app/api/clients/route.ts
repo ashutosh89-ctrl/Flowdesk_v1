@@ -174,7 +174,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       inviteUrl = inviteResult.url;
 
       // 6a. Dispatches transactional invitation email to client (NON-BLOCKING)
-      if (insertedClient.email) {
+      if (insertedClient.email && payload.sendInviteNow !== false) {
         (async () => {
           try {
             const { EmailService } = await import('@/backend/email/email-service');
@@ -234,6 +234,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         message: 'Client created successfully.',
         client: insertedClient,
         inviteUrl,
+        emailDispatched: Boolean(insertedClient.email && payload.sendInviteNow !== false),
         requestId,
       },
       {

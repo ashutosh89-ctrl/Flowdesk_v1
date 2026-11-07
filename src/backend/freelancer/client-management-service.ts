@@ -38,6 +38,7 @@ export const FreelancerClientManagementService = {
           phone: clientData.phone,
           hourlyRate: (clientData as any).hourlyRate,
           currency: clientData.currency,
+          sendInviteNow: (clientData as any).sendInviteNow !== false,
         }),
       });
       const data = await res.json();
@@ -70,8 +71,8 @@ export const FreelancerClientManagementService = {
       }
     } catch { /* non-critical */ }
 
-    // Automatically trigger invitation email dispatch if client has email
-    if (client.email && client.email.includes('@')) {
+    // Automatically trigger invitation email dispatch if client has email and invited
+    if (client.email && client.email.includes('@') && (clientData as any).sendInviteNow !== false) {
       FreelancerClientManagementService.sendClientInvitationEmail(client.id).catch((emailErr) => {
         console.warn('[FreelancerClientManagementService] Auto-invitation notice:', emailErr);
       });

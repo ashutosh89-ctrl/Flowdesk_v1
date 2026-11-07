@@ -107,23 +107,6 @@ export const InvitationService = {
           .update({ status: 'revoked', revoked_at: nowIso })
           .eq('client_id', clientId)
           .eq('status', 'pending');
-      } else {
-        const { data: existing } = await db
-          .from('client_invitations')
-          .select('*')
-          .eq('client_id', clientId)
-          .eq('status', 'pending')
-          .gt('expires_at', nowIso)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (existing) {
-          await db
-            .from('client_invitations')
-            .update({ status: 'revoked', revoked_at: nowIso })
-            .eq('id', existing.id);
-        }
       }
 
       const { data: inserted, error: insertErr } = await db

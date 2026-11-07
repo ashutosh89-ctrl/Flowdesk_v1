@@ -444,9 +444,19 @@ export async function sendBrevoEmail(payload: SendBrevoEmailPayload): Promise<Br
     requestBody.tags = payload.tags;
   }
 
-  if (payload.headers && Object.keys(payload.headers).length > 0) {
-    requestBody.headers = payload.headers;
-  }
+  const standardHeaders: Record<string, string> = {
+    'X-Mailer': 'FlowDesk Platform',
+    'X-Priority': '3',
+    'List-Unsubscribe': '<mailto:flowdesk11@gmail.com?subject=unsubscribe>',
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    'Auto-Submitted': 'auto-generated',
+    'X-Auto-Response-Suppress': 'OOF, AutoReply',
+  };
+
+  requestBody.headers = {
+    ...standardHeaders,
+    ...(payload.headers || {}),
+  };
 
   // 6. Exponential Backoff with Bounded Retries for Transient Errors (max 2 retries)
   const maxRetries = 2;
