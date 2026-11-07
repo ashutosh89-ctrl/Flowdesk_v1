@@ -115,7 +115,7 @@ export const InviteClientModal: React.FC<InviteClientModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           recipientEmail: client.email,
-          forceNew: true,
+          forceNew: false,
           sendEmail,
         }),
       });

@@ -447,9 +447,6 @@ export async function sendBrevoEmail(payload: SendBrevoEmailPayload): Promise<Br
   const standardHeaders: Record<string, string> = {
     'X-Mailer': 'FlowDesk Platform',
     'X-Priority': '3',
-    'List-Unsubscribe': '<mailto:flowdesk11@gmail.com?subject=unsubscribe>',
-    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-    'Auto-Submitted': 'auto-generated',
     'X-Auto-Response-Suppress': 'OOF, AutoReply',
   };
 

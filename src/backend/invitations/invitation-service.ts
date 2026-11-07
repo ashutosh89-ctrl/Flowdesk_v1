@@ -102,11 +102,14 @@ export const InvitationService = {
     // 4. Try dedicated client_invitations table first
     try {
       if (options?.forceNew) {
+        // Protect recently created invitations (within 15 minutes) from accidental revocation
+        const graceCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
         await db
           .from('client_invitations')
           .update({ status: 'revoked', revoked_at: nowIso })
           .eq('client_id', clientId)
-          .eq('status', 'pending');
+          .eq('status', 'pending')
+          .lt('created_at', graceCutoff);
       }
 
       const { data: inserted, error: insertErr } = await db
@@ -232,6 +235,46 @@ export const InvitationService = {
         }
 
         if (inv.status === 'revoked') {
+          // Check if this token was merely superseded by a newer pending invite for an unclaimed client
+          const { data: clientData } = await db
+            .from('clients')
+            .select('id, name, company, email, user_id')
+            .eq('id', inv.client_id)
+            .maybeSingle();
+
+          const now = new Date();
+          const notExpired = new Date(inv.expires_at) >= now;
+
+          if (clientData && !clientData.user_id && notExpired) {
+            const { data: activePending } = await db
+              .from('client_invitations')
+              .select('id')
+              .eq('client_id', inv.client_id)
+              .eq('status', 'pending')
+              .gt('expires_at', now.toISOString())
+              .limit(1)
+              .maybeSingle();
+
+            // If an active pending invitation exists, seamlessly allow this superseded token
+            if (activePending) {
+              const { data: freelancer } = await db
+                .from('profiles')
+                .select('business_name, full_name')
+                .eq('id', inv.freelancer_id)
+                .maybeSingle();
+
+              return {
+                isValid: true,
+                status: 'pending',
+                freelancerName: freelancer?.business_name || freelancer?.full_name || 'FlowDesk Studio',
+                clientName: clientData?.name || 'Client',
+                companyName: clientData?.company || '',
+                maskedEmail: maskEmail(inv.recipient_email || clientData?.email),
+                expiresAt: inv.expires_at,
+              };
+            }
+          }
+
           return {
             isValid: false,
             status: 'revoked',
@@ -390,11 +433,37 @@ export const InvitationService = {
         }
 
         if (inv.status === 'revoked') {
-          return {
-            success: false,
-            errorCode: 'REVOKED',
-            error: 'This connection link has been revoked by the sender.',
-          };
+          const { data: clientCheck } = await db
+            .from('clients')
+            .select('id, user_id')
+            .eq('id', inv.client_id)
+            .maybeSingle();
+
+          const now = new Date();
+          const notExpired = new Date(inv.expires_at) >= now;
+
+          let allowSuperseded = false;
+          if (clientCheck && !clientCheck.user_id && notExpired) {
+            const { data: activePending } = await db
+              .from('client_invitations')
+              .select('id')
+              .eq('client_id', inv.client_id)
+              .eq('status', 'pending')
+              .gt('expires_at', now.toISOString())
+              .limit(1)
+              .maybeSingle();
+            if (activePending) {
+              allowSuperseded = true;
+            }
+          }
+
+          if (!allowSuperseded) {
+            return {
+              success: false,
+              errorCode: 'REVOKED',
+              error: 'This connection link has been revoked by the sender.',
+            };
+          }
         }
 
         const now = new Date();
@@ -482,7 +551,7 @@ export const InvitationService = {
           console.warn('[InvitationService] client_connections upsert notice:', connErr);
         }
 
-        // Consume invitation
+        // Consume invitation and mark all pending/superseded invitations for this client as claimed
         await db
           .from('client_invitations')
           .update({
@@ -490,7 +559,8 @@ export const InvitationService = {
             claimed_at: now.toISOString(),
             claimed_by_user_id: userId,
           })
-          .eq('id', inv.id);
+          .eq('client_id', client.id)
+          .in('status', ['pending', 'revoked']);
 
         return {
           success: true,

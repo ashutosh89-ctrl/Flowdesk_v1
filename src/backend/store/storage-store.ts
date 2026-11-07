@@ -1452,9 +1452,11 @@ export const FlowDeskStore = {
     const targetEmail = recipientEmail || undefined;
     const nowIso = new Date().toISOString();
 
-    // Revoke any existing pending invitations for this client
+    // Revoke any existing pending invitations older than 15 minutes for this client
+    const graceCutoff = Date.now() - 15 * 60 * 1000;
     Object.values(clientInvitations).forEach((inv) => {
-      if (inv.clientId === clientId && inv.status === 'pending') {
+      const createdTime = new Date(inv.createdAt).getTime();
+      if (inv.clientId === clientId && inv.status === 'pending' && createdTime < graceCutoff) {
         inv.status = 'revoked';
         inv.revokedAt = nowIso;
       }
@@ -1515,6 +1517,21 @@ export const FlowDeskStore = {
     }
 
     if (inv.status === 'revoked') {
+      const client = clients.find((c) => c.id === inv.clientId);
+      const activePending = Object.values(clientInvitations).find(
+        (i) => i.clientId === inv.clientId && i.status === 'pending' && new Date(i.expiresAt) >= new Date()
+      );
+      if (client && !client.userId && activePending) {
+        return {
+          isValid: true,
+          status: 'pending',
+          freelancerName: 'Apex Digital Labs',
+          clientName: client?.name || 'Client',
+          companyName: client?.company || '',
+          maskedEmail: inv.recipientEmail ? `${inv.recipientEmail.charAt(0)}***@${inv.recipientEmail.split('@')[1] || 'example.com'}` : undefined,
+          expiresAt: inv.expiresAt,
+        };
+      }
       return {
         isValid: false,
         status: 'revoked',
@@ -1554,11 +1571,17 @@ export const FlowDeskStore = {
     }
 
     if (inv.status === 'revoked') {
-      return {
-        success: false,
-        errorCode: 'REVOKED',
-        error: 'This connection link has been revoked by the sender.',
-      };
+      const client = clients.find((c) => c.id === inv.clientId);
+      const activePending = Object.values(clientInvitations).find(
+        (i) => i.clientId === inv.clientId && i.status === 'pending' && new Date(i.expiresAt) >= new Date()
+      );
+      if (!client || client.userId || !activePending) {
+        return {
+          success: false,
+          errorCode: 'REVOKED',
+          error: 'This connection link has been revoked by the sender.',
+        };
+      }
     }
 
     const now = new Date();
