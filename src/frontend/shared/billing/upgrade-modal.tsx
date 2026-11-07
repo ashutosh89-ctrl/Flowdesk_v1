@@ -95,25 +95,17 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
         );
       }
 
-      const options = {
+      const isRealSubscription =
+        data.checkoutPayload.subscriptionId &&
+        !data.checkoutPayload.subscriptionId.startsWith('sub_mock_') &&
+        !data.checkoutPayload.subscriptionId.startsWith('sub_demo_');
+
+      const options: any = {
         key: data.checkoutPayload.keyId,
-        subscription_id: data.checkoutPayload.subscriptionId,
+        amount: data.checkoutPayload.amount,
+        currency: data.checkoutPayload.currency || 'INR',
         name: 'FlowDesk Workspace',
-        description: `Subscription to ${BILLING_PLANS[planKey].name} (${interval})`,
-        handler: function (response: any) {
-          showToast(
-            'Subscription Initiated',
-            'Payment authorized. Your plan entitlements will update momentarily.',
-            'success'
-          );
-          onSuccess?.();
-          onClose();
-        },
-        modal: {
-          ondismiss: function () {
-            setLoadingPlan(null);
-          },
-        },
+        description: `Upgrade to ${BILLING_PLANS[planKey].name} (${interval})`,
         prefill: {
           name: data.checkoutPayload.customerName,
           email: data.checkoutPayload.customerEmail,
@@ -121,7 +113,46 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
         theme: {
           color: '#43D6B0',
         },
+        modal: {
+          ondismiss: function () {
+            setLoadingPlan(null);
+          },
+        },
+        handler: async function (response: any) {
+          try {
+            const actRes = await fetch('/api/billing/activate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                planKey,
+                interval,
+                paymentId: response.razorpay_payment_id || `pay_test_${Date.now()}`,
+                subscriptionId: response.razorpay_subscription_id || data.checkoutPayload.subscriptionId,
+                signature: response.razorpay_signature,
+              }),
+            });
+            const actData = await actRes.json();
+            if (!actRes.ok || !actData.success) {
+              throw new Error(actData?.error?.message || actData?.error || 'Failed to activate plan.');
+            }
+            showToast(
+              'Subscription Activated',
+              `Upgraded to ${BILLING_PLANS[planKey].name} successfully.`,
+              'success'
+            );
+            onSuccess?.();
+            onClose();
+          } catch (actErr: any) {
+            setError(actErr?.message || 'Payment confirmed, but subscription activation failed.');
+          } finally {
+            setLoadingPlan(null);
+          }
+        },
       };
+
+      if (isRealSubscription) {
+        options.subscription_id = data.checkoutPayload.subscriptionId;
+      }
 
       const rzp = new (window as any).Razorpay(options);
       rzp.on('payment.failed', function (failResp: any) {

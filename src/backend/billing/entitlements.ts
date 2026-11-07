@@ -98,19 +98,16 @@ export const getWorkspaceEntitlements = cache(
       }
     }
 
-    const isAshutosh = userEmail === 'ashutoshcmishra720@gmail.com';
-    const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-
     // 1. In demo mode or if workspaceId is missing
     if (isDemoModeActive() || !workspaceId || workspaceId.startsWith('demo-')) {
-      const activePlanKey: PlanKey = isAshutosh ? 'standard' : 'starter';
+      const activePlanKey: PlanKey = 'starter';
       const assignedPlan = getBillingPlan(activePlanKey);
       return {
         workspaceId,
         planKey: activePlanKey,
         planName: assignedPlan.name,
         status: 'active',
-        currentPeriodEnd: isAshutosh ? thirtyDaysFromNow : null,
+        currentPeriodEnd: null,
         cancelAtPeriodEnd: false,
         limits: assignedPlan.limits,
         usage: {
@@ -121,7 +118,7 @@ export const getWorkspaceEntitlements = cache(
         },
         isGrace: false,
         isPastDue: false,
-        isTrialing: isAshutosh,
+        isTrialing: false,
         isWriteAllowed: true,
       };
     }
@@ -173,17 +170,6 @@ export const getWorkspaceEntitlements = cache(
       }
     }
 
-    // SPECIAL RULE PER PRODUCT SPEC:
-    // 1. ashutoshcmishra720@gmail.com gets Standard Freelancer package active for 30 days if without a paid sub
-    // 2. All other non-subscribed users default to Free Starter
-    // 3. Subscribed accounts preserve their true DB planKey (starter, standard, studio)
-    if (isAshutosh && (planKey === 'free' || planKey === 'starter')) {
-      planKey = 'standard';
-      status = 'active';
-      currentPeriodEnd = thirtyDaysFromNow;
-      cancelAtPeriodEnd = false;
-    }
-
     // 3. Compute live usage metrics for the workspace
     // Active records: Exclude archived and deleted records
     let activeClients = 0;
@@ -194,9 +180,14 @@ export const getWorkspaceEntitlements = cache(
       try {
         const now = Date.now();
         const startOfMonth = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString();
-        const billingCycleStart = (currentPeriodStart && new Date(currentPeriodStart).getTime() <= now)
-          ? currentPeriodStart
-          : startOfMonth;
+        let billingCycleStart = startOfMonth;
+        if (currentPeriodStart && planKey !== 'starter' && planKey !== 'free') {
+          const periodStartTime = new Date(currentPeriodStart).getTime();
+          // Use current subscription period start only if it falls within the last 32 days
+          if (periodStartTime <= now && (now - periodStartTime) < 32 * 24 * 60 * 60 * 1000) {
+            billingCycleStart = currentPeriodStart;
+          }
+        }
 
         const [clientsRes, projectsRes, invoicesRes] = await Promise.all([
           supabaseAdmin

@@ -423,7 +423,6 @@ export function InvoiceBuilderModal({
       const isLimitError =
         err?.code === 'PLAN_LIMIT_REACHED' ||
         err?.code === 'PLAN_LIMIT_EXCEEDED' ||
-        err?.metric === 'invoicesPerMonth' ||
         err?.name === 'PlanLimitError';
 
       if (isLimitError) {

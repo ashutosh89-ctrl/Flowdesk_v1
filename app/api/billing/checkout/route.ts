@@ -141,24 +141,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       interval: payload.interval,
     });
 
-    // Record or update subscription in DB as pending/created
-    if (supabaseAdmin) {
-      await supabaseAdmin.from('subscriptions').upsert(
-        {
-          workspace_id: workspace.id,
-          plan_key: payload.planKey,
-          billing_interval: payload.interval,
-          status: 'trialing',
-          provider: 'razorpay',
-          provider_subscription_id: subscriptionResult.providerSubscriptionId,
-          provider_customer_id: subscriptionResult.providerCustomerId || null,
-          cancel_at_period_end: false,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'workspace_id' }
-      );
-    }
-
     logger.security('BILLING_CHECKOUT_INITIATED', {
       status: 'SUCCESS',
       workspaceId: workspace.id,

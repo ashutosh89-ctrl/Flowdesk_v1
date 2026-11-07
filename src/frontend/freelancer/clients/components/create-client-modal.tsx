@@ -125,7 +125,6 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({
       const isLimitError =
         err?.code === 'PLAN_LIMIT_REACHED' ||
         err?.code === 'PLAN_LIMIT_EXCEEDED' ||
-        err?.metric === 'activeClients' ||
         err?.name === 'PlanLimitError';
 
       if (isLimitError) {

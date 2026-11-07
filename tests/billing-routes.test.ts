@@ -243,15 +243,14 @@ test('Billing API Routes: Endpoint Security & Verification', async (suite) => {
     const data = await res.json();
     assert.ok(data.entitlements);
     assert.ok(data.plans);
-    assert.equal(data.entitlements.planKey, 'free');
+    assert.equal(data.entitlements.planKey, 'starter');
     assert.equal(res.headers.get('cache-control'), 'no-store');
   });
 
-  await suite.test('Status: grants 30-day standard package to ashutoshcmishra720@gmail.com', async () => {
+  await suite.test('Status: defaults all users to free starter package per user request', async () => {
     const { getWorkspaceEntitlements } = await import('@/backend/billing/entitlements');
     const entitlements = await getWorkspaceEntitlements('demo-workspace', 'ashutoshcmishra720@gmail.com');
-    assert.equal(entitlements.planKey, 'standard');
+    assert.equal(entitlements.planKey, 'starter');
     assert.equal(entitlements.status, 'active');
-    assert.ok(entitlements.currentPeriodEnd);
   });
 });

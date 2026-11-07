@@ -175,7 +175,6 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
       const isLimitError =
         err?.code === 'PLAN_LIMIT_REACHED' ||
         err?.code === 'PLAN_LIMIT_EXCEEDED' ||
-        err?.metric === 'activeProjects' ||
         err?.name === 'PlanLimitError';
 
       if (isLimitError) {

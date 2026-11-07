@@ -44,7 +44,7 @@ export const FreelancerClientManagementService = {
       if (!res.ok || !data.success) {
         const err: any = new Error(data?.error?.message || data?.message || data?.error || 'Failed to create client.');
         err.code = data?.error?.code || data?.code;
-        err.metric = data?.error?.metric || data?.metric || 'activeClients';
+        err.metric = data?.error?.metric || data?.metric;
         err.currentUsage = data?.error?.currentUsage ?? data?.currentUsage;
         err.maxAllowed = data?.error?.maxAllowed ?? data?.maxAllowed;
         err.currentPlan = data?.error?.currentPlan || data?.currentPlan;
