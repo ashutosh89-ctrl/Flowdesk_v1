@@ -181,7 +181,7 @@ export async function POST(
     } catch { /* fallback */ }
 
     const baseUrl = getAppBaseUrl();
-    const portalUrl = `${baseUrl}/portal/login`;
+    const portalUrl = invoice.client_id ? `${baseUrl}/portal/${invoice.client_id}` : `${baseUrl}/portal/login`;
     const curr = invoice.currency || '$';
     const ruleKey = `manual_${Date.now()}`;
 
@@ -210,9 +210,9 @@ export async function POST(
       }
     );
 
-    if (!sendRes.success && !sendRes.suppressed) {
+    if (!sendRes.success || sendRes.suppressed) {
       return createApiErrorResponse({
-        message: sendRes.error || 'Failed to dispatch email reminder.',
+        message: sendRes.error || (sendRes.suppressed ? 'Email reminder was suppressed by email delivery rules or notification settings.' : 'Failed to dispatch email reminder.'),
         code: 'EMAIL_DISPATCH_FAILED',
         status: 500,
         requestId,

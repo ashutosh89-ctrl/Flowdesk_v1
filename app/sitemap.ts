@@ -14,7 +14,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/privacy', priority: 0.6, changeFrequency: 'monthly' as const },
     { path: '/refund-policy', priority: 0.6, changeFrequency: 'monthly' as const },
     { path: '/cancellation-policy', priority: 0.6, changeFrequency: 'monthly' as const },
-    { path: '/security', priority: 0.6, changeFrequency: 'monthly' as const },
   ];
 
   return publicRoutes.map((route) => ({

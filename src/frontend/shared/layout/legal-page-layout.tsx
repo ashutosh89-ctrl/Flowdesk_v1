@@ -139,18 +139,6 @@ export const LegalPageLayout: React.FC<LegalPageLayoutProps> = ({
 
       {/* Main Document Area */}
       <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 print:p-0 print:m-0 print:max-w-none relative z-10">
-        {draftForReview && (
-          <div className="mb-8 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs sm:text-sm flex items-start gap-3 print:hidden">
-            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-amber-100">Draft Document for Legal Review</p>
-              <p className="text-amber-300/80 mt-0.5 leading-relaxed">
-                This document reflects verified technical controls and the DPDP Act 2023 commencement schedule. Final formal review by qualified legal counsel is recommended prior to commercial launch.
-              </p>
-            </div>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 print:block">
           {/* Left Column: Document Header & Content (65-75ch readability standard) */}
           <main className="lg:col-span-8 space-y-8 print:w-full print:max-w-none print:space-y-6 print-legal-document" id="legal-content">
@@ -312,7 +300,6 @@ export const LegalPageLayout: React.FC<LegalPageLayoutProps> = ({
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
             <Link href="/refund-policy" className="hover:text-white transition-colors">Refund Policy</Link>
             <Link href="/cancellation-policy" className="hover:text-white transition-colors">Cancellation Policy</Link>
-            <Link href="/security" className="hover:text-white transition-colors">Security</Link>
             <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
           </div>
         </div>

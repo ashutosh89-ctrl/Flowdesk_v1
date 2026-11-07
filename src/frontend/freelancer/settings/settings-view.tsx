@@ -2032,16 +2032,16 @@ export const SettingsView: React.FC = () => {
 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-white/5 bg-white/[0.02]">
                   <div>
-                    <h4 className="text-xs font-bold text-zinc-200">Data Correction, Erasure & Grievance Redressal</h4>
+                    <h4 className="text-xs font-bold text-zinc-200">Data Correction, Erasure &amp; Privacy Rights</h4>
                     <p className="text-[11px] text-zinc-400 mt-0.5">
-                      Submit a privacy rights request or contact our designated Grievance Officer regarding data rectification, withdrawal of consent, or erasure inquiries.
+                      Submit a privacy rights request regarding data rectification, withdrawal of consent, or erasure inquiries.
                     </p>
                   </div>
                   <Link
                     href="/contact?category=Privacy%20and%20Data%20Deletion"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/20 text-xs text-zinc-300 hover:text-white bg-white/5 hover:bg-white/10 transition-colors shrink-0"
                   >
-                    <span>Contact Grievance Officer</span>
+                    <span>Submit Privacy Request</span>
                     <ExternalLink className="w-3 h-3 text-zinc-400" />
                   </Link>
                 </div>

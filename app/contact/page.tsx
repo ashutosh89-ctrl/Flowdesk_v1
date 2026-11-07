@@ -328,7 +328,7 @@ export default function ContactPage() {
         { id: 'contact-form', title: '1. Support Request Form' },
         { id: 'response-targets', title: '2. Response Target Guidelines' },
         { id: 'direct-contacts', title: '3. Direct Email Endpoints' },
-        { id: 'grievance', title: '4. Grievance Redressal' },
+        { id: 'privacy-inquiries', title: '4. Privacy & Data Rights Inquiries' },
       ]}
     >
       <section id="contact-form" className="space-y-4">
@@ -426,16 +426,16 @@ export default function ContactPage() {
         </div>
       </section>
 
-      <section id="grievance" className="space-y-4 pt-6 border-t border-[#2A2A2A]">
-        <h2 className="text-2xl font-bold text-white tracking-tight">4. Grievance Redressal</h2>
+      <section id="privacy-inquiries" className="space-y-4 pt-6 border-t border-[#2A2A2A]">
+        <h2 className="text-2xl font-bold text-white tracking-tight">4. Privacy &amp; Data Rights Inquiries</h2>
         <p className="text-sm text-zinc-300">
-          Under the Digital Personal Data Protection Act, 2023, you can escalate formal privacy or data grievances directly to our appointed Grievance Officer:
+          For formal privacy inquiries, data deletion requests, or questions regarding data handling under applicable privacy regulations, reach out directly to our dedicated support desk:
         </p>
         <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-1.5 text-xs text-zinc-300">
-          <p><strong>Officer:</strong> {siteConfig.grievanceOfficer.name}</p>
-          <p><strong>Designation:</strong> {siteConfig.grievanceOfficer.title}</p>
-          <p><strong>Email:</strong> <a href={`mailto:${siteConfig.grievanceOfficer.email}`} className="text-[#2563EB] underline">{siteConfig.grievanceOfficer.email}</a></p>
-          <p><strong>Address:</strong> {siteConfig.grievanceOfficer.address}</p>
+          <p><strong>Desk:</strong> FlowDesk Privacy &amp; Support Desk</p>
+          <p><strong>Email:</strong> <a href={`mailto:${siteConfig.privacyEmail}`} className="text-[#43D6B0] hover:underline font-mono">{siteConfig.privacyEmail}</a></p>
+          <p><strong>Support Form:</strong> Submit via the form above with category &quot;Privacy and Data Deletion&quot;</p>
+          <p><strong>Turnaround:</strong> Acknowledged and addressed within 2 business days</p>
         </div>
       </section>
     </LegalPageLayout>

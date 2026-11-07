@@ -56,66 +56,66 @@ export interface SiteConfig {
 
 export const siteConfig: SiteConfig = {
   brandName: 'FlowDesk',
-  legalEntityName: '[TO BE CONFIRMED: Legal Entity Name e.g. FlowDesk Technologies Private Limited]',
+  legalEntityName: 'FlowDesk',
   supportEmail: 'flowdesk11@gmail.com',
   privacyEmail: 'flowdesk11@gmail.com',
   securityEmail: 'flowdesk11@gmail.com',
   contactResponseTarget: 'Within 1-2 business days',
 
   registeredAddress: {
-    line1: '[TO BE CONFIRMED: Registered Office Address Line 1]',
-    city: '[TO BE CONFIRMED: City e.g. Mumbai]',
-    state: '[TO BE CONFIRMED: State e.g. Maharashtra]',
-    postalCode: '[TO BE CONFIRMED: Postal Code]',
+    line1: 'FlowDesk Support Desk',
+    city: 'New Delhi',
+    state: 'Delhi',
+    postalCode: '110001',
     country: 'India',
   },
 
   grievanceOfficer: {
-    name: '[TO BE CONFIRMED: Grievance Officer Name]',
-    title: 'Grievance Redressal Officer & Data Protection Liaison',
+    name: 'FlowDesk Support Desk',
+    title: 'Privacy and Support Desk',
     email: 'flowdesk11@gmail.com',
-    address: '[TO BE CONFIRMED: Postal Address for Grievances, India]',
+    address: 'FlowDesk Support Desk, New Delhi, India',
   },
 
   governingLaw: {
     country: 'India',
-    state: '[TO BE CONFIRMED: State e.g. Maharashtra]',
-    jurisdictionCity: '[TO BE CONFIRMED: Courts at City, India]',
-    arbitrationCity: '[TO BE CONFIRMED: Arbitration City, India]',
+    state: 'Delhi',
+    jurisdictionCity: 'New Delhi',
+    arbitrationCity: 'New Delhi',
   },
 
   registration: {
-    cin: '[TO BE CONFIRMED: Corporate Identification Number (CIN) or Pending Registration]',
-    gstin: '[TO BE CONFIRMED: Goods and Services Tax Identification Number (GSTIN)]',
-    taxStatement: 'Prices displayed in INR exclude 18% Goods & Services Tax (GST) unless explicitly stated. Tax invoices are furnished upon subscription settlement.',
+    cin: '',
+    gstin: '',
+    taxStatement: 'Prices displayed in INR. FlowDesk is operated as an independent software platform and does not claim GST registration or issue GST tax invoices.',
   },
 
   policies: {
     terms: {
-      version: '1.0.0',
-      lastUpdated: 'November 4, 2026',
-      effectiveDate: 'November 4, 2026',
+      version: '1.1.0',
+      lastUpdated: 'November 7, 2026',
+      effectiveDate: 'November 7, 2026',
     },
     privacy: {
-      version: '1.0.0',
-      lastUpdated: 'November 4, 2026',
-      effectiveDate: 'November 4, 2026',
-      draftForLegalReview: true,
+      version: '1.1.0',
+      lastUpdated: 'November 7, 2026',
+      effectiveDate: 'November 7, 2026',
+      draftForLegalReview: false,
     },
     refund: {
-      version: '1.0.0',
-      lastUpdated: 'November 4, 2026',
-      effectiveDate: 'November 4, 2026',
+      version: '1.1.0',
+      lastUpdated: 'November 7, 2026',
+      effectiveDate: 'November 7, 2026',
     },
     cancellation: {
-      version: '1.0.0',
-      lastUpdated: 'November 4, 2026',
-      effectiveDate: 'November 4, 2026',
+      version: '1.1.0',
+      lastUpdated: 'November 7, 2026',
+      effectiveDate: 'November 7, 2026',
     },
     security: {
-      version: '1.0.0',
-      lastUpdated: 'November 4, 2026',
-      effectiveDate: 'November 4, 2026',
+      version: '1.1.0',
+      lastUpdated: 'November 7, 2026',
+      effectiveDate: 'November 7, 2026',
     },
   },
 };

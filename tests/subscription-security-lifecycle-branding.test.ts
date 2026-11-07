@@ -5,7 +5,6 @@ import {
   PlanLimitError,
   resolveFeaturePermission,
   resolveMetricLimitCheck,
-  getEntitlementInheritance,
   type PlanKey,
 } from '../src/shared/billing';
 import { createApiErrorResponse } from '../src/backend/utilities/logger';

@@ -2678,6 +2678,32 @@ export const FreelancerInvoiceService = {
       };
     }
 
+    if (typeof window !== 'undefined' && isServerMutationBatchEnabled(1)) {
+      try {
+        const res = await fetch(`/api/invoices/${encodeURIComponent(id)}/reminder`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return {
+            success: false,
+            message: data.message || data.error?.message || data.error || 'Failed to dispatch payment reminder.',
+          };
+        }
+        return {
+          success: true,
+          message: data.message || 'Payment reminder dispatched successfully.',
+        };
+      } catch (err: any) {
+        return {
+          success: false,
+          message: err?.message || 'Failed to dispatch payment reminder.',
+        };
+      }
+    }
+
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return { success: false, message: 'No active workspace' };
 

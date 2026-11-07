@@ -118,25 +118,24 @@ export const LegalModal: React.FC<LegalModalProps> = ({
 
           {activeTab === 'refund' && (
             <div className="space-y-4">
-              <h3 className="text-base font-bold text-[#F5F5F0]">1. 7-Day Money-Back Guarantee</h3>
+              <h3 className="text-base font-bold text-[#F5F5F0]">1. General Refund Policy</h3>
               <p>
-                We want you to be completely satisfied with FlowDesk. If you upgrade to a paid plan (Standard or Studio)
-                and find it does not suit your freelance practice, you are eligible for a full refund within 7 calendar days
-                of your initial subscription upgrade.
+                Subscription payments for paid plans (Standard or Studio) are billed in advance and are final and non-refundable
+                once the billing period begins. FlowDesk provides a free Starter tier (₹0 forever) so freelancers can thoroughly
+                evaluate our core workspace tools, client portals, and invoice generators before purchasing a subscription.
               </p>
 
-              <h3 className="text-base font-bold text-[#F5F5F0]">2. Refund Eligibility &amp; Process</h3>
+              <h3 className="text-base font-bold text-[#F5F5F0]">2. Billing Errors &amp; Duplicate Debits</h3>
               <p>
-                To request a refund, submit a request via support or email with your registered workspace email and invoice
-                number. Verified requests will be processed through Razorpay back to your original payment method within
-                5 to 7 business days.
+                In verified cases of technical duplicate charges, network debit errors, or charges occurring after confirmed cancellation,
+                our support team investigates and issues a full refund through Razorpay directly to your original payment method
+                within 5 to 7 business days.
               </p>
 
-              <h3 className="text-base font-bold text-[#F5F5F0]">3. Subsequent Renewal Cycles</h3>
+              <h3 className="text-base font-bold text-[#F5F5F0]">3. Cancellation &amp; Active Access</h3>
               <p>
-                Refunds apply to the initial billing cycle. Recurring annual or monthly renewals must be canceled prior to
-                the renewal date to avoid automatic charges. In cases of billing discrepancies or unauthorized charges, our
-                support team is available for prompt review.
+                Cancelling your subscription stops future recurring renewal charges. Your workspace retains all paid entitlements
+                until the end of your current prepaid billing cycle, with no retroactive or prorated refunds for the active period.
               </p>
             </div>
           )}
@@ -159,8 +158,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
               <h3 className="text-base font-bold text-[#F5F5F0]">3. Data Preservation Guarantee</h3>
               <p>
                 We never hold your data hostage. Even after transitioning to the Free tier, your existing clients, projects,
-                invoices, documents, and deliverables remain preserved and accessible in read-only or standard mode.
-                You can export your complete workspace records as CSV anytime.
+                invoices, documents, and deliverables remain preserved and accessible.
               </p>
             </div>
           )}
@@ -170,7 +168,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
         <div className="p-3 bg-[#101312] border border-[#176B5B]/20 rounded-xl flex items-center justify-between text-xs text-[#A6B4AE]">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-[#43D6B0]" />
-            <span>Effective as of {new Date().getFullYear()} • FlowDesk Technologies</span>
+            <span>Effective as of {new Date().getFullYear()} • FlowDesk</span>
           </div>
           <button
             type="button"

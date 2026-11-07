@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
-import { ShieldCheck, Mail, Shield } from 'lucide-react';
+import { ShieldCheck, Mail } from 'lucide-react';
 import { siteConfig } from '@/shared/config/site-config';
 
 export interface LandingFooterProps {
@@ -65,12 +65,6 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenAuth }) => {
             <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
             <li><Link href="/refund-policy" className="hover:text-white transition-colors">Refund Policy</Link></li>
             <li><Link href="/cancellation-policy" className="hover:text-white transition-colors">Cancellation Policy</Link></li>
-            <li>
-              <Link href="/security" className="hover:text-white transition-colors flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-[#43D6B0]" />
-                Security Overview
-              </Link>
-            </li>
           </ul>
         </div>
       </div>
@@ -87,8 +81,6 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onOpenAuth }) => {
             <Link href="/refund-policy" className="hover:text-white transition-colors underline-offset-4 hover:underline">Refunds</Link>
             <span>•</span>
             <Link href="/cancellation-policy" className="hover:text-white transition-colors underline-offset-4 hover:underline">Cancellation</Link>
-            <span>•</span>
-            <Link href="/security" className="hover:text-white transition-colors underline-offset-4 hover:underline">Security</Link>
           </div>
         </div>
 

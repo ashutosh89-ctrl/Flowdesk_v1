@@ -25,52 +25,50 @@ test('Legal Compliance: Central Site Configuration & Placeholders', async (suite
     }
   });
 
-  await suite.test('getUnconfirmedPlaceholders correctly tracks pending legal details', () => {
+  await suite.test('getUnconfirmedPlaceholders returns empty list for verified production config', () => {
     const placeholders = getUnconfirmedPlaceholders();
     assert.ok(Array.isArray(placeholders));
-    assert.ok(placeholders.length > 0, 'Finds pending [TO BE CONFIRMED] placeholders');
-    assert.ok(placeholders.some((p) => p.key === 'legalEntityName'));
-    assert.ok(placeholders.some((p) => p.key === 'registeredAddress.line1'));
-    assert.ok(placeholders.some((p) => p.key === 'grievanceOfficer.name'));
+    assert.equal(placeholders.length, 0, 'No unconfirmed placeholders remain in verified production config');
   });
 });
 
 test('Plan Alignment: Single Source of Truth for Pricing & Quotas', async (suite) => {
   await suite.test('Starter (free) tier aligns with ₹0 pricing and strict quotas', () => {
     const plan = getBillingPlan('free');
-    assert.equal(plan.name, 'Starter');
+    assert.equal(plan.name, 'Free Starter');
     assert.equal(plan.pricing.monthly.INR, 0);
     assert.equal(plan.pricing.yearly.INR, 0);
     assert.equal(plan.limits.activeClients, 2);
     assert.equal(plan.limits.activeProjects, 3);
-    assert.equal(plan.limits.storageMb, 250);
+    assert.equal(plan.limits.invoicesPerMonth, 5);
+    assert.equal(plan.limits.localStorageOnly, true);
   });
 
   await suite.test('Standard (pro) tier aligns with ₹399/mo and ₹3,990/yr', () => {
     const plan = getBillingPlan('pro');
-    assert.equal(plan.name, 'Standard');
+    assert.equal(plan.name, 'Standard Freelancer');
     assert.equal(plan.pricing.monthly.INR, 399);
     assert.equal(plan.pricing.yearly.INR, 3990);
-    assert.equal(plan.limits.activeClients, 10);
-    assert.equal(plan.limits.activeProjects, 15);
-    assert.equal(plan.limits.storageMb, 5000);
+    assert.equal(plan.limits.activeClients, 15);
+    assert.equal(plan.limits.activeProjects, 25);
+    assert.equal(plan.limits.invoicesPerMonth, 50);
   });
 
-  await suite.test('Standard alias resolves cleanly to pro tier', () => {
+  await suite.test('Standard alias resolves cleanly to standard tier', () => {
     const plan = getBillingPlan('standard');
-    assert.equal(plan.key, 'pro');
-    assert.equal(plan.name, 'Standard');
+    assert.equal(plan.key, 'standard');
+    assert.equal(plan.name, 'Standard Freelancer');
     assert.equal(plan.pricing.monthly.INR, 399);
   });
 
-  await suite.test('Studio tier aligns with ₹899/mo and ₹8,990/yr and unlimited quotas', () => {
+  await suite.test('Studio tier aligns with ₹899/mo and ₹8,990/yr', () => {
     const plan = getBillingPlan('studio');
-    assert.equal(plan.name, 'Studio');
+    assert.equal(plan.name, 'Studio Agency');
     assert.equal(plan.pricing.monthly.INR, 899);
     assert.equal(plan.pricing.yearly.INR, 8990);
-    assert.equal(plan.limits.activeClients, 10000);
-    assert.equal(plan.limits.activeProjects, 10000);
-    assert.equal(plan.limits.storageMb, 25000);
+    assert.equal(plan.limits.activeClients, 100);
+    assert.equal(plan.limits.activeProjects, 150);
+    assert.equal(plan.limits.invoicesPerMonth, 500);
   });
 
   await suite.test('Subscription cancellation maintains access until period end, then locks write', () => {

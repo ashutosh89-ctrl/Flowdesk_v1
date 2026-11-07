@@ -16,6 +16,11 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // 1. Permanent redirect for retired /security route to /privacy
+  if (path === '/security') {
+    return NextResponse.redirect(new URL('/privacy', request.url), 308);
+  }
+
   // 1. Public Discovery & Metadata Routes (SEO / AEO)
   if (
     path === '/robots.txt' ||
@@ -36,7 +41,6 @@ export async function middleware(request: NextRequest) {
     path === '/refund-policy' ||
     path === '/cancellation-policy' ||
     path === '/privacy' ||
-    path === '/security' ||
     path === '/about' ||
     path === '/contact' ||
     path === '/pricing' ||
