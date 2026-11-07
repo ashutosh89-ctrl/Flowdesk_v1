@@ -696,22 +696,6 @@ export const PaymentService = {
         },
         { workspaceId: meta.workspaceId, paymentId: meta.paymentId }
       );
-
-      if (meta.receiptNumber) {
-        await EmailService.sendReceipt(
-          meta.clientEmail,
-          {
-            recipientName: meta.clientName || 'Client',
-            freelancerName: studioName,
-            invoiceNumber: meta.invoiceNumber,
-            amount: `${meta.currency} ${meta.amount.toLocaleString()}`,
-            paymentDate: new Date(meta.paymentDate).toLocaleDateString(),
-            paymentMethod: `Razorpay (${meta.paymentMethod.toUpperCase()})`,
-            receiptUrl: `${getAppBaseUrl()}/portal/${meta.clientId || ''}`,
-          },
-          { workspaceId: meta.workspaceId, receiptId: meta.receiptNumber }
-        );
-      }
     } catch (err) {
       console.warn('[PaymentService.dispatchPaymentEmails] Warning during email dispatch:', err);
     }

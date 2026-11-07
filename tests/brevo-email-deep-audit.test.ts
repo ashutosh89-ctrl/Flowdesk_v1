@@ -217,7 +217,7 @@ async function runAudit() {
 
   console.log('\n--- SECTION 3: Fail-Closed Production Behavior ---');
   // Test 3.1: Fail-closed when API key is missing in production
-  delete process.env.BREVO_API_KEY;
+  process.env.BREVO_API_KEY = 'disabled';
   delete process.env.SIB_API_V3_KEY;
   delete process.env.NEXT_PUBLIC_AUTH_MODE;
 

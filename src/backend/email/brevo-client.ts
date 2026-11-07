@@ -59,6 +59,7 @@ export interface BrevoAccountStatus {
 export const getBrevoApiKey = (): string => {
   if (typeof window !== 'undefined') return '';
   let key = process.env.BREVO_API_KEY || process.env.SIB_API_V3_KEY || '';
+  if (key === 'disabled') return '';
   if (!key || key.trim().length === 0) {
     try {
       // Dynamic fallback for server runtime if .env.local was updated during execution

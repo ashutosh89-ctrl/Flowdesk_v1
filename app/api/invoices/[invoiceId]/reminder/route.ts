@@ -144,6 +144,29 @@ export async function POST(
       });
     }
 
+    // Anti-spam Cooldown: Prevent sending multiple reminders to the client within 12 hours
+    const { data: recentReminder } = await supabaseAdmin
+      .from('reminder_log')
+      .select('sent_at')
+      .eq('invoice_id', invoice.id)
+      .order('sent_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recentReminder?.sent_at) {
+      const lastSentTime = new Date(recentReminder.sent_at).getTime();
+      const hoursSinceLast = (Date.now() - lastSentTime) / (1000 * 60 * 60);
+      if (hoursSinceLast < 12) {
+        const remainingHours = Math.ceil(12 - hoursSinceLast);
+        return createApiErrorResponse({
+          message: `A payment reminder was already sent recently. To prevent spamming your client, please wait at least ${remainingHours} more hour${remainingHours > 1 ? 's' : ''} before sending another reminder.`,
+          code: 'REMINDER_COOLDOWN',
+          status: 429,
+          requestId,
+        });
+      }
+    }
+
     // Resolve Studio Name
     let studioName = 'FlowDesk Studio';
     try {
