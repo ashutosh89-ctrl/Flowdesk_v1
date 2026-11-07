@@ -50,7 +50,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
   const { showToast } = useToast();
 
   const handleCheckout = async (planKey: PlanKey) => {
-    if (planKey === 'free' || planKey === currentPlanKey) return;
+    if (planKey === 'free' || planKey === 'starter' || planKey === currentPlanKey) return;
 
     setLoadingPlan(planKey);
     setError(null);

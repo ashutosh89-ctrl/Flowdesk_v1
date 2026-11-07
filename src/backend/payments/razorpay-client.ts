@@ -42,3 +42,11 @@ export function getRazorpayKeyId(): string {
   return keyId;
 }
 
+/**
+ * Returns true if the configured Razorpay key is in Test mode (rzp_test_ prefix)
+ */
+export function isRazorpayTestMode(): boolean {
+  const keyId = getRazorpayKeyId();
+  return keyId.startsWith('rzp_test_');
+}
+

@@ -60,6 +60,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
   const payload = bodyValidation.data;
 
+  // Starter / Free plan check: Free forever, no payment checkout
+  if (payload.planKey === 'starter' || payload.planKey === 'free') {
+    return createApiErrorResponse({
+      message: 'The Starter plan is free forever. No payment checkout is required.',
+      code: 'INVALID_REQUEST',
+      status: 400,
+      requestId,
+    });
+  }
+
   // Gate Studio packages: Currently restricted to invite-only preview
   if (payload.planKey === 'studio') {
     return createApiErrorResponse({
