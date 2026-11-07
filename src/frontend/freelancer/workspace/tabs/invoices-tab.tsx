@@ -23,18 +23,11 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({ summary, onRefresh }) 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
 
-  const handleSendReminder = async (inv: Invoice) => {
-    try {
-      const res = await InvoiceService.sendReminder(inv.id);
-      if (res && res.success) {
-        showToast('Reminder Dispatched', res.message || `Payment reminder dispatched to ${inv.clientEmail}.`, 'success');
-        onRefresh();
-      } else {
-        showToast('Reminder Notice', res?.message || 'Could not dispatch reminder.', 'info');
-      }
-    } catch (err: any) {
-      showToast('Error', err?.message || 'Failed to dispatch reminder.', 'error');
-    }
+  const handleSendReminder = (inv: Invoice) => {
+    InvoiceService.sendReminder(inv.id).then(() => {
+      showToast('Reminder Sent', `Payment reminder sent to ${inv.clientEmail}.`, 'success');
+      onRefresh();
+    });
   };
 
   const handleMarkPaid = (inv: Invoice) => {

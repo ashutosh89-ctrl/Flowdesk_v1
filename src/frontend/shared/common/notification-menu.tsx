@@ -3,7 +3,6 @@ import { Bell, CheckCheck, Clock, X } from 'lucide-react';
 import { Popover } from '../ui/popover';
 import { NotificationService } from '@/backend/freelancer';
 import { NotificationItem } from '@/shared/types';
-import { supabase } from '@/backend/utilities/supabase';
 
 export const NotificationMenu: React.FC = () => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -33,30 +32,13 @@ export const NotificationMenu: React.FC = () => {
       window.addEventListener('focus', handleUpdate);
     }
 
-    let channel: any = null;
-    try {
-      channel = supabase
-        .channel('freelancer-topbar-notifications')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
-          handleUpdate();
-        })
-        .subscribe();
-    } catch {
-      // non-blocking
-    }
-
-    const interval = setInterval(loadNotifications, 8000);
+    const interval = setInterval(loadNotifications, 15000);
 
     return () => {
       mounted = false;
       if (typeof window !== 'undefined') {
         window.removeEventListener('flowdesk:notifications-updated', handleUpdate);
         window.removeEventListener('focus', handleUpdate);
-      }
-      if (channel) {
-        try {
-          supabase.removeChannel(channel);
-        } catch {}
       }
       clearInterval(interval);
     };

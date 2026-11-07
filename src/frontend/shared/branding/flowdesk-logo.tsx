@@ -42,8 +42,8 @@ export const FlowDeskLogo: React.FC<FlowDeskLogoProps> = ({
 
   const assetSrc =
     variant === 'symbol'
-      ? '/branding/flowdesk-symbol.svg'
-      : '/branding/flowdesk-logo.svg';
+      ? '/branding/flowdesk-symbol.png'
+      : '/branding/flowdesk-logo-transparent.png';
 
   const imageElement = (
     <div

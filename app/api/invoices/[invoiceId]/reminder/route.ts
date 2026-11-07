@@ -144,39 +144,28 @@ export async function POST(
       });
     }
 
-    // Fetch all prior reminders for this invoice to accurately sequence reminders (1, 2, 3...)
-    const { data: reminderLogs } = await supabaseAdmin
+    // Anti-spam Cooldown: Prevent sending multiple reminders to the client within 12 hours
+    const { data: recentReminder } = await supabaseAdmin
       .from('reminder_log')
-      .select('*')
+      .select('sent_at')
       .eq('invoice_id', invoice.id)
-      .order('sent_at', { ascending: true });
+      .order('sent_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    const existingCount = reminderLogs?.length || 0;
-    if (existingCount >= 3) {
-      return createApiErrorResponse({
-        message: 'Maximum limit of 3 manual reminders reached for this invoice.',
-        code: 'MAX_REMINDERS_REACHED',
-        status: 400,
-        requestId,
-      });
-    }
-
-    // Debounce to prevent accidental double-clicks within 30 seconds
-    if (existingCount > 0 && reminderLogs) {
-      const lastSentTime = new Date(reminderLogs[existingCount - 1].sent_at).getTime();
-      const secondsSinceLast = (Date.now() - lastSentTime) / 1000;
-      if (secondsSinceLast < 30) {
-        const remainingSeconds = Math.ceil(30 - secondsSinceLast);
+    if (recentReminder?.sent_at) {
+      const lastSentTime = new Date(recentReminder.sent_at).getTime();
+      const hoursSinceLast = (Date.now() - lastSentTime) / (1000 * 60 * 60);
+      if (hoursSinceLast < 12) {
+        const remainingHours = Math.ceil(12 - hoursSinceLast);
         return createApiErrorResponse({
-          message: `Please wait ${remainingSeconds} second${remainingSeconds > 1 ? 's' : ''} before sending another reminder.`,
+          message: `A payment reminder was already sent recently. To prevent spamming your client, please wait at least ${remainingHours} more hour${remainingHours > 1 ? 's' : ''} before sending another reminder.`,
           code: 'REMINDER_COOLDOWN',
           status: 429,
           requestId,
         });
       }
     }
-
-    const reminderNum = existingCount + 1;
 
     // Resolve Studio Name
     let studioName = 'FlowDesk Studio';
@@ -194,7 +183,7 @@ export async function POST(
     const baseUrl = getAppBaseUrl();
     const portalUrl = invoice.client_id ? `${baseUrl}/portal/${invoice.client_id}` : `${baseUrl}/portal/login`;
     const curr = invoice.currency || '$';
-    const ruleKey = `manual_${reminderNum}_${Date.now()}`;
+    const ruleKey = `manual_${Date.now()}`;
 
     // Determine stage
     const dueDate = new Date(invoice.due_date);
@@ -230,58 +219,13 @@ export async function POST(
       });
     }
 
-    const nowIso = new Date().toISOString();
-
-    // 1. Log reminder in reminder_log
-    const { data: insertedLog } = await supabaseAdmin
-      .from('reminder_log')
-      .insert({
-        workspace_id: workspace.id,
-        invoice_id: invoice.id,
-        rule_key: ruleKey,
-        recipient_email: invoice.client_email,
-        sent_at: nowIso,
-      })
-      .select()
-      .single();
-
-    // 2. Persistent In-App Notification for Client (Instant Portal Alert)
-    if (invoice.client_id) {
-      await supabaseAdmin.from('notifications').insert({
-        workspace_id: workspace.id,
-        client_id: invoice.client_id,
-        user_id: null,
-        title: `Payment Reminder: Invoice #${invoice.invoice_number}`,
-        message: `Payment reminder #${reminderNum} for ${curr} ${remaining.toLocaleString()} on Invoice #${invoice.invoice_number} (Due: ${invoice.due_date || 'immediate'}).`,
-        category: 'invoice',
-        link: 'invoices',
-        priority: 'high',
-        read: false,
-      });
-    }
-
-    // 3. Persistent In-App Notification for Freelancer (Audit Confirmation)
-    await supabaseAdmin.from('notifications').insert({
+    // Log reminder in reminder_log
+    await supabaseAdmin.from('reminder_log').insert({
       workspace_id: workspace.id,
-      client_id: invoice.client_id || null,
-      user_id: workspace.owner_id,
-      title: `Payment Reminder #${reminderNum} Sent`,
-      message: `Dispatched payment reminder #${reminderNum} for Invoice #${invoice.invoice_number} to ${invoice.client_email}.`,
-      category: 'invoice',
-      link: 'invoices',
-      priority: 'medium',
-      read: false,
-    });
-
-    // 4. Log in activities feed
-    await supabaseAdmin.from('activities').insert({
-      workspace_id: workspace.id,
-      client_id: invoice.client_id || null,
-      action: 'sent_reminder',
-      title: invoice.invoice_number,
-      description: `Payment reminder #${reminderNum} dispatched to ${invoice.client_email}`,
-      resource_type: 'invoice',
-      resource_id: invoice.id,
+      invoice_id: invoice.id,
+      rule_key: ruleKey,
+      recipient_email: invoice.client_email,
+      sent_at: new Date().toISOString(),
     });
 
     logger.security('INVOICE_REMINDER_SENT_MANUALLY', {
@@ -290,44 +234,12 @@ export async function POST(
       invoiceId: invoice.id,
       workspaceId: workspace.id,
       recipient: invoice.client_email,
-      reminderNumber: reminderNum,
     });
-
-    const newReminder = {
-      id: insertedLog?.id || ruleKey,
-      invoiceId: invoice.id,
-      reminderNumber: reminderNum,
-      date: nowIso.split('T')[0],
-      method: 'email' as const,
-      status: 'sent' as const,
-      notes: `Payment reminder #${reminderNum} dispatched to ${invoice.client_email}`,
-    };
-
-    const updatedReminders = [
-      ...(reminderLogs || []).map((r: any, idx: number) => ({
-        id: r.id,
-        invoiceId: r.invoice_id,
-        reminderNumber: idx + 1,
-        date: r.sent_at?.split('T')[0] || nowIso.split('T')[0],
-        method: 'email' as const,
-        status: 'sent' as const,
-        notes: `Payment reminder #${idx + 1} dispatched to ${r.recipient_email}`,
-      })),
-      newReminder,
-    ];
-
-    const updatedInvoice = {
-      ...invoice,
-      reminders: updatedReminders,
-    };
 
     return NextResponse.json(
       {
         success: true,
-        message: `Payment reminder #${reminderNum} dispatched successfully.`,
-        reminderCount: reminderNum,
-        reminder: newReminder,
-        invoice: updatedInvoice,
+        message: 'Payment reminder sent successfully.',
         requestId,
       },
       {

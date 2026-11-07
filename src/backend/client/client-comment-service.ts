@@ -113,13 +113,7 @@ export const ClientCommentService = {
             replyToId: commentData.replyToId,
           });
 
-          NotificationHelper.notifyFreelancer({
-            clientId,
-            title: 'New Client Comment',
-            message: `${commentData.author} commented: "${commentData.text.slice(0, 80)}"`,
-            category: 'comment',
-            link: 'activity',
-          });
+          NotificationHelper.newComment(commentData.author, 'Client Discussion', undefined);
 
           return {
             success: true,
@@ -195,13 +189,7 @@ export const ClientCommentService = {
             });
           } catch { /* non-critical */ }
 
-          NotificationHelper.notifyFreelancer({
-            clientId,
-            title: 'New Client Comment',
-            message: `${commentData.author} commented: "${commentData.text.slice(0, 80)}"`,
-            category: 'comment',
-            link: 'activity',
-          });
+          NotificationHelper.newComment(commentData.author, 'Client Discussion', undefined);
 
           return {
             success: true,
@@ -230,13 +218,7 @@ export const ClientCommentService = {
       replyToId: commentData.replyToId,
     });
 
-    NotificationHelper.notifyFreelancer({
-      clientId,
-      title: 'New Client Comment',
-      message: `${commentData.author} commented: "${commentData.text.slice(0, 80)}"`,
-      category: 'comment',
-      link: 'activity',
-    });
+    NotificationHelper.newComment(commentData.author, 'Client Discussion', undefined);
 
     return {
       success: true,

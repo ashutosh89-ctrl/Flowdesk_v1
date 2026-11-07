@@ -2640,7 +2640,7 @@ export const FreelancerInvoiceService = {
   sendReminder: async (
     id: string,
     notes?: string
-  ): Promise<{ success: boolean; message: string; reminder?: any; invoice?: Invoice; reminderCount?: number }> => {
+  ): Promise<{ success: boolean; message: string; reminder?: any; invoice?: Invoice }> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) {
       const inv = FlowDeskStore.getInvoiceById(id);
       if (!inv) return { success: false, message: 'Invoice not found' };
@@ -2692,15 +2692,9 @@ export const FreelancerInvoiceService = {
             message: data.message || data.error?.message || data.error || 'Failed to dispatch payment reminder.',
           };
         }
-
-        window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
-
         return {
           success: true,
           message: data.message || 'Payment reminder dispatched successfully.',
-          reminderCount: data.reminderCount,
-          reminder: data.reminder,
-          invoice: data.invoice,
         };
       } catch (err: any) {
         return {
@@ -3254,12 +3248,8 @@ export const NotificationService = {
         .eq('workspace_id', wsId)
         .order('created_at', { ascending: false });
 
-      if (error) {
+      if (error || !data || data.length === 0) {
         return FlowDeskStore.getNotifications();
-      }
-
-      if (!data || data.length === 0) {
-        return [];
       }
 
       return data.map((n) => ({

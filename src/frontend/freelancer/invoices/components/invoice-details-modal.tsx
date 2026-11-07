@@ -34,7 +34,7 @@ interface InvoiceDetailsModalProps {
   onClose: () => void;
   invoice: Invoice | null;
   onMarkPaid: (invoice: Invoice) => void;
-  onSendReminder: (invoiceId: string) => Promise<any> | any;
+  onSendReminder: (invoiceId: string) => void;
   onOpenPortalView: (invoice: Invoice) => void;
   onDelete?: (invoiceId: string) => void;
   profile?: UserProfile | null;
@@ -54,7 +54,6 @@ export function InvoiceDetailsModal({
   const [reminderToast, setReminderToast] = useState<string | null>(null);
   const [exportingType, setExportingType] = useState<'pdf' | 'png' | 'jpg' | 'print' | null>(null);
   const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
-  const [isSendingReminder, setIsSendingReminder] = useState(false);
   const [currentInvoice, setCurrentInvoice] = useState<Invoice | null>(invoice);
   const documentRef = useRef<HTMLDivElement>(null);
 
@@ -102,7 +101,7 @@ export function InvoiceDetailsModal({
     }
   };
 
-  const handleTriggerReminder = async () => {
+  const handleTriggerReminder = () => {
     const currentReminders = currentInvoice.reminders || [];
     if (currentReminders.length >= 3) {
       setReminderToast('Maximum limit of 3 manual reminders reached for this invoice.');
@@ -110,29 +109,9 @@ export function InvoiceDetailsModal({
       return;
     }
 
-    setIsSendingReminder(true);
-    try {
-      const res = await onSendReminder(currentInvoice.id);
-      if (res && res.success) {
-        const nextNum = res.reminderCount || (currentReminders.length + 1);
-        setReminderToast(res.message || `Reminder #${nextNum} dispatched successfully.`);
-        if (res.invoice) {
-          setCurrentInvoice(res.invoice);
-        } else if (res.reminder) {
-          setCurrentInvoice((prev) => ({
-            ...prev!,
-            reminders: [...(prev?.reminders || []), res.reminder],
-          }));
-        }
-      } else {
-        setReminderToast(res?.message || 'Failed to dispatch reminder.');
-      }
-    } catch (err: any) {
-      setReminderToast(err?.message || 'Failed to dispatch reminder.');
-    } finally {
-      setIsSendingReminder(false);
-      setTimeout(() => setReminderToast(null), 3500);
-    }
+    onSendReminder(currentInvoice.id);
+    setReminderToast(`Reminder #${currentReminders.length + 1} dispatched successfully.`);
+    setTimeout(() => setReminderToast(null), 3000);
   };
 
   const handleExportPDF = async () => {
@@ -245,14 +224,10 @@ export function InvoiceDetailsModal({
             {currentInvoice.paymentStatus !== 'paid' && currentInvoice.workflowStatus !== 'cancelled' && (
               <button
                 onClick={handleTriggerReminder}
-                disabled={isSendingReminder || (currentInvoice.reminders?.length || 0) >= 3}
+                disabled={(currentInvoice.reminders?.length || 0) >= 3}
                 className="px-3 py-1.5 rounded-xl border border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 hover:text-white font-medium flex items-center gap-1.5 disabled:opacity-50 transition-colors cursor-pointer"
               >
-                {isSendingReminder ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                ) : (
-                  <Bell className="w-3.5 h-3.5 text-amber-400" />
-                )}
+                <Bell className="w-3.5 h-3.5 text-amber-400" />
                 Send Reminder ({currentInvoice.reminders?.length || 0}/3)
               </button>
             )}
@@ -504,15 +479,10 @@ export function InvoiceDetailsModal({
                 </div>
                 <button
                   onClick={handleTriggerReminder}
-                  disabled={isSendingReminder || (currentInvoice.reminders?.length || 0) >= 3}
+                  disabled={(currentInvoice.reminders?.length || 0) >= 3}
                   className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold flex items-center gap-1.5 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
                 >
-                  {isSendingReminder ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Bell className="w-3.5 h-3.5" />
-                  )}
-                  Record Reminder
+                  <Bell className="w-3.5 h-3.5" /> Record Reminder
                 </button>
               </div>
 

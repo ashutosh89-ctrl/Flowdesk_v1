@@ -160,44 +160,7 @@ export async function POST(
       });
     }
 
-    // 7. In-App Notifications for Freelancer & Client
-    try {
-      const { data: ws } = await supabaseAdmin
-        .from('workspaces')
-        .select('owner_id')
-        .eq('id', invoice.workspace_id)
-        .maybeSingle();
-
-      await supabaseAdmin.from('notifications').insert({
-        workspace_id: invoice.workspace_id,
-        user_id: ws?.owner_id || null,
-        client_id: invoice.client_id,
-        title: 'Payment Submitted (Pending Verification)',
-        message: `Payment reference ${transactionReference} submitted for #${invoice.invoice_number} (${invoice.currency} ${amount}). Please verify in Invoices.`,
-        category: 'invoice',
-        link: 'invoices',
-        priority: 'high',
-        read: false,
-      });
-
-      if (invoice.client_id) {
-        await supabaseAdmin.from('notifications').insert({
-          workspace_id: invoice.workspace_id,
-          user_id: null,
-          client_id: invoice.client_id,
-          title: 'Payment Reference Submitted',
-          message: `Your payment reference (${transactionReference}) for #${invoice.invoice_number} was submitted and is pending verification.`,
-          category: 'invoice',
-          link: 'invoices',
-          priority: 'medium',
-          read: false,
-        });
-      }
-    } catch {
-      // Non-critical notification insert
-    }
-
-    // 8. Non-blocking Activity Log
+    // 7. Non-blocking Activity Log
     try {
       await supabaseAdmin.from('activities').insert({
         workspace_id: invoice.workspace_id,
