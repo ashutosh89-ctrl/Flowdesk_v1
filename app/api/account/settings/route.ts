@@ -4,8 +4,7 @@ import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { logger, createApiErrorResponse, getOrCreateRequestId } from '@/backend/utilities/logger';
 import { parseJsonBody, UpdateUserSettingsSchema } from '@/shared/validation';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
-
-const serverPaymentSettingsCache = new Map<string, any>();
+import { serverPaymentSettingsCache } from '@/backend/utilities/payment-cache';
 
 /**
  * Account Settings Query Route Handler (Batch 4: Account & Settings)
@@ -291,22 +290,40 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     if (updates.taxName !== undefined) dbPayload.tax_name = updates.taxName;
     if (updates.defaultPaymentTerms !== undefined) dbPayload.default_payment_terms = updates.defaultPaymentTerms;
     if (updates.defaultDeliverableNiche !== undefined) dbPayload.default_deliverable_niche = updates.defaultDeliverableNiche;
-    const effectivePaymentSettings = {
+
+    // Resolve unified payment details ensuring non-empty bank, UPI, and QR values are preserved
+    const inBank = updates.paymentSettings?.bankDetails || {};
+    const bankName = (updates.bankName !== undefined ? updates.bankName : inBank.bankName || '')?.trim();
+    const accountHolderName = (updates.accountHolderName !== undefined ? updates.accountHolderName : inBank.accountHolderName || '')?.trim();
+    const accountNumber = (updates.accountNumber !== undefined ? updates.accountNumber : inBank.accountNumber || '')?.trim();
+    const ifscCode = (updates.ifscCode !== undefined ? updates.ifscCode : inBank.ifscCode || '')?.trim();
+    const branchName = (updates.branchName !== undefined ? updates.branchName : inBank.branchName || '')?.trim();
+    const upiId = (updates.upiId !== undefined ? updates.upiId : (inBank.upiId || updates.paymentSettings?.upiId || ''))?.trim();
+    const upiQrCodeUrl = (updates.upiQrCodeUrl !== undefined ? updates.upiQrCodeUrl : (updates.paymentSettings?.upiQrCodeUrl || ''))?.trim();
+    const razorpayPaymentLink = (updates.razorpayPaymentLink !== undefined ? updates.razorpayPaymentLink : (updates.paymentSettings?.razorpayPaymentLink || ''))?.trim();
+
+    const hasBank = Boolean(bankName || accountNumber || accountHolderName || ifscCode);
+    const hasUpi = Boolean(upiId || upiQrCodeUrl);
+
+    const effectivePaymentSettings: Record<string, any> = {
       ...(updates.paymentSettings || {}),
-      ...(updates.upiQrCodeUrl !== undefined ? { upiQrCodeUrl: updates.upiQrCodeUrl } : {}),
-      ...(updates.upiId !== undefined ? { upiId: updates.upiId } : {}),
-      ...((updates.upiQrCodeUrl || updates.upiId) ? { upiEnabled: true } : {}),
-      ...(updates.bankName || updates.accountNumber ? {
-        bankDetails: {
-          accountHolderName: updates.accountHolderName || updates.paymentSettings?.bankDetails?.accountHolderName || '',
-          bankName: updates.bankName || updates.paymentSettings?.bankDetails?.bankName || '',
-          accountNumber: updates.accountNumber || updates.paymentSettings?.bankDetails?.accountNumber || '',
-          ifscCode: updates.ifscCode || updates.paymentSettings?.bankDetails?.ifscCode || '',
-          branchName: updates.branchName || updates.paymentSettings?.bankDetails?.branchName || '',
-          upiId: updates.upiId || updates.paymentSettings?.bankDetails?.upiId || '',
-        }
-      } : {}),
-      ...(updates.razorpayPaymentLink !== undefined ? { razorpayPaymentLink: updates.razorpayPaymentLink } : {}),
+      bankTransferEnabled: hasBank,
+      upiEnabled: hasUpi,
+      upiId: upiId || undefined,
+      upiQrCodeUrl: upiQrCodeUrl || undefined,
+      razorpayPaymentLink: razorpayPaymentLink || undefined,
+      ...(hasBank
+        ? {
+            bankDetails: {
+              accountHolderName,
+              bankName,
+              accountNumber,
+              ifscCode,
+              branchName,
+              upiId,
+            },
+          }
+        : {}),
     };
     dbPayload.payment_settings = effectivePaymentSettings;
 
@@ -361,35 +378,67 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     if (caller.userId) {
       serverPaymentSettingsCache.set(caller.userId, effectivePaymentSettings);
       try {
-        await supabaseAdmin.storage
-          .from('documents')
-          .upload(
-            `settings/${caller.userId}/payment_settings.txt`,
-            Buffer.from(JSON.stringify(effectivePaymentSettings), 'utf-8'),
-            {
-              contentType: 'text/plain',
-              upsert: true,
-            }
-          );
+        const payloadJson = Buffer.from(JSON.stringify(effectivePaymentSettings), 'utf-8');
+        await Promise.all([
+          supabaseAdmin.storage
+            .from('documents')
+            .upload(
+              `settings/${caller.userId}/payment_settings.txt`,
+              payloadJson,
+              {
+                contentType: 'text/plain',
+                upsert: true,
+              }
+            ),
+          supabaseAdmin.storage
+            .from('documents')
+            .upload(
+              'settings/latest/payment_settings.txt',
+              payloadJson,
+              {
+                contentType: 'text/plain',
+                upsert: true,
+              }
+            ),
+        ]);
       } catch (storageErr) {
         logger.warn('Storage payment config sync notice', { error: String(storageErr) });
+      }
+
+      // Trigger realtime update for client portals by touching workspaces and active invoices
+      try {
+        const nowIso = new Date().toISOString();
+        const { data: userWorkspaces } = await supabaseAdmin
+          .from('workspaces')
+          .select('id')
+          .eq('owner_id', caller.userId);
+
+        if (userWorkspaces && userWorkspaces.length > 0) {
+          const wsIds = userWorkspaces.map((w) => w.id);
+          await Promise.all([
+            supabaseAdmin.from('workspaces').update({ updated_at: nowIso }).eq('owner_id', caller.userId),
+            supabaseAdmin.from('invoices').update({ updated_at: nowIso }).in('workspace_id', wsIds),
+          ]);
+        }
+      } catch (wsTouchErr) {
+        logger.warn('Workspace realtime touch sync notice', { error: String(wsTouchErr) });
       }
     }
 
     if (updated) {
       updated.payment_settings = effectivePaymentSettings;
-      updated.bank_name = updates.bankName || effectivePaymentSettings.bankDetails?.bankName || '';
-      updated.account_holder_name = updates.accountHolderName || effectivePaymentSettings.bankDetails?.accountHolderName || '';
-      updated.account_number = updates.accountNumber || effectivePaymentSettings.bankDetails?.accountNumber || '';
-      updated.ifsc_code = updates.ifscCode || effectivePaymentSettings.bankDetails?.ifscCode || '';
-      updated.branch_name = updates.branchName || effectivePaymentSettings.bankDetails?.branchName || '';
-      updated.upi_id = updates.upiId || effectivePaymentSettings.upiId || '';
-      updated.upi_qr_code_url = updates.upiQrCodeUrl || effectivePaymentSettings.upiQrCodeUrl || '';
-      updated.razorpay_payment_link = updates.razorpayPaymentLink || effectivePaymentSettings.razorpayPaymentLink || '';
+      updated.bank_name = bankName || effectivePaymentSettings.bankDetails?.bankName || '';
+      updated.account_holder_name = accountHolderName || effectivePaymentSettings.bankDetails?.accountHolderName || '';
+      updated.account_number = accountNumber || effectivePaymentSettings.bankDetails?.accountNumber || '';
+      updated.ifsc_code = ifscCode || effectivePaymentSettings.bankDetails?.ifscCode || '';
+      updated.branch_name = branchName || effectivePaymentSettings.bankDetails?.branchName || '';
+      updated.upi_id = upiId || effectivePaymentSettings.upiId || '';
+      updated.upi_qr_code_url = upiQrCodeUrl || effectivePaymentSettings.upiQrCodeUrl || '';
+      updated.razorpay_payment_link = razorpayPaymentLink || effectivePaymentSettings.razorpayPaymentLink || '';
     }
 
     // Also sync to profiles for redundant persistence
-    if (caller.userId && (updates.upiQrCodeUrl !== undefined || updates.upiId !== undefined)) {
+    if (caller.userId) {
       try {
         const profUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
         if (updates.upiQrCodeUrl !== undefined) profUpdates.upi_qr_code_url = updates.upiQrCodeUrl;

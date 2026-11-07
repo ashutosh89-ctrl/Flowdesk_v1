@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { ClientAuthService } from '@/backend/client/client-auth-service';
 import { isSafeImageUrl } from '@/shared/utils/safe-url';
+import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 
 export type PortalTabType =
   | 'overview'
@@ -150,19 +151,17 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
       <div className="space-y-6">
         {/* Brand / Client Workspace Header */}
         <div className="flex items-center justify-between pb-4 border-b border-[#176B5B]/20">
-          <div className="flex items-center gap-3">
-            {logoUrl && isSafeImageUrl(logoUrl) ? (
+          <div className="flex items-center gap-3 min-w-0">
+            {logoUrl && isSafeImageUrl(logoUrl) && logoUrl !== '/branding/flowdesk-symbol.png' ? (
               <div className="w-9 h-9 rounded-xl bg-[#191F1D] border border-[#176B5B]/30 flex items-center justify-center p-1.5 shadow-lg shadow-black/40 shrink-0 overflow-hidden">
                 <img src={logoUrl} alt={companyName || 'Logo'} className="w-full h-full object-contain" />
               </div>
             ) : (
-              <div className="w-9 h-9 rounded-xl bg-[#176B5B] text-[#F5F5F0] font-extrabold flex items-center justify-center text-base shadow-lg shadow-[#176B5B]/25 shrink-0">
-                {companyName ? companyName.charAt(0) : 'C'}
-              </div>
+              <FlowDeskLogo variant="symbol" size={32} className="shrink-0" />
             )}
             <div className="min-w-0">
-              <h2 className="text-sm font-bold text-[#F5F5F0] tracking-tight truncate">{companyName}</h2>
-              <p className="text-[11px] text-[#A6B4AE] truncate">Client Portal</p>
+              <FlowDeskLogo variant="full" size="xs" className="mb-0.5" />
+              <p className="text-[11px] text-[#A6B4AE] truncate">{companyName} &bull; Portal</p>
             </div>
           </div>
           {onCloseMobile && (
@@ -252,8 +251,8 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
           </button>
         )}
 
-        <div className="flex items-center justify-center gap-2 py-1 text-[11px] text-[#A6B4AE] font-medium select-none">
-          <img src="/branding/flowdesk-symbol.png" alt="FlowDesk" className="w-4 h-4 object-contain opacity-70" />
+        <div className="flex items-center justify-center gap-2 py-1.5 text-xs text-[#A6B4AE] font-medium select-none bg-white/[0.02] rounded-xl border border-white/5">
+          <FlowDeskLogo variant="symbol" size={16} />
           <span className="tracking-wide">Powered by FlowDesk</span>
         </div>
 

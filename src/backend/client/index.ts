@@ -49,7 +49,7 @@ export interface ClientPortalDataset {
 }
 
 const portalDataCache = new Map<string, { data: ClientPortalDataset; timestamp: number }>();
-const PORTAL_CACHE_TTL_MS = 25000;
+const PORTAL_CACHE_TTL_MS = 5000;
 
 export const invalidatePortalCache = (clientId?: string) => {
   if (clientId) {
@@ -529,7 +529,8 @@ export const ClientPortalService = {
     // Prefer server-side branding resolution (bypasses RLS)
     if (typeof window !== 'undefined') {
       try {
-        const brandRes = await fetch(`/api/portal/branding?clientId=${encodeURIComponent(cleanId)}`, {
+        const wsIdParam = (client as any)?.workspace_id ? `&workspaceId=${encodeURIComponent((client as any).workspace_id)}` : '';
+        const brandRes = await fetch(`/api/portal/branding?clientId=${encodeURIComponent(cleanId)}${wsIdParam}`, {
           cache: 'no-store',
         });
         if (brandRes.ok) {
@@ -741,12 +742,40 @@ export const ClientPortalService = {
       // non-critical
     }
 
+    // Ensure every invoice has latest branding payment methods populated
+    const populatedInvoices = invoices.map((inv) => {
+      const invHasBank = Boolean(
+        inv.bankDetails?.accountNumber ||
+        inv.bankDetails?.bankName ||
+        inv.paymentMethods?.bankDetails?.accountNumber ||
+        inv.paymentMethods?.bankDetails?.bankName
+      );
+      const effectiveBank = invHasBank ? (inv.bankDetails || inv.paymentMethods?.bankDetails) : branding.bankDetails;
+      const effectiveUpi = inv.upiId || inv.paymentMethods?.upiId || branding.upiId || '';
+      const effectiveQr = inv.upiQrCodeUrl || inv.paymentMethods?.upiQrCodeUrl || branding.upiQrCodeUrl || '';
+
+      return {
+        ...inv,
+        bankDetails: effectiveBank,
+        upiId: effectiveUpi,
+        upiQrCodeUrl: effectiveQr,
+        paymentMethods: {
+          ...(inv.paymentMethods || {}),
+          bankTransferEnabled: Boolean(effectiveBank),
+          upiEnabled: Boolean(effectiveUpi || effectiveQr),
+          bankDetails: effectiveBank,
+          upiId: effectiveUpi,
+          upiQrCodeUrl: effectiveQr,
+        },
+      };
+    });
+
     const result: ClientPortalDataset = {
       client,
       projects,
       deliverables,
       documents,
-      invoices,
+      invoices: populatedInvoices,
       activities,
       notifications,
       comments,

@@ -78,12 +78,12 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
     let isMounted = true;
     loadPortalData();
 
-    // 1. Proactive Polling: Checks every 10 seconds when tab is active
+    // 1. Proactive Polling: Checks every 4 seconds when tab is active
     const intervalId = setInterval(() => {
       if (document.visibilityState === 'visible') {
         loadPortalData(true);
       }
-    }, 10000);
+    }, 4000);
 
     // 2. Window Focus & Visibility Change: Refetches immediately when client returns to tab
     const onWindowFocus = () => {
@@ -92,11 +92,24 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
     window.addEventListener('focus', onWindowFocus);
     document.addEventListener('visibilitychange', onWindowFocus);
 
-    // 3. Supabase Realtime Channel: Instantly syncs whenever freelancer updates deliverables, invoices, or comments
+    // Cross-tab and local settings update listener
+    const onSettingsUpdate = () => {
+      loadPortalData(true);
+    };
+    window.addEventListener('flowdesk:settings-updated', onSettingsUpdate);
+    window.addEventListener('storage', onSettingsUpdate);
+
+    // 3. Supabase Realtime Channel: Instantly syncs whenever freelancer updates workspaces, profiles, deliverables, invoices, or comments
     let channel: any = null;
     try {
       channel = supabase
         .channel(`client-portal-sync-${clientId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'workspaces' }, () => {
+          loadPortalData(true);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+          loadPortalData(true);
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'deliverables' }, () => {
           loadPortalData(true);
         })
@@ -122,6 +135,8 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
       clearInterval(intervalId);
       window.removeEventListener('focus', onWindowFocus);
       document.removeEventListener('visibilitychange', onWindowFocus);
+      window.removeEventListener('flowdesk:settings-updated', onSettingsUpdate);
+      window.removeEventListener('storage', onSettingsUpdate);
       if (channel) {
         try {
           supabase.removeChannel(channel);

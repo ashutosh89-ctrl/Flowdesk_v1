@@ -10,6 +10,7 @@ import { Card } from '@/frontend/shared/ui/card';
 import { Button } from '@/frontend/shared/ui/button';
 import { ShieldAlert, LogIn, Loader2 } from 'lucide-react';
 import { Suspense } from 'react';
+import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 
 function ClientDashboardContent() {
   const router = useRouter();
@@ -22,7 +23,8 @@ function ClientDashboardContent() {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
         <div className="text-center space-y-3">
-          <Loader2 className="w-8 h-8 animate-spin text-white mx-auto" />
+          <FlowDeskLogo variant="full" size="sm" className="mx-auto mb-2" />
+          <Loader2 className="w-8 h-8 animate-spin text-emerald-400 mx-auto" />
           <p className="text-xs text-zinc-400 font-mono">Verifying Client Security Credentials...</p>
         </div>
       </div>
@@ -33,6 +35,7 @@ function ClientDashboardContent() {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
         <Card variant="crystal" className="max-w-md p-8 text-center space-y-5 border-white/20">
+          <FlowDeskLogo variant="full" size="sm" className="mx-auto mb-1" />
           <ShieldAlert className="w-12 h-12 text-amber-400 mx-auto" />
           <div className="space-y-2">
             <h2 className="text-lg font-bold text-white">Client Portal Authentication Required</h2>
@@ -56,6 +59,7 @@ function ClientDashboardContent() {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
         <Card variant="crystal" className="max-w-md p-8 text-center space-y-5 border-white/20">
+          <FlowDeskLogo variant="full" size="sm" className="mx-auto mb-1" />
           <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400">
             <ShieldAlert className="w-7 h-7" />
           </div>

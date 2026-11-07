@@ -5,8 +5,84 @@ import { DEMO_WORKSPACE } from '@/backend/utilities/workspace';
 import { FlowDeskStore } from '@/backend/store/storage-store';
 import { InvoiceBranding } from '@/shared/types';
 import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
+import { serverPaymentSettingsCache } from '@/backend/utilities/payment-cache';
 
 export const runtime = 'nodejs';
+
+/**
+ * Validates whether a payment settings candidate contains non-empty UPI or bank data
+ */
+function hasValidPaymentData(p: any): boolean {
+  if (!p || typeof p !== 'object') return false;
+  if (p.upiId && typeof p.upiId === 'string' && p.upiId.trim().length > 0) return true;
+  if (p.upi_id && typeof p.upi_id === 'string' && p.upi_id.trim().length > 0) return true;
+  if (p.upiQrCodeUrl && typeof p.upiQrCodeUrl === 'string' && p.upiQrCodeUrl.trim().length > 0) return true;
+  if (p.upi_qr_code_url && typeof p.upi_qr_code_url === 'string' && p.upi_qr_code_url.trim().length > 0) return true;
+  const bd = p.bankDetails || p.payment_settings?.bankDetails || p;
+  if (bd && typeof bd === 'object') {
+    if (bd.accountNumber && String(bd.accountNumber).trim().length > 0) return true;
+    if (bd.account_number && String(bd.account_number).trim().length > 0) return true;
+    if (bd.bankName && String(bd.bankName).trim().length > 0) return true;
+    if (bd.bank_name && String(bd.bank_name).trim().length > 0) return true;
+    if (bd.accountHolderName && String(bd.accountHolderName).trim().length > 0) return true;
+    if (bd.account_holder_name && String(bd.account_holder_name).trim().length > 0) return true;
+    if (bd.ifscCode && String(bd.ifscCode).trim().length > 0) return true;
+    if (bd.ifsc_code && String(bd.ifsc_code).trim().length > 0) return true;
+    if (bd.upiId && String(bd.upiId).trim().length > 0) return true;
+  }
+  return false;
+}
+
+/**
+ * Extracts and cleans payment details from any raw configuration object
+ */
+function extractPaymentFields(obj: any): {
+  upiId?: string;
+  upiQrCodeUrl?: string;
+  bankDetails?: {
+    accountHolderName: string;
+    bankName: string;
+    accountNumber: string;
+    ifscCode: string;
+    branchName: string;
+    upiId?: string;
+  };
+  razorpayPaymentLink?: string;
+} {
+  if (!obj || typeof obj !== 'object') return {};
+  const upiId = (obj.upiId || obj.upi_id || obj.bankDetails?.upiId || obj.payment_settings?.upiId || '')?.trim();
+  const upiQrCodeUrl = (obj.upiQrCodeUrl || obj.upi_qr_code_url || obj.payment_settings?.upiQrCodeUrl || '')?.trim();
+  const razorpayPaymentLink = (obj.razorpayPaymentLink || obj.razorpay_payment_link || obj.payment_settings?.razorpayPaymentLink || '')?.trim();
+
+  const rawBank = obj.bankDetails || obj.payment_settings?.bankDetails || (obj.bank_name || obj.account_number ? obj : null);
+  let bankDetails: any = undefined;
+  if (rawBank && typeof rawBank === 'object') {
+    const bankName = (rawBank.bankName || rawBank.bank_name || '')?.trim();
+    const accountHolderName = (rawBank.accountHolderName || rawBank.account_holder_name || '')?.trim();
+    const accountNumber = (rawBank.accountNumber || rawBank.account_number || '')?.trim();
+    const ifscCode = (rawBank.ifscCode || rawBank.ifsc_code || rawBank.swiftCode || rawBank.swift_code || '')?.trim();
+    const branchName = (rawBank.branchName || rawBank.branch_name || '')?.trim();
+    const bankUpiId = (rawBank.upiId || rawBank.upi_id || upiId || '')?.trim();
+
+    if (bankName || accountNumber || accountHolderName || ifscCode) {
+      bankDetails = {
+        accountHolderName,
+        bankName,
+        accountNumber,
+        ifscCode,
+        branchName,
+        upiId: bankUpiId || upiId || undefined,
+      };
+    }
+  }
+
+  return {
+    upiId: upiId || undefined,
+    upiQrCodeUrl: upiQrCodeUrl || undefined,
+    bankDetails,
+    razorpayPaymentLink: razorpayPaymentLink || undefined,
+  };
+}
 
 /**
  * Public/Client-accessible branding resolver for a workspace or client.
@@ -31,6 +107,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get('clientId')?.trim();
   const workspaceId = searchParams.get('workspaceId')?.trim();
+  const invoiceId = searchParams.get('invoiceId')?.trim();
 
   // Demo Mode Handler
   if (isDemoModeActive()) {
@@ -63,15 +140,46 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         upiEnabled: Boolean(localProf.upiId || localProf.upiQrCodeUrl),
         razorpayLinkEnabled: Boolean((localProf as any).razorpayPaymentLink),
         upiQrCodeUrl: localProf.upiQrCodeUrl,
+        upiId: localProf.upiId,
+        bankDetails: hasBank ? bankDetails : undefined,
       },
     };
-    return NextResponse.json({ success: true, branding: demoBranding });
+    return NextResponse.json(
+      { success: true, branding: demoBranding },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   }
 
   try {
     let targetWsId = workspaceId || null;
 
-    // 1. Resolve workspace ID from client record if clientId provided
+    // 1. Resolve workspace ID from invoice record if invoiceId provided
+    let invoiceRecord: any = null;
+    if (invoiceId) {
+      try {
+        const { data: invRow } = await supabaseAdmin
+          .from('invoices')
+          .select('*')
+          .eq('id', invoiceId)
+          .maybeSingle();
+        if (invRow) {
+          invoiceRecord = invRow;
+          if (invRow.workspace_id) {
+            targetWsId = invRow.workspace_id;
+          }
+        }
+      } catch {
+        // non-critical
+      }
+    }
+
+    // 2. Resolve workspace ID from client record if clientId provided
     if (!targetWsId && clientId) {
       const UUID_PATTERN = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
       let cQuery = supabaseAdmin.from('clients').select('workspace_id, id');
@@ -89,7 +197,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // 2. Resolve workspace ID from client_connections table
+    // 3. Resolve workspace ID from client_connections table
     if (!targetWsId && clientId) {
       try {
         const { data: connRow } = await supabaseAdmin
@@ -107,12 +215,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // 3. Resolve workspace ID from recent client invoices
+    // 4. Resolve workspace ID from recent client invoices
     if (!targetWsId && clientId) {
       try {
         const { data: invRow } = await supabaseAdmin
           .from('invoices')
-          .select('workspace_id')
+          .select('workspace_id, id')
           .eq('client_id', clientId)
           .not('workspace_id', 'is', null)
           .order('created_at', { ascending: false })
@@ -120,13 +228,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           .maybeSingle();
         if (invRow?.workspace_id) {
           targetWsId = invRow.workspace_id;
+          if (!invoiceRecord && invRow.id) invoiceRecord = invRow;
         }
       } catch {
         // non-critical
       }
     }
 
-    // 4. Fallback: select most active workspace with branding
+    // 5. Fallback: select most active workspace with branding
     if (!targetWsId) {
       try {
         const { data: fallbackWs } = await supabaseAdmin
@@ -163,14 +272,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       signatureUrl: '',
     };
 
+    let ownerId: string | null = null;
+    let wsData: any = null;
+
     if (targetWsId) {
-      const { data: wsData } = await supabaseAdmin
+      const { data } = await supabaseAdmin
         .from('workspaces')
         .select('name, logo_url, signature_url, owner_id')
         .eq('id', targetWsId)
         .maybeSingle();
+      wsData = data;
 
       if (wsData) {
+        ownerId = wsData.owner_id;
         if (wsData.name && wsData.name !== 'My Workspace') {
           branding.businessName = wsData.name;
         }
@@ -186,227 +300,124 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             ? wsData.signature_url
             : StorageHelper.getPublicUrl('signatures', wsData.signature_url);
         }
+      }
+    }
 
-        const ownerId = wsData.owner_id;
-        let profData: any = null;
-        let userSettingsData: any = null;
+    // Load profile and user settings for the owner
+    let profData: any = null;
+    let userSettingsData: any = null;
 
-        if (ownerId) {
-          const [profRes, settingsRes] = await Promise.all([
-            supabaseAdmin
-              .from('profiles')
-              .select('*')
-              .eq('id', ownerId)
-              .maybeSingle(),
-            supabaseAdmin
-              .from('user_settings')
-              .select('*')
-              .eq('id', ownerId)
-              .maybeSingle(),
-          ]);
+    if (ownerId) {
+      const [profRes, settingsRes] = await Promise.all([
+        supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .eq('id', ownerId)
+          .maybeSingle(),
+        supabaseAdmin
+          .from('user_settings')
+          .select('*')
+          .eq('id', ownerId)
+          .maybeSingle(),
+      ]);
 
-          profData = profRes.data;
-          userSettingsData = settingsRes.data;
-        }
+      profData = profRes.data;
+      userSettingsData = settingsRes.data;
+    }
 
-        // If user_settings row for ownerId is missing or has no payment details, check storage or recent rows
-        let storagePaymentSettings: any = null;
-        if (ownerId) {
-          try {
-            const { data: fileBlob, error: fileErr } = await supabaseAdmin.storage
-              .from('documents')
-              .download(`settings/${ownerId}/payment_settings.txt`);
-            if (!fileErr && fileBlob) {
-              const text = await fileBlob.text();
-              storagePaymentSettings = JSON.parse(text);
-            }
-          } catch {
-            // non-critical
+    if (profData) {
+      if (profData.full_name) branding.freelancerName = profData.full_name;
+      if (profData.business_name || profData.company_name) {
+        branding.businessName = profData.business_name || profData.company_name || branding.businessName;
+      }
+      if (profData.email) branding.email = profData.email;
+      if (profData.phone) branding.phone = profData.phone;
+      if (profData.country) (branding as any).country = profData.country;
+
+      if (profData.logo_url && (!branding.logoUrl || branding.logoUrl === '/branding/flowdesk-symbol.png')) {
+        branding.logoUrl = profData.logo_url.startsWith('http') || profData.logo_url.startsWith('/') || profData.logo_url.startsWith('data:')
+          ? profData.logo_url
+          : StorageHelper.getPublicUrl('logos', profData.logo_url);
+      }
+      if (profData.signature_url && !branding.signatureUrl) {
+        branding.signatureUrl = profData.signature_url.startsWith('http') || profData.signature_url.startsWith('/') || profData.signature_url.startsWith('data:')
+          ? profData.signature_url
+          : StorageHelper.getPublicUrl('signatures', profData.signature_url);
+      }
+    }
+
+    // Multi-tier Payment Settings Resolution (in-memory -> owner storage -> profiles -> latest -> any storage -> invoice -> store)
+    let candidatePaymentSettings: any = null;
+
+    // 1. Check server-side memory cache for ownerId
+    if (ownerId && serverPaymentSettingsCache.has(ownerId)) {
+      const mem = serverPaymentSettingsCache.get(ownerId);
+      if (hasValidPaymentData(mem)) {
+        candidatePaymentSettings = mem;
+      }
+    }
+
+    // 2. Check storage for ownerId: settings/${ownerId}/payment_settings.txt
+    if (!candidatePaymentSettings && ownerId) {
+      try {
+        const { data: fileBlob, error: fileErr } = await supabaseAdmin.storage
+          .from('documents')
+          .download(`settings/${ownerId}/payment_settings.txt`);
+        if (!fileErr && fileBlob) {
+          const parsed = JSON.parse(await fileBlob.text());
+          if (hasValidPaymentData(parsed)) {
+            candidatePaymentSettings = parsed;
           }
         }
+      } catch {
+        // non-critical
+      }
+    }
 
-        if (!storagePaymentSettings) {
-          try {
-            const { data: list } = await supabaseAdmin.storage.from('documents').list('settings');
-            if (list && list.length > 0) {
-              for (const item of list) {
-                if (item.name && item.name.length > 10) {
-                  const { data: fb } = await supabaseAdmin.storage
-                    .from('documents')
-                    .download(`settings/${item.name}/payment_settings.txt`);
-                  if (fb) {
-                    const txt = await fb.text();
-                    storagePaymentSettings = JSON.parse(txt);
-                    if (storagePaymentSettings?.bankDetails || storagePaymentSettings?.upiId) break;
-                  }
+    // 3. Check profiles table for ownerId
+    if (!candidatePaymentSettings && profData && (profData.upi_id || profData.upi_qr_code_url)) {
+      candidatePaymentSettings = {
+        upiId: profData.upi_id || '',
+        upiQrCodeUrl: profData.upi_qr_code_url || '',
+        upiEnabled: Boolean(profData.upi_id || profData.upi_qr_code_url),
+      };
+    }
+
+    // 4. Check storage settings/latest/payment_settings.txt
+    if (!candidatePaymentSettings) {
+      try {
+        const { data: latestBlob } = await supabaseAdmin.storage
+          .from('documents')
+          .download('settings/latest/payment_settings.txt');
+        if (latestBlob) {
+          const parsed = JSON.parse(await latestBlob.text());
+          if (hasValidPaymentData(parsed)) {
+            candidatePaymentSettings = parsed;
+          }
+        }
+      } catch {
+        // non-critical
+      }
+    }
+
+    // 5. Scan any valid payment settings across all settings folders in storage
+    if (!candidatePaymentSettings) {
+      try {
+        const { data: list } = await supabaseAdmin.storage.from('documents').list('settings');
+        if (list && list.length > 0) {
+          for (const item of list) {
+            if (item.name && item.name.length > 10) {
+              const { data: fb } = await supabaseAdmin.storage
+                .from('documents')
+                .download(`settings/${item.name}/payment_settings.txt`);
+              if (fb) {
+                const parsed = JSON.parse(await fb.text());
+                if (hasValidPaymentData(parsed)) {
+                  candidatePaymentSettings = parsed;
+                  break;
                 }
               }
             }
-          } catch {
-            // non-critical
-          }
-        }
-
-        if (storagePaymentSettings) {
-          userSettingsData = {
-            ...(userSettingsData || {}),
-            payment_settings: {
-              ...(userSettingsData?.payment_settings || {}),
-              ...storagePaymentSettings,
-            },
-            upi_id: storagePaymentSettings.upiId || userSettingsData?.upi_id,
-            upi_qr_code_url: storagePaymentSettings.upiQrCodeUrl || userSettingsData?.upi_qr_code_url,
-            bank_name: storagePaymentSettings.bankDetails?.bankName || userSettingsData?.bank_name,
-            account_holder_name: storagePaymentSettings.bankDetails?.accountHolderName || userSettingsData?.account_holder_name,
-            account_number: storagePaymentSettings.bankDetails?.accountNumber || userSettingsData?.account_number,
-            ifsc_code: storagePaymentSettings.bankDetails?.ifscCode || userSettingsData?.ifsc_code,
-            branch_name: storagePaymentSettings.bankDetails?.branchName || userSettingsData?.branch_name,
-            razorpay_payment_link: storagePaymentSettings.razorpayPaymentLink || userSettingsData?.razorpay_payment_link,
-          };
-        }
-
-        if (!userSettingsData?.payment_settings?.bankDetails && !userSettingsData?.bank_name && !userSettingsData?.upi_qr_code_url) {
-          try {
-            const { data: latestSettings } = await supabaseAdmin
-              .from('user_settings')
-              .select('*')
-              .order('updated_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            if (latestSettings) {
-              userSettingsData = { ...(userSettingsData || {}), ...latestSettings };
-            }
-          } catch {
-            // non-critical
-          }
-        }
-
-        // If profiles row for ownerId is missing, check latest profile
-        if (!profData) {
-          try {
-            const { data: latestProf } = await supabaseAdmin
-              .from('profiles')
-              .select('*')
-              .order('updated_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            if (latestProf) {
-              profData = latestProf;
-            }
-          } catch {
-            // non-critical
-          }
-        }
-
-        if (profData) {
-          if (profData.full_name) branding.freelancerName = profData.full_name;
-          if (profData.business_name || profData.company_name) {
-            branding.businessName = profData.business_name || profData.company_name || branding.businessName;
-          }
-          if (profData.email) branding.email = profData.email;
-          if (profData.phone) branding.phone = profData.phone;
-          if (profData.country) (branding as any).country = profData.country;
-
-          if (profData.logo_url && (!branding.logoUrl || branding.logoUrl === '/branding/flowdesk-symbol.png')) {
-            branding.logoUrl = profData.logo_url.startsWith('http') || profData.logo_url.startsWith('/') || profData.logo_url.startsWith('data:')
-              ? profData.logo_url
-              : StorageHelper.getPublicUrl('logos', profData.logo_url);
-          }
-          if (profData.signature_url && !branding.signatureUrl) {
-            branding.signatureUrl = profData.signature_url.startsWith('http') || profData.signature_url.startsWith('/') || profData.signature_url.startsWith('data:')
-              ? profData.signature_url
-              : StorageHelper.getPublicUrl('signatures', profData.signature_url);
-          }
-        }
-
-        // Populate UPI QR code, UPI ID, Bank Transfer Details, and Payment Methods
-        const effectiveUpiQrCodeUrl =
-          userSettingsData?.upi_qr_code_url ||
-          userSettingsData?.payment_settings?.upiQrCodeUrl ||
-          profData?.upi_qr_code_url ||
-          '';
-        if (effectiveUpiQrCodeUrl) {
-          branding.upiQrCodeUrl =
-            effectiveUpiQrCodeUrl.startsWith('http') ||
-            effectiveUpiQrCodeUrl.startsWith('/') ||
-            effectiveUpiQrCodeUrl.startsWith('data:')
-              ? effectiveUpiQrCodeUrl
-              : StorageHelper.getPublicUrl('logos', effectiveUpiQrCodeUrl);
-        }
-
-        const effectiveUpiId =
-          userSettingsData?.upi_id ||
-          userSettingsData?.payment_settings?.upiId ||
-          profData?.upi_id ||
-          '';
-        if (effectiveUpiId) {
-          branding.upiId = effectiveUpiId;
-        }
-
-        const bankDetails =
-          userSettingsData?.payment_settings?.bankDetails ||
-          (userSettingsData?.bank_name || userSettingsData?.account_number
-            ? {
-                bankName: userSettingsData.bank_name || '',
-                accountHolderName: userSettingsData.account_holder_name || '',
-                accountNumber: userSettingsData.account_number || '',
-                ifscCode: userSettingsData.ifsc_code || '',
-                branchName: userSettingsData.branch_name || '',
-                upiId: effectiveUpiId,
-              }
-            : undefined);
-        if (bankDetails) {
-          branding.bankDetails = bankDetails;
-          (branding as any).bankName = bankDetails.bankName;
-          (branding as any).accountNumber = bankDetails.accountNumber;
-          (branding as any).accountHolderName = bankDetails.accountHolderName;
-          (branding as any).ifscCode = bankDetails.ifscCode;
-          (branding as any).branchName = bankDetails.branchName;
-        }
-
-        const razorpayPaymentLink =
-          userSettingsData?.razorpay_payment_link ||
-          userSettingsData?.payment_settings?.razorpayPaymentLink ||
-          '';
-        if (razorpayPaymentLink) {
-          branding.razorpayPaymentLink = razorpayPaymentLink;
-        }
-
-        if (userSettingsData?.payment_settings) {
-          branding.paymentMethods = {
-            ...userSettingsData.payment_settings,
-            upiQrCodeUrl: branding.upiQrCodeUrl,
-            upiId: branding.upiId,
-            bankDetails: branding.bankDetails,
-          };
-        }
-      }
-    }
-
-    // Inspect recent invoices for client/invoiceId if payment notes or instructions exist
-    const invoiceId = searchParams.get('invoiceId')?.trim();
-    if (!branding.upiQrCodeUrl || !branding.bankDetails || !branding.upiId) {
-      try {
-        let invQuery = supabaseAdmin
-          .from('invoices')
-          .select('id, client_id, notes, payment_instructions');
-
-        if (invoiceId) {
-          invQuery = invQuery.eq('id', invoiceId);
-        } else if (clientId) {
-          invQuery = invQuery.eq('client_id', clientId).order('created_at', { ascending: false }).limit(3);
-        }
-
-        const { data: invRows } = await invQuery;
-        if (invRows && invRows.length > 0) {
-          for (const inv of invRows) {
-            if (inv.payment_instructions) {
-              const text = inv.payment_instructions;
-              const upiMatch = text.match(/[\w.-]+@[\w.-]+/);
-              if (upiMatch && !branding.upiId) {
-                branding.upiId = upiMatch[0];
-              }
-            }
           }
         }
       } catch {
@@ -414,50 +425,94 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // If still missing, check system store / mock data fallback
-    if (!branding.upiQrCodeUrl || !branding.bankDetails) {
+    // 6. Check invoice's own payment_methods / instructions / notes
+    if (!candidatePaymentSettings && invoiceRecord) {
+      if (invoiceRecord.payment_methods && hasValidPaymentData(invoiceRecord.payment_methods)) {
+        candidatePaymentSettings = invoiceRecord.payment_methods;
+      } else if (invoiceRecord.payment_instructions) {
+        const text = invoiceRecord.payment_instructions;
+        const upiMatch = text.match(/[\w.-]+@[\w.-]+/);
+        if (upiMatch) {
+          candidatePaymentSettings = { upiId: upiMatch[0], upiEnabled: true };
+        }
+      }
+    }
+
+    // 7. Fallback to system store
+    if (!candidatePaymentSettings) {
       try {
         const localProf = FlowDeskStore.getUserProfile() || {};
-        if (!branding.upiQrCodeUrl && localProf.upiQrCodeUrl) {
-          branding.upiQrCodeUrl = localProf.upiQrCodeUrl;
-        }
-        if (!branding.upiId && localProf.upiId) {
-          branding.upiId = localProf.upiId;
-        }
-        if (!branding.bankDetails && ((localProf as any).bankName || (localProf as any).bankDetails)) {
-          const fbBank = (localProf as any).bankDetails || {
-            bankName: (localProf as any).bankName || '',
-            accountHolderName: (localProf as any).accountHolderName || '',
-            accountNumber: (localProf as any).accountNumber || '',
-            ifscCode: (localProf as any).ifscCode || '',
-            branchName: (localProf as any).branchName || '',
-            upiId: branding.upiId || '',
-          };
-          branding.bankDetails = fbBank;
-          (branding as any).bankName = fbBank.bankName;
-          (branding as any).accountNumber = fbBank.accountNumber;
-          (branding as any).accountHolderName = fbBank.accountHolderName;
-          (branding as any).ifscCode = fbBank.ifscCode;
-          (branding as any).branchName = fbBank.branchName;
+        if (hasValidPaymentData(localProf)) {
+          candidatePaymentSettings = localProf;
         }
       } catch {
         // non-critical
       }
     }
 
-    // Ensure paymentMethods has up-to-date toggles and fields
+    // Extract structured payment details
+    const extracted = extractPaymentFields(candidatePaymentSettings || {});
+
+    // Also check profiles for direct UPI columns if not in extracted
+    if (!extracted.upiId && profData?.upi_id) {
+      extracted.upiId = profData.upi_id;
+    }
+    if (!extracted.upiQrCodeUrl && profData?.upi_qr_code_url) {
+      extracted.upiQrCodeUrl = profData.upi_qr_code_url;
+    }
+
+    // Also check invoiceRecord for payment_instructions UPI
+    if (!extracted.upiId && invoiceRecord?.payment_instructions) {
+      const upiMatch = invoiceRecord.payment_instructions.match(/[\w.-]+@[\w.-]+/);
+      if (upiMatch) extracted.upiId = upiMatch[0];
+    }
+
+    // Apply extracted details to branding object
+    if (extracted.upiId) {
+      branding.upiId = extracted.upiId;
+    }
+
+    if (extracted.upiQrCodeUrl) {
+      branding.upiQrCodeUrl =
+        extracted.upiQrCodeUrl.startsWith('http') ||
+        extracted.upiQrCodeUrl.startsWith('/') ||
+        extracted.upiQrCodeUrl.startsWith('data:')
+          ? extracted.upiQrCodeUrl
+          : StorageHelper.getPublicUrl('logos', extracted.upiQrCodeUrl);
+    }
+
+    if (extracted.bankDetails) {
+      branding.bankDetails = extracted.bankDetails;
+      (branding as any).bankName = extracted.bankDetails.bankName;
+      (branding as any).accountHolderName = extracted.bankDetails.accountHolderName;
+      (branding as any).accountNumber = extracted.bankDetails.accountNumber;
+      (branding as any).ifscCode = extracted.bankDetails.ifscCode;
+      (branding as any).branchName = extracted.bankDetails.branchName;
+    }
+
+    if (extracted.razorpayPaymentLink) {
+      branding.razorpayPaymentLink = extracted.razorpayPaymentLink;
+    }
+
+    const hasBank = Boolean(
+      branding.bankDetails?.accountNumber ||
+      branding.bankDetails?.bankName ||
+      branding.bankDetails?.accountHolderName ||
+      branding.bankDetails?.ifscCode
+    );
+    const hasUpi = Boolean(branding.upiId || branding.upiQrCodeUrl);
+
     branding.paymentMethods = {
-      ...(branding.paymentMethods || {}),
-      bankTransferEnabled: Boolean(branding.bankDetails?.accountNumber || branding.bankDetails?.bankName),
-      upiEnabled: Boolean(branding.upiId || branding.upiQrCodeUrl),
+      bankTransferEnabled: hasBank,
+      upiEnabled: hasUpi,
+      razorpayLinkEnabled: Boolean(branding.razorpayPaymentLink),
       upiQrCodeUrl: branding.upiQrCodeUrl,
       upiId: branding.upiId,
-      bankDetails: branding.bankDetails,
+      bankDetails: hasBank ? branding.bankDetails : undefined,
+      razorpayPaymentLink: branding.razorpayPaymentLink,
     };
 
     // Enforce workspace branding plan entitlements:
-    // If the workspace does not have customBranding / brandedPortal entitlement,
-    // revert to standard FlowDesk branding for client portals.
     if (targetWsId) {
       try {
         const { can } = await import('@/backend/billing');
@@ -474,19 +529,27 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      branding,
-    }, {
-      headers: {
-        'Cache-Control': 'public, max-age=30, stale-while-revalidate=120',
+    return NextResponse.json(
+      {
+        success: true,
+        branding,
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (err: any) {
     console.warn('[Branding API] Error resolving portal branding:', err);
-    return NextResponse.json({
-      success: false,
-      error: err?.message || 'Failed to resolve portal branding.',
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: err?.message || 'Failed to resolve portal branding.',
+      },
+      { status: 500 }
+    );
   }
 }

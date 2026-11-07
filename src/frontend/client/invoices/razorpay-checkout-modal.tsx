@@ -6,6 +6,7 @@ import { Button } from '@/frontend/shared/ui/button';
 import { Invoice, InvoiceReceipt, InvoiceBranding, UserProfile } from '@/shared/types';
 import { formatCurrency } from '@/shared/utils/currency';
 import { QRCode } from '@/frontend/shared/ui/qr-code';
+import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 import {
   ShieldCheck,
   CreditCard,
@@ -73,6 +74,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
   // Live branding state for seamless updates
   const [liveBranding, setLiveBranding] = useState<any>(null);
 
+  // Active polling while modal is open so freelancer settings updates sync in real-time
   useEffect(() => {
     if (!isOpen) return;
 
@@ -80,10 +82,12 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
     const targetClientId = clientId || invoice?.clientId;
     const targetInvoiceId = invoice?.id;
 
-    if (targetClientId || targetInvoiceId) {
-      fetch(`/api/portal/branding?clientId=${encodeURIComponent(targetClientId || '')}&invoiceId=${encodeURIComponent(targetInvoiceId || '')}`, {
-        cache: 'no-store',
-      })
+    const fetchLiveBranding = () => {
+      if (!targetClientId && !targetInvoiceId) return;
+      fetch(
+        `/api/portal/branding?clientId=${encodeURIComponent(targetClientId || '')}&invoiceId=${encodeURIComponent(targetInvoiceId || '')}`,
+        { cache: 'no-store' }
+      )
         .then((res) => res.json())
         .then((data) => {
           if (mounted && data?.success && data?.branding) {
@@ -91,95 +95,133 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
           }
         })
         .catch(() => {});
-    }
+    };
+
+    fetchLiveBranding();
+    const interval = setInterval(fetchLiveBranding, 3000);
 
     return () => {
       mounted = false;
+      clearInterval(interval);
     };
   }, [isOpen, clientId, invoice?.id, invoice?.clientId]);
 
-  // Resolve branding and payment details
+  // Helper to pick the first non-empty string among candidates
+  const pickVal = (...candidates: any[]): string => {
+    for (const c of candidates) {
+      if (typeof c === 'string' && c.trim()) return c.trim();
+    }
+    return '';
+  };
+
+  // Resolve branding and payment details ensuring empty objects do not shadow valid details
   const effectiveBranding = { ...(branding || {}), ...(liveBranding || {}) } as any;
-  const invoiceBankDetails =
-    invoice?.bankDetails ||
-    invoice?.paymentMethods?.bankDetails ||
-    effectiveBranding.bankDetails ||
-    effectiveBranding.payment_settings?.bankDetails ||
-    {};
 
-  const bankName =
-    invoiceBankDetails.bankName ||
-    invoiceBankDetails.bank_name ||
-    effectiveBranding.bankName ||
-    effectiveBranding.bank_name ||
-    effectiveBranding.payment_settings?.bankDetails?.bankName ||
-    effectiveBranding.payment_settings?.bankDetails?.bank_name ||
-    '';
+  // Search candidate bank objects to ensure empty objects {} don't shadow valid details
+  const candidateBankObjects = [
+    liveBranding?.bankDetails,
+    liveBranding?.payment_settings?.bankDetails,
+    effectiveBranding?.bankDetails,
+    effectiveBranding?.payment_settings?.bankDetails,
+    invoice?.bankDetails,
+    invoice?.paymentMethods?.bankDetails,
+  ];
 
-  const accountHolderName =
-    invoiceBankDetails.accountHolderName ||
-    invoiceBankDetails.account_holder_name ||
-    effectiveBranding.accountHolderName ||
-    effectiveBranding.account_holder_name ||
-    effectiveBranding.payment_settings?.bankDetails?.accountHolderName ||
-    effectiveBranding.payment_settings?.bankDetails?.account_holder_name ||
-    effectiveBranding.name ||
-    effectiveBranding.businessName ||
-    '';
+  let selectedBank: any = {};
+  for (const c of candidateBankObjects) {
+    if (
+      c &&
+      (String(c.accountNumber || '').trim() ||
+        String(c.account_number || '').trim() ||
+        String(c.bankName || '').trim() ||
+        String(c.bank_name || '').trim() ||
+        String(c.accountHolderName || '').trim() ||
+        String(c.account_holder_name || '').trim() ||
+        String(c.ifscCode || '').trim() ||
+        String(c.ifsc_code || '').trim())
+    ) {
+      selectedBank = c;
+      break;
+    }
+  }
 
-  const accountNumber =
-    invoiceBankDetails.accountNumber ||
-    invoiceBankDetails.account_number ||
-    effectiveBranding.accountNumber ||
-    effectiveBranding.account_number ||
-    effectiveBranding.payment_settings?.bankDetails?.accountNumber ||
-    effectiveBranding.payment_settings?.bankDetails?.account_number ||
-    '';
+  const bankName = pickVal(
+    selectedBank.bankName,
+    selectedBank.bank_name,
+    liveBranding?.bankName,
+    liveBranding?.bank_name,
+    effectiveBranding.bankName,
+    effectiveBranding.bank_name
+  );
 
-  const ifscCode =
-    invoiceBankDetails.ifscCode ||
-    invoiceBankDetails.ifsc_code ||
-    invoiceBankDetails.swiftCode ||
-    invoiceBankDetails.swift_code ||
-    effectiveBranding.ifscCode ||
-    effectiveBranding.ifsc_code ||
-    effectiveBranding.payment_settings?.bankDetails?.ifscCode ||
-    effectiveBranding.payment_settings?.bankDetails?.ifsc_code ||
-    '';
+  const accountHolderName = pickVal(
+    selectedBank.accountHolderName,
+    selectedBank.account_holder_name,
+    liveBranding?.accountHolderName,
+    liveBranding?.account_holder_name,
+    effectiveBranding.accountHolderName,
+    effectiveBranding.account_holder_name,
+    effectiveBranding.name,
+    effectiveBranding.freelancerName,
+    effectiveBranding.businessName
+  );
 
-  const branchName =
-    invoiceBankDetails.branchName ||
-    invoiceBankDetails.branch_name ||
-    effectiveBranding.branchName ||
-    effectiveBranding.branch_name ||
-    effectiveBranding.payment_settings?.bankDetails?.branchName ||
-    effectiveBranding.payment_settings?.bankDetails?.branch_name ||
-    '';
+  const accountNumber = pickVal(
+    selectedBank.accountNumber,
+    selectedBank.account_number,
+    liveBranding?.accountNumber,
+    liveBranding?.account_number,
+    effectiveBranding.accountNumber,
+    effectiveBranding.account_number
+  );
 
-  const upiId =
-    invoice?.upiId ||
-    invoice?.paymentMethods?.upiId ||
-    invoiceBankDetails.upiId ||
-    invoiceBankDetails.upi_id ||
-    effectiveBranding.upiId ||
-    effectiveBranding.upi_id ||
-    effectiveBranding.payment_settings?.upiId ||
-    effectiveBranding.payment_settings?.upi_id ||
-    effectiveBranding.bankDetails?.upiId ||
-    effectiveBranding.bankDetails?.upi_id ||
-    effectiveBranding.payment_settings?.bankDetails?.upiId ||
-    '';
+  const ifscCode = pickVal(
+    selectedBank.ifscCode,
+    selectedBank.ifsc_code,
+    selectedBank.swiftCode,
+    selectedBank.swift_code,
+    liveBranding?.ifscCode,
+    liveBranding?.ifsc_code,
+    effectiveBranding.ifscCode,
+    effectiveBranding.ifsc_code
+  );
 
-  const upiQrCodeUrl =
-    invoice?.upiQrCodeUrl ||
-    invoice?.paymentMethods?.upiQrCodeUrl ||
-    invoiceBankDetails.upiQrCodeUrl ||
-    invoiceBankDetails.upi_qr_code_url ||
-    effectiveBranding.upiQrCodeUrl ||
-    effectiveBranding.upi_qr_code_url ||
-    effectiveBranding.payment_settings?.upiQrCodeUrl ||
-    effectiveBranding.payment_settings?.upi_qr_code_url ||
-    '';
+  const branchName = pickVal(
+    selectedBank.branchName,
+    selectedBank.branch_name,
+    liveBranding?.branchName,
+    liveBranding?.branch_name,
+    effectiveBranding.branchName,
+    effectiveBranding.branch_name
+  );
+
+  const upiId = pickVal(
+    liveBranding?.upiId,
+    liveBranding?.upi_id,
+    liveBranding?.payment_settings?.upiId,
+    liveBranding?.bankDetails?.upiId,
+    effectiveBranding.upiId,
+    effectiveBranding.upi_id,
+    effectiveBranding.payment_settings?.upiId,
+    effectiveBranding.payment_settings?.upi_id,
+    effectiveBranding.bankDetails?.upiId,
+    invoice?.upiId,
+    invoice?.paymentMethods?.upiId,
+    selectedBank.upiId,
+    selectedBank.upi_id
+  );
+
+  const upiQrCodeUrl = pickVal(
+    liveBranding?.upiQrCodeUrl,
+    liveBranding?.upi_qr_code_url,
+    liveBranding?.payment_settings?.upiQrCodeUrl,
+    effectiveBranding.upiQrCodeUrl,
+    effectiveBranding.upi_qr_code_url,
+    effectiveBranding.payment_settings?.upiQrCodeUrl,
+    invoice?.upiQrCodeUrl,
+    invoice?.paymentMethods?.upiQrCodeUrl,
+    selectedBank.upiQrCodeUrl
+  );
 
   const payeeName =
     effectiveBranding.businessName ||
@@ -189,13 +231,20 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
     'FlowDesk Studio';
 
   const hasQr = Boolean(upiQrCodeUrl || upiId);
-  const hasBank = Boolean(accountNumber || bankName);
+  const hasBank = Boolean(accountNumber || bankName || accountHolderName || ifscCode);
 
   // Active payment method tab
   const [activeTab, setActiveTab] = useState<PaymentMethodTab>(() => {
     if (hasQr || hasBank) return 'qr';
     return 'online';
   });
+
+  // Switch to QR or Bank tab when live payment details become available
+  useEffect(() => {
+    if (hasQr || hasBank) {
+      setActiveTab((prev) => (prev === 'online' ? 'qr' : prev));
+    }
+  }, [hasQr, hasBank]);
 
   // Copy helper
   const copyText = (text: string, fieldId: string) => {
@@ -405,7 +454,19 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
           onClose();
         }
       }}
-      title={`Pay Securely — Statement #${invoice.invoiceNumber}`}
+      title={
+        <div className="flex items-center gap-2.5">
+          <FlowDeskLogo variant="symbol" size={26} className="shrink-0" />
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-bold text-white tracking-tight truncate">
+              Pay Securely — Statement #{invoice.invoiceNumber}
+            </h2>
+            <p className="text-[11px] text-zinc-400 font-normal truncate">
+              {payeeName} &bull; FlowDesk Client Verification
+            </p>
+          </div>
+        </div>
+      }
       size="lg"
     >
       <div className="space-y-4 font-sans text-xs">
@@ -930,9 +991,10 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
               <Button variant="ghost" size="sm" onClick={onClose}>
                 Close
               </Button>
-              <span className="text-[10px] text-zinc-500">
-                Encrypted & Verified via FlowDesk Platform
-              </span>
+              <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 select-none">
+                <FlowDeskLogo variant="symbol" size={15} className="opacity-80" />
+                <span>Encrypted & Verified via FlowDesk Platform</span>
+              </div>
             </div>
           </div>
         )}

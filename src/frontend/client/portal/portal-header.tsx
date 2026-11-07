@@ -5,6 +5,7 @@ import { Search, Bell, Menu, Sparkles, Plus, Eye, Lock, ShieldCheck } from 'luci
 import { PortalNotification } from '@/shared/types';
 import { ClientWorkspaceSwitcher } from './client-workspace-switcher';
 import { isSafeImageUrl } from '@/shared/utils/safe-url';
+import { FlowDeskLogo } from '@/frontend/shared/branding/flowdesk-logo';
 
 interface PortalHeaderProps {
   companyName: string;
@@ -49,20 +50,26 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
             <Menu className="w-4 h-4" />
           </button>
 
-          <div>
-            <div className="flex items-center gap-2">
-              {logoUrl && isSafeImageUrl(logoUrl) ? (
-                <img src={logoUrl} alt="" className="w-4 h-4 object-contain rounded" />
-              ) : (
-                <img src="/branding/flowdesk-symbol.png" alt="" className="w-4 h-4 object-contain opacity-80" />
-              )}
-              <span className="text-xs font-mono uppercase text-[#A6B4AE] font-semibold tracking-wider">
-                {companyName}
-              </span>
-              <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-[#176B5B]" />
-              <span className="hidden sm:inline-block text-xs text-[#A6B4AE] font-medium">Client Portal</span>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center pr-3 border-r border-[#176B5B]/30">
+              <FlowDeskLogo variant="symbol" size={24} className="shrink-0" />
             </div>
-            <h1 className="text-base sm:text-lg font-bold text-[#F5F5F0] tracking-tight">{activeTabTitle}</h1>
+
+            <div>
+              <div className="flex items-center gap-2">
+                {logoUrl && isSafeImageUrl(logoUrl) && logoUrl !== '/branding/flowdesk-symbol.png' ? (
+                  <img src={logoUrl} alt="" className="w-4 h-4 object-contain rounded" />
+                ) : (
+                  <FlowDeskLogo variant="symbol" size={16} className="shrink-0" />
+                )}
+                <span className="text-xs font-mono uppercase text-[#A6B4AE] font-semibold tracking-wider truncate max-w-[140px] sm:max-w-none">
+                  {companyName}
+                </span>
+                <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-[#176B5B]" />
+                <span className="hidden sm:inline-block text-xs text-[#A6B4AE] font-medium">Client Portal</span>
+              </div>
+              <h1 className="text-base sm:text-lg font-bold text-[#F5F5F0] tracking-tight">{activeTabTitle}</h1>
+            </div>
           </div>
         </div>
 
