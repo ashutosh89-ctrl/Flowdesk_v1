@@ -32,10 +32,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // 2. Secret Fail-Closed
-    const secret = process.env.RAZORPAY_BILLING_WEBHOOK_SECRET;
+    const secret = process.env.RAZORPAY_BILLING_WEBHOOK_SECRET || process.env.RAZORPAY_WEBHOOK_SECRET;
     if (!secret) {
       logger.error('RAZORPAY_BILLING_WEBHOOK_SECRET_NOT_CONFIGURED', {
-        message: 'Fail-closed: RAZORPAY_BILLING_WEBHOOK_SECRET is not configured on server.',
+        message: 'Fail-closed: RAZORPAY_BILLING_WEBHOOK_SECRET or RAZORPAY_WEBHOOK_SECRET is not configured on server.',
       });
       return NextResponse.json({ error: 'Webhook processing unavailable' }, { status: 500 });
     }

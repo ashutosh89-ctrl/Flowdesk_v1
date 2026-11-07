@@ -158,8 +158,8 @@ const standardPlan: PlanDefinition = {
   ],
   providerPlanIds: {
     razorpay: {
-      monthly: 'plan_placeholder_standard_monthly',
-      yearly: 'plan_placeholder_standard_yearly',
+      monthly: process.env.RAZORPAY_PLAN_STANDARD_MONTHLY || 'plan_TxMuv0IAbfn6PN',
+      yearly: process.env.RAZORPAY_PLAN_STANDARD_YEARLY || 'plan_TxMvCYuh8YmpX9',
     },
   },
 };
@@ -205,8 +205,8 @@ const studioPlan: PlanDefinition = {
   ],
   providerPlanIds: {
     razorpay: {
-      monthly: 'plan_placeholder_studio_monthly',
-      yearly: 'plan_placeholder_studio_yearly',
+      monthly: process.env.RAZORPAY_PLAN_STUDIO_MONTHLY || 'plan_TxMvCqZmMGl7U1',
+      yearly: process.env.RAZORPAY_PLAN_STUDIO_YEARLY || 'plan_TxMvD3mr4WyW8z',
     },
   },
 };

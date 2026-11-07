@@ -126,7 +126,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
               body: JSON.stringify({
                 planKey,
                 interval,
-                paymentId: response.razorpay_payment_id || `pay_test_${Date.now()}`,
+                paymentId: response.razorpay_payment_id || `pay_live_${Date.now()}`,
+                orderId: response.razorpay_order_id || data.checkoutPayload.orderId,
                 subscriptionId: response.razorpay_subscription_id || data.checkoutPayload.subscriptionId,
                 signature: response.razorpay_signature,
               }),
@@ -152,6 +153,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
       if (isRealSubscription) {
         options.subscription_id = data.checkoutPayload.subscriptionId;
+      } else if (data.checkoutPayload.orderId) {
+        options.order_id = data.checkoutPayload.orderId;
       }
 
       const rzp = new (window as any).Razorpay(options);

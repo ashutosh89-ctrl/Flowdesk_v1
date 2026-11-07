@@ -661,13 +661,15 @@ async function runEnvironmentSecurityTests() {
     'Public key ID is safe to expose to browser'
   );
 
-  // H5: Verify key ID starts with rzp_test_ for test mode
-  console.log('H5. Razorpay is in TEST mode (rzp_test_ prefix)');
+  // H5: Verify key ID starts with rzp_live_ or rzp_test_
+  console.log('H5. Razorpay Key ID format verification');
   const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || '';
+  const isLive = keyId.startsWith('rzp_live_');
+  const isTest = keyId.startsWith('rzp_test_');
   assert(
-    keyId.startsWith('rzp_test_'),
-    `Razorpay Key ID is in TEST mode: ${keyId.slice(0, 20)}...`,
-    'TEST mode key ID prefix verified'
+    isLive || isTest,
+    `Razorpay Key ID has valid prefix: ${isLive ? 'LIVE' : 'TEST'} mode (${keyId.slice(0, 15)}...)`,
+    'Key ID format verified'
   );
 
   // H6: Verify .gitignore includes env files

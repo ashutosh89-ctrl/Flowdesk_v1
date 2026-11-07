@@ -25,27 +25,64 @@ export class RazorpaySubscriptionProvider implements BillingProvider {
     if (canUseLiveGateway) {
       try {
         const razorpay = getRazorpayClient();
-        const subscription = await razorpay.subscriptions.create({
-          plan_id: planId,
-          total_count: params.interval === 'yearly' ? 10 : 120,
-          quantity: 1,
-          customer_notify: 1,
-          notes: {
-            workspace_id: params.workspaceId,
-            owner_id: params.workspaceOwnerId,
-            plan_key: params.planKey,
-            interval: params.interval,
-          },
-        });
+        let subscriptionId: string | undefined;
+        let customerId: string | undefined;
+        let orderId: string | undefined;
+
+        // 1. Attempt recurring subscription creation
+        try {
+          const subscription = await razorpay.subscriptions.create({
+            plan_id: planId,
+            total_count: params.interval === 'yearly' ? 10 : 120,
+            quantity: 1,
+            customer_notify: 1,
+            notes: {
+              workspace_id: params.workspaceId,
+              owner_id: params.workspaceOwnerId,
+              plan_key: params.planKey,
+              interval: params.interval,
+            },
+          });
+          subscriptionId = subscription.id;
+          customerId = subscription.customer_id;
+        } catch (subErr: any) {
+          console.warn('[RazorpaySubscriptionProvider] Subscription creation notice:', subErr?.error?.description || subErr.message);
+        }
+
+        // 2. Also generate an authoritative Razorpay Order for cards/methods without e-mandate support
+        try {
+          const amountPaise = plan.pricing[params.interval].INR * 100;
+          const receipt = `sub_${params.workspaceId.slice(0, 8)}_${Date.now().toString().slice(-6)}`;
+          const order = await razorpay.orders.create({
+            amount: amountPaise,
+            currency: 'INR',
+            receipt,
+            notes: {
+              workspace_id: params.workspaceId,
+              owner_id: params.workspaceOwnerId,
+              plan_key: params.planKey,
+              interval: params.interval,
+              subscription_id: subscriptionId || '',
+            },
+          });
+          orderId = order.id;
+        } catch (orderErr: any) {
+          console.warn('[RazorpaySubscriptionProvider] Order creation notice:', orderErr?.error?.description || orderErr.message);
+        }
+
+        if (!subscriptionId && !orderId) {
+          throw new Error('Could not initialize payment session with Razorpay gateway.');
+        }
 
         return {
           provider: 'razorpay',
-          providerSubscriptionId: subscription.id,
-          providerCustomerId: subscription.customer_id,
-          status: subscription.status || 'created',
+          providerSubscriptionId: subscriptionId || orderId!,
+          providerCustomerId: customerId,
+          status: 'created',
           checkoutPayload: {
             keyId: getRazorpayKeyId(),
-            subscriptionId: subscription.id,
+            subscriptionId,
+            orderId,
             customerName: params.workspaceOwnerName,
             customerEmail: params.workspaceOwnerEmail,
             amount: plan.pricing[params.interval].INR * 100,

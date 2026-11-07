@@ -11,6 +11,7 @@ const ActivateBillingSchema = z.object({
   planKey: z.enum(['standard', 'studio']),
   interval: z.enum(['monthly', 'yearly']).default('monthly'),
   paymentId: z.string().trim().min(1, 'Payment ID is required'),
+  orderId: z.string().trim().optional(),
   subscriptionId: z.string().trim().optional(),
   signature: z.string().trim().optional(),
 }).strict();
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
   }
 
-  const { planKey, interval, paymentId, subscriptionId } = parsed.data;
+  const { planKey, interval, paymentId, subscriptionId, orderId, signature } = parsed.data;
 
   // Demo Mode Simulation
   if (isDemoModeActive()) {
@@ -78,6 +79,53 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       planKey,
       interval,
     });
+  }
+
+  const plan = getBillingPlan(planKey);
+  const expectedAmountPaise = plan.pricing[interval].INR * 100;
+
+  // Server-Authoritative Gateway Payment Verification
+  const { isRazorpayConfigured, getRazorpayClient } = await import('@/backend/payments/razorpay-client');
+  if (isRazorpayConfigured()) {
+    try {
+      const razorpay = getRazorpayClient();
+      const payment = await razorpay.payments.fetch(paymentId);
+
+      if (!payment) {
+        return createApiErrorResponse({
+          message: 'Payment record could not be found with payment gateway.',
+          code: 'PAYMENT_NOT_FOUND',
+          status: 400,
+          requestId,
+        });
+      }
+
+      if (payment.status !== 'captured' && payment.status !== 'authorized') {
+        return createApiErrorResponse({
+          message: `Payment is not in an authorized or captured state (status: ${payment.status}).`,
+          code: 'PAYMENT_NOT_CAPTURED',
+          status: 400,
+          requestId,
+        });
+      }
+
+      if (payment.amount < expectedAmountPaise) {
+        return createApiErrorResponse({
+          message: 'Payment amount does not match required plan pricing.',
+          code: 'AMOUNT_MISMATCH',
+          status: 400,
+          requestId,
+        });
+      }
+    } catch (gateErr: any) {
+      logger.error('Gateway payment verification error', gateErr, { requestId });
+      return createApiErrorResponse({
+        message: gateErr?.message || 'Failed to verify payment with Razorpay gateway.',
+        code: 'GATEWAY_VERIFICATION_ERROR',
+        status: 400,
+        requestId,
+      });
+    }
   }
 
   try {
@@ -145,6 +193,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Invalidate entitlements cache
     invalidateWorkspaceEntitlements(workspace.id);
+
+    // Touch workspace timestamp so realtime subscribers refresh immediately
+    await supabaseAdmin
+      .from('workspaces')
+      .update({ updated_at: now.toISOString() })
+      .eq('id', workspace.id);
 
     const plan = getBillingPlan(planKey);
 

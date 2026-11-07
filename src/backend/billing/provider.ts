@@ -25,7 +25,8 @@ export interface CreateSubscriptionResult {
   status: string;
   checkoutPayload: {
     keyId: string;
-    subscriptionId: string;
+    subscriptionId?: string;
+    orderId?: string;
     customerName: string;
     customerEmail: string;
     amount?: number;
