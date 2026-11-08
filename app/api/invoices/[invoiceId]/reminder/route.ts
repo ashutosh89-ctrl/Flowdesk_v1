@@ -263,7 +263,7 @@ export async function POST(
     // 3. Persistent In-App Notification for Freelancer (Audit Confirmation)
     await supabaseAdmin.from('notifications').insert({
       workspace_id: workspace.id,
-      client_id: invoice.client_id || null,
+      client_id: null,
       user_id: workspace.owner_id,
       title: `Payment Reminder #${reminderNum} Sent`,
       message: `Dispatched payment reminder #${reminderNum} for Invoice #${invoice.invoice_number} to ${invoice.client_email}.`,

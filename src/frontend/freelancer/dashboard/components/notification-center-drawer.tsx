@@ -39,9 +39,13 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
     onRefresh();
   };
 
-  const handleToggleRead = async (id: string, e: React.MouseEvent) => {
+  const handleToggleRead = async (item: NotificationItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    await NotificationService.dismissNotification(id);
+    if (item.read) {
+      await NotificationService.markAsUnread(item.id);
+    } else {
+      await NotificationService.markAsRead(item.id);
+    }
     onRefresh();
   };
 
@@ -135,7 +139,10 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
                   displayed.map((n) => (
                     <div
                       key={n.id}
-                      onClick={() => {
+                      onClick={async () => {
+                        if (!n.read) {
+                          await NotificationService.markAsRead(n.id);
+                        }
                         // Route to specific entity when possible, normalizing links
                         const cleanLink = (n.link || '').replace(/^\//, '').split('?')[0];
                         if (cleanLink) {
@@ -177,13 +184,26 @@ export const NotificationCenterDrawer: React.FC<NotificationCenterDrawerProps> =
                         </div>
                       </div>
 
-                      <button
-                        onClick={(e) => handleToggleRead(n.id, e)}
-                        title={n.read ? 'Mark unread' : 'Mark read'}
-                        className="p-1 rounded text-[#A6B4AE] hover:text-[#F5F5F0] transition-colors shrink-0"
-                      >
-                        <Check className={`w-3.5 h-3.5 ${n.read ? 'text-emerald-400' : ''}`} />
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={(e) => handleToggleRead(n, e)}
+                          title={n.read ? 'Mark unread' : 'Mark read'}
+                          className="p-1 rounded text-[#A6B4AE] hover:text-[#F5F5F0] transition-colors"
+                        >
+                          <Check className={`w-3.5 h-3.5 ${n.read ? 'text-[#43D6B0]' : ''}`} />
+                        </button>
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await NotificationService.dismissNotification(n.id);
+                            onRefresh();
+                          }}
+                          title="Dismiss"
+                          className="p-1 rounded text-[#A6B4AE] hover:text-rose-400 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}

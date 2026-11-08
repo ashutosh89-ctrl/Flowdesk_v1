@@ -176,15 +176,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     let defaultUpiId: string | undefined;
     let defaultBankDetails: any = undefined;
     let defaultRazorpayLink: string | undefined;
+    let defaultLogoUrl: string | undefined;
+    let defaultSignatureUrl: string | undefined;
 
     const firstInvoice = invoicesData[0];
     if (firstInvoice?.workspace_id) {
       try {
         const { data: ws } = await db
           .from('workspaces')
-          .select('owner_id')
+          .select('owner_id, name, logo_url, signature_url')
           .eq('id', firstInvoice.workspace_id)
           .maybeSingle();
+
+        if (ws) {
+          if (ws.logo_url) defaultLogoUrl = ws.logo_url;
+          if (ws.signature_url) defaultSignatureUrl = ws.signature_url;
+        }
 
         if (ws?.owner_id) {
           const { data: userSettings } = await db
@@ -207,16 +214,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             defaultRazorpayLink = userSettings.razorpay_payment_link || userSettings.payment_settings?.razorpayPaymentLink || undefined;
           }
 
-          if (!defaultQrUrl || !defaultUpiId) {
-            const { data: prof } = await db
-              .from('profiles')
-              .select('upi_id, upi_qr_code_url')
-              .eq('id', ws.owner_id)
-              .maybeSingle();
-            if (prof) {
-              if (!defaultQrUrl && prof.upi_qr_code_url) defaultQrUrl = prof.upi_qr_code_url;
-              if (!defaultUpiId && prof.upi_id) defaultUpiId = prof.upi_id;
-            }
+          const { data: prof } = await db
+            .from('profiles')
+            .select('upi_id, upi_qr_code_url, logo_url, signature_url')
+            .eq('id', ws.owner_id)
+            .maybeSingle();
+          if (prof) {
+            if (!defaultQrUrl && prof.upi_qr_code_url) defaultQrUrl = prof.upi_qr_code_url;
+            if (!defaultUpiId && prof.upi_id) defaultUpiId = prof.upi_id;
+            if (!defaultLogoUrl && prof.logo_url) defaultLogoUrl = prof.logo_url;
+            if (!defaultSignatureUrl && prof.signature_url) defaultSignatureUrl = prof.signature_url;
           }
         }
       } catch {
@@ -342,6 +349,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         paymentNotification,
         receipts,
         reminders: remindersByInvoice[i.id] || [],
+        logoUrl: (i as any).logo_url || (i as any).branding?.logoUrl || defaultLogoUrl,
+        signatureUrl: (i as any).signature_url || (i as any).branding?.signatureUrl || defaultSignatureUrl,
       };
     });
 

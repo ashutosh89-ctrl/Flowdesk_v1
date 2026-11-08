@@ -256,7 +256,7 @@ export async function POST(
           await supabaseAdmin.from('notifications').insert({
             workspace_id: invoice.workspace_id,
             user_id: ws.owner_id,
-            client_id: invoice.client_id || null,
+            client_id: null,
             title: 'Payment Submitted (Pending Verification)',
             message: `Payment reference ${transactionReference} submitted for #${invoice.invoice_number} (${invoice.currency} ${amount}). Please verify in Invoices.`,
             category: 'invoice',

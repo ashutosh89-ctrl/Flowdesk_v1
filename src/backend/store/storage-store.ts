@@ -349,6 +349,14 @@ export const FlowDeskStore = {
     notifications = notifications.map((n) => ({ ...n, read: true }));
     saveStore(STORAGE_KEYS.NOTIFICATIONS, notifications);
   },
+  markNotificationRead: (id: string): void => {
+    notifications = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
+    saveStore(STORAGE_KEYS.NOTIFICATIONS, notifications);
+  },
+  markNotificationUnread: (id: string): void => {
+    notifications = notifications.map((n) => (n.id === id ? { ...n, read: false } : n));
+    saveStore(STORAGE_KEYS.NOTIFICATIONS, notifications);
+  },
   toggleNotificationRead: (id: string): NotificationItem[] => {
     notifications = notifications.map((n) => (n.id === id ? { ...n, read: !n.read } : n));
     saveStore(STORAGE_KEYS.NOTIFICATIONS, notifications);

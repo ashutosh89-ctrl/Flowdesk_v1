@@ -82,7 +82,7 @@ export const NotificationHelper = {
         await client.from('notifications').insert({
           workspace_id: wsId,
           user_id: targetUserId,
-          client_id: params.clientId || null,
+          client_id: null, // Freelancer notifications must have client_id: null so they don't leak to client portal
           title: params.title,
           message: params.message,
           category: params.category || 'info',

@@ -487,7 +487,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         // Insert notification for freelancer in notifications table
         await supabaseAdmin.from('notifications').insert({
           workspace_id: targetWorkspaceId,
-          client_id: client.id,
+          client_id: null,
           user_id: caller.userId,
           title: `Invoice #${invoiceNumber} Issued`,
           message: `Invoice #${invoiceNumber} for ${client.name} has been issued and sent.`,

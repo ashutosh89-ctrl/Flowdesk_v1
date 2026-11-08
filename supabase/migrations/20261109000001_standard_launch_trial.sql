@@ -18,3 +18,4 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_trial_status
 -- 3. Notification tracking column for trial reminders to prevent duplicates
 ALTER TABLE public.subscriptions
   ADD COLUMN IF NOT EXISTS trial_reminders_sent JSONB DEFAULT '[]'::jsonb;
+

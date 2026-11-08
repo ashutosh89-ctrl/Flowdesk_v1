@@ -155,17 +155,21 @@ export const InvoiceDocument = forwardRef<HTMLDivElement, InvoiceDocumentProps>(
       '';
 
     const isCustomBranded = (branding as any)?.isCustomBranded !== false;
-    const logoUrl = !isCustomBranded
-      ? '/branding/flowdesk-symbol.png'
-      : (branding as InvoiceBranding)?.logoUrl ||
-        (branding as UserProfile)?.logoUrl ||
-        '';
+    const candidateLogo =
+      (branding as InvoiceBranding)?.logoUrl ||
+      (branding as UserProfile)?.logoUrl ||
+      (branding as any)?.logo_url ||
+      '';
+    const logoUrl = candidateLogo && candidateLogo !== '/branding/flowdesk-symbol.png'
+      ? candidateLogo
+      : (isCustomBranded && candidateLogo ? candidateLogo : '/branding/flowdesk-symbol.png');
 
-    const signatureUrl = !isCustomBranded
-      ? ''
-      : (branding as InvoiceBranding)?.signatureUrl ||
-        (branding as UserProfile)?.signatureUrl ||
-        '';
+    const candidateSignature =
+      (branding as InvoiceBranding)?.signatureUrl ||
+      (branding as UserProfile)?.signatureUrl ||
+      (branding as any)?.signature_url ||
+      '';
+    const signatureUrl = candidateSignature || '';
 
     const upiQrCodeUrl =
       invoice.upiQrCodeUrl ||

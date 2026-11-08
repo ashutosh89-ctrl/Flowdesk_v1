@@ -162,3 +162,4 @@ export const TrialExpiredModal: React.FC<TrialExpiredModalProps> = ({
     </>
   );
 };
+

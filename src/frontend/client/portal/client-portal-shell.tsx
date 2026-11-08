@@ -134,9 +134,10 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
     .reduce((sum, i) => sum + i.total, 0);
 
   const isCustomBranded = (branding as any)?.isCustomBranded !== false;
-  const effectivePortalLogo = isCustomBranded && (branding as any)?.logoUrl && (branding as any).logoUrl !== '/branding/flowdesk-symbol.png'
-    ? (branding as any).logoUrl
-    : '/branding/flowdesk-symbol.png';
+  const rawLogo = (branding as any)?.logoUrl || (branding as any)?.logo_url;
+  const effectivePortalLogo = rawLogo && rawLogo !== '/branding/flowdesk-symbol.png'
+    ? rawLogo
+    : (isCustomBranded && rawLogo ? rawLogo : '/branding/flowdesk-symbol.png');
 
   // Search filtering
   const searchResults = useMemo(() => {
@@ -239,7 +240,16 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
                 await onMarkNotificationsRead();
                 showToast('Notifications marked as read.');
               }}
-              onNotificationClick={onNotificationClick}
+              onNotificationClick={(n) => {
+                onNotificationClick?.(n);
+                if (n.link) {
+                  const target = n.link.replace(/^\//, '').split('?')[0];
+                  if (['overview', 'deliverables', 'documents', 'invoices', 'comments', 'activity', 'profile', 'contracts'].includes(target)) {
+                    setActiveTab(target as any);
+                    setIsNotificationsOpen(false);
+                  }
+                }
+              }}
               onClose={() => setIsNotificationsOpen(false)}
             />
           </div>
@@ -447,7 +457,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
                   onPayClick={(inv) => {
                     setSelectedPaymentInvoice(inv);
                   }}
-                  onDownloadClick={(inv) => generateInvoicePDF(inv, branding)}
+                  onDownloadClick={(inv) => generateInvoicePDF(inv, (branding || profile) as any)}
                 />
               )}
 

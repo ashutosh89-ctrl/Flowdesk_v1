@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ClientPortalShell } from './client-portal-shell';
 import { Card } from '@/frontend/shared/ui/card';
 import { ClientPortalService, invalidatePortalCache } from '@/backend/client';
+import { FlowDeskStore } from '@/backend/store/storage-store';
 import { supabase } from '@/backend/utilities/supabase';
 import {
   Client,
@@ -228,12 +229,17 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
   const handleMarkNotificationsRead = async () => {
     const prev = [...notifications];
     setNotifications((current) => current.map((n) => ({ ...n, read: true })));
+    FlowDeskStore.markAllNotificationsRead();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flowdesk:client-notifications-updated'));
+    }
     try {
-      if (client?.id) {
+      const targetClientId = client?.id || clientId;
+      if (targetClientId) {
         const res = await fetch('/api/portal/notifications', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ clientId: client.id, action: 'markAllRead' }),
+          body: JSON.stringify({ clientId: targetClientId, action: 'markAllRead' }),
         });
         if (!res.ok) setNotifications(prev);
       }
@@ -246,12 +252,17 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
     if (notification.read) return;
     const prev = [...notifications];
     setNotifications((current) => current.map((n) => (n.id === notification.id ? { ...n, read: true } : n)));
+    FlowDeskStore.markNotificationRead(notification.id);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flowdesk:client-notifications-updated'));
+    }
     try {
-      if (client?.id) {
+      const targetClientId = client?.id || clientId;
+      if (targetClientId) {
         const res = await fetch('/api/portal/notifications', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ clientId: client.id, action: 'markRead', notificationId: notification.id }),
+          body: JSON.stringify({ clientId: targetClientId, action: 'markRead', notificationId: notification.id }),
         });
         if (!res.ok) setNotifications(prev);
       }

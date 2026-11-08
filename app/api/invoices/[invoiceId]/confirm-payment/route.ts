@@ -342,7 +342,7 @@ export async function POST(
       await supabaseAdmin.from('notifications').insert({
         workspace_id: invoice.workspace_id,
         user_id: caller.userId,
-        client_id: invoice.client_id || null,
+        client_id: null,
         title: 'Payment Confirmed & Settled',
         message: `Payment of ${invoice.currency} ${settleAmount} confirmed for Invoice #${invoice.invoice_number}. Receipt #${receiptNumber} generated.`,
         category: 'invoice',

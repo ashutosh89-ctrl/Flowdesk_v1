@@ -3337,9 +3337,7 @@ export const NotificationService = {
   },
 
   markAsRead: async (id: string): Promise<boolean> => {
-    FlowDeskStore.getNotifications().forEach((n) => {
-      if (n.id === id) n.read = true;
-    });
+    FlowDeskStore.markNotificationRead(id);
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
@@ -3354,6 +3352,30 @@ export const NotificationService = {
         // Fallback direct
         try {
           const { error } = await supabase.from('notifications').update({ read: true }).eq('id', id);
+          return !error;
+        } catch {
+          return true;
+        }
+      }
+    }
+    return true;
+  },
+
+  markAsUnread: async (id: string): Promise<boolean> => {
+    FlowDeskStore.markNotificationUnread(id);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+      try {
+        const res = await fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'markUnread', id }),
+        });
+        return res.ok;
+      } catch {
+        try {
+          const { error } = await supabase.from('notifications').update({ read: false }).eq('id', id);
           return !error;
         } catch {
           return true;

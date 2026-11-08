@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Search, Bell, Menu, Sparkles, Plus, Eye, Lock, ShieldCheck } from 'lucide-react';
+import { Search, Bell, Menu, Plus } from 'lucide-react';
 import { PortalNotification } from '@/shared/types';
 import { ClientWorkspaceSwitcher } from './client-workspace-switcher';
 import { isSafeImageUrl } from '@/shared/utils/safe-url';
@@ -51,10 +51,6 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center pr-3 border-r border-[#176B5B]/30">
-              <FlowDeskLogo variant="symbol" size={24} className="shrink-0" />
-            </div>
-
             <div>
               <div className="flex items-center gap-2">
                 {logoUrl && isSafeImageUrl(logoUrl) && logoUrl !== '/branding/flowdesk-symbol.png' ? (
@@ -125,12 +121,6 @@ export const PortalHeader: React.FC<PortalHeaderProps> = ({
                 </span>
               )}
             </button>
-          </div>
-
-          {/* Security Indicator */}
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#176B5B]/15 border border-[#176B5B]/35 text-[#43D6B0] text-[11px] font-mono">
-            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-            <span>Secure Magic Link</span>
           </div>
         </div>
       </div>

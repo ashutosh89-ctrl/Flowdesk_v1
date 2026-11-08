@@ -374,6 +374,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
     window.addEventListener('focus', onWindowFocus);
 
+    const onNotificationsUpdated = () => {
+      NotificationService.getNotifications().then((notifs) => {
+        if (Array.isArray(notifs)) {
+          setNotifications(
+            notifs.map((n: any) => ({
+              id: n.id,
+              title: n.title,
+              message: n.message,
+              read: n.read,
+              timestamp: n.timestamp,
+              type: n.type,
+              link: n.link,
+            }))
+          );
+        }
+      }).catch(() => {});
+    };
+    window.addEventListener('flowdesk:notifications-updated', onNotificationsUpdated);
+
     // Supabase Realtime Channel: Instantly sync when client actions occur
     let channel: any = null;
     try {
@@ -400,6 +419,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       clearInterval(intervalId);
       clearTimeout(focusTimer);
       window.removeEventListener('focus', onWindowFocus);
+      window.removeEventListener('flowdesk:notifications-updated', onNotificationsUpdated);
       if (channel) {
         try {
           supabase.removeChannel(channel);

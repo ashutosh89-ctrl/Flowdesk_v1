@@ -160,7 +160,12 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
     if (exportingType) return;
     setExportingType('pdf');
     try {
-      await exportInvoiceToPDF(inv, effectiveBranding, previewDocRef.current);
+      const mergedBranding = {
+        ...effectiveBranding,
+        logoUrl: effectiveBranding?.logoUrl || (inv as any)?.logoUrl,
+        signatureUrl: effectiveBranding?.signatureUrl || (inv as any)?.signatureUrl,
+      };
+      await exportInvoiceToPDF(inv, mergedBranding, previewDocRef.current);
     } finally {
       setExportingType(null);
     }
@@ -543,7 +548,11 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
               <InvoiceDocument
                 ref={previewDocRef}
                 invoice={selectedInvoiceModal}
-                branding={effectiveBranding}
+                branding={{
+                  ...effectiveBranding,
+                  logoUrl: effectiveBranding?.logoUrl || (selectedInvoiceModal as any)?.logoUrl,
+                  signatureUrl: effectiveBranding?.signatureUrl || (selectedInvoiceModal as any)?.signatureUrl,
+                }}
                 responsiveScale={true}
                 documentId={`client-portal-preview-${selectedInvoiceModal.id}`}
               />

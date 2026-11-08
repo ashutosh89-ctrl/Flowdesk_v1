@@ -9,39 +9,122 @@ import { generateQrMatrix } from '@/frontend/shared/ui/qr-code';
 
 /**
  * Safely loads an image URL into a Base64 data URL in browser environment.
- * Supports direct Base64 Data URLs, blob URLs, and remote URLs.
+ * Supports direct Base64 Data URLs, blob URLs, remote URLs, and SVG conversion.
+ * Uses off-screen HTML canvas to rasterize images into pure PNGs so jsPDF
+ * never encounters unsupported vector formats (like SVG) or CORS failures.
  */
 async function loadImageDataUrl(url?: string): Promise<{ dataUrl: string; format: 'PNG' | 'JPEG' } | null> {
   if (!url || typeof window === 'undefined') return null;
   const trimmed = url.trim();
   if (!trimmed) return null;
 
-  // If already a Data URL (base64)
-  if (trimmed.startsWith('data:image/')) {
-    const isPng = trimmed.includes('image/png') || trimmed.includes('image/svg');
-    return { dataUrl: trimmed, format: isPng ? 'PNG' : 'JPEG' };
+  // 1. If already a raster PNG or JPEG data URL
+  if (trimmed.startsWith('data:image/png') || trimmed.startsWith('data:image/jpeg') || trimmed.startsWith('data:image/webp')) {
+    const isJpeg = trimmed.startsWith('data:image/jpeg');
+    return { dataUrl: trimmed, format: isJpeg ? 'JPEG' : 'PNG' };
   }
 
+  // Canvas rasterization helper: turns any image or SVG into a clean PNG Base64 data URL
+  const rasterizeViaCanvas = (src: string, crossOrigin?: string): Promise<{ dataUrl: string; format: 'PNG' } | null> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      if (crossOrigin) img.crossOrigin = crossOrigin;
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const w = img.naturalWidth || img.width || 256;
+          const h = img.naturalHeight || img.height || 128;
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, w, h);
+            const pngData = canvas.toDataURL('image/png');
+            resolve({ dataUrl: pngData, format: 'PNG' });
+            return;
+          }
+        } catch {
+          // Canvas tainted or failed
+        }
+        resolve(null);
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  };
+
+  // 2. If SVG or other data URL: rasterize via canvas so jsPDF can draw it
+  if (trimmed.startsWith('data:image/')) {
+    const rasterized = await rasterizeViaCanvas(trimmed);
+    if (rasterized) return rasterized;
+  }
+
+  // 3. Direct canvas rasterization with anonymous CORS
+  const canvasDirect = await rasterizeViaCanvas(trimmed, 'anonymous');
+  if (canvasDirect) return canvasDirect;
+
+  // 4. If remote URL and direct canvas failed (CORS), route through /api/image-proxy
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(trimmed)}`;
+    const canvasProxied = await rasterizeViaCanvas(proxyUrl);
+    if (canvasProxied) return canvasProxied;
+
+    try {
+      const pRes = await fetch(proxyUrl);
+      if (pRes.ok) {
+        const pBlob = await pRes.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            if (typeof reader.result === 'string') {
+              if (reader.result.startsWith('data:image/svg')) {
+                const svgRaster = await rasterizeViaCanvas(reader.result);
+                resolve(svgRaster);
+              } else {
+                resolve({ dataUrl: reader.result, format: 'PNG' });
+              }
+            } else {
+              resolve(null);
+            }
+          };
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(pBlob);
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 5. Standard fetch fallback
   try {
     const res = await fetch(trimmed, { mode: 'cors' });
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    const isPng = blob.type.includes('png') || blob.type.includes('svg');
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          resolve({ dataUrl: reader.result, format: isPng ? 'PNG' : 'JPEG' });
-        } else {
-          resolve(null);
-        }
-      };
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
+    if (res.ok) {
+      const blob = await res.blob();
+      const isPng = blob.type.includes('png') || blob.type.includes('svg');
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          if (typeof reader.result === 'string') {
+            if (reader.result.startsWith('data:image/svg')) {
+              const svgRaster = await rasterizeViaCanvas(reader.result);
+              resolve(svgRaster);
+            } else {
+              resolve({ dataUrl: reader.result, format: isPng ? 'PNG' : 'JPEG' });
+            }
+          } else {
+            resolve(null);
+          }
+        };
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    }
   } catch {
-    return null;
+    // ignore
   }
+
+  return null;
 }
 
 /**
@@ -177,20 +260,26 @@ function resolveBranding(branding?: InvoiceBranding | UserProfile | null) {
     (branding as any)?.taxNumber ||
     '';
 
-  const isCustomBranded = (branding as any)?.isCustomBranded !== false;
-  const logoUrl = !isCustomBranded
-    ? '/branding/flowdesk-symbol.png'
-    : (branding as InvoiceBranding)?.logoUrl ||
-      (branding as UserProfile)?.logoUrl ||
-      fallbackProfile?.logoUrl ||
-      '';
+  const candidateLogo =
+    (branding as InvoiceBranding)?.logoUrl ||
+    (branding as UserProfile)?.logoUrl ||
+    (branding as any)?.logo_url ||
+    (branding as any)?.workspaceLogoUrl ||
+    fallbackProfile?.logoUrl ||
+    '';
 
-  const signatureUrl = !isCustomBranded
-    ? ''
-    : (branding as InvoiceBranding)?.signatureUrl ||
-      (branding as UserProfile)?.signatureUrl ||
-      fallbackProfile?.signatureUrl ||
-      '';
+  const isCustomBranded = (branding as any)?.isCustomBranded !== false;
+  const logoUrl = candidateLogo && candidateLogo !== '/branding/flowdesk-symbol.png'
+    ? candidateLogo
+    : (isCustomBranded && candidateLogo ? candidateLogo : '/branding/flowdesk-symbol.png');
+
+  const candidateSignature =
+    (branding as InvoiceBranding)?.signatureUrl ||
+    (branding as UserProfile)?.signatureUrl ||
+    (branding as any)?.signature_url ||
+    fallbackProfile?.signatureUrl ||
+    '';
+  const signatureUrl = candidateSignature || '';
 
   const bankDetails = (branding as any)?.bankDetails || {};
   const bankName = bankDetails.bankName || (branding as any)?.bankName || '';

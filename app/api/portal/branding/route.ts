@@ -527,17 +527,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       razorpayPaymentLink: branding.razorpayPaymentLink,
     };
 
-    // Enforce workspace branding plan entitlements:
-    if (targetWsId) {
+    // Preserve custom branding updated on the freelancer's side
+    if (branding.logoUrl && branding.logoUrl !== '/branding/flowdesk-symbol.png') {
+      (branding as any).isCustomBranded = true;
+    } else if (targetWsId) {
       try {
         const { can } = await import('@/backend/billing');
         const hasCustomBranding = await can(targetWsId, 'customBranding');
-        if (!hasCustomBranding) {
+        (branding as any).isCustomBranded = hasCustomBranding;
+        if (!hasCustomBranding && (!branding.logoUrl || branding.logoUrl === '')) {
           branding.logoUrl = '/branding/flowdesk-symbol.png';
-          branding.signatureUrl = '';
-          (branding as any).isCustomBranded = false;
-        } else {
-          (branding as any).isCustomBranded = true;
         }
       } catch {
         // Fallback safe

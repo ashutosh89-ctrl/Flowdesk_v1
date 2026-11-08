@@ -148,20 +148,20 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
 
   const content = (
     <div className="h-full flex flex-col justify-between p-4 bg-[#101312] backdrop-blur-2xl border-r border-[#176B5B]/30 w-64 text-[#F5F5F0] font-sans">
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Brand / Client Workspace Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#176B5B]/20">
+        <div className="flex items-center justify-between pb-3.5 border-b border-[#176B5B]/20">
           <div className="flex items-center gap-3 min-w-0">
             {logoUrl && isSafeImageUrl(logoUrl) && logoUrl !== '/branding/flowdesk-symbol.png' ? (
               <div className="w-9 h-9 rounded-xl bg-[#191F1D] border border-[#176B5B]/30 flex items-center justify-center p-1.5 shadow-lg shadow-black/40 shrink-0 overflow-hidden">
                 <img src={logoUrl} alt={companyName || 'Logo'} className="w-full h-full object-contain" />
               </div>
             ) : (
-              <FlowDeskLogo variant="symbol" size={32} className="shrink-0" />
+              <FlowDeskLogo variant="symbol" size={28} className="shrink-0" />
             )}
             <div className="min-w-0">
-              <FlowDeskLogo variant="full" size="xs" className="mb-0.5" />
-              <p className="text-[11px] text-[#A6B4AE] truncate">{companyName} &bull; Portal</p>
+              <span className="font-bold text-sm text-[#F5F5F0] tracking-tight truncate block">FlowDesk</span>
+              <p className="text-[11px] text-[#A6B4AE] truncate">{companyName ? `${companyName} • Portal` : 'Client Portal'}</p>
             </div>
           </div>
           {onCloseMobile && (
@@ -172,15 +172,6 @@ export const PortalSidebar: React.FC<PortalSidebarProps> = ({
               <X className="w-4 h-4" />
             </button>
           )}
-        </div>
-
-        {/* Client Welcome Tag */}
-        <div className="px-3 py-2.5 rounded-xl bg-[#191F1D] border border-[#176B5B]/30 flex items-center gap-2.5">
-          <div className="w-2 h-2 rounded-full bg-[#43D6B0] animate-pulse shrink-0" />
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase font-mono text-[#A6B4AE] font-semibold tracking-wider">Logged in as</p>
-            <p className="text-xs font-semibold text-[#F5F5F0] truncate">{clientName}</p>
-          </div>
         </div>
 
         {/* Client Portal Main Nav */}

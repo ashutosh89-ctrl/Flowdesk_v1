@@ -175,36 +175,41 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ success: true, requestId });
     }
 
+    // Resolve all possible candidate IDs (client id, linked user_id, portal_token)
+    let candidateIds: string[] = [clientId];
     let resolvedClientId = clientId;
-    if (!UUID_REGEX.test(clientId)) {
-      const { data: c } = await db
-        .from('clients')
-        .select('id')
-        .or(`portal_token.eq.${clientId},email.eq.${clientId.toLowerCase()}`)
-        .limit(1)
-        .maybeSingle();
-      if (c?.id) {
-        resolvedClientId = c.id;
+
+    const { data: clientMatches } = await db
+      .from('clients')
+      .select('id, user_id')
+      .or(`id.eq.${clientId},user_id.eq.${clientId},portal_token.eq.${clientId},email.eq.${clientId.toLowerCase()}`);
+
+    if (clientMatches && clientMatches.length > 0) {
+      for (const cm of clientMatches) {
+        if (cm.id) {
+          candidateIds.push(cm.id);
+          resolvedClientId = cm.id;
+        }
+        if (cm.user_id) candidateIds.push(cm.user_id);
       }
+      candidateIds = Array.from(new Set(candidateIds.filter(Boolean)));
     }
 
     if (action === 'markRead' && notificationId) {
       await db
         .from('notifications')
         .update({ read: true })
-        .eq('id', notificationId)
-        .or(`client_id.eq.${resolvedClientId},user_id.eq.${resolvedClientId}`);
+        .eq('id', notificationId);
     } else if (action === 'delete' && notificationId) {
       await db
         .from('notifications')
         .delete()
-        .eq('id', notificationId)
-        .or(`client_id.eq.${resolvedClientId},user_id.eq.${resolvedClientId}`);
+        .eq('id', notificationId);
     } else {
-      await db
-        .from('notifications')
-        .update({ read: true })
-        .or(`client_id.eq.${resolvedClientId},user_id.eq.${resolvedClientId}`);
+      await Promise.all([
+        db.from('notifications').update({ read: true }).in('client_id', candidateIds),
+        db.from('notifications').update({ read: true }).in('user_id', candidateIds),
+      ]);
     }
 
     return NextResponse.json({ success: true, requestId });

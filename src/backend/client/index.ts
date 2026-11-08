@@ -581,7 +581,12 @@ export const ClientPortalService = {
         if (brandRes.ok) {
           const brandJson = await brandRes.json();
           if (brandJson?.success && brandJson.branding) {
+            const incomingLogo = brandJson.branding.logoUrl;
+            const keepCurrentLogo = incomingLogo === '/branding/flowdesk-symbol.png' && branding.logoUrl && branding.logoUrl !== '/branding/flowdesk-symbol.png';
             branding = { ...branding, ...brandJson.branding };
+            if (keepCurrentLogo) {
+              branding.logoUrl = localProf?.logoUrl;
+            }
             brandingResolved = true;
           }
         }
