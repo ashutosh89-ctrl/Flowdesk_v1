@@ -33,7 +33,8 @@ export const TodayFocusCard: React.FC<TodayFocusCardProps> = ({ items, onAction,
     }
   };
 
-  const activeItems = items.filter((item) => !completedIds.includes(item.id));
+  const safeItems = Array.isArray(items) ? items : [];
+  const activeItems = safeItems.filter((item) => !completedIds.includes(item.id));
   if (activeItems.length === 0) {
     return null;
   }

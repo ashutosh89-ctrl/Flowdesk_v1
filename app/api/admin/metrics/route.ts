@@ -64,12 +64,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    // Verify admin privileges: either admin role in profile or workspace owner
+    // Verify admin privileges strictly (VULN-08 prevention)
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, profession')
+      .select('id, email, role')
       .eq('id', caller.userId)
       .maybeSingle();
+
+    const adminEmails = (process.env.ADMIN_EMAILS || 'flowdesk11@gmail.com').split(',').map((e) => e.trim().toLowerCase());
+    const isAuthorizedAdmin = (profile?.role === 'admin') || (caller.userEmail && adminEmails.includes(caller.userEmail.toLowerCase()));
+
+    if (!isAuthorizedAdmin) {
+      return createApiErrorResponse({
+        message: 'Admin authorization required.',
+        code: 'FORBIDDEN',
+        status: 403,
+        requestId,
+      });
+    }
 
     const [workspacesCount, clientsCount, projectsCount, invoicesCount, subs] = await Promise.all([
       supabaseAdmin.from('workspaces').select('id', { count: 'exact', head: true }),

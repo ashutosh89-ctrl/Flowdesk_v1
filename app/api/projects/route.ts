@@ -221,7 +221,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         });
         return createApiErrorResponse({
           message: err.message,
-          code: err.code || 'PLAN_LIMIT_REACHED',
+          code: err.code || 'PLAN_LIMIT_EXCEEDED',
           status: err.statusCode || 403,
           requestId,
           metric: err.metric || 'activeProjects',

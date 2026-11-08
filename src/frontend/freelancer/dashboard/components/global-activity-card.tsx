@@ -10,7 +10,8 @@ interface GlobalActivityCardProps {
 export const GlobalActivityCard: React.FC<GlobalActivityCardProps> = ({ activities, onNavigate }) => {
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'client' | 'project' | 'invoice' | 'deliverable' | 'document'>('all');
 
-  const filtered = activities.filter((act) => categoryFilter === 'all' || act.category === categoryFilter);
+  const safeActivities = Array.isArray(activities) ? activities : [];
+  const filtered = safeActivities.filter((act) => categoryFilter === 'all' || act.category === categoryFilter);
 
   const getCategoryBadge = (cat?: string) => {
     switch (cat) {

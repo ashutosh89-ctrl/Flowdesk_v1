@@ -27,6 +27,8 @@ export const PinnedItemsCard: React.FC<PinnedItemsCardProps> = ({ items, onUnpin
     }
   };
 
+  const safeItems = Array.isArray(items) ? items : [];
+
   return (
     <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-6 shadow-2xl backdrop-blur-xl h-full flex flex-col justify-between">
       <div>
@@ -42,7 +44,7 @@ export const PinnedItemsCard: React.FC<PinnedItemsCardProps> = ({ items, onUnpin
           </div>
         </div>
 
-        {items.length === 0 ? (
+        {safeItems.length === 0 ? (
           <div className="p-8 text-center bg-zinc-900/40 border border-dashed border-white/10 rounded-xl my-2">
             <Pin className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
             <p className="text-xs font-semibold text-zinc-400">No Pinned Bookmarks</p>

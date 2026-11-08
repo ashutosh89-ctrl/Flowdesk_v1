@@ -18,7 +18,64 @@ import { ReportsView } from '@/frontend/freelancer/reports/reports-view';
 import { ActivityFeedView } from '@/frontend/freelancer/activity/activity-feed-view';
 import { SettingsView } from '@/frontend/freelancer/settings/settings-view';
 import { QuickActionsModal } from '@/frontend/freelancer/dashboard/components/quick-actions-modal';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
+
+class DashboardErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Dashboard Error Boundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#101312] text-white flex flex-col items-center justify-center p-6 text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-white tracking-tight">Something went wrong loading your dashboard</h2>
+          <p className="text-xs text-zinc-400 max-w-md">
+            {this.state.error?.message || 'An unexpected client error occurred. Please try reloading.'}
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+              className="px-4 py-2 bg-[#43D6B0] text-[#101312] font-semibold text-xs rounded-xl hover:bg-[#43D6B0]/90 transition-colors"
+            >
+              Reload Dashboard
+            </button>
+            <button
+              onClick={() => {
+                try {
+                  sessionStorage.removeItem('flowdesk_workspace_mode');
+                } catch {}
+                window.location.href = '/login';
+              }}
+              className="px-4 py-2 bg-white/10 text-white font-medium text-xs rounded-xl hover:bg-white/20 transition-colors"
+            >
+              Sign In Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function DashboardContent() {
   const router = useRouter();
@@ -221,7 +278,9 @@ export default function DashboardPage() {
             </div>
           }
         >
-          <DashboardContent />
+          <DashboardErrorBoundary>
+            <DashboardContent />
+          </DashboardErrorBoundary>
         </Suspense>
       </AuthProvider>
     </ToastProvider>

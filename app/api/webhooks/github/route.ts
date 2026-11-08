@@ -10,12 +10,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const rawBody = await request.text();
 
-  // 1. Signature Verification
-  // In production/configured environments, reject invalid signatures
-  const isSignatureValid = GitHubService.verifyWebhookSignature(rawBody, signature);
+  // 1. Signature Verification - Fail Closed
   const isConfigured = GitHubService.isConfigured();
+  if (!isConfigured) {
+    logger.warn('[GitHubWebhook] Webhook secret unconfigured on server', { requestId });
+    return createApiErrorResponse({
+      message: 'GitHub webhook service unavailable.',
+      code: 'SERVICE_UNAVAILABLE',
+      status: 503,
+      requestId,
+    });
+  }
 
-  if (isConfigured && !isSignatureValid) {
+  const isSignatureValid = GitHubService.verifyWebhookSignature(rawBody, signature);
+  if (!isSignatureValid) {
     logger.warn('[GitHubWebhook] Rejected invalid HMAC signature', { requestId, deliveryId, event });
     return createApiErrorResponse({
       message: 'Invalid webhook signature.',

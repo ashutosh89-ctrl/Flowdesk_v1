@@ -91,7 +91,7 @@ export const NotificationHelper = {
           read: false,
         });
 
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
           window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
         }
       }
@@ -155,7 +155,7 @@ export const NotificationHelper = {
           read: false,
         });
 
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
           window.dispatchEvent(new CustomEvent('flowdesk:client-notifications-updated'));
         }
       }

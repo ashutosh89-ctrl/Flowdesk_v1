@@ -47,7 +47,8 @@ export const RevenueTrajectoryCard: React.FC<RevenueTrajectoryCardProps> = ({
 
   const currency = internalCurrency || 'INR';
   const sym = getCurrencySymbol(currency);
-  const maxHistoryAmount = Math.max(...revenueHistory.map((r) => r.amount), 0);
+  const safeHistory = Array.isArray(revenueHistory) ? revenueHistory : [];
+  const maxHistoryAmount = Math.max(...safeHistory.map((r) => r.amount || 0), 0);
   const maxVal = maxHistoryAmount > 0 ? maxHistoryAmount : 1;
   const hasHistory = totalRevenue > 0 || maxHistoryAmount > 0;
 
@@ -116,7 +117,7 @@ export const RevenueTrajectoryCard: React.FC<RevenueTrajectoryCardProps> = ({
           </div>
 
           <div className="h-44 flex items-end justify-between gap-3 pt-6 pb-2 px-2 border-b border-white/10">
-            {revenueHistory.map((item, idx) => {
+            {safeHistory.map((item, idx) => {
               const heightPct = maxVal > 0 ? Math.round((item.amount / maxVal) * 100) : 0;
               return (
                 <div key={idx} className="flex-1 flex flex-col items-center gap-2 group/bar relative h-full justify-end">

@@ -205,19 +205,21 @@ export async function POST(
 
       settledAmount = actualSettle;
 
-      // Attempt recording in payments table (non-blocking)
+      // Attempt recording in invoice_payments table (non-blocking)
       try {
-        await supabaseAdmin.from('payments').insert({
+        await supabaseAdmin.from('invoice_payments').insert({
           workspace_id: invoice.workspace_id,
           invoice_id: invoiceId,
           amount: actualSettle,
+          currency: invoice.currency || 'USD',
           payment_method: paymentMethod || 'bank_transfer',
-          status: 'completed',
+          gateway: 'manual',
+          gateway_status: 'captured',
+          payment_date: new Date().toISOString(),
           notes: notes || 'Manual offline payment settlement',
-          created_at: new Date().toISOString(),
         });
       } catch (payErr) {
-        logger.warn('Non-critical payments insert notice', { payErr });
+        logger.warn('Non-critical invoice_payments insert notice', { payErr });
       }
 
       // Record activity

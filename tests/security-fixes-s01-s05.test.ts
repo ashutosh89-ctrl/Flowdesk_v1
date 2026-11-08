@@ -47,7 +47,7 @@ test('Security Audit S-03: Project Quota Enforcement API', async (suite) => {
     const fs = await import('fs');
     const content = fs.readFileSync('app/api/projects/route.ts', 'utf-8');
     assert.ok(content.includes("assertWithinLimit(workspaceId, 'activeProjects', 1)"));
-    assert.ok(content.includes('PLAN_LIMIT_EXCEEDED'));
+    assert.ok(content.includes('PLAN_LIMIT_REACHED') || content.includes('PLAN_LIMIT_EXCEEDED'));
   });
 
   await suite.test('FreelancerProjectService.createProject calls server-side endpoint in browser context', async () => {

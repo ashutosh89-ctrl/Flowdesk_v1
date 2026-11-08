@@ -108,6 +108,10 @@ async function fetchSpec(key: string) {
   const res = await fetch(`${URL}/rest/v1/`, {
     headers: { apikey: key, Authorization: `Bearer ${key}` },
   });
+  if (res.status === 401 && key === ANON_KEY) {
+    // Cloud Supabase locks down root OpenAPI introspection for unauthenticated/anon callers.
+    return { paths: {}, definitions: {} };
+  }
   if (!res.ok) throw new Error(`OpenAPI spec request failed: HTTP ${res.status}`);
   return (await res.json()) as {
     paths: Record<string, unknown>;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, isDemoModeActive } from '@/backend/utilities/supabase';
+import { requireApiCaller } from '@/backend/utilities/api-auth';
 import { checkRateLimit, getClientIp } from '@/backend/utilities/rate-limiter';
 import { logger, getOrCreateRequestId, createApiErrorResponse } from '@/backend/utilities/logger';
 import { derivePaymentStatus, calculateRemainingBalance, isInvoiceOverdue } from '@/shared/utils/invoice-calculations';
@@ -45,6 +46,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
   }
 
+  // Enforce authentication to prevent unauthenticated enumeration of financial details (VULN-02)
+  const caller = await requireApiCaller();
+  if (!caller && !isDemoModeActive()) {
+    return createApiErrorResponse({
+      message: 'Authentication required to view invoices.',
+      code: 'UNAUTHORIZED',
+      status: 401,
+      requestId,
+    });
+  }
+
   if (isDemoModeActive()) {
     return NextResponse.json(
       {
@@ -78,6 +90,36 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         .maybeSingle();
       if (c?.id) {
         resolvedClientId = c.id;
+      }
+    }
+
+    // Verify client authorization against caller identity (VULN-02 prevention)
+    if (caller && !caller.isDemo) {
+      const { data: clientRow } = await db
+        .from('clients')
+        .select('id, workspace_id, user_id')
+        .eq('id', resolvedClientId)
+        .maybeSingle();
+
+      if (!clientRow) {
+        return NextResponse.json({ success: true, invoices: [], requestId });
+      }
+
+      const isWorkspaceOwner = caller.workspaceId && caller.workspaceId === clientRow.workspace_id;
+      const isClientUser = clientRow.user_id === caller.userId || (caller.clientId && caller.clientId === clientRow.id);
+
+      if (!isWorkspaceOwner && !isClientUser) {
+        const { data: conn } = await db
+          .from('client_connections')
+          .select('id')
+          .eq('client_id', clientRow.id)
+          .eq('client_user_id', caller.userId)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (!conn) {
+          return NextResponse.json({ success: true, invoices: [], requestId });
+        }
       }
     }
 

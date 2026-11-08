@@ -149,23 +149,18 @@ export async function POST(
       }
     }
 
-    // Check client portal authorization via requestClientId
+    // Check client portal authorization via secret portal_token (prevent raw client_id IDOR spoofing)
     if (!isAuthorized && requestClientId && deliverable.client_id) {
-      if (requestClientId === deliverable.client_id) {
+      const { data: clientRecord } = await supabaseAdmin
+        .from('clients')
+        .select('id, name, portal_token')
+        .eq('id', deliverable.client_id)
+        .maybeSingle();
+
+      if (clientRecord && clientRecord.portal_token && clientRecord.portal_token === requestClientId) {
         isAuthorized = true;
         actorRole = 'client';
-      } else {
-        const { data: clientRecord } = await supabaseAdmin
-          .from('clients')
-          .select('id, name, portal_token')
-          .eq('id', deliverable.client_id)
-          .maybeSingle();
-
-        if (clientRecord && (clientRecord.id === requestClientId || clientRecord.portal_token === requestClientId)) {
-          isAuthorized = true;
-          actorRole = 'client';
-          if (clientRecord.name) clientName = clientRecord.name;
-        }
+        if (clientRecord.name) clientName = clientRecord.name;
       }
     }
 

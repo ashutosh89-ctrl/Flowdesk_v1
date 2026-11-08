@@ -235,34 +235,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // 5. Fallback: select most active workspace with branding
-    if (!targetWsId) {
-      try {
-        const { data: fallbackWs } = await supabaseAdmin
-          .from('workspaces')
-          .select('id')
-          .not('logo_url', 'is', null)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (fallbackWs?.id) {
-          targetWsId = fallbackWs.id;
-        } else {
-          const { data: anyWs } = await supabaseAdmin
-            .from('workspaces')
-            .select('id')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (anyWs?.id) {
-            targetWsId = anyWs.id;
-          }
-        }
-      } catch {
-        // non-critical
-      }
-    }
-
     const branding: InvoiceBranding = {
       businessName: 'FlowDesk Freelance Studio',
       freelancerName: 'Studio Lead',
@@ -271,6 +243,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       logoUrl: '/branding/flowdesk-symbol.png',
       signatureUrl: '',
     };
+
+    if (!targetWsId) {
+      // Fail closed: return neutral FlowDesk branding without cross-tenant exposure
+      return NextResponse.json(
+        { success: true, branding },
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          },
+        }
+      );
+    }
 
     let ownerId: string | null = null;
     let wsData: any = null;
@@ -346,11 +332,42 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // Multi-tier Payment Settings Resolution (in-memory -> owner storage -> profiles -> latest -> any storage -> invoice -> store)
+    // Multi-tier Payment Settings Resolution (user_settings DB -> in-memory -> owner storage -> profiles -> invoice -> store)
     let candidatePaymentSettings: any = null;
 
+    // 0. Primary Authoritative Source: user_settings table row for workspace owner
+    if (userSettingsData) {
+      const uBank = userSettingsData.payment_settings?.bankDetails || {};
+      const uBankName = (userSettingsData.bank_name || uBank.bankName || '')?.trim();
+      const uAccHolder = (userSettingsData.account_holder_name || uBank.accountHolderName || '')?.trim();
+      const uAccNum = (userSettingsData.account_number || uBank.accountNumber || '')?.trim();
+      const uIfsc = (userSettingsData.ifsc_code || uBank.ifscCode || '')?.trim();
+      const uBranch = (userSettingsData.branch_name || uBank.branchName || '')?.trim();
+      const uUpi = (userSettingsData.upi_id || userSettingsData.payment_settings?.upiId || uBank.upiId || '')?.trim();
+      const uQr = (userSettingsData.upi_qr_code_url || userSettingsData.payment_settings?.upiQrCodeUrl || '')?.trim();
+      const uRzp = (userSettingsData.razorpay_payment_link || userSettingsData.payment_settings?.razorpayPaymentLink || '')?.trim();
+
+      if (uUpi || uQr || uBankName || uAccNum || uAccHolder || uIfsc) {
+        candidatePaymentSettings = {
+          upiId: uUpi || undefined,
+          upiQrCodeUrl: uQr || undefined,
+          upiEnabled: Boolean(uUpi || uQr),
+          bankDetails: {
+            accountHolderName: uAccHolder,
+            bankName: uBankName,
+            accountNumber: uAccNum,
+            ifscCode: uIfsc,
+            branchName: uBranch,
+            upiId: uUpi || undefined,
+          },
+          razorpayPaymentLink: uRzp || undefined,
+          ...(userSettingsData.payment_settings || {}),
+        };
+      }
+    }
+
     // 1. Check server-side memory cache for ownerId
-    if (ownerId && serverPaymentSettingsCache.has(ownerId)) {
+    if (!candidatePaymentSettings && ownerId && serverPaymentSettingsCache.has(ownerId)) {
       const mem = serverPaymentSettingsCache.get(ownerId);
       if (hasValidPaymentData(mem)) {
         candidatePaymentSettings = mem;
@@ -383,49 +400,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       };
     }
 
-    // 4. Check storage settings/latest/payment_settings.txt
-    if (!candidatePaymentSettings) {
-      try {
-        const { data: latestBlob } = await supabaseAdmin.storage
-          .from('documents')
-          .download('settings/latest/payment_settings.txt');
-        if (latestBlob) {
-          const parsed = JSON.parse(await latestBlob.text());
-          if (hasValidPaymentData(parsed)) {
-            candidatePaymentSettings = parsed;
-          }
-        }
-      } catch {
-        // non-critical
-      }
-    }
-
-    // 5. Scan any valid payment settings across all settings folders in storage
-    if (!candidatePaymentSettings) {
-      try {
-        const { data: list } = await supabaseAdmin.storage.from('documents').list('settings');
-        if (list && list.length > 0) {
-          for (const item of list) {
-            if (item.name && item.name.length > 10) {
-              const { data: fb } = await supabaseAdmin.storage
-                .from('documents')
-                .download(`settings/${item.name}/payment_settings.txt`);
-              if (fb) {
-                const parsed = JSON.parse(await fb.text());
-                if (hasValidPaymentData(parsed)) {
-                  candidatePaymentSettings = parsed;
-                  break;
-                }
-              }
-            }
-          }
-        }
-      } catch {
-        // non-critical
-      }
-    }
-
-    // 6. Check invoice's own payment_methods / instructions / notes
+    // 4. Check invoice's own payment_methods / instructions / notes
     if (!candidatePaymentSettings && invoiceRecord) {
       if (invoiceRecord.payment_methods && hasValidPaymentData(invoiceRecord.payment_methods)) {
         candidatePaymentSettings = invoiceRecord.payment_methods;

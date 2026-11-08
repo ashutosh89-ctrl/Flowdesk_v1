@@ -23,6 +23,8 @@ export const RecentWorkCard: React.FC<RecentWorkCardProps> = ({ items, onNavigat
     }
   };
 
+  const safeItems = Array.isArray(items) ? items : [];
+
   return (
     <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-6 shadow-2xl backdrop-blur-xl h-full flex flex-col justify-between">
       <div>
@@ -38,7 +40,7 @@ export const RecentWorkCard: React.FC<RecentWorkCardProps> = ({ items, onNavigat
           </div>
         </div>
 
-        {items.length === 0 ? (
+        {safeItems.length === 0 ? (
           <div className="p-6 rounded-xl bg-zinc-900/40 border border-dashed border-white/10 text-center flex flex-col items-center justify-center">
             <Clock className="w-6 h-6 text-zinc-600 mb-2" />
             <p className="text-xs font-medium text-zinc-400">No recent activity recorded</p>

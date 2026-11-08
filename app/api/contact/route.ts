@@ -7,6 +7,19 @@ import { EmailService } from '@/backend/email/email-service';
 import { siteConfig } from '@/shared/config/site-config';
 import { isDemoModeActive } from '@/backend/utilities/supabase';
 
+function escapeHtml(str: string): string {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sanitizeHeader(str: string): string {
+  return String(str || '').replace(/[\r\n]+/g, ' ').trim();
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const requestId = getOrCreateRequestId(request);
   const ip = getClientIp(request);
@@ -84,21 +97,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const isConfigured = EmailService.isConfigured();
     const isDemo = isDemoModeActive();
 
-    const emailSubject = `[${referenceId}] ${payload.category}: ${payload.subject}`;
+    const safeSubject = sanitizeHeader(payload.subject);
+    const emailSubject = `[${referenceId}] ${payload.category}: ${safeSubject}`;
     const emailBodyHtml = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; color: #18181b;">
         <h2 style="color: #0047AB; border-bottom: 2px solid #0047AB; padding-bottom: 8px;">FlowDesk Support Request</h2>
-        <p><strong>Reference ID:</strong> ${referenceId}</p>
-        <p><strong>Category:</strong> ${payload.category}</p>
-        <p><strong>Sender:</strong> ${payload.name} (&lt;${payload.email}&gt;)</p>
-        ${payload.orderOrPaymentId ? `<p><strong>Order / Payment ID:</strong> ${payload.orderOrPaymentId}</p>` : ''}
-        ${authenticatedUserId ? `<p><strong>Authenticated User ID:</strong> ${authenticatedUserId}</p>` : ''}
-        ${authenticatedWorkspaceId ? `<p><strong>Workspace ID:</strong> ${authenticatedWorkspaceId}</p>` : ''}
+        <p><strong>Reference ID:</strong> ${escapeHtml(referenceId)}</p>
+        <p><strong>Category:</strong> ${escapeHtml(payload.category)}</p>
+        <p><strong>Sender:</strong> ${escapeHtml(payload.name)} (&lt;${escapeHtml(payload.email)}&gt;)</p>
+        ${payload.orderOrPaymentId ? `<p><strong>Order / Payment ID:</strong> ${escapeHtml(payload.orderOrPaymentId)}</p>` : ''}
+        ${authenticatedUserId ? `<p><strong>Authenticated User ID:</strong> ${escapeHtml(authenticatedUserId)}</p>` : ''}
+        ${authenticatedWorkspaceId ? `<p><strong>Workspace ID:</strong> ${escapeHtml(authenticatedWorkspaceId)}</p>` : ''}
         <hr style="border: 0; border-top: 1px solid #e4e4e7; margin: 16px 0;" />
         <h3 style="margin-top: 0;">Message:</h3>
-        <div style="background-color: #f4f4f5; padding: 14px; border-radius: 8px; white-space: pre-wrap; font-size: 14px; line-height: 1.6;">${payload.message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        <div style="background-color: #f4f4f5; padding: 14px; border-radius: 8px; white-space: pre-wrap; font-size: 14px; line-height: 1.6;">${escapeHtml(payload.message)}</div>
         <hr style="border: 0; border-top: 1px solid #e4e4e7; margin: 20px 0;" />
-        <p style="font-size: 12px; color: #71717a;">Received via FlowDesk Contact Portal &bull; Request ID: ${requestId}</p>
+        <p style="font-size: 12px; color: #71717a;">Received via FlowDesk Contact Portal &bull; Request ID: ${escapeHtml(requestId)}</p>
       </div>
     `;
 

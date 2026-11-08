@@ -129,6 +129,29 @@ export async function POST(
       });
     }
 
+    // Multi-tenant authorization verification
+    if (caller && !caller.isDemo) {
+      const isWorkspaceOwner = caller.workspaceId && caller.workspaceId === invoice.workspace_id;
+      const isInvoiceClient = caller.clientId && caller.clientId === invoice.client_id;
+      if (!isWorkspaceOwner && !isInvoiceClient) {
+        const { data: clientUserMatch } = await supabaseAdmin
+          .from('clients')
+          .select('id')
+          .eq('workspace_id', invoice.workspace_id)
+          .eq('user_id', caller.userId)
+          .maybeSingle();
+
+        if (!clientUserMatch) {
+          return createApiErrorResponse({
+            message: 'You are not authorized to submit payment notifications for this invoice.',
+            code: 'FORBIDDEN',
+            status: 403,
+            requestId,
+          });
+        }
+      }
+    }
+
     const paymentDateIso = new Date().toISOString();
     const notificationPayload = {
       amount,
@@ -149,25 +172,27 @@ export async function POST(
         payment_method: paymentMethod || 'upi',
         payment_date: paymentDateIso,
         notes: `Reference/UTR: ${transactionReference}${notes ? ' - ' + notes : ''}`,
-        gateway: 'manual',
-        gateway_status: 'awaiting_verification',
       });
     } catch (payErr) {
       logger.warn('[NotifyPayment] invoice_payments insert notice:', { error: String(payErr) });
     }
 
     // 2. Persist notification metadata into invoices.internal_notes for guaranteed schema compatibility
-    const existingNotes = invoice.internal_notes || '';
-    const cleanNotes = existingNotes.replace(/\[PAYMENT_NOTIFICATION\]:[\s\S]*?(?=\n\[|$)/, '').trim();
-    const newInternalNotes = `[PAYMENT_NOTIFICATION]: ${JSON.stringify(notificationPayload)}${cleanNotes ? '\n' + cleanNotes : ''}`;
+    try {
+      const existingNotes = invoice.internal_notes || '';
+      const cleanNotes = existingNotes.replace(/\[PAYMENT_NOTIFICATION\]:[\s\S]*?(?=\n\[|$)/, '').trim();
+      const newInternalNotes = `[PAYMENT_NOTIFICATION]: ${JSON.stringify(notificationPayload)}${cleanNotes ? '\n' + cleanNotes : ''}`;
 
-    await supabaseAdmin
-      .from('invoices')
-      .update({
-        internal_notes: newInternalNotes,
-        updated_at: paymentDateIso,
-      })
-      .eq('id', invoiceId);
+      await supabaseAdmin
+        .from('invoices')
+        .update({
+          internal_notes: newInternalNotes,
+          updated_at: paymentDateIso,
+        })
+        .eq('id', invoiceId);
+    } catch (updateErr) {
+      logger.warn('[NotifyPayment] internal_notes update notice:', { error: String(updateErr) });
+    }
 
     // 3. Non-blocking attempt on optional payment_notification column
     try {
@@ -195,7 +220,6 @@ export async function POST(
         message: `Payment reference ${transactionReference} submitted for #${invoice.invoice_number} (${invoice.currency} ${amount}). Please verify in Invoices.`,
         category: 'invoice',
         link: 'invoices',
-        priority: 'high',
         read: false,
       });
 
@@ -208,7 +232,6 @@ export async function POST(
           message: `Your payment reference (${transactionReference}) for #${invoice.invoice_number} was submitted and is pending verification.`,
           category: 'invoice',
           link: 'invoices',
-          priority: 'medium',
           read: false,
         });
       }

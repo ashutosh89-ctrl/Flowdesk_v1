@@ -170,18 +170,15 @@ export async function POST(
     }
 
     if (!isAuthorized && requestClientId && deliverable.client_id) {
-      if (requestClientId === deliverable.client_id) {
-        isAuthorized = true;
-      } else {
-        const { data: clientRecord } = await supabaseAdmin
-          .from('clients')
-          .select('id, portal_token')
-          .eq('id', deliverable.client_id)
-          .maybeSingle();
+      const { data: clientRecord } = await supabaseAdmin
+        .from('clients')
+        .select('id, portal_token')
+        .eq('id', deliverable.client_id)
+        .maybeSingle();
 
-        if (clientRecord && (clientRecord.id === requestClientId || clientRecord.portal_token === requestClientId)) {
-          isAuthorized = true;
-        }
+      // Require secret portal_token match (prevent raw client_id IDOR spoofing)
+      if (clientRecord && clientRecord.portal_token && clientRecord.portal_token === requestClientId) {
+        isAuthorized = true;
       }
     }
 

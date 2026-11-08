@@ -113,14 +113,34 @@ export async function POST(
       });
     }
 
-    // Verify workspace ownership
-    if (caller.workspaceId && invoice.workspace_id !== caller.workspaceId) {
-      return createApiErrorResponse({
-        message: 'You are not authorized to confirm payments for this invoice.',
-        code: 'FORBIDDEN',
-        status: 403,
-        requestId,
-      });
+    // Verify workspace ownership strictly (prevent client from confirming own payment)
+    if (caller && !caller.isDemo) {
+      if (caller.workspaceId) {
+        if (invoice.workspace_id !== caller.workspaceId) {
+          return createApiErrorResponse({
+            message: 'You are not authorized to confirm payments for this invoice.',
+            code: 'FORBIDDEN',
+            status: 403,
+            requestId,
+          });
+        }
+      } else {
+        const { data: ws } = await supabaseAdmin
+          .from('workspaces')
+          .select('id')
+          .eq('id', invoice.workspace_id)
+          .eq('owner_id', caller.userId)
+          .maybeSingle();
+
+        if (!ws) {
+          return createApiErrorResponse({
+            message: 'Only the workspace owner can confirm invoice payments.',
+            code: 'FORBIDDEN',
+            status: 403,
+            requestId,
+          });
+        }
+      }
     }
 
     let currentNotification = invoice.payment_notification || {};

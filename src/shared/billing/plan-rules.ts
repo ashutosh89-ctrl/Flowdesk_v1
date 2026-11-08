@@ -68,7 +68,7 @@ export class PlanLimitError extends Error {
     super(message);
     this.name = 'PlanLimitError';
     this.code = code;
-    this.statusCode = options?.statusCode ?? (code === 'FEATURE_NOT_IN_PLAN' ? 403 : 403);
+    this.statusCode = options?.statusCode ?? (code === 'FEATURE_NOT_IN_PLAN' ? 403 : 402);
     this.metric = options?.metric;
     this.limit = options?.limit;
     this.current = options?.current;
