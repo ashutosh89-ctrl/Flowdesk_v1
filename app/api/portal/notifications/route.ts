@@ -69,24 +69,30 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ success: true, notifications: [], requestId });
     }
 
-    // Resolve canonical client ID if token/email passed
+    // Resolve canonical client ID and linked user ID
+    let candidateIds: string[] = [clientId];
     let resolvedClientId = clientId;
-    if (!UUID_REGEX.test(clientId)) {
-      const { data: c } = await db
-        .from('clients')
-        .select('id')
-        .or(`portal_token.eq.${clientId},email.eq.${clientId.toLowerCase()}`)
-        .limit(1)
-        .maybeSingle();
-      if (c?.id) {
-        resolvedClientId = c.id;
+
+    const { data: clientMatches } = await db
+      .from('clients')
+      .select('id, user_id')
+      .or(`id.eq.${clientId},user_id.eq.${clientId},portal_token.eq.${clientId},email.eq.${clientId.toLowerCase()}`);
+
+    if (clientMatches && clientMatches.length > 0) {
+      for (const cm of clientMatches) {
+        if (cm.id) {
+          candidateIds.push(cm.id);
+          resolvedClientId = cm.id;
+        }
+        if (cm.user_id) candidateIds.push(cm.user_id);
       }
+      candidateIds = Array.from(new Set(candidateIds));
     }
 
     const { data: notifRows, error } = await db
       .from('notifications')
       .select('id, title, message, category, priority, read, created_at, link')
-      .eq('client_id', resolvedClientId)
+      .or(`client_id.in.(${candidateIds.join(',')}),user_id.in.(${candidateIds.join(',')})`)
       .order('created_at', { ascending: false })
       .limit(30);
 

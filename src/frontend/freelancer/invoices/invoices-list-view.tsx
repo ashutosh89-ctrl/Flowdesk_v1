@@ -203,10 +203,10 @@ export const InvoicesListView: React.FC = () => {
         showToast('Reminder Dispatched', res.message, 'success');
         if (res.invoice) {
           setInvoices((prev) =>
-            prev.map((inv) => (inv.id === id ? res.invoice! : inv))
+            prev.map((inv) => (inv.id === id ? { ...inv, ...res.invoice } : inv))
           );
           if (detailsInvoice && detailsInvoice.id === id) {
-            setDetailsInvoice(res.invoice);
+            setDetailsInvoice((prev) => (prev ? { ...prev, ...res.invoice } : res.invoice!));
           }
         } else {
           await refreshData();

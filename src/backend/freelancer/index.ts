@@ -22,12 +22,22 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-/** Helper: format local Date into YYYY-MM-DD */
-const getLocalDateISOString = (d: Date = new Date()): string => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+/** Helper: format local Date into YYYY-MM-DD respecting user timezone */
+const getLocalDateISOString = (d: Date = new Date(), timeZone: string = 'Asia/Kolkata'): string => {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timeZone || 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return formatter.format(d);
+  } catch {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
 };
 
 /** Helper: get current user display name from profile or session */
@@ -1605,6 +1615,30 @@ function mapApiInvoiceData(raw: any, fallback?: Partial<Invoice>): Invoice {
     upiQrCodeUrl: raw.upi_qr_code_url || raw.upiQrCodeUrl || raw.payment_methods?.upiQrCodeUrl || fallback?.upiQrCodeUrl || undefined,
     bankDetails: raw.bank_details || raw.bankDetails || fallback?.bankDetails || undefined,
     razorpayPaymentLink: raw.razorpay_payment_link || raw.razorpayPaymentLink || fallback?.razorpayPaymentLink || undefined,
+    paymentNotification: (() => {
+      if (raw.payment_notification || raw.paymentNotification) return raw.payment_notification || raw.paymentNotification;
+      const inotes = raw.internal_notes || raw.internalNotes;
+      if (inotes && typeof inotes === 'string' && inotes.includes('[PAYMENT_NOTIFICATION]:')) {
+        try {
+          const m = inotes.match(/\[PAYMENT_NOTIFICATION\]:\s*(\{.*?\})/);
+          if (m && m[1]) return JSON.parse(m[1]);
+        } catch {}
+      }
+      const pays = raw.invoice_payments || raw.payments;
+      if (pays && Array.isArray(pays)) {
+        const pending = pays.find((p: any) => p.gateway_status === 'awaiting_verification');
+        if (pending) {
+          return {
+            amount: Number(pending.amount) || calcTotal,
+            paymentMethod: pending.payment_method || 'bank_transfer',
+            transactionReference: pending.notes?.replace('Client submitted payment reference: ', '') || '',
+            notifiedAt: pending.payment_date || pending.created_at,
+            status: 'awaiting_verification',
+          };
+        }
+      }
+      return fallback?.paymentNotification || undefined;
+    })(),
     receipts: raw.receipts || fallback?.receipts || [],
     reminders: raw.reminders || fallback?.reminders || [],
   };
@@ -2710,7 +2744,7 @@ export const FreelancerInvoiceService = {
           message: data.message || 'Payment reminder dispatched successfully.',
           reminderCount: data.reminderCount,
           reminder: data.reminder,
-          invoice: data.invoice,
+          invoice: data.invoice ? mapApiInvoiceData(data.invoice) : undefined,
         };
       } catch (err: any) {
         return {

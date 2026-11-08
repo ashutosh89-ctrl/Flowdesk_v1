@@ -101,17 +101,6 @@ export const InvitationService = {
 
     // 4. Try dedicated client_invitations table first
     try {
-      if (options?.forceNew) {
-        // Protect recently created invitations (within 15 minutes) from accidental revocation
-        const graceCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-        await db
-          .from('client_invitations')
-          .update({ status: 'revoked', revoked_at: nowIso })
-          .eq('client_id', clientId)
-          .eq('status', 'pending')
-          .lt('created_at', graceCutoff);
-      }
-
       const { data: inserted, error: insertErr } = await db
         .from('client_invitations')
         .insert({
@@ -235,23 +224,36 @@ export const InvitationService = {
         }
 
         if (inv.status === 'revoked') {
-          // Check if this token is for an unclaimed client with an unexpired link
+          // Check if this token belongs to an existing client
           const { data: clientData } = await db
             .from('clients')
             .select('id, name, company, email, user_id')
             .eq('id', inv.client_id)
             .maybeSingle();
 
+          const { data: freelancer } = await db
+            .from('profiles')
+            .select('business_name, full_name')
+            .eq('id', inv.freelancer_id)
+            .maybeSingle();
+
+          // 1. If client is already connected to an account, treat as claimed so user can enter portal
+          if (clientData?.user_id) {
+            return {
+              isValid: true,
+              status: 'claimed',
+              freelancerName: freelancer?.business_name || freelancer?.full_name || 'FlowDesk Studio',
+              clientName: clientData?.name || 'Client',
+              companyName: clientData?.company || '',
+              error: 'This client workspace is already connected.',
+            };
+          }
+
+          // 2. Unclaimed client with an unexpired link: seamlessly allow connection
           const now = new Date();
           const notExpired = new Date(inv.expires_at) >= now;
 
-          if (clientData && !clientData.user_id && notExpired) {
-            const { data: freelancer } = await db
-              .from('profiles')
-              .select('business_name, full_name')
-              .eq('id', inv.freelancer_id)
-              .maybeSingle();
-
+          if (clientData && notExpired) {
             return {
               isValid: true,
               status: 'pending',
@@ -397,19 +399,19 @@ export const InvitationService = {
 
       if (!invErr && inv) {
         if (inv.status === 'claimed') {
-          if (inv.claimed_by_user_id === userId) {
-            const { data: existingClient } = await db
-              .from('clients')
-              .select('id, workspace_id, name, company')
-              .eq('id', inv.client_id)
-              .maybeSingle();
+          const { data: clientCheck } = await db
+            .from('clients')
+            .select('id, user_id, name, company')
+            .eq('id', inv.client_id)
+            .maybeSingle();
 
+          if (inv.claimed_by_user_id === userId || clientCheck?.user_id === userId) {
             return {
               success: true,
-              clientId: existingClient?.id || inv.client_id,
+              clientId: clientCheck?.id || inv.client_id,
               workspaceId: inv.workspace_id,
-              clientName: existingClient?.name,
-              company: existingClient?.company,
+              clientName: clientCheck?.name,
+              company: clientCheck?.company,
               message: 'Client account is already connected to this workspace.',
             };
           }
@@ -423,9 +425,20 @@ export const InvitationService = {
         if (inv.status === 'revoked') {
           const { data: clientCheck } = await db
             .from('clients')
-            .select('id, user_id')
+            .select('id, user_id, name, company')
             .eq('id', inv.client_id)
             .maybeSingle();
+
+          if (clientCheck?.user_id === userId) {
+            return {
+              success: true,
+              clientId: clientCheck.id,
+              workspaceId: inv.workspace_id,
+              clientName: clientCheck.name,
+              company: clientCheck.company,
+              message: 'Client account is already connected to this workspace.',
+            };
+          }
 
           const now = new Date();
           const notExpired = new Date(inv.expires_at) >= now;

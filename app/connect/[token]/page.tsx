@@ -78,6 +78,15 @@ export default function ConnectInvitationPage({ params }: PageProps) {
     };
   }, [token]);
 
+  useEffect(() => {
+    if (details?.status === 'claimed' && currentUser) {
+      const timer = setTimeout(() => {
+        router.push('/client/dashboard');
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [details?.status, currentUser, router]);
+
   const handleClaimDirectly = async () => {
     if (!currentUser) return;
     setIsSubmitting(true);
@@ -201,21 +210,23 @@ export default function ConnectInvitationPage({ params }: PageProps) {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6 selection:bg-emerald-500/30">
         <Card variant="crystal" className="max-w-md w-full p-8 text-center space-y-6 border-white/20 shadow-2xl">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
-            <Lock className="w-7 h-7" />
+          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-400">
+            <CheckCircle2 className="w-7 h-7" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold text-white tracking-tight">Connection Link Already Used</h2>
+            <h2 className="text-xl font-bold text-white tracking-tight">Client Workspace Connected</h2>
             <p className="text-xs text-zinc-400 leading-relaxed">
-              This connection link has already been used. If you are the client, use the shared FlowDesk login and you will be routed automatically to your workspace.
+              {currentUser
+                ? `You are connected with ${details.freelancerName || 'your freelancer'}. Redirecting to your client workspace...`
+                : 'This client workspace is already connected. Please sign in to access your portal.'}
             </p>
           </div>
           <Button
             variant="primary"
             className="w-full justify-center gap-2"
-            onClick={() => router.push('/login')}
+            onClick={() => router.push(currentUser ? '/client/dashboard' : '/login')}
           >
-            Continue to FlowDesk Login <ArrowRight className="w-4 h-4" />
+            {currentUser ? 'Open Client Workspace' : 'Continue to FlowDesk Login'} <ArrowRight className="w-4 h-4" />
           </Button>
         </Card>
       </div>

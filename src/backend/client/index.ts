@@ -235,20 +235,48 @@ export const ClientPortalService = {
 
     // Supabase query
       try {
-        let query = supabase.from('clients').select('*');
+        let data: any = null;
 
         if (UUID_PATTERN.test(cleanId)) {
-          query = query.or(`id.eq.${cleanId},user_id.eq.${cleanId}`);
+          // Check by primary key id first
+          const { data: directMatch } = await supabase.from('clients').select('*').eq('id', cleanId).maybeSingle();
+          if (directMatch) {
+            data = directMatch;
+          } else {
+            // Check by user_id with limit(1) to safely resolve multi-workspace client accounts without PGRST116
+            const { data: userMatches } = await supabase
+              .from('clients')
+              .select('*')
+              .eq('user_id', cleanId)
+              .neq('status', 'pending_deletion')
+              .order('updated_at', { ascending: false })
+              .limit(1);
+            if (userMatches && userMatches.length > 0) {
+              data = userMatches[0];
+            }
+          }
         } else if (EMAIL_PATTERN.test(cleanId)) {
-          query = query.eq('email', cleanId.toLowerCase());
+          const { data: emailMatches } = await supabase
+            .from('clients')
+            .select('*')
+            .ilike('email', cleanId.toLowerCase())
+            .neq('status', 'pending_deletion')
+            .order('updated_at', { ascending: false })
+            .limit(1);
+          if (emailMatches && emailMatches.length > 0) {
+            data = emailMatches[0];
+          }
         } else if (TOKEN_PATTERN.test(cleanId)) {
-          query = query.eq('portal_token', cleanId);
+          const { data: tokenMatch } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('portal_token', cleanId)
+            .maybeSingle();
+          data = tokenMatch;
         } else {
-          // Reject malformed inputs containing PostgREST filter injection operators
-          query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+          // Reject malformed inputs
+          data = null;
         }
-
-        const { data } = await query.maybeSingle();
 
 
         if (data) {

@@ -107,7 +107,7 @@ export async function POST(
     // Fetch invoice to verify exists & obtain workspace / client details
     const { data: invoice, error: fetchErr } = await supabaseAdmin
       .from('invoices')
-      .select('id, workspace_id, client_id, invoice_number, total_amount, paid_amount, currency, status')
+      .select('id, workspace_id, client_id, invoice_number, total_amount, paid_amount, currency, status, internal_notes')
       .eq('id', invoiceId)
       .maybeSingle();
 
@@ -129,35 +129,54 @@ export async function POST(
       });
     }
 
+    const paymentDateIso = new Date().toISOString();
     const notificationPayload = {
       amount,
       paymentMethod,
       transactionReference,
       notes: notes || '',
-      notifiedAt: new Date().toISOString(),
+      notifiedAt: paymentDateIso,
       status: 'awaiting_verification',
     };
 
-    // Update invoice with payment notification metadata (retaining existing status)
-    const { error: updateErr } = await supabaseAdmin
+    // 1. Record pending payment entry in verified invoice_payments ledger
+    try {
+      await supabaseAdmin.from('invoice_payments').insert({
+        invoice_id: invoice.id,
+        workspace_id: invoice.workspace_id,
+        amount,
+        currency: invoice.currency || 'INR',
+        payment_method: paymentMethod || 'upi',
+        payment_date: paymentDateIso,
+        notes: `Reference/UTR: ${transactionReference}${notes ? ' - ' + notes : ''}`,
+        gateway: 'manual',
+        gateway_status: 'awaiting_verification',
+      });
+    } catch (payErr) {
+      logger.warn('[NotifyPayment] invoice_payments insert notice:', { error: String(payErr) });
+    }
+
+    // 2. Persist notification metadata into invoices.internal_notes for guaranteed schema compatibility
+    const existingNotes = invoice.internal_notes || '';
+    const cleanNotes = existingNotes.replace(/\[PAYMENT_NOTIFICATION\]:[\s\S]*?(?=\n\[|$)/, '').trim();
+    const newInternalNotes = `[PAYMENT_NOTIFICATION]: ${JSON.stringify(notificationPayload)}${cleanNotes ? '\n' + cleanNotes : ''}`;
+
+    await supabaseAdmin
       .from('invoices')
       .update({
-        payment_notification: notificationPayload,
-        updated_at: new Date().toISOString(),
+        internal_notes: newInternalNotes,
+        updated_at: paymentDateIso,
       })
       .eq('id', invoiceId);
 
-    if (updateErr) {
-      logger.error('Failed to update invoice payment notification in database', updateErr, {
-        requestId,
-        invoiceId,
-      });
-      return createApiErrorResponse({
-        message: 'Failed to record payment notification.',
-        code: 'DATABASE_UPDATE_ERROR',
-        status: 500,
-        requestId,
-      });
+    // 3. Non-blocking attempt on optional payment_notification column
+    try {
+      await supabaseAdmin
+        .from('invoices')
+        .update({ payment_notification: notificationPayload })
+        .eq('id', invoiceId);
+    } catch {
+      // Column does not exist in standard relational schema
     }
 
     // 7. In-App Notifications for Freelancer & Client

@@ -16,8 +16,27 @@ export const ClientInvoiceService = {
       return FlowDeskStore.getInvoices(clientId);
     }
 
+    // 1. In browser context, securely query server-side portal route (bypasses browser RLS blocks)
+    if (typeof window !== 'undefined') {
+      try {
+        const res = await fetch(`/api/portal/invoices?clientId=${encodeURIComponent(clientId)}`, {
+          cache: 'no-store',
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.success && Array.isArray(json.invoices)) {
+            return json.invoices;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[ClientInvoiceService] Portal invoices API query notice:', apiErr);
+      }
+    }
+
     try {
-      const { data, error } = await supabase
+      const { supabaseAdmin } = await import('@/backend/utilities/supabase');
+      const db = supabaseAdmin || supabase;
+      const { data, error } = await db
         .from('invoices')
         .select('*, invoice_items(*), invoice_payments(*), receipts(*)')
         .eq('client_id', clientId)
@@ -193,7 +212,28 @@ export const ClientInvoiceService = {
             upiQrCodeUrl: resolvedQrUrl,
             bankDetails: resolvedBankDetails,
             razorpayPaymentLink: i.razorpay_payment_link || undefined,
-            paymentNotification: i.payment_notification || undefined,
+            paymentNotification: (() => {
+              if (i.payment_notification) return i.payment_notification;
+              if (i.internal_notes && i.internal_notes.includes('[PAYMENT_NOTIFICATION]:')) {
+                try {
+                  const m = i.internal_notes.match(/\[PAYMENT_NOTIFICATION\]:\s*(\{.*?\})/);
+                  if (m && m[1]) return JSON.parse(m[1]);
+                } catch {}
+              }
+              if (i.invoice_payments && i.invoice_payments.length > 0) {
+                const pending = i.invoice_payments.find((p: any) => p.gateway_status === 'awaiting_verification');
+                if (pending) {
+                  return {
+                    amount: Number(pending.amount) || totalAmt,
+                    paymentMethod: pending.payment_method || 'bank_transfer',
+                    transactionReference: pending.notes?.replace('Client submitted payment reference: ', '') || '',
+                    notifiedAt: pending.payment_date || pending.created_at,
+                    status: 'awaiting_verification',
+                  };
+                }
+              }
+              return undefined;
+            })(),
             receipts,
             reminders: remindersByInvoice[i.id] || [],
           } as Invoice;

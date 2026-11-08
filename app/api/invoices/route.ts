@@ -116,7 +116,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // 6. Verify Client Affiliation (Strict Workspace Ownership - IDOR Protection)
     let { data: client } = await supabaseAdmin
       .from('clients')
-      .select('id, name, email, workspace_id')
+      .select('id, name, email, workspace_id, user_id')
       .eq('id', payload.clientId)
       .eq('workspace_id', effectiveWorkspaceId)
       .maybeSingle();
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       // Also check if clientId was passed as portal_token or email within caller's workspace
       const { data: altClient } = await supabaseAdmin
         .from('clients')
-        .select('id, name, email, workspace_id')
+        .select('id, name, email, workspace_id, user_id')
         .eq('workspace_id', effectiveWorkspaceId)
         .or(`portal_token.eq.${payload.clientId},email.eq.${payload.clientId}`)
         .maybeSingle();
@@ -281,6 +281,52 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // 9. Insert Invoice Record
     const nowIso = new Date().toISOString();
     const isSent = payload.workflowStatus === 'sent' || payload.status === 'sent';
+    const userTz = userSettingsData?.timezone || 'Asia/Kolkata';
+
+    let effectiveIssueDate = payload.issueDate;
+    if (!effectiveIssueDate) {
+      try {
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          timeZone: userTz,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        });
+        effectiveIssueDate = formatter.format(new Date());
+      } catch {
+        effectiveIssueDate = new Date().toISOString().split('T')[0];
+      }
+    }
+
+    // Prepare human-readable payment instructions if bank or UPI is present
+    let formattedInstructions = payload.paymentInstructions || '';
+    if (!formattedInstructions) {
+      const parts: string[] = [];
+      if (finalUpiId) parts.push(`UPI ID: ${finalUpiId}`);
+      if (finalBankDetails?.accountNumber) {
+        parts.push(`Bank: ${finalBankDetails.bankName || 'Direct Transfer'} | A/C: ${finalBankDetails.accountNumber} | IFSC: ${finalBankDetails.ifscCode || ''}`);
+      }
+      if (parts.length > 0) formattedInstructions = parts.join(' | ');
+    }
+
+    // Embed payment methods metadata inside internal_notes for seamless schema compatibility
+    const paymentMethodsMeta = {
+      ...(payload.paymentMethods || {
+        bankTransferEnabled: true,
+        upiEnabled: Boolean(finalUpiId || finalQrCodeUrl),
+        razorpayLinkEnabled: Boolean(finalRazorpayLink),
+      }),
+      upiQrCodeUrl: finalQrCodeUrl || undefined,
+      upiId: finalUpiId || undefined,
+      bankDetails: finalBankDetails || undefined,
+      razorpayPaymentLink: finalRazorpayLink || undefined,
+      defaultPaymentInstructions: formattedInstructions || undefined,
+    };
+
+    const userInternalNotes = payload.internalNotes || '';
+    const encodedInternalNotes = `[PAYMENT_METHODS]: ${JSON.stringify(paymentMethodsMeta)}${userInternalNotes ? '\n' + userInternalNotes : ''}`;
+
+    // Target ONLY verified relational columns on public.invoices table
     const primaryPayload: Record<string, any> = {
       workspace_id: targetWorkspaceId,
       client_id: client.id,
@@ -291,9 +337,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       invoice_number: invoiceNumber,
       status: isSent ? 'sent' : 'draft',
       workflow_status: isSent ? 'sent' : 'draft',
-      ...(isSent ? { issued_at: nowIso } : {}),
       payment_status: 'pending',
-      issue_date: payload.issueDate,
+      issue_date: effectiveIssueDate,
       due_date: payload.dueDate,
       subtotal: calc.subtotal,
       tax_percentage: calc.taxPercentage,
@@ -304,23 +349,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       paid_amount: 0,
       currency: payload.currency || 'INR',
       notes: payload.notes || '',
-      payment_instructions: payload.paymentInstructions || '',
-      internal_notes: payload.internalNotes || '',
-      payment_methods: {
-        ...(payload.paymentMethods || {
-          bankTransferEnabled: true,
-          upiEnabled: Boolean(finalUpiId || finalQrCodeUrl),
-          razorpayLinkEnabled: Boolean(finalRazorpayLink),
-        }),
-        upiQrCodeUrl: finalQrCodeUrl || undefined,
-        upiId: finalUpiId || undefined,
-        bankDetails: finalBankDetails || undefined,
-        razorpayPaymentLink: finalRazorpayLink || undefined,
-        defaultPaymentInstructions: payload.paymentInstructions || undefined,
-      },
-      upi_id: finalUpiId || null,
-      bank_details: finalBankDetails || null,
-      razorpay_payment_link: finalRazorpayLink || null,
+      payment_instructions: formattedInstructions,
+      internal_notes: encodedInternalNotes,
       created_at: nowIso,
       updated_at: nowIso,
     };
@@ -343,8 +373,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         error: insertError?.message,
       });
 
-      // Retry without extended standalone columns (upi_id, bank_details, razorpay_payment_link)
-      // but retain payment_methods JSONB, tax_name, and payment_instructions
+      // Retry without internal_notes or tax_name if schema variant
       const fallbackPayload: Record<string, any> = {
         workspace_id: targetWorkspaceId,
         client_id: client.id,
@@ -356,19 +385,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         status: isSent ? 'sent' : 'draft',
         workflow_status: isSent ? 'sent' : 'draft',
         payment_status: 'pending',
-        issue_date: payload.issueDate,
+        issue_date: effectiveIssueDate,
         due_date: payload.dueDate,
         subtotal: calc.subtotal,
         tax_percentage: calc.taxPercentage,
-        tax_name: payload.taxName || 'GST',
         tax_amount: calc.taxAmount,
         total_amount: calc.total,
         discount: calc.discount,
         paid_amount: 0,
         currency: payload.currency || 'INR',
         notes: payload.notes || '',
-        payment_instructions: payload.paymentInstructions || '',
-        payment_methods: primaryPayload.payment_methods,
         created_at: nowIso,
         updated_at: nowIso,
       };
@@ -383,41 +409,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         insertedInvoice = fallbackAttempt.data;
         insertError = null;
       } else {
-        // Tertiary fallback: minimal fields if older table schema
-        const minimalPayload: Record<string, any> = {
-          workspace_id: targetWorkspaceId,
-          client_id: client.id,
-          user_id: caller.userId,
-          client_name: client.name || 'Client',
-          client_email: client.email || 'client@example.com',
-          project_id: payload.projectId || null,
-          invoice_number: invoiceNumber,
-          status: isSent ? 'sent' : 'draft',
-          issue_date: payload.issueDate,
-          due_date: payload.dueDate,
-          subtotal: calc.subtotal,
-          tax_percentage: calc.taxPercentage,
-          tax_amount: calc.taxAmount,
-          total_amount: calc.total,
-          discount: calc.discount,
-          paid_amount: 0,
-          currency: payload.currency || 'INR',
-          notes: payload.notes || '',
-          created_at: nowIso,
-          updated_at: nowIso,
-        };
-        const tertiaryAttempt = await supabaseAdmin
-          .from('invoices')
-          .insert(minimalPayload)
-          .select()
-          .single();
-
-        if (!tertiaryAttempt.error && tertiaryAttempt.data) {
-          insertedInvoice = tertiaryAttempt.data;
-          insertError = null;
-        } else {
-          insertError = fallbackAttempt.error || tertiaryAttempt.error || insertError;
-        }
+        insertError = fallbackAttempt.error || insertError;
       }
     }
 
@@ -483,7 +475,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         await supabaseAdmin.from('notifications').insert({
           workspace_id: targetWorkspaceId,
           client_id: client.id,
-          user_id: null,
+          user_id: client.user_id || null,
           title: `New Invoice Issued: #${invoiceNumber}`,
           message: `An invoice #${invoiceNumber} for ${payload.currency || 'INR'} ${calc.total.toLocaleString()} has been issued and is available for payment.`,
           category: 'invoice',

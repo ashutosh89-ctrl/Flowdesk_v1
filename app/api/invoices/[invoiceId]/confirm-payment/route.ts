@@ -123,7 +123,15 @@ export async function POST(
       });
     }
 
-    const currentNotification = invoice.payment_notification || {};
+    let currentNotification = invoice.payment_notification || {};
+    if ((!currentNotification || !currentNotification.status) && invoice.internal_notes) {
+      const match = invoice.internal_notes.match(/\[PAYMENT_NOTIFICATION\]:\s*(\{.*?\})/);
+      if (match) {
+        try {
+          currentNotification = JSON.parse(match[1]);
+        } catch {}
+      }
+    }
     const nowIso = new Date().toISOString();
 
     // Handling: REJECTION
@@ -135,13 +143,34 @@ export async function POST(
         rejectionNotes: confirmationNotes || '',
       };
 
+      const existingInternal = invoice.internal_notes || '';
+      const cleanInternal = existingInternal.replace(/\[PAYMENT_NOTIFICATION\]:[\s\S]*?(?=\n\[|$)/, '').trim();
+      const newInternal = `[PAYMENT_NOTIFICATION]: ${JSON.stringify(updatedNotification)}${cleanInternal ? '\n' + cleanInternal : ''}`;
+
       await supabaseAdmin
         .from('invoices')
         .update({
-          payment_notification: updatedNotification,
+          internal_notes: newInternal,
           updated_at: nowIso,
         })
         .eq('id', invoiceId);
+
+      try {
+        await supabaseAdmin
+          .from('invoices')
+          .update({ payment_notification: updatedNotification })
+          .eq('id', invoiceId);
+      } catch {
+        // column may not exist in live schema
+      }
+
+      try {
+        await supabaseAdmin
+          .from('invoice_payments')
+          .update({ gateway_status: 'failed', notes: `Rejected: ${confirmationNotes || ''}` })
+          .eq('invoice_id', invoiceId)
+          .eq('gateway_status', 'awaiting_verification');
+      } catch {}
 
       return NextResponse.json(
         {
@@ -203,6 +232,7 @@ export async function POST(
         paid_amount: newPaidAmount,
         payment_status: newPaymentStatus,
         status: newWorkflowStatus,
+        workflow_status: newWorkflowStatus,
         updated_at: nowIso,
       }).eq('id', invoiceId);
 
@@ -229,13 +259,37 @@ export async function POST(
       notes,
     };
 
+    const existingInternal = invoice.internal_notes || '';
+    const cleanInternal = existingInternal.replace(/\[PAYMENT_NOTIFICATION\]:[\s\S]*?(?=\n\[|$)/, '').trim();
+    const newInternal = `[PAYMENT_NOTIFICATION]: ${JSON.stringify(updatedNotification)}${cleanInternal ? '\n' + cleanInternal : ''}`;
+
     await supabaseAdmin
       .from('invoices')
       .update({
-        payment_notification: updatedNotification,
+        internal_notes: newInternal,
         updated_at: nowIso,
       })
       .eq('id', invoiceId);
+
+    try {
+      await supabaseAdmin
+        .from('invoices')
+        .update({
+          payment_notification: updatedNotification,
+          updated_at: nowIso,
+        })
+        .eq('id', invoiceId);
+    } catch {
+      // column may not exist in live schema
+    }
+
+    try {
+      await supabaseAdmin
+        .from('invoice_payments')
+        .update({ gateway_status: 'captured' })
+        .eq('invoice_id', invoiceId)
+        .eq('gateway_status', 'awaiting_verification');
+    } catch {}
 
     // 3. Activity Log & In-App Notifications
     try {
