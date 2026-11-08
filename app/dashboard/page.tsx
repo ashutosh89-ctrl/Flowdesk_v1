@@ -268,21 +268,21 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <Suspense
-          fallback={
-            <div className="h-screen w-full flex flex-col items-center justify-center bg-[#101312] text-zinc-400 gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-[#43D6B0]" />
-              <p className="text-xs font-mono">Loading FlowDesk...</p>
-            </div>
-          }
-        >
-          <DashboardErrorBoundary>
+    <DashboardErrorBoundary>
+      <ToastProvider>
+        <AuthProvider>
+          <Suspense
+            fallback={
+              <div className="h-screen w-full flex flex-col items-center justify-center bg-[#101312] text-zinc-400 gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-[#43D6B0]" />
+                <p className="text-xs font-mono">Loading FlowDesk...</p>
+              </div>
+            }
+          >
             <DashboardContent />
-          </DashboardErrorBoundary>
-        </Suspense>
-      </AuthProvider>
-    </ToastProvider>
+          </Suspense>
+        </AuthProvider>
+      </ToastProvider>
+    </DashboardErrorBoundary>
   );
 }

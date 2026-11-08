@@ -9,18 +9,28 @@ interface WorkspaceHealthCardProps {
 }
 
 export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health, onNavigate, onAction }) => {
-  const getStatusBadge = (status: WorkspaceHealth['status']) => {
+  const safeHealth = health || {
+    score: 100,
+    status: 'Healthy' as const,
+    metrics: {
+      overdueInvoicesCount: 0,
+      overdueInvoicesAmount: 0,
+      lateProjectsCount: 0,
+      unansweredCommentsCount: 0,
+      pendingApprovalsCount: 0,
+      missingDocumentsCount: 0,
+      clientEngagementScore: 100,
+    },
+    recommendations: [],
+    updatedAt: new Date().toISOString(),
+  };
+
+  const getStatusBadge = (status?: WorkspaceHealth['status']) => {
     switch (status) {
       case 'Excellent':
         return (
           <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
             <CheckCircle className="w-3.5 h-3.5" /> Excellent Health
-          </span>
-        );
-      case 'Healthy':
-        return (
-          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5" /> Healthy
           </span>
         );
       case 'Needs Attention':
@@ -35,8 +45,26 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
             <AlertTriangle className="w-3.5 h-3.5" /> Action Required
           </span>
         );
+      case 'Healthy':
+      default:
+        return (
+          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5" /> Healthy
+          </span>
+        );
     }
   };
+
+  const safeMetrics = safeHealth.metrics || {
+    overdueInvoicesCount: 0,
+    overdueInvoicesAmount: 0,
+    lateProjectsCount: 0,
+    unansweredCommentsCount: 0,
+    pendingApprovalsCount: 0,
+    missingDocumentsCount: 0,
+    clientEngagementScore: 100,
+  };
+  const safeRecommendations = Array.isArray(safeHealth.recommendations) ? safeHealth.recommendations : [];
 
   return (
     <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-6 shadow-2xl backdrop-blur-xl h-full flex flex-col justify-between">
@@ -51,7 +79,7 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
               <p className="text-xs text-zinc-400">Real-time risk assessment &amp; recommendations.</p>
             </div>
           </div>
-          {getStatusBadge(health.status)}
+          {getStatusBadge(safeHealth.status)}
         </div>
 
         {/* Score Radial Visualizer */}
@@ -76,30 +104,30 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="text-xl font-black text-white leading-none text-center tabular-nums">{health.score}</span>
+              <span className="text-xl font-black text-white leading-none text-center tabular-nums">{safeHealth.score}</span>
             </div>
           </div>
 
           <div className="space-y-1 text-xs min-w-0">
             <div className="flex items-center justify-between gap-4 text-zinc-300">
               <span>Overdue Invoices:</span>
-              <span className={`font-bold ${(health.metrics?.overdueInvoicesCount ?? 0) > 0 ? 'text-rose-400' : 'text-zinc-400'}`}>
-                {health.metrics?.overdueInvoicesCount ?? 0}
+              <span className={`font-bold ${(safeMetrics.overdueInvoicesCount ?? 0) > 0 ? 'text-rose-400' : 'text-zinc-400'}`}>
+                {safeMetrics.overdueInvoicesCount ?? 0}
               </span>
             </div>
             <div className="flex items-center justify-between gap-4 text-zinc-300">
               <span>Late Projects:</span>
-              <span className={`font-bold ${(health.metrics?.lateProjectsCount ?? 0) > 0 ? 'text-amber-400' : 'text-zinc-400'}`}>
-                {health.metrics?.lateProjectsCount ?? 0}
+              <span className={`font-bold ${(safeMetrics.lateProjectsCount ?? 0) > 0 ? 'text-amber-400' : 'text-zinc-400'}`}>
+                {safeMetrics.lateProjectsCount ?? 0}
               </span>
             </div>
             <div className="flex items-center justify-between gap-4 text-zinc-300">
               <span>Pending Approvals:</span>
-              <span className="font-bold text-sky-400">{health.metrics?.pendingApprovalsCount ?? 0}</span>
+              <span className="font-bold text-sky-400">{safeMetrics.pendingApprovalsCount ?? 0}</span>
             </div>
             <div className="flex items-center justify-between gap-4 text-zinc-300">
               <span>Client Engagement:</span>
-              <span className="font-bold text-emerald-400">{health.metrics?.clientEngagementScore ?? 100}%</span>
+              <span className="font-bold text-emerald-400">{safeMetrics.clientEngagementScore ?? 100}%</span>
             </div>
           </div>
         </div>
@@ -109,10 +137,10 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
           <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
             Smart Recommendations
           </h4>
-          {(!health.recommendations || health.recommendations.length === 0) ? (
+          {safeRecommendations.length === 0 ? (
             <p className="text-xs text-zinc-500 italic">No recommendations at this time.</p>
           ) : (
-            health.recommendations.map((rec) => (
+            safeRecommendations.map((rec) => (
               <div
                 key={rec.id}
                 className="p-3 rounded-xl bg-zinc-900/40 border border-white/5 hover:border-white/15 transition-all flex items-center justify-between gap-3 text-xs"

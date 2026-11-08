@@ -80,15 +80,11 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
       <Card variant="crystal" className="p-6 sm:p-8 border-white/20 bg-[#16181B] relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-zinc-300 font-mono">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#43D6B0]" />
-              <span>Workspace Active • {client.company}</span>
-            </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
               Welcome back, {client.name}
             </h1>
             <p className="text-sm text-zinc-300 leading-relaxed">
-              Your centralized collaboration portal. Review deliverables, submit requested compliance assets, and track project milestones.
+              Your centralized collaboration portal for {client.company}. Review deliverables, submit requested compliance assets, and track project milestones.
             </p>
           </div>
 
@@ -118,7 +114,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
         {/* Overall Progress */}
         <Card variant="crystal" className="p-5 border-white/10 bg-zinc-900/50 hover:border-white/20 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono uppercase text-zinc-400 font-semibold tracking-wider">Overall Progress</span>
+            <span className="text-xs font-medium text-zinc-400">Overall Progress</span>
             <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
               <TrendingUp className="w-4 h-4" />
             </div>
@@ -146,7 +142,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
           onClick={() => onNavigateTab('deliverables')}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono uppercase text-zinc-400 font-semibold tracking-wider">Pending Approvals</span>
+            <span className="text-xs font-medium text-zinc-400">Pending Approvals</span>
             <div className={`p-2 rounded-xl border ${pendingApprovalsCount > 0 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-white/5 border-white/10 text-zinc-400'}`}>
               <CheckSquare className="w-4 h-4" />
             </div>
@@ -168,7 +164,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
           onClick={() => onNavigateTab('documents')}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono uppercase text-[#A6B4AE] font-semibold tracking-wider">Document Requests</span>
+            <span className="text-xs font-medium text-[#A6B4AE]">Document Requests</span>
             <div className={`p-2 rounded-xl border ${pendingDocumentsCount > 0 ? 'bg-[#176B5B]/20 border-[#176B5B]/40 text-[#43D6B0]' : 'bg-white/5 border-white/10 text-zinc-400'}`}>
               <FileText className="w-4 h-4" />
             </div>
@@ -190,7 +186,7 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({
           onClick={() => onNavigateTab('invoices')}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono uppercase text-zinc-400 font-semibold tracking-wider">Outstanding Balance</span>
+            <span className="text-xs font-medium text-zinc-400">Outstanding Balance</span>
             <div className={`p-2 rounded-xl border ${outstandingInvoicesTotal > 0 ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-white/5 border-white/10 text-zinc-400'}`}>
               <CreditCard className="w-4 h-4" />
             </div>

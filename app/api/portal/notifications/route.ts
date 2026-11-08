@@ -193,12 +193,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .from('notifications')
         .update({ read: true })
         .eq('id', notificationId)
-        .eq('client_id', resolvedClientId);
+        .or(`client_id.eq.${resolvedClientId},user_id.eq.${resolvedClientId}`);
+    } else if (action === 'delete' && notificationId) {
+      await db
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .or(`client_id.eq.${resolvedClientId},user_id.eq.${resolvedClientId}`);
     } else {
       await db
         .from('notifications')
         .update({ read: true })
-        .eq('client_id', resolvedClientId);
+        .or(`client_id.eq.${resolvedClientId},user_id.eq.${resolvedClientId}`);
     }
 
     return NextResponse.json({ success: true, requestId });

@@ -41,6 +41,15 @@ export interface WorkspaceEntitlements {
   isPastDue: boolean;
   isTrialing: boolean;
   isWriteAllowed: boolean;
+  trialInfo?: {
+    isTrialActive: boolean;
+    isExpired: boolean;
+    daysRemaining: number;
+    trialStart: string | null;
+    trialEnd: string | null;
+    promotionType: string;
+    announcementSeen: boolean;
+  };
 }
 
 // In-memory cache for fast repeated quota checks across API routes (60s TTL)
@@ -68,9 +77,10 @@ export const getWorkspaceEntitlements = cache(
     }
 
     let userEmail = callerEmail?.toLowerCase()?.trim() || '';
+    let ownerUserId: string | null = null;
 
     // If callerEmail was not provided, look up the workspace owner's email
-    if (!userEmail && supabaseAdmin && workspaceId && !workspaceId.startsWith('demo-')) {
+    if (supabaseAdmin && workspaceId && !workspaceId.startsWith('demo-')) {
       try {
         const { data: ws } = await supabaseAdmin
           .from('workspaces')
@@ -79,17 +89,20 @@ export const getWorkspaceEntitlements = cache(
           .maybeSingle();
 
         if (ws?.owner_id) {
-          const { data: profile } = await supabaseAdmin
-            .from('profiles')
-            .select('email')
-            .eq('id', ws.owner_id)
-            .maybeSingle();
-          if (profile?.email) {
-            userEmail = profile.email.toLowerCase().trim();
-          } else {
-            const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(ws.owner_id);
-            if (authUser?.user?.email) {
-              userEmail = authUser.user.email.toLowerCase().trim();
+          ownerUserId = ws.owner_id;
+          if (!userEmail) {
+            const { data: profile } = await supabaseAdmin
+              .from('profiles')
+              .select('email')
+              .eq('id', ws.owner_id)
+              .maybeSingle();
+            if (profile?.email) {
+              userEmail = profile.email.toLowerCase().trim();
+            } else {
+              const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(ws.owner_id);
+              if (authUser?.user?.email) {
+                userEmail = authUser.user.email.toLowerCase().trim();
+              }
             }
           }
         }
@@ -130,10 +143,31 @@ export const getWorkspaceEntitlements = cache(
     let currentPeriodEnd: string | null = null;
     let cancelAtPeriodEnd = false;
     let overrides: Record<string, any> = {};
+    let trialInfo: WorkspaceEntitlements['trialInfo'] = undefined;
 
-    // 2. Query subscription and overrides via supabaseAdmin
+    // 2. Query subscription, trial promotion, and overrides via supabaseAdmin
     if (supabaseAdmin) {
       try {
+        // Evaluate 30-day Standard launch promotion
+        const { LaunchPromotionService } = await import('./launch-promotion-service');
+        const promo = await LaunchPromotionService.ensureLaunchPromotion(workspaceId, ownerUserId);
+        if (promo) {
+          trialInfo = {
+            isTrialActive: promo.isTrialActive,
+            isExpired: promo.isExpired,
+            daysRemaining: promo.daysRemaining,
+            trialStart: promo.trialStart,
+            trialEnd: promo.trialEnd,
+            promotionType: promo.promotionType,
+            announcementSeen: promo.announcementSeen,
+          };
+          planKey = promo.planKey;
+          status = promo.status;
+          if (promo.trialEnd) {
+            currentPeriodEnd = promo.trialEnd;
+          }
+        }
+
         // Query active or latest subscription
         const { data: subData } = await supabaseAdmin
           .from('subscriptions')
@@ -144,11 +178,20 @@ export const getWorkspaceEntitlements = cache(
           .maybeSingle();
 
         if (subData) {
-          planKey = (subData.plan_key as PlanKey) || 'starter';
-          status = (subData.status as SubscriptionStatus) || 'active';
-          currentPeriodStart = subData.current_period_start;
-          currentPeriodEnd = subData.current_period_end;
-          cancelAtPeriodEnd = Boolean(subData.cancel_at_period_end);
+          if (subData.status === 'active' && !promo?.isTrialActive && (subData.plan_key === 'standard' || subData.plan_key === 'studio')) {
+            planKey = (subData.plan_key as PlanKey) || 'starter';
+            status = 'active';
+            currentPeriodStart = subData.current_period_start;
+            currentPeriodEnd = subData.current_period_end;
+            cancelAtPeriodEnd = Boolean(subData.cancel_at_period_end);
+          } else if (promo?.isTrialActive) {
+            planKey = 'standard';
+            status = 'trialing';
+            currentPeriodEnd = promo.trialEnd;
+          } else if (promo?.isExpired || subData.status === 'expired' || subData.status === 'canceled') {
+            planKey = 'starter';
+            status = 'expired';
+          }
         }
 
         // Query active entitlement overrides
@@ -238,6 +281,7 @@ export const getWorkspaceEntitlements = cache(
       isPastDue: status === 'past_due',
       isTrialing: status === 'trialing',
       isWriteAllowed: isWriteAllowedInStatus(status),
+      trialInfo,
     };
 
     entitlementsMemoryCache.set(cacheKey, { data: result, timestamp: Date.now() });

@@ -76,6 +76,7 @@ interface ClientPortalShellProps {
   onPayInvoice: (invoiceId: string) => Promise<void>;
   onPostComment: (text: string, replyToId?: string) => Promise<void>;
   onMarkNotificationsRead: () => Promise<void>;
+  onNotificationClick?: (notification: PortalNotification) => Promise<void> | void;
 }
 
 export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
@@ -101,6 +102,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
   onPayInvoice,
   onPostComment,
   onMarkNotificationsRead,
+  onNotificationClick,
 }) => {
   const [activeTab, setActiveTab] = useState<PortalTabType>('overview');
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,6 +132,11 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
   const outstandingInvoicesTotal = invoices
     .filter(i => i.paymentStatus !== 'paid')
     .reduce((sum, i) => sum + i.total, 0);
+
+  const isCustomBranded = (branding as any)?.isCustomBranded !== false;
+  const effectivePortalLogo = isCustomBranded && (branding as any)?.logoUrl && (branding as any).logoUrl !== '/branding/flowdesk-symbol.png'
+    ? (branding as any).logoUrl
+    : '/branding/flowdesk-symbol.png';
 
   // Search filtering
   const searchResults = useMemo(() => {
@@ -197,7 +204,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
         }}
         companyName={client.company}
         clientName={client.name}
-        logoUrl={(branding as any)?.logoUrl || (profile as any)?.logoUrl || client.avatarUrl || '/branding/flowdesk-symbol.png'}
+        logoUrl={effectivePortalLogo}
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         pendingApprovalsCount={pendingApprovalsCount}
@@ -212,7 +219,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
         <PortalHeader
           companyName={client.company}
           clientName={client.name}
-          logoUrl={(branding as any)?.logoUrl || (profile as any)?.logoUrl || client.avatarUrl || '/branding/flowdesk-symbol.png'}
+          logoUrl={effectivePortalLogo}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           notifications={notifications}
@@ -232,6 +239,7 @@ export const ClientPortalShell: React.FC<ClientPortalShellProps> = ({
                 await onMarkNotificationsRead();
                 showToast('Notifications marked as read.');
               }}
+              onNotificationClick={onNotificationClick}
               onClose={() => setIsNotificationsOpen(false)}
             />
           </div>

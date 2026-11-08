@@ -64,22 +64,38 @@ export const NotificationMenu: React.FC = () => {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const handleMarkAllRead = async () => {
+  const handleMarkAsRead = async (id: string) => {
+    const prev = [...notifications];
+    setNotifications((current) => current.map((n) => (n.id === id ? { ...n, read: true } : n)));
     try {
-      await NotificationService.markAllAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      const ok = await NotificationService.markAsRead(id);
+      if (!ok) setNotifications(prev);
     } catch {
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setNotifications(prev);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    if (unreadCount === 0) return;
+    const prev = [...notifications];
+    setNotifications((current) => current.map((n) => ({ ...n, read: true })));
+    try {
+      const ok = await NotificationService.markAllAsRead();
+      if (!ok) setNotifications(prev);
+    } catch {
+      setNotifications(prev);
     }
   };
 
   const handleDismiss = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const prev = [...notifications];
+    setNotifications((current) => current.filter((n) => n.id !== id));
     try {
-      await NotificationService.dismissNotification(id);
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      const ok = await NotificationService.dismissNotification(id);
+      if (!ok) setNotifications(prev);
     } catch {
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      setNotifications(prev);
     }
   };
 
@@ -123,21 +139,25 @@ export const NotificationMenu: React.FC = () => {
             notifications.map((n) => (
               <div
                 key={n.id}
-                onClick={() => {
+                onClick={async () => {
+                  if (!n.read) {
+                    await handleMarkAsRead(n.id);
+                  }
                   if (n.link && typeof window !== 'undefined') {
                     window.location.href = n.link;
                   }
                 }}
-                className={`p-3 rounded-xl border transition-colors group relative ${
-                  n.link ? 'cursor-pointer hover:border-white/20' : ''
-                } ${
+                className={`p-3 rounded-xl border transition-colors group relative cursor-pointer ${
                   n.read
                     ? 'bg-zinc-900/30 border-white/5 text-zinc-400'
-                    : 'bg-white/[0.05] border-white/10 text-white shadow-sm'
+                    : 'bg-white/[0.05] border-white/10 text-white shadow-sm hover:border-white/20'
                 }`}
               >
                 <div className="flex justify-between items-start gap-2">
-                  <h5 className="text-xs font-semibold">{n.title}</h5>
+                  <div className="flex items-center gap-1.5">
+                    {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-[#43D6B0] shrink-0" />}
+                    <h5 className="text-xs font-semibold">{n.title}</h5>
+                  </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-[10px] text-zinc-500 flex items-center gap-0.5">
                       <Clock className="w-3 h-3" />

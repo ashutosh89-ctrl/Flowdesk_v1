@@ -226,17 +226,37 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
   };
 
   const handleMarkNotificationsRead = async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    const prev = [...notifications];
+    setNotifications((current) => current.map((n) => ({ ...n, read: true })));
     try {
       if (client?.id) {
-        await fetch('/api/portal/notifications', {
+        const res = await fetch('/api/portal/notifications', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ clientId: client.id, action: 'markAllRead' }),
         });
+        if (!res.ok) setNotifications(prev);
       }
     } catch {
-      // non-critical
+      setNotifications(prev);
+    }
+  };
+
+  const handleMarkSingleNotificationRead = async (notification: PortalNotification) => {
+    if (notification.read) return;
+    const prev = [...notifications];
+    setNotifications((current) => current.map((n) => (n.id === notification.id ? { ...n, read: true } : n)));
+    try {
+      if (client?.id) {
+        const res = await fetch('/api/portal/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId: client.id, action: 'markRead', notificationId: notification.id }),
+        });
+        if (!res.ok) setNotifications(prev);
+      }
+    } catch {
+      setNotifications(prev);
     }
   };
 
@@ -295,6 +315,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ clientId }) 
       onPayInvoice={handlePayInvoice}
       onPostComment={handlePostComment}
       onMarkNotificationsRead={handleMarkNotificationsRead}
+      onNotificationClick={handleMarkSingleNotificationRead}
     />
   );
 };

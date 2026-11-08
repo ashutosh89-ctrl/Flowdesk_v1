@@ -73,11 +73,10 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ projects, acti
       <Card variant="crystal" className="p-6 sm:p-8 space-y-6 border-white/20">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono uppercase text-zinc-400 font-semibold">PROJECT SUMMARY</span>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">{activeProject.title}</h2>
               <StatusPill status={activeProject.status} />
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">{activeProject.title}</h2>
             <p className="text-xs text-zinc-300 max-w-2xl">{activeProject.description}</p>
           </div>
 

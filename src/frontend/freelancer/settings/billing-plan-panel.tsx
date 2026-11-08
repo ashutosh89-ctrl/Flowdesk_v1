@@ -230,19 +230,58 @@ export const BillingPlanPanel: React.FC = () => {
     }
 
     if (status === 'trialing') {
+      const daysLeft = entitlements.trialInfo?.daysRemaining ?? 30;
+      const expiryFormatted = currentPeriodEnd ? new Date(currentPeriodEnd).toLocaleDateString() : 'in 30 days';
+
       return (
-        <div className="flex items-center justify-between p-4 bg-[#43D6B0]/10 border border-[#43D6B0]/20 rounded-2xl text-xs text-[#43D6B0]">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-[#43D6B0]/10 border border-[#43D6B0]/25 rounded-2xl text-xs gap-3">
           <div className="flex items-center gap-3">
             <Crown className="w-5 h-5 text-[#43D6B0] shrink-0" />
             <div>
-              <p className="font-bold text-white">Free Pro Trial Active</p>
+              <p className="font-bold text-white flex items-center gap-2">
+                Standard Launch Gift Active
+                <span className="text-[10px] bg-[#43D6B0]/20 text-[#43D6B0] px-2 py-0.5 rounded-full font-mono font-bold">
+                  {daysLeft} days remaining
+                </span>
+              </p>
               <p className="text-zinc-400 text-[11px] mt-0.5">
-                Enjoy full access to Pro freelancer features during your trial period.
+                Full Standard access until {expiryFormatted}. Moves to Starter automatically with zero auto-charges upon expiry.
               </p>
             </div>
           </div>
-          <Button type="button" variant="primary" size="sm" onClick={() => setIsUpgradeModalOpen(true)}>
-            Subscribe to Pro
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => setIsUpgradeModalOpen(true)}
+            className="bg-[#43D6B0] hover:bg-[#43D6B0]/90 text-zinc-950 font-bold shrink-0"
+          >
+            Upgrade Standard
+          </Button>
+        </div>
+      );
+    }
+
+    if (status === 'expired') {
+      return (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-amber-500/15 border border-amber-500/30 rounded-2xl text-xs gap-3">
+          <div className="flex items-center gap-3">
+            <Clock className="w-5 h-5 text-amber-400 shrink-0" />
+            <div>
+              <p className="font-bold text-amber-100">Your free Standard period has ended</p>
+              <p className="text-amber-200/90 text-[11px] mt-0.5">
+                Your 30-day FlowDesk launch benefit has expired. Your workspace is now on Starter. Upgrade to continue using Standard features, custom branding, automated reminders and higher workspace limits.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => setIsUpgradeModalOpen(true)}
+            className="bg-amber-400 hover:bg-amber-300 text-zinc-950 font-bold shrink-0"
+          >
+            Upgrade to Standard
           </Button>
         </div>
       );

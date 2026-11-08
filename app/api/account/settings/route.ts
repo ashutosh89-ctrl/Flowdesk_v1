@@ -415,9 +415,15 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
         if (userWorkspaces && userWorkspaces.length > 0) {
           const wsIds = userWorkspaces.map((w) => w.id);
+          const invoiceUpdates: Record<string, any> = { updated_at: nowIso };
+          if (upiId) invoiceUpdates.upi_id = upiId;
+          if (upiQrCodeUrl) invoiceUpdates.upi_qr_code_url = upiQrCodeUrl;
+          if (hasBank) invoiceUpdates.bank_details = effectivePaymentSettings.bankDetails;
+          if (razorpayPaymentLink) invoiceUpdates.razorpay_payment_link = razorpayPaymentLink;
+
           await Promise.all([
             supabaseAdmin.from('workspaces').update({ updated_at: nowIso }).eq('owner_id', caller.userId),
-            supabaseAdmin.from('invoices').update({ updated_at: nowIso }).in('workspace_id', wsIds),
+            supabaseAdmin.from('invoices').update(invoiceUpdates).in('workspace_id', wsIds),
           ]);
         }
       } catch (wsTouchErr) {

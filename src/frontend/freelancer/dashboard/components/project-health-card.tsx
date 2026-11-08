@@ -9,6 +9,7 @@ interface ProjectHealthCardProps {
 }
 
 export const ProjectHealthCard: React.FC<ProjectHealthCardProps> = ({ summaries, onNavigate }) => {
+  const safeSummaries = Array.isArray(summaries) ? summaries : [];
   const getStatusBadge = (status: ProjectHealthSummary['status']) => {
     switch (status) {
       case 'Excellent':
@@ -39,7 +40,7 @@ export const ProjectHealthCard: React.FC<ProjectHealthCardProps> = ({ summaries,
         </button>
       </div>
 
-      {summaries.length === 0 ? (
+      {safeSummaries.length === 0 ? (
         <div className="p-8 rounded-xl bg-zinc-900/40 border border-dashed border-white/10 text-center flex flex-col items-center justify-center">
           <FolderKanban className="w-8 h-8 text-zinc-600 mb-2" />
           <p className="text-sm font-medium text-zinc-300">No active projects yet</p>
@@ -55,48 +56,54 @@ export const ProjectHealthCard: React.FC<ProjectHealthCardProps> = ({ summaries,
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {summaries.map((item) => (
-            <div
-              key={item.projectId}
-              onClick={() => onNavigate('projects')}
-              className="p-4 rounded-xl bg-zinc-900/60 border border-white/10 hover:border-white/25 transition-all cursor-pointer group flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div>
-                    <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
-                      {item.projectTitle}
-                    </h4>
-                    <p className="text-xs text-zinc-400">{item.clientName}</p>
+          {safeSummaries.map((item) => {
+            const reasons = Array.isArray(item.reasons) ? item.reasons : [];
+            const completion = Number(item.completionPercentage) || 0;
+            return (
+              <div
+                key={item.projectId}
+                onClick={() => onNavigate('projects')}
+                className="p-4 rounded-xl bg-zinc-900/60 border border-white/10 hover:border-white/25 transition-all cursor-pointer group flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+                        {item.projectTitle || 'Active Project'}
+                      </h4>
+                      <p className="text-xs text-zinc-400">{item.clientName || 'Workspace Client'}</p>
+                    </div>
+                    {getStatusBadge(item.status)}
                   </div>
-                  {getStatusBadge(item.status)}
-                </div>
 
-                {/* Completion Progress Bar */}
-                <div className="my-3 space-y-1">
-                  <div className="flex justify-between text-[11px] text-zinc-400 font-mono">
-                    <span>Milestone Completion</span>
-                    <span className="font-bold text-white">{item.completionPercentage}%</span>
+                  {/* Completion Progress Bar */}
+                  <div className="my-3 space-y-1">
+                    <div className="flex justify-between text-[11px] text-zinc-400 font-mono">
+                      <span>Milestone Completion</span>
+                      <span className="font-bold text-white">{completion}%</span>
+                    </div>
+                    <Progress value={completion} size="xs" />
                   </div>
-                  <Progress value={item.completionPercentage} size="xs" />
-                </div>
 
-                {/* Reasons / Risk Triggers */}
-                <div className="flex items-center gap-2 flex-wrap text-[11px] text-zinc-400 mt-3 pt-3 border-t border-white/5">
-                  {item.reasons.map((reason, idx) => (
-                    <span key={idx} className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded text-zinc-300 border border-white/5">
-                      {item.status === 'Critical' || item.status === 'Needs Attention' ? (
-                        <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
-                      ) : (
-                        <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                      )}
-                      {reason}
-                    </span>
-                  ))}
+                  {/* Reasons / Risk Triggers */}
+                  {reasons.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap text-[11px] text-zinc-400 mt-3 pt-3 border-t border-white/5">
+                      {reasons.map((reason, idx) => (
+                        <span key={idx} className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded text-zinc-300 border border-white/5">
+                          {item.status === 'Critical' || item.status === 'Needs Attention' ? (
+                            <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                          ) : (
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                          )}
+                          {reason}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

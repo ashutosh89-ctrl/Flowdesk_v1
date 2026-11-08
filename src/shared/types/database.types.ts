@@ -653,14 +653,17 @@ isOneToOne: true
                   ]
                 },"subscriptions": {
                   Row: {
-                    "cancel_at_period_end": boolean | null,"canceled_at": string | null,"created_at": string | null,"current_period_end": string | null,"current_period_start": string | null,"id": string,"plan_key": string,"razorpay_customer_id": string | null,"razorpay_subscription_id": string | null,"status": string,"updated_at": string | null,"workspace_id": string
+                    "cancel_at_period_end": boolean | null,"canceled_at": string | null,"created_at": string | null,"current_period_end": string | null,"current_period_start": string | null,"id": string,"plan_key": string,"razorpay_customer_id": string | null,"razorpay_subscription_id": string | null,"status": string,"updated_at": string | null,"workspace_id": string,
+                    "trial_start"?: string | null,"trial_end"?: string | null,"promotion_type"?: string | null,"trial_status"?: string | null,"trial_claimed"?: boolean | null,"announcement_seen"?: boolean | null,"trial_reminders_sent"?: NonNullable<Json> | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "cancel_at_period_end"?: boolean | null,"canceled_at"?: string | null,"created_at"?: string | null,"current_period_end"?: string | null,"current_period_start"?: string | null,"id"?: string,"plan_key"?: string,"razorpay_customer_id"?: string | null,"razorpay_subscription_id"?: string | null,"status"?: string,"updated_at"?: string | null,"workspace_id": string
+                    "cancel_at_period_end"?: boolean | null,"canceled_at"?: string | null,"created_at"?: string | null,"current_period_end"?: string | null,"current_period_start"?: string | null,"id"?: string,"plan_key"?: string,"razorpay_customer_id"?: string | null,"razorpay_subscription_id"?: string | null,"status"?: string,"updated_at"?: string | null,"workspace_id": string,
+                    "trial_start"?: string | null,"trial_end"?: string | null,"promotion_type"?: string | null,"trial_status"?: string | null,"trial_claimed"?: boolean | null,"announcement_seen"?: boolean | null,"trial_reminders_sent"?: NonNullable<Json> | null
                   }
                   Update: {
-                    "cancel_at_period_end"?: boolean | null,"canceled_at"?: string | null,"created_at"?: string | null,"current_period_end"?: string | null,"current_period_start"?: string | null,"id"?: string,"plan_key"?: string,"razorpay_customer_id"?: string | null,"razorpay_subscription_id"?: string | null,"status"?: string,"updated_at"?: string | null,"workspace_id"?: string
+                    "cancel_at_period_end"?: boolean | null,"canceled_at"?: string | null,"created_at"?: string | null,"current_period_end"?: string | null,"current_period_start"?: string | null,"id"?: string,"plan_key"?: string,"razorpay_customer_id"?: string | null,"razorpay_subscription_id"?: string | null,"status"?: string,"updated_at"?: string | null,"workspace_id"?: string,
+                    "trial_start"?: string | null,"trial_end"?: string | null,"promotion_type"?: string | null,"trial_status"?: string | null,"trial_claimed"?: boolean | null,"announcement_seen"?: boolean | null,"trial_reminders_sent"?: NonNullable<Json> | null
                   }
                   Relationships: [
                     {

@@ -18,7 +18,10 @@ import { RevenueTrajectoryCard } from './components/revenue-trajectory-card';
 import { PinnedItemsCard } from './components/pinned-items-card';
 import { RecentWorkCard } from './components/recent-work-card';
 import { GlobalActivityCard } from './components/global-activity-card';
+import { TrialWelcomeModal } from './components/trial-welcome-modal';
+import { TrialExpiredModal } from './components/trial-expired-modal';
 import { TodayFocusItem, PinnedItem, RecentItem, ProjectHealthSummary, WorkspaceHealth } from '@/shared/types';
+import { WorkspaceEntitlements } from '@/backend/billing/entitlements';
 import { formatCurrency } from '@/shared/utils/currency';
 
 export interface DashboardViewProps {
@@ -95,6 +98,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [activities, setActivities] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showSecondaryDashboard, setShowSecondaryDashboard] = useState(false);
+  const [entitlements, setEntitlements] = useState<WorkspaceEntitlements | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showExpiredModal, setShowExpiredModal] = useState(false);
 
   const refreshData = async () => {
     try {
@@ -430,6 +436,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    fetch('/api/billing/status', { headers: { 'Cache-Control': 'no-store' } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.entitlements) {
+          setEntitlements(data.entitlements);
+          const trial = data.entitlements.trialInfo;
+          if (trial?.isTrialActive && !trial?.announcementSeen) {
+            setShowWelcomeModal(true);
+          } else if (trial?.isExpired || data.entitlements.status === 'expired') {
+            const dismissed = typeof window !== 'undefined' ? sessionStorage.getItem('flowdesk_trial_expired_dismissed') : null;
+            if (!dismissed) {
+              setShowExpiredModal(true);
+            }
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const displayName = profile?.name ?? user?.email?.split('@')[0] ?? 'User';
   const displayCompany = profile?.companyName || 'My Workspace';
 
@@ -494,6 +520,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Trial Welcome Launch Announcement Modal */}
+      {showWelcomeModal && entitlements?.trialInfo && (
+        <TrialWelcomeModal
+          isOpen={showWelcomeModal}
+          onClose={() => setShowWelcomeModal(false)}
+          trialStart={entitlements.trialInfo.trialStart}
+          trialEnd={entitlements.trialInfo.trialEnd}
+          daysRemaining={entitlements.trialInfo.daysRemaining}
+        />
+      )}
+
+      {/* Trial Expired Subscription Screen Modal */}
+      {showExpiredModal && (
+        <TrialExpiredModal
+          isOpen={showExpiredModal}
+          onClose={() => {
+            setShowExpiredModal(false);
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('flowdesk_trial_expired_dismissed', 'true');
+            }
+          }}
+          entitlements={entitlements}
+          onSuccess={() => {
+            setShowExpiredModal(false);
+            refreshData();
+          }}
+        />
+      )}
     </div>
   );
 };

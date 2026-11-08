@@ -80,7 +80,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
 
     let mounted = true;
     const targetClientId = clientId || invoice?.clientId;
-    const targetInvoiceId = invoice?.id;
+    const targetInvoiceId = invoice?.id || invoice?.invoiceNumber;
 
     const fetchLiveBranding = () => {
       if (!targetClientId && !targetInvoiceId) return;
@@ -104,7 +104,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
       mounted = false;
       clearInterval(interval);
     };
-  }, [isOpen, clientId, invoice?.id, invoice?.clientId]);
+  }, [isOpen, clientId, invoice?.id, invoice?.invoiceNumber, invoice?.clientId]);
 
   // Helper to pick the first non-empty string among candidates
   const pickVal = (...candidates: any[]): string => {
@@ -208,7 +208,10 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
     invoice?.upiId,
     invoice?.paymentMethods?.upiId,
     selectedBank.upiId,
-    selectedBank.upi_id
+    selectedBank.upi_id,
+    (invoice as any)?.paymentInstructions?.match?.(/[\w.-]+@[\w.-]+/)?.[0],
+    (invoice as any)?.payment_instructions?.match?.(/[\w.-]+@[\w.-]+/)?.[0],
+    invoice?.notes?.match?.(/[\w.-]+@[\w.-]+/)?.[0]
   );
 
   const upiQrCodeUrl = pickVal(
@@ -419,7 +422,8 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
     setUtrError(null);
 
     try {
-      const res = await fetch(`/api/invoices/${invoice.id}/notify-payment`, {
+      const targetInvId = invoice.id || invoice.invoiceNumber;
+      const res = await fetch(`/api/invoices/${encodeURIComponent(targetInvId)}/notify-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -432,7 +436,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayCheckoutModalProps> = ({
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.message || data.error || 'Failed to submit payment notification');
+        throw new Error(data.error || data.message || 'Failed to submit payment notification');
       }
 
       setUtrSuccess(true);

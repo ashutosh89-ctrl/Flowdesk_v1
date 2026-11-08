@@ -158,16 +158,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   try {
     let targetWsId = workspaceId || null;
+    const UUID_PATTERN = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
 
     // 1. Resolve workspace ID from invoice record if invoiceId provided
     let invoiceRecord: any = null;
     if (invoiceId) {
       try {
-        const { data: invRow } = await supabaseAdmin
-          .from('invoices')
-          .select('*')
-          .eq('id', invoiceId)
-          .maybeSingle();
+        let invQuery = supabaseAdmin.from('invoices').select('*');
+        if (UUID_PATTERN.test(invoiceId)) {
+          invQuery = invQuery.or(`id.eq.${invoiceId},invoice_number.eq.${invoiceId}`);
+        } else {
+          invQuery = invQuery.eq('invoice_number', invoiceId);
+        }
+        const { data: invRows } = await invQuery.limit(1);
+        const invRow = invRows?.[0];
         if (invRow) {
           invoiceRecord = invRow;
           if (invRow.workspace_id) {
@@ -181,34 +185,37 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     // 2. Resolve workspace ID from client record if clientId provided
     if (!targetWsId && clientId) {
-      const UUID_PATTERN = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
-      let cQuery = supabaseAdmin.from('clients').select('workspace_id, id');
-      if (UUID_PATTERN.test(clientId)) {
-        cQuery = cQuery.or(`id.eq.${clientId},user_id.eq.${clientId}`);
-      } else if (clientId.includes('@')) {
-        cQuery = cQuery.eq('email', clientId.toLowerCase());
-      } else {
-        cQuery = cQuery.eq('portal_token', clientId);
-      }
+      try {
+        let cQuery = supabaseAdmin.from('clients').select('workspace_id, id');
+        if (UUID_PATTERN.test(clientId)) {
+          cQuery = cQuery.or(`id.eq.${clientId},user_id.eq.${clientId}`);
+        } else if (clientId.includes('@')) {
+          cQuery = cQuery.ilike('email', clientId.toLowerCase());
+        } else {
+          cQuery = cQuery.eq('portal_token', clientId);
+        }
 
-      const { data: cRow } = await cQuery.maybeSingle();
-      if (cRow?.workspace_id) {
-        targetWsId = cRow.workspace_id;
+        const { data: cRows } = await cQuery.limit(1);
+        const cRow = cRows?.[0];
+        if (cRow?.workspace_id) {
+          targetWsId = cRow.workspace_id;
+        }
+      } catch {
+        // non-critical
       }
     }
 
     // 3. Resolve workspace ID from client_connections table
     if (!targetWsId && clientId) {
       try {
-        const { data: connRow } = await supabaseAdmin
+        const { data: connRows } = await supabaseAdmin
           .from('client_connections')
           .select('workspace_id')
           .or(`client_user_id.eq.${clientId},client_id.eq.${clientId}`)
           .order('connected_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (connRow?.workspace_id) {
-          targetWsId = connRow.workspace_id;
+          .limit(1);
+        if (connRows?.[0]?.workspace_id) {
+          targetWsId = connRows[0].workspace_id;
         }
       } catch {
         // non-critical
@@ -218,17 +225,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // 4. Resolve workspace ID from recent client invoices
     if (!targetWsId && clientId) {
       try {
-        const { data: invRow } = await supabaseAdmin
+        const { data: invRows } = await supabaseAdmin
           .from('invoices')
           .select('workspace_id, id')
           .eq('client_id', clientId)
           .not('workspace_id', 'is', null)
           .order('created_at', { ascending: false })
+          .limit(1);
+        if (invRows?.[0]?.workspace_id) {
+          targetWsId = invRows[0].workspace_id;
+          if (!invoiceRecord && invRows[0].id) invoiceRecord = invRows[0];
+        }
+      } catch {
+        // non-critical
+      }
+    }
+
+    // 5. Fallback to latest workspace if single studio deployment
+    if (!targetWsId) {
+      try {
+        const { data: recentWs } = await supabaseAdmin
+          .from('workspaces')
+          .select('id')
+          .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        if (invRow?.workspace_id) {
-          targetWsId = invRow.workspace_id;
-          if (!invoiceRecord && invRow.id) invoiceRecord = invRow;
+        if (recentWs?.id) {
+          targetWsId = recentWs.id;
         }
       } catch {
         // non-critical
@@ -413,7 +436,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    // 7. Fallback to system store
+    // 7. Check latest payment settings in documents storage bucket
+    if (!candidatePaymentSettings) {
+      try {
+        const { data: fileBlob } = await supabaseAdmin.storage
+          .from('documents')
+          .download('settings/latest/payment_settings.txt');
+        if (fileBlob) {
+          const parsed = JSON.parse(await fileBlob.text());
+          if (hasValidPaymentData(parsed)) {
+            candidatePaymentSettings = parsed;
+          }
+        }
+      } catch {
+        // non-critical
+      }
+    }
+
+    // 8. Fallback to system store
     if (!candidatePaymentSettings) {
       try {
         const localProf = FlowDeskStore.getUserProfile() || {};

@@ -3288,6 +3288,21 @@ export const CommentService = {
 export const NotificationService = {
   getNotifications: async (): Promise<NotificationItem[]> => {
     if (DemoDataProvider.isDemo() || isDemoModeActive()) return FlowDeskStore.getNotifications();
+
+    if (typeof window !== 'undefined') {
+      try {
+        const res = await fetch('/api/notifications', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.success && Array.isArray(json.notifications)) {
+            return json.notifications;
+          }
+        }
+      } catch {
+        // fall back to direct Supabase
+      }
+    }
+
     const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
     if (!wsId) return FlowDeskStore.getNotifications();
 
@@ -3296,6 +3311,7 @@ export const NotificationService = {
         .from('notifications')
         .select('*')
         .eq('workspace_id', wsId)
+        .is('client_id', null)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -3318,6 +3334,33 @@ export const NotificationService = {
     } catch {
       return FlowDeskStore.getNotifications();
     }
+  },
+
+  markAsRead: async (id: string): Promise<boolean> => {
+    FlowDeskStore.getNotifications().forEach((n) => {
+      if (n.id === id) n.read = true;
+    });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+      try {
+        const res = await fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'markRead', id }),
+        });
+        return res.ok;
+      } catch {
+        // Fallback direct
+        try {
+          const { error } = await supabase.from('notifications').update({ read: true }).eq('id', id);
+          return !error;
+        } catch {
+          return true;
+        }
+      }
+    }
+    return true;
   },
 
   addNotification: async (notif: Omit<NotificationItem, 'id' | 'timestamp' | 'read'>): Promise<NotificationItem> => {
@@ -3384,30 +3427,56 @@ export const NotificationService = {
     }
   },
 
-  markAllAsRead: async (): Promise<void> => {
+  markAllAsRead: async (): Promise<boolean> => {
     FlowDeskStore.markAllNotificationsRead();
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
-    }
-    const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
-    if (wsId) {
       try {
-        await supabase.from('notifications').update({ read: true }).eq('workspace_id', wsId);
+        const res = await fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'markAllRead' }),
+        });
+        return res.ok;
       } catch {
-        // ignore
+        const wsId = await FreelancerWorkspaceService.getActiveWorkspaceId();
+        if (wsId) {
+          try {
+            await supabase
+              .from('notifications')
+              .update({ read: true })
+              .eq('workspace_id', wsId)
+              .is('client_id', null);
+            return true;
+          } catch {
+            return false;
+          }
+        }
+        return true;
       }
     }
+    return true;
   },
 
   dismissNotification: async (id: string): Promise<boolean> => {
     FlowDeskStore.dismissNotification(id);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('flowdesk:notifications-updated'));
+      try {
+        const res = await fetch('/api/notifications', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        return res.ok;
+      } catch {
+        try {
+          const { error } = await supabase.from('notifications').delete().eq('id', id);
+          return !error;
+        } catch { return true; }
+      }
     }
-    try {
-      const { error } = await supabase.from('notifications').delete().eq('id', id);
-      return !error;
-    } catch { return true; }
+    return true;
   },
 };
 

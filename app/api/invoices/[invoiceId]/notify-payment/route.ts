@@ -104,12 +104,19 @@ export async function POST(
 
   // 6. Production DB Execution
   try {
-    // Fetch invoice to verify exists & obtain workspace / client details
-    const { data: invoice, error: fetchErr } = await supabaseAdmin
+    const UUID_PATTERN = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+    let invQuery = supabaseAdmin
       .from('invoices')
-      .select('id, workspace_id, client_id, invoice_number, total_amount, paid_amount, currency, status, internal_notes')
-      .eq('id', invoiceId)
-      .maybeSingle();
+      .select('id, workspace_id, client_id, invoice_number, total_amount, paid_amount, currency, status, internal_notes');
+
+    if (UUID_PATTERN.test(invoiceId)) {
+      invQuery = invQuery.or(`id.eq.${invoiceId},invoice_number.eq.${invoiceId}`);
+    } else {
+      invQuery = invQuery.eq('invoice_number', invoiceId);
+    }
+
+    const { data: invRows, error: fetchErr } = await invQuery.limit(1);
+    const invoice = invRows?.[0] || null;
 
     if (fetchErr || !invoice) {
       return createApiErrorResponse({
@@ -131,24 +138,54 @@ export async function POST(
 
     // Multi-tenant authorization verification
     if (caller && !caller.isDemo) {
-      const isWorkspaceOwner = caller.workspaceId && caller.workspaceId === invoice.workspace_id;
-      const isInvoiceClient = caller.clientId && caller.clientId === invoice.client_id;
-      if (!isWorkspaceOwner && !isInvoiceClient) {
-        const { data: clientUserMatch } = await supabaseAdmin
-          .from('clients')
-          .select('id')
-          .eq('workspace_id', invoice.workspace_id)
-          .eq('user_id', caller.userId)
-          .maybeSingle();
+      const isWorkspaceOwner = Boolean(caller.workspaceId && caller.workspaceId === invoice.workspace_id);
+      const isInvoiceClient = Boolean(caller.clientId && caller.clientId === invoice.client_id);
 
-        if (!clientUserMatch) {
-          return createApiErrorResponse({
-            message: 'You are not authorized to submit payment notifications for this invoice.',
-            code: 'FORBIDDEN',
-            status: 403,
-            requestId,
-          });
+      let isAuthorized = isWorkspaceOwner || isInvoiceClient;
+      if (!isAuthorized && caller.userId) {
+        if (invoice.client_id) {
+          const { data: cRow } = await supabaseAdmin
+            .from('clients')
+            .select('id, user_id')
+            .eq('id', invoice.client_id)
+            .maybeSingle();
+          if (cRow?.user_id && cRow.user_id === caller.userId) {
+            isAuthorized = true;
+          }
         }
+
+        if (!isAuthorized) {
+          const { data: conns } = await supabaseAdmin
+            .from('client_connections')
+            .select('id')
+            .eq('client_user_id', caller.userId)
+            .eq('status', 'active')
+            .limit(1);
+          if (conns && conns.length > 0) {
+            isAuthorized = true;
+          }
+        }
+
+        if (!isAuthorized && invoice.workspace_id) {
+          const { data: wsClients } = await supabaseAdmin
+            .from('clients')
+            .select('id')
+            .eq('workspace_id', invoice.workspace_id)
+            .eq('user_id', caller.userId)
+            .limit(1);
+          if (wsClients && wsClients.length > 0) {
+            isAuthorized = true;
+          }
+        }
+      }
+
+      if (!isAuthorized) {
+        return createApiErrorResponse({
+          message: 'You are not authorized to submit payment notifications for this invoice.',
+          code: 'FORBIDDEN',
+          status: 403,
+          requestId,
+        });
       }
     }
 
@@ -164,15 +201,17 @@ export async function POST(
 
     // 1. Record pending payment entry in verified invoice_payments ledger
     try {
-      await supabaseAdmin.from('invoice_payments').insert({
-        invoice_id: invoice.id,
-        workspace_id: invoice.workspace_id,
-        amount,
-        currency: invoice.currency || 'INR',
-        payment_method: paymentMethod || 'upi',
-        payment_date: paymentDateIso,
-        notes: `Reference/UTR: ${transactionReference}${notes ? ' - ' + notes : ''}`,
-      });
+      if (invoice.workspace_id && invoice.id) {
+        await supabaseAdmin.from('invoice_payments').insert({
+          invoice_id: invoice.id,
+          workspace_id: invoice.workspace_id,
+          amount,
+          currency: invoice.currency || 'INR',
+          payment_method: paymentMethod || 'upi',
+          payment_date: paymentDateIso,
+          notes: `Reference/UTR: ${transactionReference}${notes ? ' - ' + notes : ''}`,
+        });
+      }
     } catch (payErr) {
       logger.warn('[NotifyPayment] invoice_payments insert notice:', { error: String(payErr) });
     }
@@ -189,7 +228,7 @@ export async function POST(
           internal_notes: newInternalNotes,
           updated_at: paymentDateIso,
         })
-        .eq('id', invoiceId);
+        .eq('id', invoice.id);
     } catch (updateErr) {
       logger.warn('[NotifyPayment] internal_notes update notice:', { error: String(updateErr) });
     }
@@ -199,57 +238,63 @@ export async function POST(
       await supabaseAdmin
         .from('invoices')
         .update({ payment_notification: notificationPayload })
-        .eq('id', invoiceId);
+        .eq('id', invoice.id);
     } catch {
       // Column does not exist in standard relational schema
     }
 
-    // 7. In-App Notifications for Freelancer & Client
+    // 4. In-App Notifications for Freelancer & Client
     try {
-      const { data: ws } = await supabaseAdmin
-        .from('workspaces')
-        .select('owner_id')
-        .eq('id', invoice.workspace_id)
-        .maybeSingle();
+      if (invoice.workspace_id) {
+        const { data: ws } = await supabaseAdmin
+          .from('workspaces')
+          .select('owner_id')
+          .eq('id', invoice.workspace_id)
+          .maybeSingle();
 
-      await supabaseAdmin.from('notifications').insert({
-        workspace_id: invoice.workspace_id,
-        user_id: ws?.owner_id || null,
-        client_id: invoice.client_id,
-        title: 'Payment Submitted (Pending Verification)',
-        message: `Payment reference ${transactionReference} submitted for #${invoice.invoice_number} (${invoice.currency} ${amount}). Please verify in Invoices.`,
-        category: 'invoice',
-        link: 'invoices',
-        read: false,
-      });
+        if (ws?.owner_id) {
+          await supabaseAdmin.from('notifications').insert({
+            workspace_id: invoice.workspace_id,
+            user_id: ws.owner_id,
+            client_id: invoice.client_id || null,
+            title: 'Payment Submitted (Pending Verification)',
+            message: `Payment reference ${transactionReference} submitted for #${invoice.invoice_number} (${invoice.currency} ${amount}). Please verify in Invoices.`,
+            category: 'invoice',
+            link: 'invoices',
+            read: false,
+          });
+        }
 
-      if (invoice.client_id) {
-        await supabaseAdmin.from('notifications').insert({
-          workspace_id: invoice.workspace_id,
-          user_id: null,
-          client_id: invoice.client_id,
-          title: 'Payment Reference Submitted',
-          message: `Your payment reference (${transactionReference}) for #${invoice.invoice_number} was submitted and is pending verification.`,
-          category: 'invoice',
-          link: 'invoices',
-          read: false,
-        });
+        if (invoice.client_id) {
+          await supabaseAdmin.from('notifications').insert({
+            workspace_id: invoice.workspace_id,
+            user_id: null,
+            client_id: invoice.client_id,
+            title: 'Payment Reference Submitted',
+            message: `Your payment reference (${transactionReference}) for #${invoice.invoice_number} was submitted and is pending verification.`,
+            category: 'invoice',
+            link: 'invoices',
+            read: false,
+          });
+        }
       }
     } catch {
       // Non-critical notification insert
     }
 
-    // 8. Non-blocking Activity Log
+    // 5. Non-blocking Activity Log
     try {
-      await supabaseAdmin.from('activities').insert({
-        workspace_id: invoice.workspace_id,
-        client_id: invoice.client_id,
-        action: 'payment_notification_submitted',
-        title: `Payment reference submitted for #${invoice.invoice_number}`,
-        description: `Client submitted reference ${transactionReference} for ${invoice.currency} ${amount} awaiting verification.`,
-        resource_type: 'invoice',
-        resource_id: invoice.id,
-      });
+      if (invoice.workspace_id) {
+        await supabaseAdmin.from('activities').insert({
+          workspace_id: invoice.workspace_id,
+          client_id: invoice.client_id || null,
+          action: 'payment_notification_submitted',
+          title: `Payment reference submitted for #${invoice.invoice_number}`,
+          description: `Client submitted reference ${transactionReference} for ${invoice.currency} ${amount} awaiting verification.`,
+          resource_type: 'invoice',
+          resource_id: invoice.id,
+        });
+      }
     } catch {
       // Non-critical activity insert
     }

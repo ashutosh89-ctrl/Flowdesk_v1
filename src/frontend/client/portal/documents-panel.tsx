@@ -218,13 +218,12 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#176B5B]/20">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono uppercase text-[#43D6B0] font-bold">CLIENT ACTION REQUIRED</span>
+              <h2 className="text-lg font-bold text-[#F5F5F0] tracking-tight">Requested Document Checklist</h2>
               <span className="px-2 py-0.5 rounded bg-[#176B5B]/20 text-[#43D6B0] border border-[#176B5B]/40 text-[10px] font-mono">
                 {fileRequests.filter((r) => r.status === 'pending').length} Outstanding Request(s)
               </span>
             </div>
-            <h2 className="text-lg font-bold text-[#F5F5F0] tracking-tight mt-1">Requested Document Checklist</h2>
-            <p className="text-xs text-[#A6B4AE]">Upload required brand assets, contracts, and references</p>
+            <p className="text-xs text-[#A6B4AE] mt-0.5">Upload required brand assets, contracts, and references</p>
           </div>
         </div>
 

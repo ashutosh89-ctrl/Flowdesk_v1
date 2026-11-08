@@ -41,8 +41,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
         <div className="p-5 rounded-2xl bg-zinc-950 border border-white/10 space-y-3">
           <div className="flex items-center justify-between pb-3 border-b border-white/10">
             <div>
-              <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase">Work Sign-Off Protocol</span>
-              <h4 className="text-sm font-bold text-white mt-0.5">{deliverable.title}</h4>
+              <h4 className="text-sm font-bold text-white">{deliverable.title}</h4>
             </div>
             <span className="px-2.5 py-1 rounded bg-white/10 border border-white/15 text-xs font-mono font-bold text-white">
               {deliverable.version || 'v1.0'}

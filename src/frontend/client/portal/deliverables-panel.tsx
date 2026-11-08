@@ -323,11 +323,11 @@ export const DeliverablesPanel: React.FC<DeliverablesPanelProps> = ({
                 {(repoUrl || liveProjectUrl || branchName || prUrl) && (
                   <div className="p-3.5 rounded-xl bg-[#176B5B]/10 border border-[#176B5B]/30 space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase text-[#43D6B0] font-bold tracking-wider flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-[#43D6B0] flex items-center gap-1.5">
                         <Code2 className="w-3.5 h-3.5" />
                         <span>Project Details & Deployment Links</span>
                       </span>
-                      <span className="text-[10px] text-zinc-400">Verified client resources</span>
+                      <span className="text-[11px] text-zinc-400">Verified resources</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">

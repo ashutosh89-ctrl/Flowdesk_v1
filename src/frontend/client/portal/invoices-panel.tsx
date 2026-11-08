@@ -202,10 +202,7 @@ export const InvoicesPanel: React.FC<InvoicesPanelProps> = ({
       <Card variant="crystal" className="p-6 border-white/20 bg-gradient-to-r from-zinc-900/90 via-zinc-950 to-zinc-900/90">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <span className="text-xs font-mono uppercase text-zinc-400 font-semibold tracking-wider">
-              BILLING STATEMENT SUMMARY
-            </span>
-            <h2 className="text-2xl font-extrabold text-white font-mono mt-1">
+            <h2 className="text-2xl font-extrabold text-white font-mono">
               {formatCurrency(totalOutstanding, invoices[0]?.currency || 'INR')}
             </h2>
             <p className="text-xs text-zinc-300 mt-0.5">

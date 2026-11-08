@@ -153,7 +153,7 @@ export const PermanentPortalService = {
           effectiveLogoUrl = wsData.logo_url || profData?.logo_url || '/branding/flowdesk-symbol.png';
         }
       } catch {
-        effectiveLogoUrl = wsData.logo_url || profData?.logo_url || '/branding/flowdesk-symbol.png';
+        effectiveLogoUrl = '/branding/flowdesk-symbol.png';
       }
 
       return {
