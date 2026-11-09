@@ -6,3 +6,14 @@ coverage/
 *.tsbuildinfo
 .env*
 !.env.example
+
+# Campaign & scratch media
+flowdesk-video-campaign/
+brag-output/
+scratch/
+.agents/
+skills-lock.json
+shot.png
+public/assets/
+video/
+

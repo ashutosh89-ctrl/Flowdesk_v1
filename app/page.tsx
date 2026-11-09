@@ -12,6 +12,8 @@ import { ProjectsListView } from '@/frontend/freelancer/projects/projects-list-v
 import { DeliverablesListView } from '@/frontend/freelancer/deliverables/deliverables-list-view';
 import { InvoicesListView } from '@/frontend/freelancer/invoices/invoices-list-view';
 import { DocumentsListView } from '@/frontend/freelancer/documents/documents-list-view';
+import { TasksView } from '@/frontend/freelancer/tasks/tasks-view';
+import { ReportsView } from '@/frontend/freelancer/reports/reports-view';
 import { ActivityFeedView } from '@/frontend/freelancer/activity/activity-feed-view';
 import { SettingsView } from '@/frontend/freelancer/settings/settings-view';
 import { QuickActionsModal } from '@/frontend/freelancer/dashboard/components/quick-actions-modal';
@@ -155,6 +157,8 @@ function FlowDeskAppContent() {
 
           {currentView === 'projects' && <ProjectsListView />}
 
+          {currentView === 'tasks' && <TasksView />}
+
           {currentView === 'deliverables' && (
             <DeliverablesListView onOpenClientWorkspace={handleOpenWorkspace} />
           )}
@@ -162,6 +166,8 @@ function FlowDeskAppContent() {
           {currentView === 'invoices' && <InvoicesListView />}
 
           {currentView === 'documents' && <DocumentsListView />}
+
+          {currentView === 'reports' && <ReportsView />}
 
           {currentView === 'activity' && <ActivityFeedView />}
 
