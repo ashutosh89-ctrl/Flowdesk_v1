@@ -152,7 +152,7 @@ export default function CancellationPolicyPage() {
         </p>
         <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-1.5 text-xs text-zinc-300">
           <p><strong>Email:</strong> <a href={`mailto:${siteConfig.supportEmail}`} className="text-[#43D6B0] hover:underline font-mono">{siteConfig.supportEmail}</a></p>
-          <p><strong>Contact Form:</strong> <Link href="/contact?category=Subscription%20and%20Billing" className="text-[#43D6B0] hover:underline">https://flowdesk-v1.vercel.app/contact?category=Subscription and Billing</Link></p>
+          <p><strong>Contact Form:</strong> <Link href="/contact?category=Subscription%20and%20Billing" className="text-[#43D6B0] hover:underline">https://www.flow-desk.live/contact?category=Subscription and Billing</Link></p>
           <p><strong>Response Target:</strong> Within 1 business day for billing and subscription inquiries</p>
         </div>
       </section>

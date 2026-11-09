@@ -125,10 +125,10 @@ async function runAudit() {
     clientName: 'Eleanor & Vance <Co>',
     freelancerName: 'Ashutosh Mishra',
     businessName: 'Apex <Digital> Labs',
-    portalUrl: 'https://flowdesk-v1.vercel.app/portal/cli-1',
+    portalUrl: 'https://www.flow-desk.live/portal/cli-1',
   });
   assert(invite.subject.includes('Apex <Digital> Labs'), 'Client invitation subject contains business name');
-  assert(invite.html.includes('https://flowdesk-v1.vercel.app/portal/cli-1'), 'Client invitation contains portal URL');
+  assert(invite.html.includes('https://www.flow-desk.live/portal/cli-1'), 'Client invitation contains portal URL');
   assert(invite.html.includes('&lt;Digital&gt;'), 'Client invitation escapes HTML in business name');
 
   // Test 2.2: Deliverable Ready
@@ -138,7 +138,7 @@ async function runAudit() {
     deliverableTitle: 'Mobile App High-Fidelity Prototype',
     projectName: 'Q3 Brand Strategy',
     version: 'v2.0',
-    portalUrl: 'https://flowdesk-v1.vercel.app/portal/cli-1/deliverables/del-1',
+    portalUrl: 'https://www.flow-desk.live/portal/cli-1/deliverables/del-1',
   });
   assert(delivReady.subject.includes('Mobile App High-Fidelity Prototype'), 'Deliverable ready subject contains title');
   assert(delivReady.html.includes('v2.0'), 'Deliverable ready HTML contains version');
@@ -149,7 +149,7 @@ async function runAudit() {
     clientName: 'Eleanor Vance',
     deliverableTitle: 'Brand Guidelines PDF',
     notes: 'Approved with minor color tweaks on page 4',
-    dashboardUrl: 'https://flowdesk-v1.vercel.app/portal/cli-1',
+    dashboardUrl: 'https://www.flow-desk.live/portal/cli-1',
   });
   assert(delivApp.html.includes('Approved with minor color tweaks'), 'Deliverable approved HTML contains notes');
 
@@ -159,7 +159,7 @@ async function runAudit() {
     clientName: 'Eleanor Vance',
     deliverableTitle: 'Design Token Specification',
     feedback: 'Please revise font weights for mobile headers',
-    dashboardUrl: 'https://flowdesk-v1.vercel.app/workspace/deliv/123',
+    dashboardUrl: 'https://www.flow-desk.live/workspace/deliv/123',
   });
   assert(revReq.html.includes('Please revise font weights'), 'Revision requested HTML contains feedback');
 
@@ -169,7 +169,7 @@ async function runAudit() {
     uploaderName: 'Eleanor Vance',
     documentTitle: 'Tax_Exemption_Form.pdf',
     category: 'Legal & Tax',
-    actionUrl: 'https://flowdesk-v1.vercel.app/portal/cli-1/documents',
+    actionUrl: 'https://www.flow-desk.live/portal/cli-1/documents',
   });
   assert(docUp.html.includes('Tax_Exemption_Form.pdf'), 'Document uploaded HTML contains document title');
   assert(docUp.html.includes('Legal &amp; Tax'), 'Document uploaded HTML contains escaped category');
@@ -181,7 +181,7 @@ async function runAudit() {
     invoiceNumber: 'INV-2026-088',
     amount: '$14,500.00',
     dueDate: '2026-09-30',
-    portalUrl: 'https://flowdesk-v1.vercel.app/portal/cli-1/invoices/inv-088',
+    portalUrl: 'https://www.flow-desk.live/portal/cli-1/invoices/inv-088',
   });
   assert(invIssued.subject.includes('INV-2026-088'), 'Invoice issued subject contains invoice number');
   assert(invIssued.html.includes('$14,500.00'), 'Invoice issued HTML contains amount');
@@ -193,7 +193,7 @@ async function runAudit() {
     invoiceNumber: 'INV-2026-088',
     amount: '$14,500.00',
     paymentMethod: 'Razorpay / UPI',
-    actionUrl: 'https://flowdesk-v1.vercel.app/portal/cli-1/receipts/rec-088',
+    actionUrl: 'https://www.flow-desk.live/portal/cli-1/receipts/rec-088',
   });
   assert(payRec.html.includes('Razorpay / UPI'), 'Payment received HTML contains payment method');
 
@@ -202,7 +202,7 @@ async function runAudit() {
     userName: 'Ashutosh Mishra',
     action: 'deleted',
     gracePeriodDays: 5,
-    restoreUrl: 'https://flowdesk-v1.vercel.app/login',
+    restoreUrl: 'https://www.flow-desk.live/login',
   });
   assert(accDel.html.includes('5 Days'), 'Account lifecycle HTML contains grace period');
 

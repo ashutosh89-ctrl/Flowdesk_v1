@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-19  
 **Status:** IMPLEMENTED & COMPLIANCE-GATED  
-**Audit Target:** FlowDesk v1.0.0 (`flowdesk-v1.vercel.app`)  
+**Audit Target:** FlowDesk v1.0.0 (`www.flow-desk.live`)  
 **Primary Authors:** Senior Full-Stack & Application Security Engineering Team
 
 ---

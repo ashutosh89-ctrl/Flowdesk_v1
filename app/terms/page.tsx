@@ -256,7 +256,7 @@ export default function TermsPage() {
           </p>
           <ul className="space-y-1 text-xs">
             <li><strong>Email:</strong> <a href={`mailto:${siteConfig.supportEmail}`} className="text-[#43D6B0] hover:underline font-mono">{siteConfig.supportEmail}</a></li>
-            <li><strong>Support Page:</strong> <Link href="/contact" className="text-[#43D6B0] hover:underline">https://flowdesk-v1.vercel.app/contact</Link></li>
+            <li><strong>Support Page:</strong> <Link href="/contact" className="text-[#43D6B0] hover:underline">https://www.flow-desk.live/contact</Link></li>
           </ul>
         </div>
       </section>

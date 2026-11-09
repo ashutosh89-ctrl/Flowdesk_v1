@@ -17,6 +17,8 @@ export interface PolicyMetadata {
 export interface SiteConfig {
   brandName: string;
   legalEntityName: string;
+  domain: string;
+  siteUrl: string;
   supportEmail: string;
   privacyEmail: string;
   securityEmail: string;
@@ -57,6 +59,8 @@ export interface SiteConfig {
 export const siteConfig: SiteConfig = {
   brandName: 'FlowDesk',
   legalEntityName: 'FlowDesk',
+  domain: 'www.flow-desk.live',
+  siteUrl: 'https://www.flow-desk.live',
   supportEmail: 'flowdesk11@gmail.com',
   privacyEmail: 'flowdesk11@gmail.com',
   securityEmail: 'flowdesk11@gmail.com',

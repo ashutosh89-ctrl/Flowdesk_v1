@@ -133,7 +133,7 @@ async function runEmailAuditTestSuite() {
   const inviteTmpl = renderClientInvitationEmail({
     clientName: `John ${maliciousPayload}`,
     freelancerName: `Jane ${maliciousPayload}`,
-    portalUrl: 'https://flowdesk-v1.vercel.app/portal/client-123',
+    portalUrl: 'https://www.flow-desk.live/portal/client-123',
   });
   assert(
     !inviteTmpl.html.includes('<script>'),
@@ -153,7 +153,7 @@ async function runEmailAuditTestSuite() {
     clientName: `Client ${maliciousPayload}`,
     projectTitle: `Project ${maliciousPayload}`,
     deliverableTitle: `Deliverable ${maliciousPayload}`,
-    portalUrl: 'https://flowdesk-v1.vercel.app/portal/client-123',
+    portalUrl: 'https://www.flow-desk.live/portal/client-123',
   });
   assert(
     !delReadyTmpl.html.includes('<script>'),
@@ -166,7 +166,7 @@ async function runEmailAuditTestSuite() {
     clientName: `Client ${maliciousPayload}`,
     deliverableTitle: `Deliverable ${maliciousPayload}`,
     notes: `Notes with <img src=x onerror=alert(1)>`,
-    deliverableUrl: 'https://flowdesk-v1.vercel.app/deliverables',
+    deliverableUrl: 'https://www.flow-desk.live/deliverables',
   });
   assert(
     !delApproveTmpl.html.includes('<img src=x'),
@@ -179,7 +179,7 @@ async function runEmailAuditTestSuite() {
     clientName: 'Client',
     deliverableTitle: 'Deliverable',
     feedback: `Feedback with <iframe src="evil.com"></iframe>`,
-    deliverableUrl: 'https://flowdesk-v1.vercel.app/deliverables',
+    deliverableUrl: 'https://www.flow-desk.live/deliverables',
   });
   assert(
     !revReqTmpl.html.includes('<iframe'),

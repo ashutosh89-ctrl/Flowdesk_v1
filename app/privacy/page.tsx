@@ -185,7 +185,7 @@ export default function PrivacyPage() {
           <li><strong>Account Deletion:</strong> You can initiate account deletion at any time from your settings or request manual assistance.</li>
         </ul>
         <p>
-          To submit a privacy inquiry, request data assistance, or withdraw consent, contact our support team at <a href={`mailto:${siteConfig.supportEmail}`} className="text-[#43D6B0] hover:underline font-mono">{siteConfig.supportEmail}</a> or use our support form at <Link href="/contact?category=Privacy%20and%20Data%20Deletion" className="text-[#43D6B0] hover:underline">https://flowdesk-v1.vercel.app/contact?category=Privacy and Data Deletion</Link>. We acknowledge and process privacy requests within 2 business days.
+          To submit a privacy inquiry, request data assistance, or withdraw consent, contact our support team at <a href={`mailto:${siteConfig.supportEmail}`} className="text-[#43D6B0] hover:underline font-mono">{siteConfig.supportEmail}</a> or use our support form at <Link href="/contact?category=Privacy%20and%20Data%20Deletion" className="text-[#43D6B0] hover:underline">https://www.flow-desk.live/contact?category=Privacy and Data Deletion</Link>. We acknowledge and process privacy requests within 2 business days.
         </p>
       </section>
 
@@ -225,7 +225,7 @@ export default function PrivacyPage() {
           </p>
           <ul className="space-y-1 text-xs">
             <li><strong>Email:</strong> <a href={`mailto:${siteConfig.supportEmail}`} className="text-[#43D6B0] hover:underline font-mono">{siteConfig.supportEmail}</a></li>
-            <li><strong>Support Form:</strong> <Link href="/contact?category=Privacy%20and%20Data%20Deletion" className="text-[#43D6B0] hover:underline">https://flowdesk-v1.vercel.app/contact</Link></li>
+            <li><strong>Support Form:</strong> <Link href="/contact?category=Privacy%20and%20Data%20Deletion" className="text-[#43D6B0] hover:underline">https://www.flow-desk.live/contact</Link></li>
             <li><strong>Turnaround Target:</strong> Within 1 to 2 business days</li>
           </ul>
         </div>

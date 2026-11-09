@@ -86,7 +86,7 @@ export default function RefundPolicyPage() {
         </p>
         <ol className="list-decimal pl-6 space-y-3 text-zinc-300">
           <li>
-            <strong>Open the Support Request Form:</strong> Visit our dedicated contact form with the refund category selected: <Link href="/contact?category=Refund%20Request" className="text-[#43D6B0] hover:underline font-mono">flowdesk-v1.vercel.app/contact?category=Refund Request</Link>, or email <a href={`mailto:${siteConfig.supportEmail}`} className="text-[#43D6B0] hover:underline font-mono">{siteConfig.supportEmail}</a>.
+            <strong>Open the Support Request Form:</strong> Visit our dedicated contact form with the refund category selected: <Link href="/contact?category=Refund%20Request" className="text-[#43D6B0] hover:underline font-mono">www.flow-desk.live/contact?category=Refund Request</Link>, or email <a href={`mailto:${siteConfig.supportEmail}`} className="text-[#43D6B0] hover:underline font-mono">{siteConfig.supportEmail}</a>.
           </li>
           <li>
             <strong>Provide Transaction Details:</strong> Include your registered workspace email address, the date of the charge, the amount, and the Razorpay payment or subscription ID (e.g. <code>pay_...</code> or <code>sub_...</code>).
@@ -124,7 +124,7 @@ export default function RefundPolicyPage() {
         </p>
         <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 space-y-1.5 text-xs text-zinc-300">
           <p><strong>Email:</strong> <a href={`mailto:${siteConfig.supportEmail}`} className="text-[#43D6B0] hover:underline font-mono">{siteConfig.supportEmail}</a></p>
-          <p><strong>Contact Form:</strong> <Link href="/contact?category=Refund%20Request" className="text-[#43D6B0] hover:underline">https://flowdesk-v1.vercel.app/contact?category=Refund Request</Link></p>
+          <p><strong>Contact Form:</strong> <Link href="/contact?category=Refund%20Request" className="text-[#43D6B0] hover:underline">https://www.flow-desk.live/contact?category=Refund Request</Link></p>
           <p><strong>Response Target:</strong> Within 1 to 2 business days for billing matters</p>
         </div>
       </section>

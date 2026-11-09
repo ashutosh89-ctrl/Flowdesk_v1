@@ -33,9 +33,17 @@ export function getAppBaseUrl(): string {
     return formatUrl(process.env.VERCEL_URL);
   }
 
-  // 4. Default fallback for local development
+  // 4. Production Canonical Domain fallback
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://www.flow-desk.live';
+  }
+
+  // 5. Default fallback for local development
   return 'http://localhost:3000';
 }
+
+export const CANONICAL_DOMAIN = 'www.flow-desk.live';
+export const CANONICAL_SITE_URL = 'https://www.flow-desk.live';
 
 function formatUrl(url: string): string {
   const cleaned = cleanUrl(url);

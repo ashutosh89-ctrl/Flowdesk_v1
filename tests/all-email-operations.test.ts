@@ -63,11 +63,11 @@ async function runAllEmailOperationsTests() {
     const tpl = renderClientInvitationEmail({
       clientName: 'Acme & Co <script>',
       freelancerName: 'Studio "Rivera"',
-      portalUrl: 'https://flowdesk-v1.vercel.app/portal/cli-1',
+      portalUrl: 'https://www.flow-desk.live/portal/cli-1',
     });
     assert(tpl.subject.includes('Studio "Rivera"'));
     assert(tpl.html.includes('&lt;script&gt;'));
-    assert(tpl.html.includes('https://flowdesk-v1.vercel.app/portal/cli-1'));
+    assert(tpl.html.includes('https://www.flow-desk.live/portal/cli-1'));
   });
 
   await test('2. Deliverable Ready Template renders with portal URL and version', () => {
@@ -76,12 +76,12 @@ async function runAllEmailOperationsTests() {
       freelancerName: 'Alex Rivera',
       projectTitle: 'Brand Guidelines',
       deliverableTitle: 'Logo System Final',
-      portalUrl: 'https://flowdesk-v1.vercel.app/portal/cli-1',
+      portalUrl: 'https://www.flow-desk.live/portal/cli-1',
       version: 'v2.1',
     });
     assert(tpl.subject.includes('Logo System Final'));
     assert(tpl.html.includes('v2.1'));
-    assert(tpl.html.includes('https://flowdesk-v1.vercel.app/portal/cli-1'));
+    assert(tpl.html.includes('https://www.flow-desk.live/portal/cli-1'));
   });
 
   await test('3. Deliverable Approved Template renders with client feedback notes', () => {
@@ -90,7 +90,7 @@ async function runAllEmailOperationsTests() {
       clientName: 'Acme Corp',
       projectTitle: 'Enterprise Rebrand',
       deliverableTitle: 'Website Layout',
-      deliverableUrl: 'https://flowdesk-v1.vercel.app/deliverables',
+      deliverableUrl: 'https://www.flow-desk.live/deliverables',
       notes: 'Looks amazing, approved!',
     });
     assert(tpl.subject.includes('Website Layout'));
@@ -103,7 +103,7 @@ async function runAllEmailOperationsTests() {
       clientName: 'Acme Corp',
       projectTitle: 'Enterprise Rebrand',
       deliverableTitle: 'Color Palette',
-      deliverableUrl: 'https://flowdesk-v1.vercel.app/deliverables',
+      deliverableUrl: 'https://www.flow-desk.live/deliverables',
       feedback: 'Please make the blue slightly darker.',
     });
     assert(tpl.subject.includes('Revision Requested'));
@@ -117,7 +117,7 @@ async function runAllEmailOperationsTests() {
       documentTitle: 'Contract_2026.pdf',
       projectTitle: 'Enterprise Rebrand',
       category: 'Contracts',
-      documentUrl: 'https://flowdesk-v1.vercel.app/documents',
+      documentUrl: 'https://www.flow-desk.live/documents',
     });
     assert(tpl.subject.includes('Contract_2026.pdf'));
     assert(tpl.html.includes('Contracts'));
@@ -130,7 +130,7 @@ async function runAllEmailOperationsTests() {
       invoiceNumber: 'INV-2026-001',
       amount: '$15,000.00',
       dueDate: '2026-10-15',
-      invoiceUrl: 'https://flowdesk-v1.vercel.app/portal/cli-1',
+      invoiceUrl: 'https://www.flow-desk.live/portal/cli-1',
     });
     assert(tpl.subject.includes('INV-2026-001'));
     assert(tpl.html.includes('$15,000.00'));
@@ -145,7 +145,7 @@ async function runAllEmailOperationsTests() {
       amount: '$5,000.00',
       paymentDate: '2026-09-07',
       paymentMethod: 'Razorpay UPI',
-      receiptUrl: 'https://flowdesk-v1.vercel.app/portal/cli-1',
+      receiptUrl: 'https://www.flow-desk.live/portal/cli-1',
     });
     assert(tpl.subject.includes('INV-2026-001'));
     assert(tpl.html.includes('$5,000.00'));
@@ -157,7 +157,7 @@ async function runAllEmailOperationsTests() {
       userName: 'John Doe',
       action: 'deleted',
       restoreUntil: '2026-10-07',
-      restoreUrl: 'https://flowdesk-v1.vercel.app/recover',
+      restoreUrl: 'https://www.flow-desk.live/recover',
     });
     assert(delTpl.subject.includes('Account Deletion Initiated'));
     assert(delTpl.html.includes('2026-10-07'));
@@ -165,7 +165,7 @@ async function runAllEmailOperationsTests() {
     const resTpl = renderAccountLifecycleEmail({
       userName: 'John Doe',
       action: 'restored',
-      restoreUrl: 'https://flowdesk-v1.vercel.app/client/login',
+      restoreUrl: 'https://www.flow-desk.live/client/login',
     });
     assert(resTpl.subject.includes('Account Restored'));
   });
@@ -186,7 +186,7 @@ async function runAllEmailOperationsTests() {
     const res = await EmailService.sendClientInvitation('mysreio26@gmail.com', {
       clientName: 'Acme Global Client',
       freelancerName: 'FlowDesk Studio',
-      portalUrl: 'https://flowdesk-v1.vercel.app/portal/cli-demo-test',
+      portalUrl: 'https://www.flow-desk.live/portal/cli-demo-test',
     });
     assert(res.success === true, `Client invitation dispatch failed: ${res.error}`);
     assert(typeof res.messageId === 'string' && res.messageId.length > 0);
@@ -202,7 +202,7 @@ async function runAllEmailOperationsTests() {
       invoiceNumber: 'INV-AUDIT-999',
       amount: '$7,500.00',
       dueDate: '2026-10-01',
-      invoiceUrl: 'https://flowdesk-v1.vercel.app/portal/cli-demo-test',
+      invoiceUrl: 'https://www.flow-desk.live/portal/cli-demo-test',
     });
     assert(res.success === true, `Invoice email dispatch failed: ${res.error}`);
     assert(typeof res.messageId === 'string' && res.messageId.length > 0);
